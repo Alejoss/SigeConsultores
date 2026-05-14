@@ -151,13 +151,13 @@ Con Deploy Key (SSH):
 ```bash
 mkdir -p ~/sige-app-staging
 cd ~/sige-app-staging
-git clone -b develop git@github.com:sigecons-max/sige-app.git .
+git clone -b develop git@github.com:Alejoss/SigeConsultores.git .
 ```
 
 Si no usas `develop`, cambia la rama (ej. `infra/staging-cicd`):
 
 ```bash
-git clone -b infra/staging-cicd git@github.com:sigecons-max/sige-app.git .
+git clone -b infra/staging-cicd git@github.com:Alejoss/SigeConsultores.git .
 ```
 
 **Ruta bajo `/opt`** (recomendada en muchos equipos). La ruta absoluta es `/opt/sige-app-staging` (empieza por `/`). Si `mkdir` falla por permisos:
@@ -165,7 +165,7 @@ git clone -b infra/staging-cicd git@github.com:sigecons-max/sige-app.git .
 ```bash
 sudo mkdir -p /opt/sige-app-staging && sudo chown -R deploy:deploy /opt/sige-app-staging
 cd /opt/sige-app-staging
-git clone -b develop git@github.com:sigecons-max/sige-app.git .
+git clone -b develop git@github.com:Alejoss/SigeConsultores.git .
 ```
 
 #### Clonar con HTTPS + PAT (token en archivo)
@@ -179,7 +179,7 @@ chmod 600 /opt/sige-app-staging/github-pat-staging.txt
 
 PAT="$(tr -d ' \n\r\t' < /opt/sige-app-staging/github-pat-staging.txt)"
 TMP="$(mktemp -d)"
-git clone -b main "https://TU_USUARIO_GITHUB:${PAT}@github.com/sigecons-max/sige-app.git" "$TMP/sige-app"
+git clone -b main "https://TU_USUARIO_GITHUB:${PAT}@github.com/Alejoss/SigeConsultores.git" "$TMP/sige-app"
 shopt -s dotglob
 mv "$TMP/sige-app"/* /opt/sige-app-staging/
 mv "$TMP/sige-app/.git" /opt/sige-app-staging/ 2>/dev/null || true
@@ -192,7 +192,7 @@ Lista ramas remotas (mismo PAT) si no sabes el nombre de la rama:
 
 ```bash
 PAT="$(tr -d ' \n\r\t' < /opt/sige-app-staging/github-pat-staging.txt)"
-git ls-remote --heads "https://TU_USUARIO_GITHUB:${PAT}@github.com/sigecons-max/sige-app.git"
+git ls-remote --heads "https://TU_USUARIO_GITHUB:${PAT}@github.com/Alejoss/SigeConsultores.git"
 unset PAT
 ```
 

@@ -25,7 +25,7 @@ Servicios externos habituales: proveedor OAuth, Brevo (correo), AWS S3 (respaldo
 ## Instalación rápida (desarrollo)
 
 ```bash
-git clone git@github.com:sigecons-max/sige-app.git
+git clone git@github.com:Alejoss/SigeConsultores.git
 cd sige-app
 pnpm install
 cp .env.example .env.local
