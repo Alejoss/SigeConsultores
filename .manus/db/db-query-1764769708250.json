@@ -1,0 +1,146 @@
+{
+  "query": "SELECT TABLE_NAME, TABLE_ROWS FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_ROWS DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT TABLE_NAME, TABLE_ROWS FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_ROWS DESC;",
+  "rows": [
+    {
+      "TABLE_NAME": "__drizzle_migrations",
+      "TABLE_ROWS": "5"
+    },
+    {
+      "TABLE_NAME": "users",
+      "TABLE_ROWS": "1"
+    },
+    {
+      "TABLE_NAME": "companies",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "companyInfo",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "companyValues",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "compliances",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "criticalityMatrix",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "documents",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "fodaAnalysis",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "indicators",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "operationalObjectives",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "policies",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "policyObjectives",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "processUsers",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "processes",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "riskMatrix",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "stakeholders",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "strategicObjectives",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "subprocesses",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "tacticalObjectives",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "trainings",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "processCharacterizations",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "processCompliances",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "processFODA",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "processIndicators",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "processRiskMatrices",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "processScheduleActivities",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "processTacticalObjectives",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "processTrainings",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "stakeholderCriticalities",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "subprocessMapEntries",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "subprocessMapOutputs",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "subprocessMapSubprocesses",
+      "TABLE_ROWS": "0"
+    },
+    {
+      "TABLE_NAME": "subprocessMaps",
+      "TABLE_ROWS": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\tTABLE_ROWS\n__drizzle_migrations\t5\nusers\t1\ncompanies\t0\ncompanyInfo\t0\ncompanyValues\t0\ncompliances\t0\ncriticalityMatrix\t0\ndocuments\t0\nfodaAnalysis\t0\nindicators\t0\noperationalObjectives\t0\npolicies\t0\npolicyObjectives\t0\nprocessUsers\t0\nprocesses\t0\nriskMatrix\t0\nstakeholders\t0\nstrategicObjectives\t0\nsubprocesses\t0\ntacticalObjectives\t0\ntrainings\t0\nprocessCharacterizations\t0\nprocessCompliances\t0\nprocessFODA\t0\nprocessIndicators\t0\nprocessRiskMatrices\t0\nprocessScheduleActivities\t0\nprocessTacticalObjectives\t0\nprocessTrainings\t0\nstakeholderCriticalities\t0\nsubprocessMapEntries\t0\nsubprocessMapOutputs\t0\nsubprocessMapSubprocesses\t0\nsubprocessMaps\t0\n",
+  "stderr": "",
+  "execution_time_ms": 61
+}

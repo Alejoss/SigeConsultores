@@ -1,0 +1,80 @@
+{
+  "query": "SELECT p.id, p.name, c.name as company FROM processes p JOIN companies c ON p.companyId = c.id WHERE c.name = 'Lalita S.A.' ORDER BY p.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT p.id, p.name, c.name as company FROM processes p JOIN companies c ON p.companyId = c.id WHERE c.name = 'Lalita S.A.' ORDER BY p.id;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Estrategia",
+      "company": "Lalita S.A."
+    },
+    {
+      "id": "2",
+      "name": "Finanzas y contabilidad",
+      "company": "Lalita S.A."
+    },
+    {
+      "id": "3",
+      "name": "Compliance",
+      "company": "Lalita S.A."
+    },
+    {
+      "id": "4",
+      "name": "SIGE",
+      "company": "Lalita S.A."
+    },
+    {
+      "id": "5",
+      "name": "Ventas",
+      "company": "Lalita S.A."
+    },
+    {
+      "id": "9",
+      "name": "Desarrollo Humano",
+      "company": "Lalita S.A."
+    },
+    {
+      "id": "10",
+      "name": "IT",
+      "company": "Lalita S.A."
+    },
+    {
+      "id": "11",
+      "name": "Mantenimiento",
+      "company": "Lalita S.A."
+    },
+    {
+      "id": "12",
+      "name": "Facturación",
+      "company": "Lalita S.A."
+    },
+    {
+      "id": "14",
+      "name": "Diseño",
+      "company": "Lalita S.A."
+    },
+    {
+      "id": "15",
+      "name": "Producción",
+      "company": "Lalita S.A."
+    },
+    {
+      "id": "16",
+      "name": "Control de calidad",
+      "company": "Lalita S.A."
+    },
+    {
+      "id": "17",
+      "name": "Despacho y Logística",
+      "company": "Lalita S.A."
+    },
+    {
+      "id": "120001",
+      "name": "Cobranzas",
+      "company": "Lalita S.A."
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tcompany\n1\tEstrategia\tLalita S.A.\n2\tFinanzas y contabilidad\tLalita S.A.\n3\tCompliance\tLalita S.A.\n4\tSIGE\tLalita S.A.\n5\tVentas\tLalita S.A.\n9\tDesarrollo Humano\tLalita S.A.\n10\tIT\tLalita S.A.\n11\tMantenimiento\tLalita S.A.\n12\tFacturación\tLalita S.A.\n14\tDiseño\tLalita S.A.\n15\tProducción\tLalita S.A.\n16\tControl de calidad\tLalita S.A.\n17\tDespacho y Logística\tLalita S.A.\n120001\tCobranzas\tLalita S.A.\n",
+  "stderr": "",
+  "execution_time_ms": 138
+}

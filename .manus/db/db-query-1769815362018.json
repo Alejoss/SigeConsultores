@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, name, companyId FROM processes WHERE companyId IN (SELECT id FROM companies WHERE name LIKE '%Lalita%')",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, companyId FROM processes WHERE companyId IN (SELECT id FROM companies WHERE name LIKE '%Lalita%')",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Estrategia",
+      "companyId": "30001"
+    },
+    {
+      "id": "2",
+      "name": "Finanzas y contabilidad",
+      "companyId": "30001"
+    },
+    {
+      "id": "3",
+      "name": "Compliance",
+      "companyId": "30001"
+    },
+    {
+      "id": "4",
+      "name": "SIGE",
+      "companyId": "30001"
+    },
+    {
+      "id": "5",
+      "name": "Ventas",
+      "companyId": "30001"
+    },
+    {
+      "id": "9",
+      "name": "Desarrollo Humano",
+      "companyId": "30001"
+    },
+    {
+      "id": "10",
+      "name": "IT",
+      "companyId": "30001"
+    },
+    {
+      "id": "11",
+      "name": "Mantenimiento",
+      "companyId": "30001"
+    },
+    {
+      "id": "12",
+      "name": "Facturación",
+      "companyId": "30001"
+    },
+    {
+      "id": "14",
+      "name": "Diseño",
+      "companyId": "30001"
+    },
+    {
+      "id": "15",
+      "name": "Producción",
+      "companyId": "30001"
+    },
+    {
+      "id": "16",
+      "name": "Control de calidad",
+      "companyId": "30001"
+    },
+    {
+      "id": "17",
+      "name": "Despacho y Logística",
+      "companyId": "30001"
+    },
+    {
+      "id": "120001",
+      "name": "Cobranzas",
+      "companyId": "30001"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tcompanyId\n1\tEstrategia\t30001\n2\tFinanzas y contabilidad\t30001\n3\tCompliance\t30001\n4\tSIGE\t30001\n5\tVentas\t30001\n9\tDesarrollo Humano\t30001\n10\tIT\t30001\n11\tMantenimiento\t30001\n12\tFacturación\t30001\n14\tDiseño\t30001\n15\tProducción\t30001\n16\tControl de calidad\t30001\n17\tDespacho y Logística\t30001\n120001\tCobranzas\t30001\n",
+  "stderr": "",
+  "execution_time_ms": 204
+}

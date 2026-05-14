@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, name, strategicObjectiveDescription FROM processTacticalObjectives WHERE strategicObjectiveDescription LIKE '%category%' LIMIT 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, strategicObjectiveDescription FROM processTacticalObjectives WHERE strategicObjectiveDescription LIKE '%category%' LIMIT 1",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Estandarizar el diseño técnico bajo criterios de calidad certificada",
+      "strategicObjectiveDescription": "{\"category\":\"\",\"goal\":100,\"resultKeys\":[{\"id\":\"1772481867282\",\"description\":\"jljlkl\",\"responsible\":\"\",\"startDate\":\"\",\"endDate\":\"\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[]}]}"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tstrategicObjectiveDescription\n1\tEstandarizar el diseño técnico bajo criterios de calidad certificada\t{\"category\":\"\",\"goal\":100,\"resultKeys\":[{\"id\":\"1772481867282\",\"description\":\"jljlkl\",\"responsible\":\"\",\"startDate\":\"\",\"endDate\":\"\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[]}]}\n",
+  "stderr": "",
+  "execution_time_ms": 117
+}

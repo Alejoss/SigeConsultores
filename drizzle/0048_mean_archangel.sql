@@ -1,0 +1,1 @@
+ALTER TABLE `processOwnerInvitations` MODIFY COLUMN `accessCode` varchar(12);

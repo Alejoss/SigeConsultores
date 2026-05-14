@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.github
+.vscode
+.idea
+.env
+.env.local
+.env.production
+coverage
+logs
+tmp
+temp
+*.log
+*.md

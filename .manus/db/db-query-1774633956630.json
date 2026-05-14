@@ -1,0 +1,16 @@
+{
+  "query": "SELECT c.id, c.name, car.id as requestId, car.companyName FROM companies c JOIN companyAccessRequests car ON c.name = car.companyName WHERE car.companyName = 'Lalita S.A.' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT c.id, c.name, car.id as requestId, car.companyName FROM companies c JOIN companyAccessRequests car ON c.name = car.companyName WHERE car.companyName = 'Lalita S.A.' LIMIT 5;",
+  "rows": [
+    {
+      "id": "30001",
+      "name": "Lalita S.A.",
+      "requestId": "1",
+      "companyName": "Lalita S.A."
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\trequestId\tcompanyName\n30001\tLalita S.A.\t1\tLalita S.A.\n",
+  "stderr": "",
+  "execution_time_ms": 200
+}

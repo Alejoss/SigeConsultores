@@ -1,0 +1,70 @@
+{
+  "query": "SELECT id, name, strategicObjective, strategicObjectiveDescription FROM processTacticalObjectives WHERE id IN (SELECT id FROM processTacticalObjectives ORDER BY id DESC LIMIT 10)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, strategicObjective, strategicObjectiveDescription FROM processTacticalObjectives WHERE id IN (SELECT id FROM processTacticalObjectives ORDER BY id DESC LIMIT 10)",
+  "rows": [
+    {
+      "id": "1230005",
+      "name": "Objective 1",
+      "strategicObjective": "NULL",
+      "strategicObjectiveDescription": "NULL"
+    },
+    {
+      "id": "1230006",
+      "name": "Objective 2",
+      "strategicObjective": "NULL",
+      "strategicObjectiveDescription": "NULL"
+    },
+    {
+      "id": "1260001",
+      "name": "Objective 1",
+      "strategicObjective": "NULL",
+      "strategicObjectiveDescription": "NULL"
+    },
+    {
+      "id": "1260002",
+      "name": "Objective 2",
+      "strategicObjective": "NULL",
+      "strategicObjectiveDescription": "NULL"
+    },
+    {
+      "id": "1290001",
+      "name": "Objective 1",
+      "strategicObjective": "NULL",
+      "strategicObjectiveDescription": "NULL"
+    },
+    {
+      "id": "1290002",
+      "name": "Objective 2",
+      "strategicObjective": "NULL",
+      "strategicObjectiveDescription": "NULL"
+    },
+    {
+      "id": "1350001",
+      "name": "Objective 1",
+      "strategicObjective": "NULL",
+      "strategicObjectiveDescription": "NULL"
+    },
+    {
+      "id": "1350002",
+      "name": "Objective 2",
+      "strategicObjective": "NULL",
+      "strategicObjectiveDescription": "NULL"
+    },
+    {
+      "id": "1380001",
+      "name": "Reducir el costo promedio de procesamiento por tallo de $0.0627 a $0.0600 (–4.3%) antes del 31 de diciembre de 2026.",
+      "strategicObjective": "Incremento de la rentabilidad",
+      "strategicObjectiveDescription": "{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}"
+    },
+    {
+      "id": "1410001",
+      "name": "Incrementar la tasa de tallos exportables desde 80% a 85% antes de diciembre 2026.",
+      "strategicObjective": "Incremento de la rentabilidad",
+      "strategicObjectiveDescription": "{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tstrategicObjective\tstrategicObjectiveDescription\n1230005\tObjective 1\tNULL\tNULL\n1230006\tObjective 2\tNULL\tNULL\n1260001\tObjective 1\tNULL\tNULL\n1260002\tObjective 2\tNULL\tNULL\n1290001\tObjective 1\tNULL\tNULL\n1290002\tObjective 2\tNULL\tNULL\n1350001\tObjective 1\tNULL\tNULL\n1350002\tObjective 2\tNULL\tNULL\n1380001\tReducir el costo promedio de procesamiento por tallo de $0.0627 a $0.0600 (–4.3%) antes del 31 de diciembre de 2026.\tIncremento de la rentabilidad\t{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}\n1410001\tIncrementar la tasa de tallos exportables desde 80% a 85% antes de diciembre 2026.\tIncremento de la rentabilidad\t{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}\n",
+  "stderr": "",
+  "execution_time_ms": 110
+}

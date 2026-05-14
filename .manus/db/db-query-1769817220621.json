@@ -1,0 +1,13 @@
+{
+  "query": "SELECT p.id FROM processes p WHERE p.companyId = (SELECT id FROM companies WHERE name LIKE '%Lalita%' LIMIT 1) AND p.name = 'Diseño' LIMIT 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT p.id FROM processes p WHERE p.companyId = (SELECT id FROM companies WHERE name LIKE '%Lalita%' LIMIT 1) AND p.name = 'Diseño' LIMIT 1",
+  "rows": [
+    {
+      "id": "14"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\n14\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

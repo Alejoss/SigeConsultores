@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, managerEmail, companyId, createdAt FROM managerInvitations ORDER BY createdAt DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, managerEmail, companyId, createdAt FROM managerInvitations ORDER BY createdAt DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "1050004",
+      "managerEmail": "eromanlec@yahoo.com",
+      "companyId": "30001",
+      "createdAt": "2026-03-27 19:13:04"
+    },
+    {
+      "id": "1050003",
+      "managerEmail": "eromanlec@yahoo.com",
+      "companyId": "30001",
+      "createdAt": "2026-03-27 19:06:04"
+    },
+    {
+      "id": "1050002",
+      "managerEmail": "eromanlec@yahoo.com",
+      "companyId": "30001",
+      "createdAt": "2026-03-27 18:30:26"
+    },
+    {
+      "id": "1050001",
+      "managerEmail": "eromanlec@yahoo.com",
+      "companyId": "30001",
+      "createdAt": "2026-03-27 18:15:02"
+    },
+    {
+      "id": "1020007",
+      "managerEmail": "eromanlec@yahoo.com",
+      "companyId": "30001",
+      "createdAt": "2026-03-27 17:41:58"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tmanagerEmail\tcompanyId\tcreatedAt\n1050004\teromanlec@yahoo.com\t30001\t2026-03-27 19:13:04\n1050003\teromanlec@yahoo.com\t30001\t2026-03-27 19:06:04\n1050002\teromanlec@yahoo.com\t30001\t2026-03-27 18:30:26\n1050001\teromanlec@yahoo.com\t30001\t2026-03-27 18:15:02\n1020007\teromanlec@yahoo.com\t30001\t2026-03-27 17:41:58\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

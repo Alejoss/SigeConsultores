@@ -1,0 +1,34 @@
+{
+  "query": "SELECT id, name, description, createdAt FROM companies ORDER BY createdAt;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, description, createdAt FROM companies ORDER BY createdAt;",
+  "rows": [
+    {
+      "id": "30001",
+      "name": "Lalita S.A.",
+      "description": "Lalita S.A. diseña, transforma y restaura piezas exclusivas utilizando bisutería, encajes y textiles de la India, así como muebles antiguos que convertimos en piezas vintage únicas para quienes buscan estilo, originalidad y arte en su vestir y en su hogar.",
+      "createdAt": "2025-12-12 16:12:30"
+    },
+    {
+      "id": "60001",
+      "name": "Agrogana",
+      "description": "Agrogana es una empresa florícola ecuatoriana de origen familiar, dedicada al cultivo y exportación de flores y capullos de alta calidad, que combina excelencia productiva, innovación y comercio justo, con un profundo respeto por la naturaleza, la vida silvestre y el desarrollo comunitario, transformando vidas a través de la magia de la naturaleza.",
+      "createdAt": "2026-01-06 18:01:25"
+    },
+    {
+      "id": "90001",
+      "name": "SERVICIO DIRECTO DE CARGA SOLUTIONCARG S.A.,",
+      "description": "DIRECTCARGO S.A., es una empresa dedicada a proveer soluciones logísticas integrales e innovadoras en el manejo de carga en general desde y hacia el Ecuador, por vía aérea, terrestre y marítima, que asume el compromiso de implementar, mantener y mejorar continuamente su Sistema Integrado de Gestión, alineado a su propósito, contexto organizacional y planificación estratégica.",
+      "createdAt": "2026-01-07 14:01:41"
+    },
+    {
+      "id": "150001",
+      "name": "SIGE Consultores",
+      "description": "SIGE Consultores es una firma de asesoría especializada en Sistemas Integrados de Gestión, que combina metodología, tecnología y acompañamiento personalizado para transformar el cumplimiento normativo en valor estratégico para las empresas. SIGE Consultores acompaña a las empresas en la implementación y uso de Sistemas Integrados de Gestión, apoyados en una plataforma digital propia que ordena, simplifica y da sostenibilidad a la gestión empresarial, conviertiendo la gestión en estructura, y la estructura en confianza.",
+      "createdAt": "2026-01-13 19:04:32"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdescription\tcreatedAt\n30001\tLalita S.A.\tLalita S.A. diseña, transforma y restaura piezas exclusivas utilizando bisutería, encajes y textiles de la India, así como muebles antiguos que convertimos en piezas vintage únicas para quienes buscan estilo, originalidad y arte en su vestir y en su hogar.\t2025-12-12 16:12:30\n60001\tAgrogana\tAgrogana es una empresa florícola ecuatoriana de origen familiar, dedicada al cultivo y exportación de flores y capullos de alta calidad, que combina excelencia productiva, innovación y comercio justo, con un profundo respeto por la naturaleza, la vida silvestre y el desarrollo comunitario, transformando vidas a través de la magia de la naturaleza.\t2026-01-06 18:01:25\n90001\tSERVICIO DIRECTO DE CARGA SOLUTIONCARG S.A.,\tDIRECTCARGO S.A., es una empresa dedicada a proveer soluciones logísticas integrales e innovadoras en el manejo de carga en general desde y hacia el Ecuador, por vía aérea, terrestre y marítima, que asume el compromiso de implementar, mantener y mejorar continuamente su Sistema Integrado de Gestión, alineado a su propósito, contexto organizacional y planificación estratégica.\t2026-01-07 14:01:41\n150001\tSIGE Consultores\tSIGE Consultores es una firma de asesoría especializada en Sistemas Integrados de Gestión, que combina metodología, tecnología y acompañamiento personalizado para transformar el cumplimiento normativo en valor estratégico para las empresas. SIGE Consultores acompaña a las empresas en la implementación y uso de Sistemas Integrados de Gestión, apoyados en una plataforma digital propia que ordena, simplifica y da sostenibilidad a la gestión empresarial, conviertiendo la gestión en estructura, y la estructura en confianza.\t2026-01-13 19:04:32\n",
+  "stderr": "",
+  "execution_time_ms": 48
+}

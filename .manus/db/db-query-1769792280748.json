@@ -1,0 +1,20 @@
+{
+  "query": "SELECT id, leaderEmail, processId FROM processLeaderCredentials LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, leaderEmail, processId FROM processLeaderCredentials LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "leaderEmail": "eromanlec@yahoo.com",
+      "processId": "1"
+    },
+    {
+      "id": "30001",
+      "leaderEmail": "lalitera@yahoo.com",
+      "processId": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tleaderEmail\tprocessId\n1\teromanlec@yahoo.com\t1\n30001\tlalitera@yahoo.com\t1\n",
+  "stderr": "",
+  "execution_time_ms": 63
+}

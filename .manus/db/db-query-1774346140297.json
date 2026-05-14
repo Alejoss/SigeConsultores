@@ -1,0 +1,30 @@
+{
+  "query": "\nSELECT 'criticalityMatrix' as tabla, COUNT(*) as cantidad FROM criticalityMatrix WHERE processId = 1290002\nUNION ALL\nSELECT 'processFODA', COUNT(*) FROM processFODA WHERE processId = 1290002\nUNION ALL\nSELECT 'processTacticalObjectives', COUNT(*) FROM processTacticalObjectives WHERE processId = 1290002\nUNION ALL\nSELECT 'processCompliances', COUNT(*) FROM processCompliances WHERE processId = 1290002\nUNION ALL\nSELECT 'processTrainings', COUNT(*) FROM processTrainings WHERE processId = 1290002;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute \nSELECT 'criticalityMatrix' as tabla, COUNT(*) as cantidad FROM criticalityMatrix WHERE processId = 1290002\nUNION ALL\nSELECT 'processFODA', COUNT(*) FROM processFODA WHERE processId = 1290002\nUNION ALL\nSELECT 'processTacticalObjectives', COUNT(*) FROM processTacticalObjectives WHERE processId = 1290002\nUNION ALL\nSELECT 'processCompliances', COUNT(*) FROM processCompliances WHERE processId = 1290002\nUNION ALL\nSELECT 'processTrainings', COUNT(*) FROM processTrainings WHERE processId = 1290002;\n",
+  "rows": [
+    {
+      "tabla": "processFODA",
+      "cantidad": "1"
+    },
+    {
+      "tabla": "processTacticalObjectives",
+      "cantidad": "3"
+    },
+    {
+      "tabla": "processCompliances",
+      "cantidad": "2"
+    },
+    {
+      "tabla": "processTrainings",
+      "cantidad": "2"
+    },
+    {
+      "tabla": "criticalityMatrix",
+      "cantidad": "6"
+    }
+  ],
+  "messages": [],
+  "stdout": "tabla\tcantidad\nprocessFODA\t1\nprocessTacticalObjectives\t3\nprocessCompliances\t2\nprocessTrainings\t2\ncriticalityMatrix\t6\n",
+  "stderr": "",
+  "execution_time_ms": 59
+}

@@ -1,0 +1,24 @@
+{
+  "query": "SELECT plc.id, plc.leaderEmail, plc.processId, pli.processId as inviteProcessId, pli.leaderEmail as inviteEmail FROM processLeaderCredentials plc LEFT JOIN processLeaderInvitations pli ON plc.leaderEmail = pli.leaderEmail;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT plc.id, plc.leaderEmail, plc.processId, pli.processId as inviteProcessId, pli.leaderEmail as inviteEmail FROM processLeaderCredentials plc LEFT JOIN processLeaderInvitations pli ON plc.leaderEmail = pli.leaderEmail;",
+  "rows": [
+    {
+      "id": "1",
+      "leaderEmail": "eromanlec@yahoo.com",
+      "processId": "1",
+      "inviteProcessId": "NULL",
+      "inviteEmail": "NULL"
+    },
+    {
+      "id": "30001",
+      "leaderEmail": "lalitera@yahoo.com",
+      "processId": "1",
+      "inviteProcessId": "NULL",
+      "inviteEmail": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tleaderEmail\tprocessId\tinviteProcessId\tinviteEmail\n1\teromanlec@yahoo.com\t1\tNULL\tNULL\n30001\tlalitera@yahoo.com\t1\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 52
+}

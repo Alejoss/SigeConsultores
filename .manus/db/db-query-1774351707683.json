@@ -1,0 +1,14 @@
+{
+  "query": "SELECT COUNT(*) as total, COUNT(CASE WHEN completed = 'SI' THEN 1 END) as completed FROM processTacticalObjectives WHERE processId = 1290002;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT COUNT(*) as total, COUNT(CASE WHEN completed = 'SI' THEN 1 END) as completed FROM processTacticalObjectives WHERE processId = 1290002;",
+  "rows": [
+    {
+      "total": "3",
+      "completed": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\tcompleted\n3\t0\n",
+  "stderr": "",
+  "execution_time_ms": 59
+}

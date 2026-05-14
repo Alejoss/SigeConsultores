@@ -1,0 +1,14 @@
+{
+  "query": "SELECT p.id, p.name FROM processes p JOIN companies c ON p.companyId = c.id WHERE c.name = 'Lalita S.A.' AND p.name LIKE '%Diseño%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT p.id, p.name FROM processes p JOIN companies c ON p.companyId = c.id WHERE c.name = 'Lalita S.A.' AND p.name LIKE '%Diseño%';",
+  "rows": [
+    {
+      "id": "14",
+      "name": "Diseño"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\n14\tDiseño\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

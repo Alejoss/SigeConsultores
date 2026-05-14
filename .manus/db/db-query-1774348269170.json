@@ -1,0 +1,15 @@
+{
+  "query": "\nSELECT \n  COUNT(*) as total,\n  SUM(CASE WHEN implementationStatus = 1 THEN 1 ELSE 0 END) as completed,\n  ROUND(SUM(CASE WHEN implementationStatus = 1 THEN 1 ELSE 0 END) * 100 / COUNT(*), 0) as percentage\nFROM criticalityMatrix\nWHERE processId = 1290002;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute \nSELECT \n  COUNT(*) as total,\n  SUM(CASE WHEN implementationStatus = 1 THEN 1 ELSE 0 END) as completed,\n  ROUND(SUM(CASE WHEN implementationStatus = 1 THEN 1 ELSE 0 END) * 100 / COUNT(*), 0) as percentage\nFROM criticalityMatrix\nWHERE processId = 1290002;\n",
+  "rows": [
+    {
+      "total": "18",
+      "completed": "4",
+      "percentage": "22"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\tcompleted\tpercentage\n18\t4\t22\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}

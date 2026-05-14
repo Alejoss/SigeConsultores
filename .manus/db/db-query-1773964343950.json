@@ -1,0 +1,9 @@
+{
+  "query": "\nALTER TABLE stakeholderCriticalities \nADD COLUMN IF NOT EXISTS actionToTake TEXT,\nADD COLUMN IF NOT EXISTS startDate DATE,\nADD COLUMN IF NOT EXISTS endDate DATE,\nADD COLUMN IF NOT EXISTS completed ENUM('SI', 'NO') DEFAULT 'NO' NOT NULL;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute \nALTER TABLE stakeholderCriticalities \nADD COLUMN IF NOT EXISTS actionToTake TEXT,\nADD COLUMN IF NOT EXISTS startDate DATE,\nADD COLUMN IF NOT EXISTS endDate DATE,\nADD COLUMN IF NOT EXISTS completed ENUM('SI', 'NO') DEFAULT 'NO' NOT NULL;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 762
+}

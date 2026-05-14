@@ -1,0 +1,70 @@
+{
+  "query": "SELECT c.id as companyId, c.name, p.id as processId, p.name as processName FROM companies c LEFT JOIN processes p ON c.id = p.companyId WHERE c.name = 'Lalita S.A.' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT c.id as companyId, c.name, p.id as processId, p.name as processName FROM companies c LEFT JOIN processes p ON c.id = p.companyId WHERE c.name = 'Lalita S.A.' LIMIT 10;",
+  "rows": [
+    {
+      "companyId": "30001",
+      "name": "Lalita S.A.",
+      "processId": "1",
+      "processName": "Estrategia"
+    },
+    {
+      "companyId": "30001",
+      "name": "Lalita S.A.",
+      "processId": "2",
+      "processName": "Finanzas y contabilidad"
+    },
+    {
+      "companyId": "30001",
+      "name": "Lalita S.A.",
+      "processId": "3",
+      "processName": "Compliance"
+    },
+    {
+      "companyId": "30001",
+      "name": "Lalita S.A.",
+      "processId": "4",
+      "processName": "SIGE"
+    },
+    {
+      "companyId": "30001",
+      "name": "Lalita S.A.",
+      "processId": "5",
+      "processName": "Ventas"
+    },
+    {
+      "companyId": "30001",
+      "name": "Lalita S.A.",
+      "processId": "9",
+      "processName": "Desarrollo Humano"
+    },
+    {
+      "companyId": "30001",
+      "name": "Lalita S.A.",
+      "processId": "10",
+      "processName": "IT"
+    },
+    {
+      "companyId": "30001",
+      "name": "Lalita S.A.",
+      "processId": "11",
+      "processName": "Mantenimiento"
+    },
+    {
+      "companyId": "30001",
+      "name": "Lalita S.A.",
+      "processId": "12",
+      "processName": "Facturación"
+    },
+    {
+      "companyId": "30001",
+      "name": "Lalita S.A.",
+      "processId": "14",
+      "processName": "Diseño"
+    }
+  ],
+  "messages": [],
+  "stdout": "companyId\tname\tprocessId\tprocessName\n30001\tLalita S.A.\t1\tEstrategia\n30001\tLalita S.A.\t2\tFinanzas y contabilidad\n30001\tLalita S.A.\t3\tCompliance\n30001\tLalita S.A.\t4\tSIGE\n30001\tLalita S.A.\t5\tVentas\n30001\tLalita S.A.\t9\tDesarrollo Humano\n30001\tLalita S.A.\t10\tIT\n30001\tLalita S.A.\t11\tMantenimiento\n30001\tLalita S.A.\t12\tFacturación\n30001\tLalita S.A.\t14\tDiseño\n",
+  "stderr": "",
+  "execution_time_ms": 52
+}

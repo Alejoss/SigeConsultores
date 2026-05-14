@@ -1,0 +1,30 @@
+{
+  "query": "SELECT managerEmail, companyId FROM companyManagerCredentials;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT managerEmail, companyId FROM companyManagerCredentials;",
+  "rows": [
+    {
+      "managerEmail": "angess22@gmail.com",
+      "companyId": "1230001"
+    },
+    {
+      "managerEmail": "eromanlec@yahoo.com",
+      "companyId": "30001"
+    },
+    {
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001"
+    },
+    {
+      "managerEmail": "e.roman@sigeconsultores.com",
+      "companyId": "1410001"
+    },
+    {
+      "managerEmail": "lalitera@yahoo.com",
+      "companyId": "60001"
+    }
+  ],
+  "messages": [],
+  "stdout": "managerEmail\tcompanyId\nangess22@gmail.com\t1230001\neromanlec@yahoo.com\t30001\nissaelg5@gmail.com\t150001\ne.roman@sigeconsultores.com\t1410001\nlalitera@yahoo.com\t60001\n",
+  "stderr": "",
+  "execution_time_ms": 61
+}

@@ -1,0 +1,55 @@
+{
+  "query": "SELECT id, name, status FROM companies ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, status FROM companies ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "1470001",
+      "name": "Test Company",
+      "status": "En Proceso"
+    },
+    {
+      "id": "1410001",
+      "name": "DLA LAW & SERVICES",
+      "status": "En Proceso"
+    },
+    {
+      "id": "1320002",
+      "name": "Test Company 1771686413987",
+      "status": "En Proceso"
+    },
+    {
+      "id": "1230001",
+      "name": "Voces Ecuador",
+      "status": "En Proceso"
+    },
+    {
+      "id": "150001",
+      "name": "SIGE Consultores",
+      "status": "Activa"
+    },
+    {
+      "id": "90001",
+      "name": "SERVICIO DIRECTO DE CARGA SOLUTIONCARG S.A.,",
+      "status": "En Proceso"
+    },
+    {
+      "id": "60001",
+      "name": "Agrogana",
+      "status": "En Proceso"
+    },
+    {
+      "id": "30001",
+      "name": "Lalita S.A.",
+      "status": "Activa"
+    },
+    {
+      "id": "9991",
+      "name": "Test Company for Delete",
+      "status": "En Proceso"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tstatus\n1470001\tTest Company\tEn Proceso\n1410001\tDLA LAW & SERVICES\tEn Proceso\n1320002\tTest Company 1771686413987\tEn Proceso\n1230001\tVoces Ecuador\tEn Proceso\n150001\tSIGE Consultores\tActiva\n90001\tSERVICIO DIRECTO DE CARGA SOLUTIONCARG S.A.,\tEn Proceso\n60001\tAgrogana\tEn Proceso\n30001\tLalita S.A.\tActiva\n9991\tTest Company for Delete\tEn Proceso\n",
+  "stderr": "",
+  "execution_time_ms": 376
+}

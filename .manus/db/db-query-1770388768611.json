@@ -1,0 +1,160 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "accessAuditLog"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "accessInvitations"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "companies"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "companyAccessRequests"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "companyInfo"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "companyManagerCredentials"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "companyModuleCustomization"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "companySetupInvitations"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "companyValues"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "compliances"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "criticalityMatrix"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "documents"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "fodaAnalysis"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "indicators"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "operationalObjectives"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "passwordResetTokens"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "policies"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "policyObjectives"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "procedureRecords"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "procedures"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processAccessKeys"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processCharacterizations"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processCompliances"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processFODA"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processIndicators"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processLeaderCredentials"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processLeaderInvitations"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processLeaderPINResetTokens"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processParticipants"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processResources"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processRiskMatrices"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processScheduleActivities"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processTacticalObjectives"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processTrainings"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processUsers"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "processes"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "riskMatrix"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "stakeholderCriticalities"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "stakeholders"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "strategicObjectives"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "subprocessMapEntries"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "subprocessMapOutputs"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "subprocessMapSubprocesses"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "subprocessMaps"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "subprocesses"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "tacticalObjectives"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "trainings"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "userCompanyAccess"
+    },
+    {
+      "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF": "users"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_ME7ScwrB8Z7RLAVMx2cMEF\n__drizzle_migrations\naccessAuditLog\naccessInvitations\ncompanies\ncompanyAccessRequests\ncompanyInfo\ncompanyManagerCredentials\ncompanyModuleCustomization\ncompanySetupInvitations\ncompanyValues\ncompliances\ncriticalityMatrix\ndocuments\nfodaAnalysis\nindicators\noperationalObjectives\npasswordResetTokens\npolicies\npolicyObjectives\nprocedureRecords\nprocedures\nprocessAccessKeys\nprocessCharacterizations\nprocessCompliances\nprocessFODA\nprocessIndicators\nprocessLeaderCredentials\nprocessLeaderInvitations\nprocessLeaderPINResetTokens\nprocessParticipants\nprocessResources\nprocessRiskMatrices\nprocessScheduleActivities\nprocessTacticalObjectives\nprocessTrainings\nprocessUsers\nprocesses\nriskMatrix\nstakeholderCriticalities\nstakeholders\nstrategicObjectives\nsubprocessMapEntries\nsubprocessMapOutputs\nsubprocessMapSubprocesses\nsubprocessMaps\nsubprocesses\ntacticalObjectives\ntrainings\nuserCompanyAccess\nusers\n",
+  "stderr": "",
+  "execution_time_ms": 451
+}

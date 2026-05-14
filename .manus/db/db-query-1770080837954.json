@@ -1,0 +1,19 @@
+{
+  "query": "SELECT id, openId, email, name, role, createdAt, lastSignedIn FROM users WHERE email LIKE '%eromanlec%' OR email LIKE '%javier%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, openId, email, name, role, createdAt, lastSignedIn FROM users WHERE email LIKE '%eromanlec%' OR email LIKE '%javier%';",
+  "rows": [
+    {
+      "id": "12570151",
+      "openId": "local-eromanlec@yahoo.com",
+      "email": "eromanlec@yahoo.com",
+      "name": "Javier",
+      "role": "user",
+      "createdAt": "2026-02-03 01:02:33",
+      "lastSignedIn": "2026-02-03 01:02:33"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\temail\tname\trole\tcreatedAt\tlastSignedIn\n12570151\tlocal-eromanlec@yahoo.com\teromanlec@yahoo.com\tJavier\tuser\t2026-02-03 01:02:33\t2026-02-03 01:02:33\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}

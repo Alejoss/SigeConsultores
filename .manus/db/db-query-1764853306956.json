@@ -1,0 +1,18 @@
+{
+  "query": "SELECT * FROM companies;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT * FROM companies;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Prueba Persistencia",
+      "description": "Empresa de prueba para verificar persistencia",
+      "ownerUserId": "1",
+      "createdAt": "2025-12-04 13:01:42",
+      "updatedAt": "2025-12-04 13:01:42"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdescription\townerUserId\tcreatedAt\tupdatedAt\n1\tPrueba Persistencia\tEmpresa de prueba para verificar persistencia\t1\t2025-12-04 13:01:42\t2025-12-04 13:01:42\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}

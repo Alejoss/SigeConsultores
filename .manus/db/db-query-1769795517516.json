@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, leaderEmail, processId, leaderName, pinHash, isActive FROM processLeaderCredentials;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, leaderEmail, processId, leaderName, pinHash, isActive FROM processLeaderCredentials;",
+  "rows": [
+    {
+      "id": "60001",
+      "leaderEmail": "lalitera@yahoo.com",
+      "processId": "16",
+      "leaderName": "Dolores Padilla",
+      "pinHash": "$2b$10$dWXRnnAijtqOnRRUx6.EreIC7GHmK8JaxV06q0ZEJGpDFLv8mwPde",
+      "isActive": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tleaderEmail\tprocessId\tleaderName\tpinHash\tisActive\n60001\tlalitera@yahoo.com\t16\tDolores Padilla\t$2b$10$dWXRnnAijtqOnRRUx6.EreIC7GHmK8JaxV06q0ZEJGpDFLv8mwPde\t1\n",
+  "stderr": "",
+  "execution_time_ms": 1476
+}

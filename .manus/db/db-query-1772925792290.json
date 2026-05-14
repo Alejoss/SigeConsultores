@@ -1,0 +1,30 @@
+{
+  "query": "SELECT DISTINCT moduleName, companyId FROM companyModuleCustomization ORDER BY companyId, moduleName",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT DISTINCT moduleName, companyId FROM companyModuleCustomization ORDER BY companyId, moduleName",
+  "rows": [
+    {
+      "moduleName": "purpose_mission_vision",
+      "companyId": "60001"
+    },
+    {
+      "moduleName": "sige_modules",
+      "companyId": "60001"
+    },
+    {
+      "moduleName": "sige_modules",
+      "companyId": "150001"
+    },
+    {
+      "moduleName": "sige_modules",
+      "companyId": "1230001"
+    },
+    {
+      "moduleName": "sige_modules",
+      "companyId": "1410001"
+    }
+  ],
+  "messages": [],
+  "stdout": "moduleName\tcompanyId\npurpose_mission_vision\t60001\nsige_modules\t60001\nsige_modules\t150001\nsige_modules\t1230001\nsige_modules\t1410001\n",
+  "stderr": "",
+  "execution_time_ms": 357
+}

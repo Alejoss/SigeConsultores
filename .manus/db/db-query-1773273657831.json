@@ -1,0 +1,35 @@
+{
+  "query": "SELECT id, name, strategicObjectiveDescription FROM processTacticalObjectives WHERE strategicObjectiveDescription LIKE '%{%' LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, strategicObjectiveDescription FROM processTacticalObjectives WHERE strategicObjectiveDescription LIKE '%{%' LIMIT 5",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Estandarizar el diseño técnico bajo criterios de calidad certificada",
+      "strategicObjectiveDescription": "{\"category\":\"\",\"goal\":100,\"resultKeys\":[{\"id\":\"1772481867282\",\"description\":\"jljlkl\",\"responsible\":\"\",\"startDate\":\"\",\"endDate\":\"\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[]}]}"
+    },
+    {
+      "id": "2",
+      "name": "Desarrollar identidad visual coherente para canales digitales regionales",
+      "strategicObjectiveDescription": "{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}"
+    },
+    {
+      "id": "3",
+      "name": "Definir criterios estéticos diferenciadores para la restauración vintage",
+      "strategicObjectiveDescription": "{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}"
+    },
+    {
+      "id": "4",
+      "name": "Optimizar el proceso de diseño personalizado centrado en el cliente",
+      "strategicObjectiveDescription": "{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}"
+    },
+    {
+      "id": "5",
+      "name": "Integrar el diseño de Lalita S.A. a proyectos residenciales y comerciales",
+      "strategicObjectiveDescription": "{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tstrategicObjectiveDescription\n1\tEstandarizar el diseño técnico bajo criterios de calidad certificada\t{\"category\":\"\",\"goal\":100,\"resultKeys\":[{\"id\":\"1772481867282\",\"description\":\"jljlkl\",\"responsible\":\"\",\"startDate\":\"\",\"endDate\":\"\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[]}]}\n2\tDesarrollar identidad visual coherente para canales digitales regionales\t{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}\n3\tDefinir criterios estéticos diferenciadores para la restauración vintage\t{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}\n4\tOptimizar el proceso de diseño personalizado centrado en el cliente\t{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}\n5\tIntegrar el diseño de Lalita S.A. a proyectos residenciales y comerciales\t{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}\n",
+  "stderr": "",
+  "execution_time_ms": 63
+}

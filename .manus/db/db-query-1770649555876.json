@@ -1,0 +1,13 @@
+{
+  "query": "\n-- First, get SIGE Consultores company ID\nSELECT id FROM companies WHERE name = 'SIGE Consultores' LIMIT 1;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute \n-- First, get SIGE Consultores company ID\nSELECT id FROM companies WHERE name = 'SIGE Consultores' LIMIT 1;\n",
+  "rows": [
+    {
+      "id": "150001"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\n150001\n",
+  "stderr": "",
+  "execution_time_ms": 748
+}

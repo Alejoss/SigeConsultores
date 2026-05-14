@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, email, LOWER(email) as email_lower, status FROM processOwnerInvitations WHERE status = 'accepted'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, email, LOWER(email) as email_lower, status FROM processOwnerInvitations WHERE status = 'accepted'",
+  "rows": [
+    {
+      "id": "30027",
+      "email": "lalitera@yahoo.com",
+      "email_lower": "lalitera@yahoo.com",
+      "status": "accepted"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\temail_lower\tstatus\n30027\tlalitera@yahoo.com\tlalitera@yahoo.com\taccepted\n",
+  "stderr": "",
+  "execution_time_ms": 369
+}

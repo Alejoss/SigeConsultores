@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, managerEmail, isActive FROM companyManagerCredentials WHERE managerEmail = 'issaelg5@gmail.com';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, managerEmail, isActive FROM companyManagerCredentials WHERE managerEmail = 'issaelg5@gmail.com';",
+  "rows": [
+    {
+      "id": "150001",
+      "managerEmail": "issaelg5@gmail.com",
+      "isActive": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tmanagerEmail\tisActive\n150001\tissaelg5@gmail.com\t1\n",
+  "stderr": "",
+  "execution_time_ms": 50
+}

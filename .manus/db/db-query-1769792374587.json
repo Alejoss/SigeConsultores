@@ -1,0 +1,130 @@
+{
+  "query": "SELECT p.id as processId, p.name as processName, c.id as companyId, c.name as companyName FROM processes p LEFT JOIN companies c ON p.companyId = c.id LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT p.id as processId, p.name as processName, c.id as companyId, c.name as companyName FROM processes p LEFT JOIN companies c ON p.companyId = c.id LIMIT 20;",
+  "rows": [
+    {
+      "processId": "9991",
+      "processName": "Test Process for Delete",
+      "companyId": "9991",
+      "companyName": "Test Company for Delete"
+    },
+    {
+      "processId": "17",
+      "processName": "Despacho y Logística",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    },
+    {
+      "processId": "16",
+      "processName": "Control de calidad",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    },
+    {
+      "processId": "15",
+      "processName": "Producción",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    },
+    {
+      "processId": "14",
+      "processName": "Diseño",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    },
+    {
+      "processId": "12",
+      "processName": "Facturación",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    },
+    {
+      "processId": "11",
+      "processName": "Mantenimiento",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    },
+    {
+      "processId": "10",
+      "processName": "IT",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    },
+    {
+      "processId": "9",
+      "processName": "Desarrollo Humano",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    },
+    {
+      "processId": "5",
+      "processName": "Ventas",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    },
+    {
+      "processId": "4",
+      "processName": "SIGE",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    },
+    {
+      "processId": "3",
+      "processName": "Compliance",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    },
+    {
+      "processId": "2",
+      "processName": "Finanzas y contabilidad",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    },
+    {
+      "processId": "1",
+      "processName": "Estrategia",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    },
+    {
+      "processId": "60010",
+      "processName": "OPERACIONES",
+      "companyId": "60001",
+      "companyName": "Agrogana"
+    },
+    {
+      "processId": "60009",
+      "processName": "DESARROLLO HUMANO",
+      "companyId": "60001",
+      "companyName": "Agrogana"
+    },
+    {
+      "processId": "60003",
+      "processName": "CUMPLIMIENTOS",
+      "companyId": "60001",
+      "companyName": "Agrogana"
+    },
+    {
+      "processId": "60002",
+      "processName": "FINANZAS",
+      "companyId": "60001",
+      "companyName": "Agrogana"
+    },
+    {
+      "processId": "60001",
+      "processName": "ESTRATEGIA",
+      "companyId": "60001",
+      "companyName": "Agrogana"
+    },
+    {
+      "processId": "30001",
+      "processName": "Proceso de Prueba",
+      "companyId": "NULL",
+      "companyName": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "processId\tprocessName\tcompanyId\tcompanyName\n9991\tTest Process for Delete\t9991\tTest Company for Delete\n17\tDespacho y Logística\t30001\tLalita S.A.\n16\tControl de calidad\t30001\tLalita S.A.\n15\tProducción\t30001\tLalita S.A.\n14\tDiseño\t30001\tLalita S.A.\n12\tFacturación\t30001\tLalita S.A.\n11\tMantenimiento\t30001\tLalita S.A.\n10\tIT\t30001\tLalita S.A.\n9\tDesarrollo Humano\t30001\tLalita S.A.\n5\tVentas\t30001\tLalita S.A.\n4\tSIGE\t30001\tLalita S.A.\n3\tCompliance\t30001\tLalita S.A.\n2\tFinanzas y contabilidad\t30001\tLalita S.A.\n1\tEstrategia\t30001\tLalita S.A.\n60010\tOPERACIONES\t60001\tAgrogana\n60009\tDESARROLLO HUMANO\t60001\tAgrogana\n60003\tCUMPLIMIENTOS\t60001\tAgrogana\n60002\tFINANZAS\t60001\tAgrogana\n60001\tESTRATEGIA\t60001\tAgrogana\n30001\tProceso de Prueba\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

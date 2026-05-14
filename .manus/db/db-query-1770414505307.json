@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, email, name, openId, role FROM users ORDER BY createdAt DESC LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, email, name, openId, role FROM users ORDER BY createdAt DESC LIMIT 10",
+  "rows": [
+    {
+      "id": "12690028",
+      "email": "NULL",
+      "name": "No Email User",
+      "openId": "oauth-null-email-1770413097554",
+      "role": "user"
+    },
+    {
+      "id": "12690022",
+      "email": "NULL",
+      "name": "No Email User",
+      "openId": "oauth-null-email-1770413065718",
+      "role": "user"
+    },
+    {
+      "id": "12690016",
+      "email": "NULL",
+      "name": "No Email User",
+      "openId": "oauth-null-email-1770413030627",
+      "role": "user"
+    },
+    {
+      "id": "12690008",
+      "email": "NULL",
+      "name": "No Email User",
+      "openId": "oauth-null-email-1770411730435",
+      "role": "user"
+    },
+    {
+      "id": "12690005",
+      "email": "NULL",
+      "name": "No Email User",
+      "openId": "oauth-null-email-1770411715548",
+      "role": "user"
+    },
+    {
+      "id": "12660003",
+      "email": "NULL",
+      "name": "No Email User",
+      "openId": "oauth-null-email-1770389805344",
+      "role": "user"
+    },
+    {
+      "id": "12630003",
+      "email": "NULL",
+      "name": "No Email User",
+      "openId": "oauth-null-email-1770237979081",
+      "role": "user"
+    },
+    {
+      "id": "12600006",
+      "email": "NULL",
+      "name": "No Email User",
+      "openId": "oauth-null-email-1770224336207",
+      "role": "user"
+    },
+    {
+      "id": "12600003",
+      "email": "NULL",
+      "name": "No Email User",
+      "openId": "oauth-null-email-1770224292067",
+      "role": "user"
+    },
+    {
+      "id": "12570153",
+      "email": "eromanlec@yahoo.com",
+      "name": "eromanlec",
+      "openId": "a6injYuW2LszxWrcsN5aBP",
+      "role": "user"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tname\topenId\trole\n12690028\tNULL\tNo Email User\toauth-null-email-1770413097554\tuser\n12690022\tNULL\tNo Email User\toauth-null-email-1770413065718\tuser\n12690016\tNULL\tNo Email User\toauth-null-email-1770413030627\tuser\n12690008\tNULL\tNo Email User\toauth-null-email-1770411730435\tuser\n12690005\tNULL\tNo Email User\toauth-null-email-1770411715548\tuser\n12660003\tNULL\tNo Email User\toauth-null-email-1770389805344\tuser\n12630003\tNULL\tNo Email User\toauth-null-email-1770237979081\tuser\n12600006\tNULL\tNo Email User\toauth-null-email-1770224336207\tuser\n12600003\tNULL\tNo Email User\toauth-null-email-1770224292067\tuser\n12570153\teromanlec@yahoo.com\teromanlec\ta6injYuW2LszxWrcsN5aBP\tuser\n",
+  "stderr": "",
+  "execution_time_ms": 356
+}

@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, email, status, processId, companyId, accessCode FROM processOwnerInvitations WHERE status = 'accepted' ORDER BY updatedAt DESC LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, email, status, processId, companyId, accessCode FROM processOwnerInvitations WHERE status = 'accepted' ORDER BY updatedAt DESC LIMIT 5",
+  "rows": [
+    {
+      "id": "30027",
+      "email": "lalitera@yahoo.com",
+      "status": "accepted",
+      "processId": "14",
+      "companyId": "30001",
+      "accessCode": "4321"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tstatus\tprocessId\tcompanyId\taccessCode\n30027\tlalitera@yahoo.com\taccepted\t14\t30001\t4321\n",
+  "stderr": "",
+  "execution_time_ms": 358
+}

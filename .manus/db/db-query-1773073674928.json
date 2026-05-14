@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `processLeaderInvitations` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`processId` int NOT NULL,\n\t`companyId` int NOT NULL,\n\t`invitationToken` varchar(255) NOT NULL,\n\t`leaderEmail` varchar(320) NOT NULL,\n\t`leaderName` varchar(255) NOT NULL,\n\t`expiresAt` timestamp NOT NULL,\n\t`usedAt` timestamp,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `processLeaderInvitations_id` PRIMARY KEY(`id`),\n\tCONSTRAINT `processLeaderInvitations_invitationToken_unique` UNIQUE(`invitationToken`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute CREATE TABLE IF NOT EXISTS `processLeaderInvitations` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`processId` int NOT NULL,\n\t`companyId` int NOT NULL,\n\t`invitationToken` varchar(255) NOT NULL,\n\t`leaderEmail` varchar(320) NOT NULL,\n\t`leaderName` varchar(255) NOT NULL,\n\t`expiresAt` timestamp NOT NULL,\n\t`usedAt` timestamp,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `processLeaderInvitations_id` PRIMARY KEY(`id`),\n\tCONSTRAINT `processLeaderInvitations_invitationToken_unique` UNIQUE(`invitationToken`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 54
+}

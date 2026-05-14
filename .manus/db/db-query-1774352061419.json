@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, name, completed, planningData FROM processTacticalObjectives WHERE processId = 1290002;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, completed, planningData FROM processTacticalObjectives WHERE processId = 1290002;",
+  "rows": [
+    {
+      "id": "1170001",
+      "name": "Incrementar la productividad operativa en postcosecha de 140 tallos procesados por hora/hombre a 180 tallos por hora/hombre antes de diciembre 2026",
+      "completed": "NO",
+      "planningData": "{\"category\":\"Procesos Internos\",\"goal\":100,\"resultKeys\":[{\"id\":\"1773265068458\",\"description\":\"Capacitar al personal operativo en función de los rendimientos esperados\",\"responsible\":\"Jefe de Postcosecha\",\"startDate\":\"2026-03-11\",\"endDate\":\"2026-11-26\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[{\"id\":\"1773954774799\",\"description\":\"sdsf\",\"responsible\":\"sdfsf\",\"date\":\"2026-03-19\",\"percentageCompleted\":75,\"weighting\":50},{\"id\":\"1773954792045\",\"description\":\"sdfsff\",\"responsible\":\"sfsf\",\"date\":\"2026-03-19\",\"percentageCompleted\":75,\"weighting\":25},{\"id\":\"1773954807725\",\"description\":\"ewwrwr\",\"responsible\":\"sfsfsf\",\"date\":\"2026-03-19\",\"percentageCompleted\":50,\"weighting\":25}]},{\"id\":\"1773265073468\",\"description\":\"Capacitar al personal operativo en función de los rendimientos esperados \",\"responsible\":\"\",\"startDate\":\"\",\"endDate\":\"\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[]},{\"id\":\"1773272910409\",\"description\":\"Implementar una actividad de recreación deportivo/lúdica para el personal que cumpla el objetivo de rendimiento de producción\",\"responsible\":\"\",\"startDate\":\"\",\"endDate\":\"\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[]}]}"
+    },
+    {
+      "id": "1380001",
+      "name": "Reducir el costo promedio de procesamiento por tallo de $0.0627 a $0.0600 (–4.3%) antes del 31 de diciembre de 2026.",
+      "completed": "NO",
+      "planningData": "{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}"
+    },
+    {
+      "id": "1410001",
+      "name": "Incrementar la tasa de tallos exportables desde 80% a 85% antes de diciembre 2026.",
+      "completed": "NO",
+      "planningData": "{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tcompleted\tplanningData\n1170001\tIncrementar la productividad operativa en postcosecha de 140 tallos procesados por hora/hombre a 180 tallos por hora/hombre antes de diciembre 2026\tNO\t{\"category\":\"Procesos Internos\",\"goal\":100,\"resultKeys\":[{\"id\":\"1773265068458\",\"description\":\"Capacitar al personal operativo en función de los rendimientos esperados\",\"responsible\":\"Jefe de Postcosecha\",\"startDate\":\"2026-03-11\",\"endDate\":\"2026-11-26\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[{\"id\":\"1773954774799\",\"description\":\"sdsf\",\"responsible\":\"sdfsf\",\"date\":\"2026-03-19\",\"percentageCompleted\":75,\"weighting\":50},{\"id\":\"1773954792045\",\"description\":\"sdfsff\",\"responsible\":\"sfsf\",\"date\":\"2026-03-19\",\"percentageCompleted\":75,\"weighting\":25},{\"id\":\"1773954807725\",\"description\":\"ewwrwr\",\"responsible\":\"sfsfsf\",\"date\":\"2026-03-19\",\"percentageCompleted\":50,\"weighting\":25}]},{\"id\":\"1773265073468\",\"description\":\"Capacitar al personal operativo en función de los rendimientos esperados \",\"responsible\":\"\",\"startDate\":\"\",\"endDate\":\"\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[]},{\"id\":\"1773272910409\",\"description\":\"Implementar una actividad de recreación deportivo/lúdica para el personal que cumpla el objetivo de rendimiento de producción\",\"responsible\":\"\",\"startDate\":\"\",\"endDate\":\"\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[]}]}\n1380001\tReducir el costo promedio de procesamiento por tallo de $0.0627 a $0.0600 (–4.3%) antes del 31 de diciembre de 2026.\tNO\t{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}\n1410001\tIncrementar la tasa de tallos exportables desde 80% a 85% antes de diciembre 2026.\tNO\t{\"category\":\"\",\"goal\":0,\"resultKeys\":[]}\n",
+  "stderr": "",
+  "execution_time_ms": 59
+}

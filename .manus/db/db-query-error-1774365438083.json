@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE processResources \nADD COLUMN participantId INT AFTER processCharacterizationId,\nADD COLUMN resourceName VARCHAR(255) AFTER participant,\nADD COLUMN resourceElements TEXT AFTER resourceName;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute ALTER TABLE processResources \nADD COLUMN participantId INT AFTER processCharacterizationId,\nADD COLUMN resourceName VARCHAR(255) AFTER participant,\nADD COLUMN resourceElements TEXT AFTER resourceName;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'resourcename' in 'processResources'"
+  ]
+}

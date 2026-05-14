@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, email, name FROM users WHERE email LIKE '%eromanlec%' OR email LIKE '%javier%'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, email, name FROM users WHERE email LIKE '%eromanlec%' OR email LIKE '%javier%'",
+  "rows": [
+    {
+      "id": "12570153",
+      "email": "eromanlec@yahoo.com",
+      "name": "eromanlec"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tname\n12570153\teromanlec@yahoo.com\teromanlec\n",
+  "stderr": "",
+  "execution_time_ms": 355
+}

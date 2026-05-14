@@ -1,0 +1,65 @@
+{
+  "query": "SELECT * FROM companyManagerCredentials LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT * FROM companyManagerCredentials LIMIT 10;",
+  "rows": [
+    {
+      "id": "90001",
+      "companyId": "1230001",
+      "managerEmail": "angess22@gmail.com",
+      "passwordHash": "$2b$10$RSBEi3bRW0KMzru.eFCr/.57KnP8.eSTR56iftjaAANt4C14KhReG",
+      "isActive": "1",
+      "createdAt": "2026-02-15 16:34:29",
+      "updatedAt": "2026-02-15 16:34:29",
+      "lastPasswordChangeAt": "NULL",
+      "lastLoginAt": "NULL"
+    },
+    {
+      "id": "120001",
+      "companyId": "30001",
+      "managerEmail": "eromanlec@yahoo.com",
+      "passwordHash": "$2b$10$k50Z6Jefs8EUs.JJdUdgius7TVw.43yNNfSgGsiQb0og/lUIZkEPq",
+      "isActive": "1",
+      "createdAt": "2026-02-17 16:00:28",
+      "updatedAt": "2026-03-07 19:13:59",
+      "lastPasswordChangeAt": "2026-03-07 19:13:59",
+      "lastLoginAt": "NULL"
+    },
+    {
+      "id": "150001",
+      "companyId": "150001",
+      "managerEmail": "issaelg5@gmail.com",
+      "passwordHash": "$2b$10$LBbCfHhxZElzYh.b9G2mBuA7vhvKdWwxD7SsBI6.J6Jl21DbtEBUi",
+      "isActive": "1",
+      "createdAt": "2026-02-18 12:39:18",
+      "updatedAt": "2026-03-09 15:09:25",
+      "lastPasswordChangeAt": "2026-03-09 15:09:26",
+      "lastLoginAt": "NULL"
+    },
+    {
+      "id": "180001",
+      "companyId": "1410001",
+      "managerEmail": "e.roman@sigeconsultores.com",
+      "passwordHash": "$2b$10$2f74xdB9YskMh0BvyC26N.izXPSthj2m.rW3ogBQCwS5Irne/PsSe",
+      "isActive": "1",
+      "createdAt": "2026-02-25 14:38:02",
+      "updatedAt": "2026-02-25 14:38:02",
+      "lastPasswordChangeAt": "NULL",
+      "lastLoginAt": "NULL"
+    },
+    {
+      "id": "210001",
+      "companyId": "60001",
+      "managerEmail": "lalitera@yahoo.com",
+      "passwordHash": "$2b$10$MfMye99.t2m4UvP7ORDQ5.AuYMc5O3n4wDKGNE9FmbF8sxzvp8MpG",
+      "isActive": "1",
+      "createdAt": "2026-03-05 21:11:15",
+      "updatedAt": "2026-03-05 21:17:05",
+      "lastPasswordChangeAt": "2026-03-05 21:17:05",
+      "lastLoginAt": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcompanyId\tmanagerEmail\tpasswordHash\tisActive\tcreatedAt\tupdatedAt\tlastPasswordChangeAt\tlastLoginAt\n90001\t1230001\tangess22@gmail.com\t$2b$10$RSBEi3bRW0KMzru.eFCr/.57KnP8.eSTR56iftjaAANt4C14KhReG\t1\t2026-02-15 16:34:29\t2026-02-15 16:34:29\tNULL\tNULL\n120001\t30001\teromanlec@yahoo.com\t$2b$10$k50Z6Jefs8EUs.JJdUdgius7TVw.43yNNfSgGsiQb0og/lUIZkEPq\t1\t2026-02-17 16:00:28\t2026-03-07 19:13:59\t2026-03-07 19:13:59\tNULL\n150001\t150001\tissaelg5@gmail.com\t$2b$10$LBbCfHhxZElzYh.b9G2mBuA7vhvKdWwxD7SsBI6.J6Jl21DbtEBUi\t1\t2026-02-18 12:39:18\t2026-03-09 15:09:25\t2026-03-09 15:09:26\tNULL\n180001\t1410001\te.roman@sigeconsultores.com\t$2b$10$2f74xdB9YskMh0BvyC26N.izXPSthj2m.rW3ogBQCwS5Irne/PsSe\t1\t2026-02-25 14:38:02\t2026-02-25 14:38:02\tNULL\tNULL\n210001\t60001\tlalitera@yahoo.com\t$2b$10$MfMye99.t2m4UvP7ORDQ5.AuYMc5O3n4wDKGNE9FmbF8sxzvp8MpG\t1\t2026-03-05 21:11:15\t2026-03-05 21:17:05\t2026-03-05 21:17:05\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

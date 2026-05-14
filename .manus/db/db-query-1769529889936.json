@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS accessAuditLog (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  eventType VARCHAR(100) NOT NULL,\n  companyId INT,\n  userId INT,\n  description TEXT,\n  ipAddress VARCHAR(45),\n  userAgent TEXT,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  INDEX idx_eventType (eventType),\n  INDEX idx_createdAt (createdAt),\n  INDEX idx_companyId (companyId),\n  INDEX idx_userId (userId)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute CREATE TABLE IF NOT EXISTS accessAuditLog (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  eventType VARCHAR(100) NOT NULL,\n  companyId INT,\n  userId INT,\n  description TEXT,\n  ipAddress VARCHAR(45),\n  userAgent TEXT,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  INDEX idx_eventType (eventType),\n  INDEX idx_createdAt (createdAt),\n  INDEX idx_companyId (companyId),\n  INDEX idx_userId (userId)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 56
+}

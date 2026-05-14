@@ -1,0 +1,26 @@
+{
+  "query": "SELECT * FROM processTacticalObjectives WHERE processId = 1290002 LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT * FROM processTacticalObjectives WHERE processId = 1290002 LIMIT 1;",
+  "rows": [
+    {
+      "id": "1170001",
+      "processId": "1290002",
+      "name": "Incrementar la productividad operativa en postcosecha de 140 tallos procesados por hora/hombre a 180 tallos por hora/hombre antes de diciembre 2026",
+      "description": "Reducir tiempos muertos y reprocesos en el flujo operativo de Postcosecha La Esperanza",
+      "target": "Cumplimiento y calidad",
+      "responsible": "Jefe de Postcosecha La Esperanza",
+      "deadline": "NULL",
+      "createdAt": "2026-02-19 17:24:23",
+      "updatedAt": "2026-03-24 10:21:22",
+      "subprocess": "Cumplimiento y calidad",
+      "strategicObjective": "Incremento de la rentabilidad",
+      "strategicObjectiveDescription": "NULL",
+      "planningData": "{\"category\":\"Procesos Internos\",\"goal\":100,\"resultKeys\":[{\"id\":\"1773265068458\",\"description\":\"Capacitar al personal operativo en función de los rendimientos esperados\",\"responsible\":\"Jefe de Postcosecha\",\"startDate\":\"2026-03-11\",\"endDate\":\"2026-11-26\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[{\"id\":\"1773954774799\",\"description\":\"sdsf\",\"responsible\":\"sdfsf\",\"date\":\"2026-03-19\",\"percentageCompleted\":75,\"weighting\":50},{\"id\":\"1773954792045\",\"description\":\"sdfsff\",\"responsible\":\"sfsf\",\"date\":\"2026-03-19\",\"percentageCompleted\":75,\"weighting\":25},{\"id\":\"1773954807725\",\"description\":\"ewwrwr\",\"responsible\":\"sfsfsf\",\"date\":\"2026-03-19\",\"percentageCompleted\":50,\"weighting\":25}]},{\"id\":\"1773265073468\",\"description\":\"Capacitar al personal operativo en función de los rendimientos esperados \",\"responsible\":\"\",\"startDate\":\"\",\"endDate\":\"\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[]},{\"id\":\"1773272910409\",\"description\":\"Implementar una actividad de recreación deportivo/lúdica para el personal que cumpla el objetivo de rendimiento de producción\",\"responsible\":\"\",\"startDate\":\"\",\"endDate\":\"\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[]}]}",
+      "completed": "NO"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tprocessId\tname\tdescription\ttarget\tresponsible\tdeadline\tcreatedAt\tupdatedAt\tsubprocess\tstrategicObjective\tstrategicObjectiveDescription\tplanningData\tcompleted\n1170001\t1290002\tIncrementar la productividad operativa en postcosecha de 140 tallos procesados por hora/hombre a 180 tallos por hora/hombre antes de diciembre 2026\tReducir tiempos muertos y reprocesos en el flujo operativo de Postcosecha La Esperanza\tCumplimiento y calidad\tJefe de Postcosecha La Esperanza\tNULL\t2026-02-19 17:24:23\t2026-03-24 10:21:22\tCumplimiento y calidad\tIncremento de la rentabilidad\tNULL\t{\"category\":\"Procesos Internos\",\"goal\":100,\"resultKeys\":[{\"id\":\"1773265068458\",\"description\":\"Capacitar al personal operativo en función de los rendimientos esperados\",\"responsible\":\"Jefe de Postcosecha\",\"startDate\":\"2026-03-11\",\"endDate\":\"2026-11-26\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[{\"id\":\"1773954774799\",\"description\":\"sdsf\",\"responsible\":\"sdfsf\",\"date\":\"2026-03-19\",\"percentageCompleted\":75,\"weighting\":50},{\"id\":\"1773954792045\",\"description\":\"sdfsff\",\"responsible\":\"sfsf\",\"date\":\"2026-03-19\",\"percentageCompleted\":75,\"weighting\":25},{\"id\":\"1773954807725\",\"description\":\"ewwrwr\",\"responsible\":\"sfsfsf\",\"date\":\"2026-03-19\",\"percentageCompleted\":50,\"weighting\":25}]},{\"id\":\"1773265073468\",\"description\":\"Capacitar al personal operativo en función de los rendimientos esperados \",\"responsible\":\"\",\"startDate\":\"\",\"endDate\":\"\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[]},{\"id\":\"1773272910409\",\"description\":\"Implementar una actividad de recreación deportivo/lúdica para el personal que cumpla el objetivo de rendimiento de producción\",\"responsible\":\"\",\"startDate\":\"\",\"endDate\":\"\",\"implementationDate\":\"\",\"observation\":\"\",\"tasks\":[]}]}\tNO\n",
+  "stderr": "",
+  "execution_time_ms": 63
+}

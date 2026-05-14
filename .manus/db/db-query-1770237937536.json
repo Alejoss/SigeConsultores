@@ -1,0 +1,22 @@
+{
+  "query": "INSERT INTO companyModuleCustomization (companyId, moduleName, label1, label2, label3, createdAt, updatedAt) \nVALUES (1, 'purpose_mission_vision', '¿Por qué?', '¿Cómo?', '¿Qué?', NOW(), NOW())\nON DUPLICATE KEY UPDATE \n  label1 = '¿Por qué?',\n  label2 = '¿Cómo?',\n  label3 = '¿Qué?',\n  updatedAt = NOW();\n\nSELECT * FROM companyModuleCustomization WHERE companyId = 1 AND moduleName = 'purpose_mission_vision';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute INSERT INTO companyModuleCustomization (companyId, moduleName, label1, label2, label3, createdAt, updatedAt) \nVALUES (1, 'purpose_mission_vision', '¿Por qué?', '¿Cómo?', '¿Qué?', NOW(), NOW())\nON DUPLICATE KEY UPDATE \n  label1 = '¿Por qué?',\n  label2 = '¿Cómo?',\n  label3 = '¿Qué?',\n  updatedAt = NOW();\n\nSELECT * FROM companyModuleCustomization WHERE companyId = 1 AND moduleName = 'purpose_mission_vision';",
+  "rows": [
+    {
+      "id": "120001",
+      "companyId": "1",
+      "moduleName": "purpose_mission_vision",
+      "label1": "¿Por qué?",
+      "label2": "¿Cómo?",
+      "label3": "¿Qué?",
+      "label4": "NULL",
+      "label5": "NULL",
+      "createdAt": "2026-02-04 20:45:37",
+      "updatedAt": "2026-02-04 20:45:37"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcompanyId\tmoduleName\tlabel1\tlabel2\tlabel3\tlabel4\tlabel5\tcreatedAt\tupdatedAt\n120001\t1\tpurpose_mission_vision\t¿Por qué?\t¿Cómo?\t¿Qué?\tNULL\tNULL\t2026-02-04 20:45:37\t2026-02-04 20:45:37\n",
+  "stderr": "",
+  "execution_time_ms": 413
+}

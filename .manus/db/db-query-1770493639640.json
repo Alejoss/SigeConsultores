@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO companyManagers (userId, companyId) SELECT u.id, c.id FROM users u, companies c WHERE u.email = 'eromanlec@yahoo.com' AND c.name = 'Lalita S.A.' ON DUPLICATE KEY UPDATE userId=userId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute INSERT INTO companyManagers (userId, companyId) SELECT u.id, c.id FROM users u, companies c WHERE u.email = 'eromanlec@yahoo.com' AND c.name = 'Lalita S.A.' ON DUPLICATE KEY UPDATE userId=userId;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 387
+}

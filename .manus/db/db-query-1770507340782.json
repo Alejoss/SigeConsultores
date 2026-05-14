@@ -1,0 +1,185 @@
+{
+  "query": "SELECT id, name, description FROM companies ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, description FROM companies ORDER BY id;",
+  "rows": [
+    {
+      "id": "9991",
+      "name": "Test Company for Delete",
+      "description": "NULL"
+    },
+    {
+      "id": "30001",
+      "name": "Lalita S.A.",
+      "description": "Lalita S.A. diseña, transforma y restaura piezas exclusivas utilizando bisutería, encajes y textiles de la India, así como muebles antiguos que convertimos en piezas vintage únicas para quienes buscan estilo, originalidad y arte en su vestir y en su hogar."
+    },
+    {
+      "id": "60001",
+      "name": "Agrogana",
+      "description": "Agrogana es una empresa florícola ecuatoriana de origen familiar, dedicada al cultivo y exportación de flores y capullos de alta calidad, que combina excelencia productiva, innovación y comercio justo, con un profundo respeto por la naturaleza, la vida silvestre y el desarrollo comunitario, transformando vidas a través de la magia de la naturaleza."
+    },
+    {
+      "id": "90001",
+      "name": "SERVICIO DIRECTO DE CARGA SOLUTIONCARG S.A.,",
+      "description": "DIRECTCARGO S.A., es una empresa dedicada a proveer soluciones logísticas integrales e innovadoras en el manejo de carga en general desde y hacia el Ecuador, por vía aérea, terrestre y marítima, que asume el compromiso de implementar, mantener y mejorar continuamente su Sistema Integrado de Gestión, alineado a su propósito, contexto organizacional y planificación estratégica."
+    },
+    {
+      "id": "150001",
+      "name": "SIGE Consultores",
+      "description": "SIGE Consultores es una firma de asesoría especializada en Sistemas Integrados de Gestión, que combina metodología, tecnología y acompañamiento personalizado para transformar el cumplimiento normativo en valor estratégico para las empresas. SIGE Consultores acompaña a las empresas en la implementación y uso de Sistemas Integrados de Gestión, apoyados en una plataforma digital propia que ordena, simplifica y da sostenibilidad a la gestión empresarial, conviertiendo la gestión en estructura, y la estructura en confianza."
+    },
+    {
+      "id": "660001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "690001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "690002",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "690003",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "720001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "750001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "750002",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "750003",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "750004",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "750005",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "780001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "810001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "840001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "870001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "900001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "930001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "960001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "990001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "990002",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "1020001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "1050001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "1080001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "1080002",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "1110001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "1140001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "1170001",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "1170004",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "1170007",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "1170011",
+      "name": "Test Company",
+      "description": "Test Description"
+    },
+    {
+      "id": "1170015",
+      "name": "Test Company",
+      "description": "Test Description"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdescription\n9991\tTest Company for Delete\tNULL\n30001\tLalita S.A.\tLalita S.A. diseña, transforma y restaura piezas exclusivas utilizando bisutería, encajes y textiles de la India, así como muebles antiguos que convertimos en piezas vintage únicas para quienes buscan estilo, originalidad y arte en su vestir y en su hogar.\n60001\tAgrogana\tAgrogana es una empresa florícola ecuatoriana de origen familiar, dedicada al cultivo y exportación de flores y capullos de alta calidad, que combina excelencia productiva, innovación y comercio justo, con un profundo respeto por la naturaleza, la vida silvestre y el desarrollo comunitario, transformando vidas a través de la magia de la naturaleza.\n90001\tSERVICIO DIRECTO DE CARGA SOLUTIONCARG S.A.,\tDIRECTCARGO S.A., es una empresa dedicada a proveer soluciones logísticas integrales e innovadoras en el manejo de carga en general desde y hacia el Ecuador, por vía aérea, terrestre y marítima, que asume el compromiso de implementar, mantener y mejorar continuamente su Sistema Integrado de Gestión, alineado a su propósito, contexto organizacional y planificación estratégica.\n150001\tSIGE Consultores\tSIGE Consultores es una firma de asesoría especializada en Sistemas Integrados de Gestión, que combina metodología, tecnología y acompañamiento personalizado para transformar el cumplimiento normativo en valor estratégico para las empresas. SIGE Consultores acompaña a las empresas en la implementación y uso de Sistemas Integrados de Gestión, apoyados en una plataforma digital propia que ordena, simplifica y da sostenibilidad a la gestión empresarial, conviertiendo la gestión en estructura, y la estructura en confianza.\n660001\tTest Company\tTest Description\n690001\tTest Company\tTest Description\n690002\tTest Company\tTest Description\n690003\tTest Company\tTest Description\n720001\tTest Company\tTest Description\n750001\tTest Company\tTest Description\n750002\tTest Company\tTest Description\n750003\tTest Company\tTest Description\n750004\tTest Company\tTest Description\n750005\tTest Company\tTest Description\n780001\tTest Company\tTest Description\n810001\tTest Company\tTest Description\n840001\tTest Company\tTest Description\n870001\tTest Company\tTest Description\n900001\tTest Company\tTest Description\n930001\tTest Company\tTest Description\n960001\tTest Company\tTest Description\n990001\tTest Company\tTest Description\n990002\tTest Company\tTest Description\n1020001\tTest Company\tTest Description\n1050001\tTest Company\tTest Description\n1080001\tTest Company\tTest Description\n1080002\tTest Company\tTest Description\n1110001\tTest Company\tTest Description\n1140001\tTest Company\tTest Description\n1170001\tTest Company\tTest Description\n1170004\tTest Company\tTest Description\n1170007\tTest Company\tTest Description\n1170011\tTest Company\tTest Description\n1170015\tTest Company\tTest Description\n",
+  "stderr": "",
+  "execution_time_ms": 430
+}

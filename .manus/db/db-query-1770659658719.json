@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, openId, name, email, role FROM users WHERE email LIKE '%issael%' OR name LIKE '%issael%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, openId, name, email, role FROM users WHERE email LIKE '%issael%' OR name LIKE '%issael%';",
+  "rows": [
+    {
+      "id": "12750001",
+      "openId": "PQogW455b7yjFCdzsRwaF3",
+      "name": "issaelg5",
+      "email": "issaelg5@gmail.com",
+      "role": "user"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\trole\n12750001\tPQogW455b7yjFCdzsRwaF3\tissaelg5\tissaelg5@gmail.com\tuser\n",
+  "stderr": "",
+  "execution_time_ms": 387
+}

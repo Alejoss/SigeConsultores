@@ -1,0 +1,17 @@
+{
+  "query": "SELECT uca.id, uca.userId, uca.companyId, c.name as companyName, uca.role FROM userCompanyAccess uca JOIN companies c ON uca.companyId = c.id JOIN users u ON uca.userId = u.id WHERE u.email = 'eromanlec@yahoo.com'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT uca.id, uca.userId, uca.companyId, c.name as companyName, uca.role FROM userCompanyAccess uca JOIN companies c ON uca.companyId = c.id JOIN users u ON uca.userId = u.id WHERE u.email = 'eromanlec@yahoo.com'",
+  "rows": [
+    {
+      "id": "30011",
+      "userId": "12570153",
+      "companyId": "30001",
+      "companyName": "Lalita S.A.",
+      "role": "manager"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tcompanyId\tcompanyName\trole\n30011\t12570153\t30001\tLalita S.A.\tmanager\n",
+  "stderr": "",
+  "execution_time_ms": 370
+}

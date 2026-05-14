@@ -1,0 +1,35 @@
+{
+  "query": "\nSELECT 'criticalityMatrix' as table_name, COUNT(*) as count, SUM(CASE WHEN implementationStatus = 1 THEN 1 ELSE 0 END) as completed FROM criticalityMatrix WHERE processId = 1290002\nUNION ALL\nSELECT 'processFODA', COUNT(*), 0 FROM processFODA WHERE processId = 1290002\nUNION ALL\nSELECT 'processTacticalObjectives', COUNT(*), 0 FROM processTacticalObjectives WHERE processId = 1290002\nUNION ALL\nSELECT 'processCompliances', COUNT(*), SUM(CASE WHEN completed = 'SI' THEN 1 ELSE 0 END) FROM processCompliances WHERE processId = 1290002\nUNION ALL\nSELECT 'processTrainings', COUNT(*), SUM(CASE WHEN conductedDate IS NOT NULL THEN 1 ELSE 0 END) FROM processTrainings WHERE processId = 1290002;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute \nSELECT 'criticalityMatrix' as table_name, COUNT(*) as count, SUM(CASE WHEN implementationStatus = 1 THEN 1 ELSE 0 END) as completed FROM criticalityMatrix WHERE processId = 1290002\nUNION ALL\nSELECT 'processFODA', COUNT(*), 0 FROM processFODA WHERE processId = 1290002\nUNION ALL\nSELECT 'processTacticalObjectives', COUNT(*), 0 FROM processTacticalObjectives WHERE processId = 1290002\nUNION ALL\nSELECT 'processCompliances', COUNT(*), SUM(CASE WHEN completed = 'SI' THEN 1 ELSE 0 END) FROM processCompliances WHERE processId = 1290002\nUNION ALL\nSELECT 'processTrainings', COUNT(*), SUM(CASE WHEN conductedDate IS NOT NULL THEN 1 ELSE 0 END) FROM processTrainings WHERE processId = 1290002;\n",
+  "rows": [
+    {
+      "table_name": "criticalityMatrix",
+      "count": "6",
+      "completed": "0"
+    },
+    {
+      "table_name": "processTrainings",
+      "count": "2",
+      "completed": "1"
+    },
+    {
+      "table_name": "processFODA",
+      "count": "1",
+      "completed": "0"
+    },
+    {
+      "table_name": "processTacticalObjectives",
+      "count": "3",
+      "completed": "0"
+    },
+    {
+      "table_name": "processCompliances",
+      "count": "2",
+      "completed": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\tcount\tcompleted\ncriticalityMatrix\t6\t0\nprocessTrainings\t2\t1\nprocessFODA\t1\t0\nprocessTacticalObjectives\t3\t0\nprocessCompliances\t2\t1\n",
+  "stderr": "",
+  "execution_time_ms": 194
+}

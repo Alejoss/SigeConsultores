@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, managerEmail, invitationToken, expiresAt, usedAt FROM companySetupInvitations WHERE invitationToken = 'ad5e30f04928866843d6a293c0c10e78a31258421889286a9b270f2a016d2504';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, managerEmail, invitationToken, expiresAt, usedAt FROM companySetupInvitations WHERE invitationToken = 'ad5e30f04928866843d6a293c0c10e78a31258421889286a9b270f2a016d2504';",
+  "rows": [
+    {
+      "id": "30003",
+      "managerEmail": "eromanlec@yahoo.com",
+      "invitationToken": "ad5e30f04928866843d6a293c0c10e78a31258421889286a9b270f2a016d2504",
+      "expiresAt": "2026-02-09 22:58:04",
+      "usedAt": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tmanagerEmail\tinvitationToken\texpiresAt\tusedAt\n30003\teromanlec@yahoo.com\tad5e30f04928866843d6a293c0c10e78a31258421889286a9b270f2a016d2504\t2026-02-09 22:58:04\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

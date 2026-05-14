@@ -1,0 +1,18 @@
+{
+  "query": "SELECT plc.id, plc.leaderEmail, plc.leaderName, plc.processId, p.name as processName, c.name as companyName FROM processLeaderCredentials plc JOIN processes p ON plc.processId = p.id JOIN companies c ON p.companyId = c.id WHERE plc.leaderEmail = 'lalitera@yahoo.com';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT plc.id, plc.leaderEmail, plc.leaderName, plc.processId, p.name as processName, c.name as companyName FROM processLeaderCredentials plc JOIN processes p ON plc.processId = p.id JOIN companies c ON p.companyId = c.id WHERE plc.leaderEmail = 'lalitera@yahoo.com';",
+  "rows": [
+    {
+      "id": "60001",
+      "leaderEmail": "lalitera@yahoo.com",
+      "leaderName": "Dolores Padilla",
+      "processId": "16",
+      "processName": "Control de calidad",
+      "companyName": "Lalita S.A."
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tleaderEmail\tleaderName\tprocessId\tprocessName\tcompanyName\n60001\tlalitera@yahoo.com\tDolores Padilla\t16\tControl de calidad\tLalita S.A.\n",
+  "stderr": "",
+  "execution_time_ms": 197
+}

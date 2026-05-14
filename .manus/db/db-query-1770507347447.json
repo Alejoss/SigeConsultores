@@ -1,0 +1,150 @@
+{
+  "query": "SELECT id, name FROM companies ORDER BY name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name FROM companies ORDER BY name;",
+  "rows": [
+    {
+      "id": "60001",
+      "name": "Agrogana"
+    },
+    {
+      "id": "30001",
+      "name": "Lalita S.A."
+    },
+    {
+      "id": "90001",
+      "name": "SERVICIO DIRECTO DE CARGA SOLUTIONCARG S.A.,"
+    },
+    {
+      "id": "150001",
+      "name": "SIGE Consultores"
+    },
+    {
+      "id": "810001",
+      "name": "Test Company"
+    },
+    {
+      "id": "900001",
+      "name": "Test Company"
+    },
+    {
+      "id": "690001",
+      "name": "Test Company"
+    },
+    {
+      "id": "690002",
+      "name": "Test Company"
+    },
+    {
+      "id": "690003",
+      "name": "Test Company"
+    },
+    {
+      "id": "720001",
+      "name": "Test Company"
+    },
+    {
+      "id": "750001",
+      "name": "Test Company"
+    },
+    {
+      "id": "750002",
+      "name": "Test Company"
+    },
+    {
+      "id": "750003",
+      "name": "Test Company"
+    },
+    {
+      "id": "750004",
+      "name": "Test Company"
+    },
+    {
+      "id": "750005",
+      "name": "Test Company"
+    },
+    {
+      "id": "780001",
+      "name": "Test Company"
+    },
+    {
+      "id": "1170015",
+      "name": "Test Company"
+    },
+    {
+      "id": "840001",
+      "name": "Test Company"
+    },
+    {
+      "id": "870001",
+      "name": "Test Company"
+    },
+    {
+      "id": "660001",
+      "name": "Test Company"
+    },
+    {
+      "id": "930001",
+      "name": "Test Company"
+    },
+    {
+      "id": "960001",
+      "name": "Test Company"
+    },
+    {
+      "id": "990001",
+      "name": "Test Company"
+    },
+    {
+      "id": "990002",
+      "name": "Test Company"
+    },
+    {
+      "id": "1020001",
+      "name": "Test Company"
+    },
+    {
+      "id": "1050001",
+      "name": "Test Company"
+    },
+    {
+      "id": "1080001",
+      "name": "Test Company"
+    },
+    {
+      "id": "1080002",
+      "name": "Test Company"
+    },
+    {
+      "id": "1110001",
+      "name": "Test Company"
+    },
+    {
+      "id": "1140001",
+      "name": "Test Company"
+    },
+    {
+      "id": "1170001",
+      "name": "Test Company"
+    },
+    {
+      "id": "1170004",
+      "name": "Test Company"
+    },
+    {
+      "id": "1170007",
+      "name": "Test Company"
+    },
+    {
+      "id": "1170011",
+      "name": "Test Company"
+    },
+    {
+      "id": "9991",
+      "name": "Test Company for Delete"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\n60001\tAgrogana\n30001\tLalita S.A.\n90001\tSERVICIO DIRECTO DE CARGA SOLUTIONCARG S.A.,\n150001\tSIGE Consultores\n810001\tTest Company\n900001\tTest Company\n690001\tTest Company\n690002\tTest Company\n690003\tTest Company\n720001\tTest Company\n750001\tTest Company\n750002\tTest Company\n750003\tTest Company\n750004\tTest Company\n750005\tTest Company\n780001\tTest Company\n1170015\tTest Company\n840001\tTest Company\n870001\tTest Company\n660001\tTest Company\n930001\tTest Company\n960001\tTest Company\n990001\tTest Company\n990002\tTest Company\n1020001\tTest Company\n1050001\tTest Company\n1080001\tTest Company\n1080002\tTest Company\n1110001\tTest Company\n1140001\tTest Company\n1170001\tTest Company\n1170004\tTest Company\n1170007\tTest Company\n1170011\tTest Company\n9991\tTest Company for Delete\n",
+  "stderr": "",
+  "execution_time_ms": 363
+}

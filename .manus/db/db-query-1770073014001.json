@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, managerEmail, invitationToken, HEX(CAST(invitationToken AS BINARY)) as tokenHex, expiresAt, usedAt FROM companySetupInvitations LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, managerEmail, invitationToken, HEX(CAST(invitationToken AS BINARY)) as tokenHex, expiresAt, usedAt FROM companySetupInvitations LIMIT 5;",
+  "rows": [
+    {
+      "id": "30002",
+      "managerEmail": "eromanlec@yahoo.com",
+      "invitationToken": "8504e5e9180237a512e364f5b48446a35362e0bfd91b93b1092314782960f34f",
+      "tokenHex": "38353034653565393138303233376135313265333634663562343834343661333533363265306266643931623933623130393233313437383239363066333466",
+      "expiresAt": "2026-02-09 22:54:02",
+      "usedAt": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tmanagerEmail\tinvitationToken\ttokenHex\texpiresAt\tusedAt\n30002\teromanlec@yahoo.com\t8504e5e9180237a512e364f5b48446a35362e0bfd91b93b1092314782960f34f\t38353034653565393138303233376135313265333634663562343834343661333533363265306266643931623933623130393233313437383239363066333466\t2026-02-09 22:54:02\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}

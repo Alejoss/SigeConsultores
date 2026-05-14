@@ -1,0 +1,9 @@
+{
+  "query": "SELECT u.id, u.email, u.name, po.processId, p.name as processName FROM users u LEFT JOIN processOwners po ON u.id = po.userId LEFT JOIN processes p ON po.processId = p.id WHERE u.email = 'lalitera@yahoo.com'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT u.id, u.email, u.name, po.processId, p.name as processName FROM users u LEFT JOIN processOwners po ON u.id = po.userId LEFT JOIN processes p ON po.processId = p.id WHERE u.email = 'lalitera@yahoo.com'",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 376
+}

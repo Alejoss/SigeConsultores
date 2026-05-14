@@ -1,0 +1,9 @@
+{
+  "query": "\nUPDATE managerCredentials \nSET passwordHash = '$2b$10$oE/VmRVuDbmI.OUvpBZm3OXTdp/s47IJfV9SnyQWf4HdA5ZWPiJtG'\nWHERE email = 'mangelesrp06@gmail.com';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute \nUPDATE managerCredentials \nSET passwordHash = '$2b$10$oE/VmRVuDbmI.OUvpBZm3OXTdp/s47IJfV9SnyQWf4HdA5ZWPiJtG'\nWHERE email = 'mangelesrp06@gmail.com';\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 357
+}

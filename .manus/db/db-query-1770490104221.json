@@ -1,0 +1,94 @@
+{
+  "query": "SELECT id, name, email, role FROM users LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, email, role FROM users LIMIT 20;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Esteban Román",
+      "email": "sigecons@gmail.com",
+      "role": "admin"
+    },
+    {
+      "id": "12570148",
+      "name": "Updated Name",
+      "email": "test-preserve-role@example.com",
+      "role": "user"
+    },
+    {
+      "id": "12570149",
+      "name": "Test User",
+      "email": "test-lastsignedin@example.com",
+      "role": "user"
+    },
+    {
+      "id": "12570150",
+      "name": "No Email User",
+      "email": "NULL",
+      "role": "user"
+    },
+    {
+      "id": "12570153",
+      "name": "eromanlec",
+      "email": "eromanlec@yahoo.com",
+      "role": "user"
+    },
+    {
+      "id": "12600003",
+      "name": "No Email User",
+      "email": "NULL",
+      "role": "user"
+    },
+    {
+      "id": "12600006",
+      "name": "No Email User",
+      "email": "NULL",
+      "role": "user"
+    },
+    {
+      "id": "12630003",
+      "name": "No Email User",
+      "email": "NULL",
+      "role": "user"
+    },
+    {
+      "id": "12660003",
+      "name": "No Email User",
+      "email": "NULL",
+      "role": "user"
+    },
+    {
+      "id": "12690005",
+      "name": "No Email User",
+      "email": "NULL",
+      "role": "user"
+    },
+    {
+      "id": "12690008",
+      "name": "No Email User",
+      "email": "NULL",
+      "role": "user"
+    },
+    {
+      "id": "12690016",
+      "name": "No Email User",
+      "email": "NULL",
+      "role": "user"
+    },
+    {
+      "id": "12690022",
+      "name": "No Email User",
+      "email": "NULL",
+      "role": "user"
+    },
+    {
+      "id": "12690028",
+      "name": "No Email User",
+      "email": "NULL",
+      "role": "user"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\n1\tEsteban Román\tsigecons@gmail.com\tadmin\n12570148\tUpdated Name\ttest-preserve-role@example.com\tuser\n12570149\tTest User\ttest-lastsignedin@example.com\tuser\n12570150\tNo Email User\tNULL\tuser\n12570153\teromanlec\teromanlec@yahoo.com\tuser\n12600003\tNo Email User\tNULL\tuser\n12600006\tNo Email User\tNULL\tuser\n12630003\tNo Email User\tNULL\tuser\n12660003\tNo Email User\tNULL\tuser\n12690005\tNo Email User\tNULL\tuser\n12690008\tNo Email User\tNULL\tuser\n12690016\tNo Email User\tNULL\tuser\n12690022\tNo Email User\tNULL\tuser\n12690028\tNo Email User\tNULL\tuser\n",
+  "stderr": "",
+  "execution_time_ms": 354
+}

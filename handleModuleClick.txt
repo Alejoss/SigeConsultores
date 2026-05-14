@@ -1,0 +1,22 @@
+  const handleModuleClick = (moduleName: string) => {
+    if (!companyId) {
+      toast.error("ID de empresa no disponible");
+      return;
+    }
+
+    const moduleRoutes: { [key: string]: string } = {
+      "Propósito, Misión, Visión": `/company-info?companyId=${companyId}`,
+      "Valores Empresariales": `/values?companyId=${companyId}`,
+      "Política": `/policy?companyId=${companyId}`,
+      "Objetivos Estratégicos": `/strategic-objectives?companyId=${companyId}`,
+      "Mapa de Procesos": `/process-map?companyId=${companyId}`,
+      "Indicadores": `/indicators?companyId=${companyId}`,
+    };
+
+    const route = moduleRoutes[moduleName];
+    if (route) {
+      setLocation(route);
+    } else {
+      toast.info(`Módulo "${moduleName}" - Próximamente disponible`);
+    }
+  };

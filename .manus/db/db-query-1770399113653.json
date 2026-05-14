@@ -1,0 +1,80 @@
+{
+  "query": "SELECT u.id, u.email, u.name, uca.companyId, c.name as companyName FROM users u LEFT JOIN userCompanyAccess uca ON u.id = uca.userId LEFT JOIN companies c ON uca.companyId = c.id ORDER BY u.email",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT u.id, u.email, u.name, uca.companyId, c.name as companyName FROM users u LEFT JOIN userCompanyAccess uca ON u.id = uca.userId LEFT JOIN companies c ON uca.companyId = c.id ORDER BY u.email",
+  "rows": [
+    {
+      "id": "12570150",
+      "email": "NULL",
+      "name": "No Email User",
+      "companyId": "NULL",
+      "companyName": "NULL"
+    },
+    {
+      "id": "12600003",
+      "email": "NULL",
+      "name": "No Email User",
+      "companyId": "NULL",
+      "companyName": "NULL"
+    },
+    {
+      "id": "12600006",
+      "email": "NULL",
+      "name": "No Email User",
+      "companyId": "NULL",
+      "companyName": "NULL"
+    },
+    {
+      "id": "12630003",
+      "email": "NULL",
+      "name": "No Email User",
+      "companyId": "NULL",
+      "companyName": "NULL"
+    },
+    {
+      "id": "12660003",
+      "email": "NULL",
+      "name": "No Email User",
+      "companyId": "NULL",
+      "companyName": "NULL"
+    },
+    {
+      "id": "12570153",
+      "email": "eromanlec@yahoo.com",
+      "name": "eromanlec",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    },
+    {
+      "id": "12570153",
+      "email": "eromanlec@yahoo.com",
+      "name": "eromanlec",
+      "companyId": "2",
+      "companyName": "NULL"
+    },
+    {
+      "id": "1",
+      "email": "sigecons@gmail.com",
+      "name": "Esteban Román",
+      "companyId": "NULL",
+      "companyName": "NULL"
+    },
+    {
+      "id": "12570149",
+      "email": "test-lastsignedin@example.com",
+      "name": "Test User",
+      "companyId": "NULL",
+      "companyName": "NULL"
+    },
+    {
+      "id": "12570148",
+      "email": "test-preserve-role@example.com",
+      "name": "Updated Name",
+      "companyId": "NULL",
+      "companyName": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tname\tcompanyId\tcompanyName\n12570150\tNULL\tNo Email User\tNULL\tNULL\n12600003\tNULL\tNo Email User\tNULL\tNULL\n12600006\tNULL\tNo Email User\tNULL\tNULL\n12630003\tNULL\tNo Email User\tNULL\tNULL\n12660003\tNULL\tNo Email User\tNULL\tNULL\n12570153\teromanlec@yahoo.com\teromanlec\t30001\tLalita S.A.\n12570153\teromanlec@yahoo.com\teromanlec\t2\tNULL\n1\tsigecons@gmail.com\tEsteban Román\tNULL\tNULL\n12570149\ttest-lastsignedin@example.com\tTest User\tNULL\tNULL\n12570148\ttest-preserve-role@example.com\tUpdated Name\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 353
+}

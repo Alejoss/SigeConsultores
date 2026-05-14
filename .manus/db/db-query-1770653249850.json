@@ -1,0 +1,17 @@
+{
+  "query": "SELECT mc.id, mc.email, mc.companyManagerId, cm.companyId, cm.userId FROM managerCredentials mc LEFT JOIN companyManagers cm ON mc.companyManagerId = cm.id WHERE mc.email = 'issaelg5@gmail.com';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT mc.id, mc.email, mc.companyManagerId, cm.companyId, cm.userId FROM managerCredentials mc LEFT JOIN companyManagers cm ON mc.companyManagerId = cm.id WHERE mc.email = 'issaelg5@gmail.com';",
+  "rows": [
+    {
+      "id": "1",
+      "email": "issaelg5@gmail.com",
+      "companyManagerId": "90001",
+      "companyId": "4",
+      "userId": "12750001"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tcompanyManagerId\tcompanyId\tuserId\n1\tissaelg5@gmail.com\t90001\t4\t12750001\n",
+  "stderr": "",
+  "execution_time_ms": 361
+}

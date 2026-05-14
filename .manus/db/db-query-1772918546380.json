@@ -1,0 +1,34 @@
+{
+  "query": "SELECT * FROM companyModuleCustomization WHERE companyId = 60001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT * FROM companyModuleCustomization WHERE companyId = 60001;",
+  "rows": [
+    {
+      "id": "570001",
+      "companyId": "60001",
+      "moduleName": "sige_modules",
+      "label1": "¿Por qué?, ¿Cómo?, ¿Qué?",
+      "label2": "Valores Empresariales",
+      "label3": "Política",
+      "label4": "Objetivos Estratégicos",
+      "label5": "Mapa de Procesos",
+      "createdAt": "2026-02-26 21:57:54",
+      "updatedAt": "2026-02-26 21:58:07"
+    },
+    {
+      "id": "570002",
+      "companyId": "60001",
+      "moduleName": "purpose_mission_vision",
+      "label1": "¿Por qué?",
+      "label2": "¿Cómo?",
+      "label3": "¿Qué?",
+      "label4": "NULL",
+      "label5": "NULL",
+      "createdAt": "2026-02-26 21:58:16",
+      "updatedAt": "2026-02-26 21:58:26"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcompanyId\tmoduleName\tlabel1\tlabel2\tlabel3\tlabel4\tlabel5\tcreatedAt\tupdatedAt\n570001\t60001\tsige_modules\t¿Por qué?, ¿Cómo?, ¿Qué?\tValores Empresariales\tPolítica\tObjetivos Estratégicos\tMapa de Procesos\t2026-02-26 21:57:54\t2026-02-26 21:58:07\n570002\t60001\tpurpose_mission_vision\t¿Por qué?\t¿Cómo?\t¿Qué?\tNULL\tNULL\t2026-02-26 21:58:16\t2026-02-26 21:58:26\n",
+  "stderr": "",
+  "execution_time_ms": 348
+}

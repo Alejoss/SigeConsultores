@@ -1,0 +1,21 @@
+{
+  "query": "SELECT * FROM companyManagerCredentials WHERE managerEmail = 'issaelg5@gmail.com';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT * FROM companyManagerCredentials WHERE managerEmail = 'issaelg5@gmail.com';",
+  "rows": [
+    {
+      "id": "1",
+      "companyId": "3",
+      "managerEmail": "issaelg5@gmail.com",
+      "passwordHash": "",
+      "isActive": "1",
+      "createdAt": "2026-02-11 15:04:18",
+      "updatedAt": "2026-02-11 15:04:18",
+      "lastPasswordChangeAt": "NULL",
+      "lastLoginAt": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcompanyId\tmanagerEmail\tpasswordHash\tisActive\tcreatedAt\tupdatedAt\tlastPasswordChangeAt\tlastLoginAt\n1\t3\tissaelg5@gmail.com\t\t1\t2026-02-11 15:04:18\t2026-02-11 15:04:18\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 671
+}

@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, processId, LENGTH(matrixData) as dataLength, SUBSTRING(matrixData, 1, 100) as preview FROM processFODA WHERE processId = 1290002;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, processId, LENGTH(matrixData) as dataLength, SUBSTRING(matrixData, 1, 100) as preview FROM processFODA WHERE processId = 1290002;",
+  "rows": [
+    {
+      "id": "90001",
+      "processId": "1290002",
+      "dataLength": "7335",
+      "preview": "[{\"id\":1,\"subproceso\":\"Producción y Despacho\",\"elemento\":\"Especialistas en procesamiento de ranúncul"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tprocessId\tdataLength\tpreview\n90001\t1290002\t7335\t[{\"id\":1,\"subproceso\":\"Producción y Despacho\",\"elemento\":\"Especialistas en procesamiento de ranúncul\n",
+  "stderr": "",
+  "execution_time_ms": 52
+}

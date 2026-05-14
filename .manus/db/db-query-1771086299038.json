@@ -1,0 +1,21 @@
+{
+  "query": "SELECT * FROM companyManagerCredentials WHERE managerEmail LIKE '%angess%' OR managerEmail LIKE '%angela%'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT * FROM companyManagerCredentials WHERE managerEmail LIKE '%angess%' OR managerEmail LIKE '%angela%'",
+  "rows": [
+    {
+      "id": "60001",
+      "companyId": "1230001",
+      "managerEmail": "angess22@gamil.com",
+      "passwordHash": "$2b$10$X54SC.1ViWsj8/Dy4pn18unPNj6qTI5uToGnmTZHE36PXN4UplE26",
+      "isActive": "1",
+      "createdAt": "2026-02-14 16:04:08",
+      "updatedAt": "2026-02-14 16:04:08",
+      "lastPasswordChangeAt": "NULL",
+      "lastLoginAt": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcompanyId\tmanagerEmail\tpasswordHash\tisActive\tcreatedAt\tupdatedAt\tlastPasswordChangeAt\tlastLoginAt\n60001\t1230001\tangess22@gamil.com\t$2b$10$X54SC.1ViWsj8/Dy4pn18unPNj6qTI5uToGnmTZHE36PXN4UplE26\t1\t2026-02-14 16:04:08\t2026-02-14 16:04:08\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 696
+}

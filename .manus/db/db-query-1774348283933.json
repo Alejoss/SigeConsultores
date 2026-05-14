@@ -1,0 +1,172 @@
+{
+  "query": "\nSELECT \n  id, stakeholderId, incidence, risk, criticality, implementationStatus, createdAt\nFROM criticalityMatrix\nWHERE processId = 1290002\nORDER BY createdAt DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute \nSELECT \n  id, stakeholderId, incidence, risk, criticality, implementationStatus, createdAt\nFROM criticalityMatrix\nWHERE processId = 1290002\nORDER BY createdAt DESC;\n",
+  "rows": [
+    {
+      "id": "74",
+      "stakeholderId": "34",
+      "incidence": "2",
+      "risk": "B",
+      "criticality": "4B",
+      "implementationStatus": "0",
+      "createdAt": "2026-03-24 10:16:35"
+    },
+    {
+      "id": "73",
+      "stakeholderId": "33",
+      "incidence": "2",
+      "risk": "A",
+      "criticality": "6A",
+      "implementationStatus": "0",
+      "createdAt": "2026-03-24 10:16:35"
+    },
+    {
+      "id": "72",
+      "stakeholderId": "32",
+      "incidence": "3",
+      "risk": "A",
+      "criticality": "9A",
+      "implementationStatus": "0",
+      "createdAt": "2026-03-24 10:16:34"
+    },
+    {
+      "id": "71",
+      "stakeholderId": "31",
+      "incidence": "3",
+      "risk": "A",
+      "criticality": "9A",
+      "implementationStatus": "0",
+      "createdAt": "2026-03-24 10:16:34"
+    },
+    {
+      "id": "70",
+      "stakeholderId": "30",
+      "incidence": "3",
+      "risk": "A",
+      "criticality": "9A",
+      "implementationStatus": "1",
+      "createdAt": "2026-03-24 10:16:33"
+    },
+    {
+      "id": "69",
+      "stakeholderId": "29",
+      "incidence": "3",
+      "risk": "A",
+      "criticality": "9A",
+      "implementationStatus": "1",
+      "createdAt": "2026-03-24 10:16:33"
+    },
+    {
+      "id": "68",
+      "stakeholderId": "34",
+      "incidence": "2",
+      "risk": "B",
+      "criticality": "4B",
+      "implementationStatus": "0",
+      "createdAt": "2026-03-24 10:15:58"
+    },
+    {
+      "id": "66",
+      "stakeholderId": "32",
+      "incidence": "3",
+      "risk": "A",
+      "criticality": "9A",
+      "implementationStatus": "0",
+      "createdAt": "2026-03-24 10:15:57"
+    },
+    {
+      "id": "67",
+      "stakeholderId": "33",
+      "incidence": "2",
+      "risk": "A",
+      "criticality": "6A",
+      "implementationStatus": "0",
+      "createdAt": "2026-03-24 10:15:57"
+    },
+    {
+      "id": "65",
+      "stakeholderId": "31",
+      "incidence": "3",
+      "risk": "A",
+      "criticality": "9A",
+      "implementationStatus": "0",
+      "createdAt": "2026-03-24 10:15:56"
+    },
+    {
+      "id": "64",
+      "stakeholderId": "30",
+      "incidence": "3",
+      "risk": "A",
+      "criticality": "9A",
+      "implementationStatus": "1",
+      "createdAt": "2026-03-24 10:15:56"
+    },
+    {
+      "id": "63",
+      "stakeholderId": "29",
+      "incidence": "3",
+      "risk": "A",
+      "criticality": "9A",
+      "implementationStatus": "1",
+      "createdAt": "2026-03-24 10:15:56"
+    },
+    {
+      "id": "34",
+      "stakeholderId": "34",
+      "incidence": "2",
+      "risk": "B",
+      "criticality": "4B",
+      "implementationStatus": "0",
+      "createdAt": "2026-03-24 09:35:09"
+    },
+    {
+      "id": "33",
+      "stakeholderId": "33",
+      "incidence": "2",
+      "risk": "A",
+      "criticality": "6A",
+      "implementationStatus": "0",
+      "createdAt": "2026-03-24 09:35:09"
+    },
+    {
+      "id": "32",
+      "stakeholderId": "32",
+      "incidence": "3",
+      "risk": "A",
+      "criticality": "9A",
+      "implementationStatus": "0",
+      "createdAt": "2026-03-24 09:35:08"
+    },
+    {
+      "id": "31",
+      "stakeholderId": "31",
+      "incidence": "3",
+      "risk": "A",
+      "criticality": "9A",
+      "implementationStatus": "0",
+      "createdAt": "2026-03-24 09:35:08"
+    },
+    {
+      "id": "29",
+      "stakeholderId": "29",
+      "incidence": "3",
+      "risk": "A",
+      "criticality": "9A",
+      "implementationStatus": "0",
+      "createdAt": "2026-03-24 09:35:07"
+    },
+    {
+      "id": "30",
+      "stakeholderId": "30",
+      "incidence": "3",
+      "risk": "A",
+      "criticality": "9A",
+      "implementationStatus": "0",
+      "createdAt": "2026-03-24 09:35:07"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstakeholderId\tincidence\trisk\tcriticality\timplementationStatus\tcreatedAt\n74\t34\t2\tB\t4B\t0\t2026-03-24 10:16:35\n73\t33\t2\tA\t6A\t0\t2026-03-24 10:16:35\n72\t32\t3\tA\t9A\t0\t2026-03-24 10:16:34\n71\t31\t3\tA\t9A\t0\t2026-03-24 10:16:34\n70\t30\t3\tA\t9A\t1\t2026-03-24 10:16:33\n69\t29\t3\tA\t9A\t1\t2026-03-24 10:16:33\n68\t34\t2\tB\t4B\t0\t2026-03-24 10:15:58\n66\t32\t3\tA\t9A\t0\t2026-03-24 10:15:57\n67\t33\t2\tA\t6A\t0\t2026-03-24 10:15:57\n65\t31\t3\tA\t9A\t0\t2026-03-24 10:15:56\n64\t30\t3\tA\t9A\t1\t2026-03-24 10:15:56\n63\t29\t3\tA\t9A\t1\t2026-03-24 10:15:56\n34\t34\t2\tB\t4B\t0\t2026-03-24 09:35:09\n33\t33\t2\tA\t6A\t0\t2026-03-24 09:35:09\n32\t32\t3\tA\t9A\t0\t2026-03-24 09:35:08\n31\t31\t3\tA\t9A\t0\t2026-03-24 09:35:08\n29\t29\t3\tA\t9A\t0\t2026-03-24 09:35:07\n30\t30\t3\tA\t9A\t0\t2026-03-24 09:35:07\n",
+  "stderr": "",
+  "execution_time_ms": 61
+}

@@ -1,0 +1,130 @@
+{
+  "query": "SELECT id, name, processType, companyId FROM processes LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, processType, companyId FROM processes LIMIT 20;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Estrategia",
+      "processType": "estrategico",
+      "companyId": "30001"
+    },
+    {
+      "id": "2",
+      "name": "Finanzas y contabilidad",
+      "processType": "estrategico",
+      "companyId": "30001"
+    },
+    {
+      "id": "3",
+      "name": "Compliance",
+      "processType": "estrategico",
+      "companyId": "30001"
+    },
+    {
+      "id": "4",
+      "name": "SIGE",
+      "processType": "estrategico",
+      "companyId": "30001"
+    },
+    {
+      "id": "5",
+      "name": "Ventas",
+      "processType": "misional",
+      "companyId": "30001"
+    },
+    {
+      "id": "9",
+      "name": "Desarrollo Humano",
+      "processType": "soporte",
+      "companyId": "30001"
+    },
+    {
+      "id": "10",
+      "name": "IT",
+      "processType": "soporte",
+      "companyId": "30001"
+    },
+    {
+      "id": "11",
+      "name": "Mantenimiento",
+      "processType": "soporte",
+      "companyId": "30001"
+    },
+    {
+      "id": "12",
+      "name": "Facturación",
+      "processType": "soporte",
+      "companyId": "30001"
+    },
+    {
+      "id": "14",
+      "name": "Diseño",
+      "processType": "misional",
+      "companyId": "30001"
+    },
+    {
+      "id": "15",
+      "name": "Producción",
+      "processType": "misional",
+      "companyId": "30001"
+    },
+    {
+      "id": "16",
+      "name": "Control de calidad",
+      "processType": "misional",
+      "companyId": "30001"
+    },
+    {
+      "id": "17",
+      "name": "Despacho y Logística",
+      "processType": "misional",
+      "companyId": "30001"
+    },
+    {
+      "id": "9991",
+      "name": "Test Process for Delete",
+      "processType": "estrategico",
+      "companyId": "9991"
+    },
+    {
+      "id": "30001",
+      "name": "Proceso de Prueba",
+      "processType": "misional",
+      "companyId": "1"
+    },
+    {
+      "id": "60001",
+      "name": "ESTRATEGIA",
+      "processType": "estrategico",
+      "companyId": "60001"
+    },
+    {
+      "id": "60002",
+      "name": "FINANZAS",
+      "processType": "estrategico",
+      "companyId": "60001"
+    },
+    {
+      "id": "60003",
+      "name": "CUMPLIMIENTOS",
+      "processType": "estrategico",
+      "companyId": "60001"
+    },
+    {
+      "id": "60009",
+      "name": "DESARROLLO HUMANO",
+      "processType": "soporte",
+      "companyId": "60001"
+    },
+    {
+      "id": "60010",
+      "name": "OPERACIONES",
+      "processType": "soporte",
+      "companyId": "60001"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tprocessType\tcompanyId\n1\tEstrategia\testrategico\t30001\n2\tFinanzas y contabilidad\testrategico\t30001\n3\tCompliance\testrategico\t30001\n4\tSIGE\testrategico\t30001\n5\tVentas\tmisional\t30001\n9\tDesarrollo Humano\tsoporte\t30001\n10\tIT\tsoporte\t30001\n11\tMantenimiento\tsoporte\t30001\n12\tFacturación\tsoporte\t30001\n14\tDiseño\tmisional\t30001\n15\tProducción\tmisional\t30001\n16\tControl de calidad\tmisional\t30001\n17\tDespacho y Logística\tmisional\t30001\n9991\tTest Process for Delete\testrategico\t9991\n30001\tProceso de Prueba\tmisional\t1\n60001\tESTRATEGIA\testrategico\t60001\n60002\tFINANZAS\testrategico\t60001\n60003\tCUMPLIMIENTOS\testrategico\t60001\n60009\tDESARROLLO HUMANO\tsoporte\t60001\n60010\tOPERACIONES\tsoporte\t60001\n",
+  "stderr": "",
+  "execution_time_ms": 50
+}

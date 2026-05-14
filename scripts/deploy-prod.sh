@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+set -eu
+
+if [ -z "${APP_IMAGE:-}" ]; then
+  echo "APP_IMAGE is required"
+  exit 1
+fi
+
+if [ -z "${GHCR_USERNAME:-}" ] || [ -z "${GHCR_TOKEN:-}" ]; then
+  echo "GHCR_USERNAME and GHCR_TOKEN are required"
+  exit 1
+fi
+
+if [ ! -f ".env.production" ]; then
+  echo ".env.production not found"
+  exit 1
+fi
+
+echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+
+docker compose -f docker-compose.prod.yml pull app
+docker compose -f docker-compose.prod.yml up -d mysql
+docker compose -f docker-compose.prod.yml up -d app
+docker image prune -f
+
+echo "Deployment finished"

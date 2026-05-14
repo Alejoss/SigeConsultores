@@ -1,0 +1,17 @@
+{
+  "query": "SELECT u.id, u.email, u.name, uca.companyId, c.name as companyName FROM users u LEFT JOIN userCompanyAccess uca ON u.id = uca.userId LEFT JOIN companies c ON uca.companyId = c.id WHERE u.email LIKE '%eromanlec%'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT u.id, u.email, u.name, uca.companyId, c.name as companyName FROM users u LEFT JOIN userCompanyAccess uca ON u.id = uca.userId LEFT JOIN companies c ON uca.companyId = c.id WHERE u.email LIKE '%eromanlec%'",
+  "rows": [
+    {
+      "id": "12570153",
+      "email": "eromanlec@yahoo.com",
+      "name": "eromanlec",
+      "companyId": "30001",
+      "companyName": "Lalita S.A."
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tname\tcompanyId\tcompanyName\n12570153\teromanlec@yahoo.com\teromanlec\t30001\tLalita S.A.\n",
+  "stderr": "",
+  "execution_time_ms": 357
+}

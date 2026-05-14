@@ -1,0 +1,20 @@
+{
+  "query": "SELECT id, name, email FROM users WHERE email IN ('issaelg5@gmail.com', 'mangelesrp06@gmail.com');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, email FROM users WHERE email IN ('issaelg5@gmail.com', 'mangelesrp06@gmail.com');",
+  "rows": [
+    {
+      "id": "12750001",
+      "name": "Issael",
+      "email": "issaelg5@gmail.com"
+    },
+    {
+      "id": "12750002",
+      "name": "María de los Angeles",
+      "email": "mangelesrp06@gmail.com"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\n12750001\tIssael\tissaelg5@gmail.com\n12750002\tMaría de los Angeles\tmangelesrp06@gmail.com\n",
+  "stderr": "",
+  "execution_time_ms": 352
+}

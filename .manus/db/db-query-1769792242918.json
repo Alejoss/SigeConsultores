@@ -1,0 +1,32 @@
+{
+  "query": "SELECT * FROM processLeaderCredentials;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT * FROM processLeaderCredentials;",
+  "rows": [
+    {
+      "id": "1",
+      "processId": "1",
+      "leaderEmail": "eromanlec@yahoo.com",
+      "leaderName": "Esteban Roman - Lalita",
+      "pinHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+      "isActive": "1",
+      "lastPINChangeAt": "2026-01-30 13:42:05",
+      "createdAt": "2026-01-30 13:42:05",
+      "updatedAt": "2026-01-30 13:42:05"
+    },
+    {
+      "id": "30001",
+      "processId": "1",
+      "leaderEmail": "lalitera@yahoo.com",
+      "leaderName": "Dolores Padilla",
+      "pinHash": "fe2592b42a727e977f055947385b709cc82b16b9a87f88c6abf3900d65d0cdc3",
+      "isActive": "1",
+      "lastPINChangeAt": "2026-01-30 14:34:48",
+      "createdAt": "2026-01-30 14:34:48",
+      "updatedAt": "2026-01-30 14:34:48"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tprocessId\tleaderEmail\tleaderName\tpinHash\tisActive\tlastPINChangeAt\tcreatedAt\tupdatedAt\n1\t1\teromanlec@yahoo.com\tEsteban Roman - Lalita\t03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4\t1\t2026-01-30 13:42:05\t2026-01-30 13:42:05\t2026-01-30 13:42:05\n30001\t1\tlalitera@yahoo.com\tDolores Padilla\tfe2592b42a727e977f055947385b709cc82b16b9a87f88c6abf3900d65d0cdc3\t1\t2026-01-30 14:34:48\t2026-01-30 14:34:48\t2026-01-30 14:34:48\n",
+  "stderr": "",
+  "execution_time_ms": 148
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `companyFODAs` ADD `justification` text;

@@ -1,0 +1,2 @@
+# Scripts ejecutados en Linux/Docker deben ser LF (CRLF provoca "no such file or directory" en el shebang).
+*.sh text eol=lf

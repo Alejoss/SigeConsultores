@@ -1,0 +1,17 @@
+{
+  "query": "SELECT 'companyManagers' as table_name, u.email, u.role, cm.userId, cm.companyId FROM companyManagers cm JOIN users u ON cm.userId = u.id UNION ALL SELECT 'processOwners' as table_name, u.email, u.role, po.userId, po.companyId FROM processOwners po JOIN users u ON po.userId = u.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT 'companyManagers' as table_name, u.email, u.role, cm.userId, cm.companyId FROM companyManagers cm JOIN users u ON cm.userId = u.id UNION ALL SELECT 'processOwners' as table_name, u.email, u.role, po.userId, po.companyId FROM processOwners po JOIN users u ON po.userId = u.id;",
+  "rows": [
+    {
+      "table_name": "processOwners",
+      "email": "eromanlec@yahoo.com",
+      "role": "user",
+      "userId": "12570153",
+      "companyId": "30001"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\temail\trole\tuserId\tcompanyId\nprocessOwners\teromanlec@yahoo.com\tuser\t12570153\t30001\n",
+  "stderr": "",
+  "execution_time_ms": 356
+}

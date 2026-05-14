@@ -1,0 +1,22 @@
+{
+  "query": "SELECT id, name, email, role FROM users WHERE email IN ('sigecons@gmail.com', 'e.roman@sigecnsultores.com', 'eromanlec@yahoo.com', 'lalitera@yahoo.com');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, email, role FROM users WHERE email IN ('sigecons@gmail.com', 'e.roman@sigecnsultores.com', 'eromanlec@yahoo.com', 'lalitera@yahoo.com');",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Esteban Román",
+      "email": "sigecons@gmail.com",
+      "role": "admin"
+    },
+    {
+      "id": "12570153",
+      "name": "eromanlec",
+      "email": "eromanlec@yahoo.com",
+      "role": "user"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\n1\tEsteban Román\tsigecons@gmail.com\tadmin\n12570153\teromanlec\teromanlec@yahoo.com\tuser\n",
+  "stderr": "",
+  "execution_time_ms": 350
+}

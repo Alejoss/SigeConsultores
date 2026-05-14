@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, companyId, managerEmail, passwordHash, isActive, createdAt FROM companyManagerCredentials WHERE managerEmail = 'eromanlec@yahoo.com' LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, companyId, managerEmail, passwordHash, isActive, createdAt FROM companyManagerCredentials WHERE managerEmail = 'eromanlec@yahoo.com' LIMIT 1;",
+  "rows": [
+    {
+      "id": "120001",
+      "companyId": "30001",
+      "managerEmail": "eromanlec@yahoo.com",
+      "passwordHash": "$2b$10$zfBydID697sD2tiSHjK9W.MVaRY/7l2GPfMktyFlVqx4/ICXuTgPW",
+      "isActive": "1",
+      "createdAt": "2026-02-17 16:00:28"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcompanyId\tmanagerEmail\tpasswordHash\tisActive\tcreatedAt\n120001\t30001\teromanlec@yahoo.com\t$2b$10$zfBydID697sD2tiSHjK9W.MVaRY/7l2GPfMktyFlVqx4/ICXuTgPW\t1\t2026-02-17 16:00:28\n",
+  "stderr": "",
+  "execution_time_ms": 130
+}

@@ -1,0 +1,19 @@
+{
+  "query": "SELECT id, managerEmail, companyId, invitationToken, acceptedAt, expiresAt, createdAt FROM managerInvitations WHERE managerEmail = 'issaelg5@gmail.com' LIMIT 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, managerEmail, companyId, invitationToken, acceptedAt, expiresAt, createdAt FROM managerInvitations WHERE managerEmail = 'issaelg5@gmail.com' LIMIT 1",
+  "rows": [
+    {
+      "id": "60001",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "30001",
+      "invitationToken": "58e684b28aa44afe6e63c7ccb19f0d860505d64da73ce4b986604f3353efa30e",
+      "acceptedAt": "NULL",
+      "expiresAt": "2026-03-19 14:09:20",
+      "createdAt": "2026-02-17 15:09:20"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tmanagerEmail\tcompanyId\tinvitationToken\tacceptedAt\texpiresAt\tcreatedAt\n60001\tissaelg5@gmail.com\t30001\t58e684b28aa44afe6e63c7ccb19f0d860505d64da73ce4b986604f3353efa30e\tNULL\t2026-03-19 14:09:20\t2026-02-17 15:09:20\n",
+  "stderr": "",
+  "execution_time_ms": 349
+}

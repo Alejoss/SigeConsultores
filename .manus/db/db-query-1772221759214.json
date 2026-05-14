@@ -1,0 +1,35 @@
+{
+  "query": "SELECT id, name, strategicObjectiveDescription FROM processTacticalObjectives WHERE processId = 1 LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, strategicObjectiveDescription FROM processTacticalObjectives WHERE processId = 1 LIMIT 5;",
+  "rows": [
+    {
+      "id": "510001",
+      "name": "Objective 1",
+      "strategicObjectiveDescription": "NULL"
+    },
+    {
+      "id": "510002",
+      "name": "Objective 2",
+      "strategicObjectiveDescription": "NULL"
+    },
+    {
+      "id": "540001",
+      "name": "Objective 1",
+      "strategicObjectiveDescription": "NULL"
+    },
+    {
+      "id": "540002",
+      "name": "Objective 2",
+      "strategicObjectiveDescription": "NULL"
+    },
+    {
+      "id": "570001",
+      "name": "Objective 1",
+      "strategicObjectiveDescription": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tstrategicObjectiveDescription\n510001\tObjective 1\tNULL\n510002\tObjective 2\tNULL\n540001\tObjective 1\tNULL\n540002\tObjective 2\tNULL\n570001\tObjective 1\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 104
+}

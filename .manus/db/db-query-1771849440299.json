@@ -1,0 +1,190 @@
+{
+  "query": "SELECT id, managerEmail, companyId, acceptedAt FROM managerInvitations WHERE managerEmail = 'issaelg5@gmail.com';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, managerEmail, companyId, acceptedAt FROM managerInvitations WHERE managerEmail = 'issaelg5@gmail.com';",
+  "rows": [
+    {
+      "id": "90001",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-18 12:39:19"
+    },
+    {
+      "id": "120001",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-18 13:21:10"
+    },
+    {
+      "id": "120002",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-18 13:56:06"
+    },
+    {
+      "id": "150001",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-19 18:29:21"
+    },
+    {
+      "id": "180001",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-20 12:43:15"
+    },
+    {
+      "id": "180002",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-20 13:02:07"
+    },
+    {
+      "id": "210001",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-20 13:48:57"
+    },
+    {
+      "id": "210002",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-20 14:03:09"
+    },
+    {
+      "id": "210003",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-20 14:07:17"
+    },
+    {
+      "id": "210004",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-20 14:17:19"
+    },
+    {
+      "id": "240001",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-20 16:33:13"
+    },
+    {
+      "id": "240002",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-20 16:35:49"
+    },
+    {
+      "id": "240003",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-20 16:38:09"
+    },
+    {
+      "id": "240004",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-20 16:47:51"
+    },
+    {
+      "id": "240005",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-20 16:58:39"
+    },
+    {
+      "id": "270001",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-21 13:32:19"
+    },
+    {
+      "id": "270002",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-21 13:53:09"
+    },
+    {
+      "id": "270003",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-21 14:03:45"
+    },
+    {
+      "id": "270004",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-21 14:14:13"
+    },
+    {
+      "id": "270005",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-21 14:28:12"
+    },
+    {
+      "id": "270006",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-21 14:31:38"
+    },
+    {
+      "id": "270007",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-21 14:39:42"
+    },
+    {
+      "id": "270008",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-21 14:53:19"
+    },
+    {
+      "id": "270009",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-21 15:24:39"
+    },
+    {
+      "id": "300001",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-22 20:20:30"
+    },
+    {
+      "id": "300002",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-22 20:50:58"
+    },
+    {
+      "id": "300003",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-22 20:53:00"
+    },
+    {
+      "id": "300004",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-22 21:01:00"
+    },
+    {
+      "id": "300005",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-22 21:07:05"
+    },
+    {
+      "id": "300006",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "acceptedAt": "2026-02-22 21:16:21"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tmanagerEmail\tcompanyId\tacceptedAt\n90001\tissaelg5@gmail.com\t150001\t2026-02-18 12:39:19\n120001\tissaelg5@gmail.com\t150001\t2026-02-18 13:21:10\n120002\tissaelg5@gmail.com\t150001\t2026-02-18 13:56:06\n150001\tissaelg5@gmail.com\t150001\t2026-02-19 18:29:21\n180001\tissaelg5@gmail.com\t150001\t2026-02-20 12:43:15\n180002\tissaelg5@gmail.com\t150001\t2026-02-20 13:02:07\n210001\tissaelg5@gmail.com\t150001\t2026-02-20 13:48:57\n210002\tissaelg5@gmail.com\t150001\t2026-02-20 14:03:09\n210003\tissaelg5@gmail.com\t150001\t2026-02-20 14:07:17\n210004\tissaelg5@gmail.com\t150001\t2026-02-20 14:17:19\n240001\tissaelg5@gmail.com\t150001\t2026-02-20 16:33:13\n240002\tissaelg5@gmail.com\t150001\t2026-02-20 16:35:49\n240003\tissaelg5@gmail.com\t150001\t2026-02-20 16:38:09\n240004\tissaelg5@gmail.com\t150001\t2026-02-20 16:47:51\n240005\tissaelg5@gmail.com\t150001\t2026-02-20 16:58:39\n270001\tissaelg5@gmail.com\t150001\t2026-02-21 13:32:19\n270002\tissaelg5@gmail.com\t150001\t2026-02-21 13:53:09\n270003\tissaelg5@gmail.com\t150001\t2026-02-21 14:03:45\n270004\tissaelg5@gmail.com\t150001\t2026-02-21 14:14:13\n270005\tissaelg5@gmail.com\t150001\t2026-02-21 14:28:12\n270006\tissaelg5@gmail.com\t150001\t2026-02-21 14:31:38\n270007\tissaelg5@gmail.com\t150001\t2026-02-21 14:39:42\n270008\tissaelg5@gmail.com\t150001\t2026-02-21 14:53:19\n270009\tissaelg5@gmail.com\t150001\t2026-02-21 15:24:39\n300001\tissaelg5@gmail.com\t150001\t2026-02-22 20:20:30\n300002\tissaelg5@gmail.com\t150001\t2026-02-22 20:50:58\n300003\tissaelg5@gmail.com\t150001\t2026-02-22 20:53:00\n300004\tissaelg5@gmail.com\t150001\t2026-02-22 21:01:00\n300005\tissaelg5@gmail.com\t150001\t2026-02-22 21:07:05\n300006\tissaelg5@gmail.com\t150001\t2026-02-22 21:16:21\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

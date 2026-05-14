@@ -1,0 +1,127 @@
+{
+  "query": "SELECT id, managerEmail, companyId, invitationToken, expiresAt, acceptedAt, createdAt FROM managerInvitations ORDER BY createdAt DESC LIMIT 15",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, managerEmail, companyId, invitationToken, expiresAt, acceptedAt, createdAt FROM managerInvitations ORDER BY createdAt DESC LIMIT 15",
+  "rows": [
+    {
+      "id": "60002",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "150001",
+      "invitationToken": "3c4c2edb0dca4374827bcfa61743eba406eb19a0c244b3dd10a43b6da2bf9f20",
+      "expiresAt": "2026-03-19 14:12:39",
+      "acceptedAt": "NULL",
+      "createdAt": "2026-02-17 15:12:38"
+    },
+    {
+      "id": "60001",
+      "managerEmail": "issaelg5@gmail.com",
+      "companyId": "30001",
+      "invitationToken": "58e684b28aa44afe6e63c7ccb19f0d860505d64da73ce4b986604f3353efa30e",
+      "expiresAt": "2026-03-19 14:09:20",
+      "acceptedAt": "NULL",
+      "createdAt": "2026-02-17 15:09:20"
+    },
+    {
+      "id": "30003",
+      "managerEmail": "angess22@gmail.com",
+      "companyId": "1230001",
+      "invitationToken": "d973cc6c9626b81942c57e916af86e9209f0a450ba2c1c827002807f3006e572",
+      "expiresAt": "2026-03-16 15:32:24",
+      "acceptedAt": "2026-02-15 16:34:30",
+      "createdAt": "2026-02-14 16:32:23"
+    },
+    {
+      "id": "30002",
+      "managerEmail": "angess22@gamil.com",
+      "companyId": "1230001",
+      "invitationToken": "4b2efa51e3d77adcccddeb7f3130e982c8d010165da3da1e077cbad61fd041da",
+      "expiresAt": "2026-03-16 15:01:20",
+      "acceptedAt": "2026-02-14 16:04:08",
+      "createdAt": "2026-02-14 16:01:19"
+    },
+    {
+      "id": "30001",
+      "managerEmail": "test.gerente@sige.com",
+      "companyId": "150001",
+      "invitationToken": "4095880b86a18d7d6f8e3005789b27d1434b38e7a9ee0640b715f4c111c354ac",
+      "expiresAt": "2026-03-16 14:56:30",
+      "acceptedAt": "NULL",
+      "createdAt": "2026-02-14 15:56:30"
+    },
+    {
+      "id": "8",
+      "managerEmail": "angess22@gamil.com",
+      "companyId": "1230001",
+      "invitationToken": "1fe04885395c3b97e9147307b546b2a723668a3acb54badd4a86840a1635b05c",
+      "expiresAt": "2026-03-15 14:39:15",
+      "acceptedAt": "2026-02-13 15:42:21",
+      "createdAt": "2026-02-13 15:39:15"
+    },
+    {
+      "id": "7",
+      "managerEmail": "angess22@gamil.com",
+      "companyId": "1230001",
+      "invitationToken": "1de1d326bbfd244c7eba6a8772f5550ed185c1a9d97dc0cfc3d966199e10fa37",
+      "expiresAt": "2026-03-15 14:32:17",
+      "acceptedAt": "2026-02-13 15:38:11",
+      "createdAt": "2026-02-13 15:32:16"
+    },
+    {
+      "id": "6",
+      "managerEmail": "angela@voces.com",
+      "companyId": "1230001",
+      "invitationToken": "a46c6ebb9be78bbe2bd9e507f37dd4dbe32c501ebff65bb436d5654d3242c072",
+      "expiresAt": "2026-03-15 14:27:40",
+      "acceptedAt": "NULL",
+      "createdAt": "2026-02-13 15:27:39"
+    },
+    {
+      "id": "5",
+      "managerEmail": "angess22@gamil.com",
+      "companyId": "1230001",
+      "invitationToken": "345bd53d7f5271af9f9cab0b668933ec4892bee8a87701421695020c453b6ed5",
+      "expiresAt": "2026-03-15 14:14:13",
+      "acceptedAt": "NULL",
+      "createdAt": "2026-02-13 15:14:13"
+    },
+    {
+      "id": "4",
+      "managerEmail": "gerente.sige@sige.com",
+      "companyId": "150001",
+      "invitationToken": "d061bc53a79572275bd3b88c46165227a9d4bc6579164fe872c16d2b83a500c3",
+      "expiresAt": "2026-03-15 14:12:32",
+      "acceptedAt": "NULL",
+      "createdAt": "2026-02-13 15:12:31"
+    },
+    {
+      "id": "3",
+      "managerEmail": "angess22@gamil.com",
+      "companyId": "1230001",
+      "invitationToken": "50412b9063f26c7f3bdd464ac4e5baf7bf2672af2b10528e43aef51aa5d31611",
+      "expiresAt": "2026-03-15 14:09:52",
+      "acceptedAt": "NULL",
+      "createdAt": "2026-02-13 15:09:51"
+    },
+    {
+      "id": "2",
+      "managerEmail": "angess22@gamil.com",
+      "companyId": "1230001",
+      "invitationToken": "e3b821defdee7d5f8b8b4be5af0c77a23a8e2209ade911ccc601b841bbd4fc64",
+      "expiresAt": "2026-03-15 14:09:33",
+      "acceptedAt": "NULL",
+      "createdAt": "2026-02-13 15:09:33"
+    },
+    {
+      "id": "1",
+      "managerEmail": "gerente.voces@voces.com",
+      "companyId": "1230001",
+      "invitationToken": "25db7ee32fffec8373dc82571454248f758ad240aaf1643e50623bc024d58fc4",
+      "expiresAt": "2026-03-15 14:04:12",
+      "acceptedAt": "NULL",
+      "createdAt": "2026-02-13 15:04:12"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tmanagerEmail\tcompanyId\tinvitationToken\texpiresAt\tacceptedAt\tcreatedAt\n60002\tissaelg5@gmail.com\t150001\t3c4c2edb0dca4374827bcfa61743eba406eb19a0c244b3dd10a43b6da2bf9f20\t2026-03-19 14:12:39\tNULL\t2026-02-17 15:12:38\n60001\tissaelg5@gmail.com\t30001\t58e684b28aa44afe6e63c7ccb19f0d860505d64da73ce4b986604f3353efa30e\t2026-03-19 14:09:20\tNULL\t2026-02-17 15:09:20\n30003\tangess22@gmail.com\t1230001\td973cc6c9626b81942c57e916af86e9209f0a450ba2c1c827002807f3006e572\t2026-03-16 15:32:24\t2026-02-15 16:34:30\t2026-02-14 16:32:23\n30002\tangess22@gamil.com\t1230001\t4b2efa51e3d77adcccddeb7f3130e982c8d010165da3da1e077cbad61fd041da\t2026-03-16 15:01:20\t2026-02-14 16:04:08\t2026-02-14 16:01:19\n30001\ttest.gerente@sige.com\t150001\t4095880b86a18d7d6f8e3005789b27d1434b38e7a9ee0640b715f4c111c354ac\t2026-03-16 14:56:30\tNULL\t2026-02-14 15:56:30\n8\tangess22@gamil.com\t1230001\t1fe04885395c3b97e9147307b546b2a723668a3acb54badd4a86840a1635b05c\t2026-03-15 14:39:15\t2026-02-13 15:42:21\t2026-02-13 15:39:15\n7\tangess22@gamil.com\t1230001\t1de1d326bbfd244c7eba6a8772f5550ed185c1a9d97dc0cfc3d966199e10fa37\t2026-03-15 14:32:17\t2026-02-13 15:38:11\t2026-02-13 15:32:16\n6\tangela@voces.com\t1230001\ta46c6ebb9be78bbe2bd9e507f37dd4dbe32c501ebff65bb436d5654d3242c072\t2026-03-15 14:27:40\tNULL\t2026-02-13 15:27:39\n5\tangess22@gamil.com\t1230001\t345bd53d7f5271af9f9cab0b668933ec4892bee8a87701421695020c453b6ed5\t2026-03-15 14:14:13\tNULL\t2026-02-13 15:14:13\n4\tgerente.sige@sige.com\t150001\td061bc53a79572275bd3b88c46165227a9d4bc6579164fe872c16d2b83a500c3\t2026-03-15 14:12:32\tNULL\t2026-02-13 15:12:31\n3\tangess22@gamil.com\t1230001\t50412b9063f26c7f3bdd464ac4e5baf7bf2672af2b10528e43aef51aa5d31611\t2026-03-15 14:09:52\tNULL\t2026-02-13 15:09:51\n2\tangess22@gamil.com\t1230001\te3b821defdee7d5f8b8b4be5af0c77a23a8e2209ade911ccc601b841bbd4fc64\t2026-03-15 14:09:33\tNULL\t2026-02-13 15:09:33\n1\tgerente.voces@voces.com\t1230001\t25db7ee32fffec8373dc82571454248f758ad240aaf1643e50623bc024d58fc4\t2026-03-15 14:04:12\tNULL\t2026-02-13 15:04:12\n",
+  "stderr": "",
+  "execution_time_ms": 378
+}

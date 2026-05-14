@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, email, contactName, companyName, status FROM companyAccessRequests;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, email, contactName, companyName, status FROM companyAccessRequests;",
+  "rows": [
+    {
+      "id": "1",
+      "email": "eromanlec@yahoo.com",
+      "contactName": "Javier Román",
+      "companyName": "Lalita S.A.",
+      "status": "pending"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tcontactName\tcompanyName\tstatus\n1\teromanlec@yahoo.com\tJavier Román\tLalita S.A.\tpending\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

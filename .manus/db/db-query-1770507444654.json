@@ -1,0 +1,26 @@
+{
+  "query": "SELECT id, name FROM companies ORDER BY name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name FROM companies ORDER BY name;",
+  "rows": [
+    {
+      "id": "60001",
+      "name": "Agrogana"
+    },
+    {
+      "id": "30001",
+      "name": "Lalita S.A."
+    },
+    {
+      "id": "90001",
+      "name": "SERVICIO DIRECTO DE CARGA SOLUTIONCARG S.A.,"
+    },
+    {
+      "id": "150001",
+      "name": "SIGE Consultores"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\n60001\tAgrogana\n30001\tLalita S.A.\n90001\tSERVICIO DIRECTO DE CARGA SOLUTIONCARG S.A.,\n150001\tSIGE Consultores\n",
+  "stderr": "",
+  "execution_time_ms": 353
+}

@@ -1,0 +1,135 @@
+{
+  "query": "SELECT c.id, c.name, COUNT(p.id) as process_count FROM companies c LEFT JOIN processes p ON c.id = p.companyId GROUP BY c.id, c.name ORDER BY c.id",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT c.id, c.name, COUNT(p.id) as process_count FROM companies c LEFT JOIN processes p ON c.id = p.companyId GROUP BY c.id, c.name ORDER BY c.id",
+  "rows": [
+    {
+      "id": "9991",
+      "name": "Test Company for Delete",
+      "process_count": "1"
+    },
+    {
+      "id": "30001",
+      "name": "Lalita S.A.",
+      "process_count": "14"
+    },
+    {
+      "id": "60001",
+      "name": "Agrogana",
+      "process_count": "12"
+    },
+    {
+      "id": "90001",
+      "name": "SERVICIO DIRECTO DE CARGA SOLUTIONCARG S.A.,",
+      "process_count": "14"
+    },
+    {
+      "id": "150001",
+      "name": "SIGE Consultores",
+      "process_count": "8"
+    },
+    {
+      "id": "660001",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "690001",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "690002",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "690003",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "720001",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "750001",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "750002",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "750003",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "750004",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "750005",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "780001",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "810001",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "840001",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "870001",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "900001",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "930001",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "960001",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "990001",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "990002",
+      "name": "Test Company",
+      "process_count": "0"
+    },
+    {
+      "id": "1020001",
+      "name": "Test Company",
+      "process_count": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tprocess_count\n9991\tTest Company for Delete\t1\n30001\tLalita S.A.\t14\n60001\tAgrogana\t12\n90001\tSERVICIO DIRECTO DE CARGA SOLUTIONCARG S.A.,\t14\n150001\tSIGE Consultores\t8\n660001\tTest Company\t0\n690001\tTest Company\t0\n690002\tTest Company\t0\n690003\tTest Company\t0\n720001\tTest Company\t0\n750001\tTest Company\t0\n750002\tTest Company\t0\n750003\tTest Company\t0\n750004\tTest Company\t0\n750005\tTest Company\t0\n780001\tTest Company\t0\n810001\tTest Company\t0\n840001\tTest Company\t0\n870001\tTest Company\t0\n900001\tTest Company\t0\n930001\tTest Company\t0\n960001\tTest Company\t0\n990001\tTest Company\t0\n990002\tTest Company\t0\n1020001\tTest Company\t0\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

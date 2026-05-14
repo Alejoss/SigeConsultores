@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, managerEmail, companyId, invitationToken, acceptedAt FROM managerInvitations WHERE acceptedAt IS NULL LIMIT 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, managerEmail, companyId, invitationToken, acceptedAt FROM managerInvitations WHERE acceptedAt IS NULL LIMIT 1",
+  "rows": [
+    {
+      "id": "1",
+      "managerEmail": "gerente.voces@voces.com",
+      "companyId": "1230001",
+      "invitationToken": "25db7ee32fffec8373dc82571454248f758ad240aaf1643e50623bc024d58fc4",
+      "acceptedAt": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tmanagerEmail\tcompanyId\tinvitationToken\tacceptedAt\n1\tgerente.voces@voces.com\t1230001\t25db7ee32fffec8373dc82571454248f758ad240aaf1643e50623bc024d58fc4\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 359
+}

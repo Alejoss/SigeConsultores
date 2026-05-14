@@ -1,0 +1,15 @@
+{
+  "query": "SELECT managerEmail, companyId, passwordHash FROM companyManagerCredentials WHERE managerEmail = 'angess22@gmail.com';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT managerEmail, companyId, passwordHash FROM companyManagerCredentials WHERE managerEmail = 'angess22@gmail.com';",
+  "rows": [
+    {
+      "managerEmail": "angess22@gmail.com",
+      "companyId": "1230001",
+      "passwordHash": "$2b$10$v9lUYXUKYcsSajRwZlMl.uHfpATnTMVaRNIlyKZo0YGonS/4krHpm"
+    }
+  ],
+  "messages": [],
+  "stdout": "managerEmail\tcompanyId\tpasswordHash\nangess22@gmail.com\t1230001\t$2b$10$v9lUYXUKYcsSajRwZlMl.uHfpATnTMVaRNIlyKZo0YGonS/4krHpm\n",
+  "stderr": "",
+  "execution_time_ms": 345
+}

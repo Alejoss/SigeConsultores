@@ -1,0 +1,8 @@
+{
+  "query": "\nINSERT INTO managerCredentials (companyManagerId, managerEmail, passwordHash, isActive) \nVALUES \n((SELECT id FROM companyManagers WHERE userId = (SELECT id FROM users WHERE email = 'issaelg5@gmail.com') LIMIT 1), 'issaelg5@gmail.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/KFm', 1),\n((SELECT id FROM companyManagers WHERE userId = (SELECT id FROM users WHERE email = 'mangelesrp06@gmail.com') LIMIT 1), 'mangelesrp06@gmail.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/KFm', 1);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute \nINSERT INTO managerCredentials (companyManagerId, managerEmail, passwordHash, isActive) \nVALUES \n((SELECT id FROM companyManagers WHERE userId = (SELECT id FROM users WHERE email = 'issaelg5@gmail.com') LIMIT 1), 'issaelg5@gmail.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/KFm', 1),\n((SELECT id FROM companyManagers WHERE userId = (SELECT id FROM users WHERE email = 'mangelesrp06@gmail.com') LIMIT 1), 'mangelesrp06@gmail.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/KFm', 1);\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 'managerEmail' in 'field list'"
+  ]
+}

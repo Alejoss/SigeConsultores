@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, name, companyId FROM processes WHERE name LIKE '%Postocosecha%' OR name LIKE '%La Esperanza%' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, companyId FROM processes WHERE name LIKE '%Postocosecha%' OR name LIKE '%La Esperanza%' LIMIT 10;",
+  "rows": [
+    {
+      "id": "1290002",
+      "name": "Postcosecha La Esperanza",
+      "companyId": "60001"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tcompanyId\n1290002\tPostcosecha La Esperanza\t60001\n",
+  "stderr": "",
+  "execution_time_ms": 125
+}

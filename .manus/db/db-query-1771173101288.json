@@ -1,0 +1,13 @@
+{
+  "query": "SELECT invitationToken FROM managerInvitations WHERE managerEmail = 'angess22@gmail.com' ORDER BY id DESC LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT invitationToken FROM managerInvitations WHERE managerEmail = 'angess22@gmail.com' ORDER BY id DESC LIMIT 1;",
+  "rows": [
+    {
+      "invitationToken": "d973cc6c9626b81942c57e916af86e9209f0a450ba2c1c827002807f3006e572"
+    }
+  ],
+  "messages": [],
+  "stdout": "invitationToken\nd973cc6c9626b81942c57e916af86e9209f0a450ba2c1c827002807f3006e572\n",
+  "stderr": "",
+  "execution_time_ms": 351
+}

@@ -1,0 +1,20 @@
+{
+  "query": "SELECT po.*, u.email FROM processOwners po JOIN users u ON po.userId = u.id WHERE u.email = 'eromanlec@yahoo.com';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT po.*, u.email FROM processOwners po JOIN users u ON po.userId = u.id WHERE u.email = 'eromanlec@yahoo.com';",
+  "rows": [
+    {
+      "id": "30011",
+      "companyId": "30001",
+      "processId": "14",
+      "userId": "12570153",
+      "accessCode": "1234",
+      "createdAt": "2026-02-06 22:05:23",
+      "updatedAt": "2026-02-06 22:05:23",
+      "email": "eromanlec@yahoo.com"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcompanyId\tprocessId\tuserId\taccessCode\tcreatedAt\tupdatedAt\temail\n30011\t30001\t14\t12570153\t1234\t2026-02-06 22:05:23\t2026-02-06 22:05:23\teromanlec@yahoo.com\n",
+  "stderr": "",
+  "execution_time_ms": 349
+}

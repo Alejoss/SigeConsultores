@@ -1,0 +1,66 @@
+{
+  "query": "SELECT p.id, p.name FROM processes p WHERE p.companyId = (SELECT id FROM companies WHERE name LIKE '%Lalita%' LIMIT 1) ORDER BY p.name",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT p.id, p.name FROM processes p WHERE p.companyId = (SELECT id FROM companies WHERE name LIKE '%Lalita%' LIMIT 1) ORDER BY p.name",
+  "rows": [
+    {
+      "id": "120001",
+      "name": "Cobranzas"
+    },
+    {
+      "id": "3",
+      "name": "Compliance"
+    },
+    {
+      "id": "16",
+      "name": "Control de calidad"
+    },
+    {
+      "id": "9",
+      "name": "Desarrollo Humano"
+    },
+    {
+      "id": "17",
+      "name": "Despacho y Logística"
+    },
+    {
+      "id": "14",
+      "name": "Diseño"
+    },
+    {
+      "id": "1",
+      "name": "Estrategia"
+    },
+    {
+      "id": "12",
+      "name": "Facturación"
+    },
+    {
+      "id": "2",
+      "name": "Finanzas y contabilidad"
+    },
+    {
+      "id": "10",
+      "name": "IT"
+    },
+    {
+      "id": "11",
+      "name": "Mantenimiento"
+    },
+    {
+      "id": "15",
+      "name": "Producción"
+    },
+    {
+      "id": "4",
+      "name": "SIGE"
+    },
+    {
+      "id": "5",
+      "name": "Ventas"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\n120001\tCobranzas\n3\tCompliance\n16\tControl de calidad\n9\tDesarrollo Humano\n17\tDespacho y Logística\n14\tDiseño\n1\tEstrategia\n12\tFacturación\n2\tFinanzas y contabilidad\n10\tIT\n11\tMantenimiento\n15\tProducción\n4\tSIGE\n5\tVentas\n",
+  "stderr": "",
+  "execution_time_ms": 191
+}

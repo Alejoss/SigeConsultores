@@ -1,0 +1,9 @@
+{
+  "query": "SELECT id, name, accionATomar, fechaInicio, fechaFin, realizado FROM stakeholderCriticalities WHERE processId = 1290002 AND (name LIKE '%Fincas%' OR name LIKE '%Postcosecha%' OR name LIKE '%Bouquetera%' OR name LIKE '%Ventas%' OR name LIKE '%Compras%' OR name LIKE '%Recursos%');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, accionATomar, fechaInicio, fechaFin, realizado FROM stakeholderCriticalities WHERE processId = 1290002 AND (name LIKE '%Fincas%' OR name LIKE '%Postcosecha%' OR name LIKE '%Bouquetera%' OR name LIKE '%Ventas%' OR name LIKE '%Compras%' OR name LIKE '%Recursos%');",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 154
+}

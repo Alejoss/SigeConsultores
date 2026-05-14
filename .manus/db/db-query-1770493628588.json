@@ -1,0 +1,16 @@
+{
+  "query": "SELECT u.id as user_id, u.email, c.id as company_id, c.name FROM users u, companies c WHERE u.email = 'eromanlec@yahoo.com' AND c.name = 'Lalita S.A.';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT u.id as user_id, u.email, c.id as company_id, c.name FROM users u, companies c WHERE u.email = 'eromanlec@yahoo.com' AND c.name = 'Lalita S.A.';",
+  "rows": [
+    {
+      "user_id": "12570153",
+      "email": "eromanlec@yahoo.com",
+      "company_id": "30001",
+      "name": "Lalita S.A."
+    }
+  ],
+  "messages": [],
+  "stdout": "user_id\temail\tcompany_id\tname\n12570153\teromanlec@yahoo.com\t30001\tLalita S.A.\n",
+  "stderr": "",
+  "execution_time_ms": 357
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `processTacticalObjectives` ADD `planningData` longtext;

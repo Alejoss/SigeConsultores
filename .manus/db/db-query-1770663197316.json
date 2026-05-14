@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE passwordResetTokens \nADD COLUMN IF NOT EXISTS email VARCHAR(320) AFTER companyId,\nADD COLUMN IF NOT EXISTS otp VARCHAR(6) AFTER token,\nADD COLUMN IF NOT EXISTS isVerified BOOLEAN DEFAULT FALSE NOT NULL AFTER tokenType,\nADD COLUMN IF NOT EXISTS attempts INT DEFAULT 0 NOT NULL AFTER tokenType;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute ALTER TABLE passwordResetTokens \nADD COLUMN IF NOT EXISTS email VARCHAR(320) AFTER companyId,\nADD COLUMN IF NOT EXISTS otp VARCHAR(6) AFTER token,\nADD COLUMN IF NOT EXISTS isVerified BOOLEAN DEFAULT FALSE NOT NULL AFTER tokenType,\nADD COLUMN IF NOT EXISTS attempts INT DEFAULT 0 NOT NULL AFTER tokenType;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1606
+}

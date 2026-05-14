@@ -1,0 +1,1 @@
+ALTER TABLE `companies` ADD `companyPassword` varchar(255);

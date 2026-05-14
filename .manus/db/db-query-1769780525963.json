@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO processLeaderCredentials (processId, leaderEmail, leaderName, pinHash, isActive, lastPINChangeAt, createdAt, updatedAt) VALUES (1, 'eromanlec@yahoo.com', 'Esteban Roman - Lalita', SHA2('1234', 256), true, NOW(), NOW(), NOW());",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute INSERT INTO processLeaderCredentials (processId, leaderEmail, leaderName, pinHash, isActive, lastPINChangeAt, createdAt, updatedAt) VALUES (1, 'eromanlec@yahoo.com', 'Esteban Roman - Lalita', SHA2('1234', 256), true, NOW(), NOW(), NOW());",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 65
+}

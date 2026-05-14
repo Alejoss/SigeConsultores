@@ -1,0 +1,74 @@
+{
+  "query": "SELECT id, name, accionATomar, fechaInicio, fechaFin, realizado FROM stakeholderCriticalities WHERE processId = 1290002 LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, name, accionATomar, fechaInicio, fechaFin, realizado FROM stakeholderCriticalities WHERE processId = 1290002 LIMIT 10;",
+  "rows": [
+    {
+      "id": "1260001",
+      "name": "Test Stakeholder",
+      "accionATomar": "NULL",
+      "fechaInicio": "NULL",
+      "fechaFin": "NULL",
+      "realizado": "NO"
+    },
+    {
+      "id": "1260002",
+      "name": "Criticidad 1",
+      "accionATomar": "NULL",
+      "fechaInicio": "NULL",
+      "fechaFin": "NULL",
+      "realizado": "NO"
+    },
+    {
+      "id": "1260003",
+      "name": "Criticidad 2",
+      "accionATomar": "NULL",
+      "fechaInicio": "NULL",
+      "fechaFin": "NULL",
+      "realizado": "NO"
+    },
+    {
+      "id": "1260004",
+      "name": "Integrity Test",
+      "accionATomar": "NULL",
+      "fechaInicio": "NULL",
+      "fechaFin": "NULL",
+      "realizado": "NO"
+    },
+    {
+      "id": "1260005",
+      "name": "Test Stakeholder",
+      "accionATomar": "NULL",
+      "fechaInicio": "NULL",
+      "fechaFin": "NULL",
+      "realizado": "NO"
+    },
+    {
+      "id": "1260006",
+      "name": "Criticidad 1",
+      "accionATomar": "NULL",
+      "fechaInicio": "NULL",
+      "fechaFin": "NULL",
+      "realizado": "NO"
+    },
+    {
+      "id": "1260007",
+      "name": "Criticidad 2",
+      "accionATomar": "NULL",
+      "fechaInicio": "NULL",
+      "fechaFin": "NULL",
+      "realizado": "NO"
+    },
+    {
+      "id": "1260008",
+      "name": "Integrity Test",
+      "accionATomar": "NULL",
+      "fechaInicio": "NULL",
+      "fechaFin": "NULL",
+      "realizado": "NO"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\taccionATomar\tfechaInicio\tfechaFin\trealizado\n1260001\tTest Stakeholder\tNULL\tNULL\tNULL\tNO\n1260002\tCriticidad 1\tNULL\tNULL\tNULL\tNO\n1260003\tCriticidad 2\tNULL\tNULL\tNULL\tNO\n1260004\tIntegrity Test\tNULL\tNULL\tNULL\tNO\n1260005\tTest Stakeholder\tNULL\tNULL\tNULL\tNO\n1260006\tCriticidad 1\tNULL\tNULL\tNULL\tNO\n1260007\tCriticidad 2\tNULL\tNULL\tNULL\tNO\n1260008\tIntegrity Test\tNULL\tNULL\tNULL\tNO\n",
+  "stderr": "",
+  "execution_time_ms": 62
+}

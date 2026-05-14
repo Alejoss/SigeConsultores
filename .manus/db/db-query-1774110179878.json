@@ -1,0 +1,14 @@
+{
+  "query": "SELECT entrada, subprocesos FROM subprocessMaps WHERE processId = 180003;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT entrada, subprocesos FROM subprocessMaps WHERE processId = 180003;",
+  "rows": [
+    {
+      "entrada": "[{\"id\":1,\"partesInteresadas\":\"Proveedor de Servicios\",\"internoExterno\":\"\",\"clienteProveedor\":\"\",\"necesidades\":\"\",\"solicita\":\"\",\"entrega\":\"\"}]",
+      "subprocesos": "[{\"id\":1,\"acciones\":\"Validar solicitud\",\"subproceso\":\"Revisar solicitud del cliente\"}]"
+    }
+  ],
+  "messages": [],
+  "stdout": "entrada\tsubprocesos\n[{\"id\":1,\"partesInteresadas\":\"Proveedor de Servicios\",\"internoExterno\":\"\",\"clienteProveedor\":\"\",\"necesidades\":\"\",\"solicita\":\"\",\"entrega\":\"\"}]\t[{\"id\":1,\"acciones\":\"Validar solicitud\",\"subproceso\":\"Revisar solicitud del cliente\"}]\n",
+  "stderr": "",
+  "execution_time_ms": 64
+}

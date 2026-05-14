@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO processLeaderCredentials (processId, leaderEmail, leaderName, pinHash, isActive, createdAt, updatedAt) \nVALUES (\n  (SELECT p.id FROM processes p WHERE p.companyId = (SELECT id FROM companies WHERE name LIKE '%Lalita%' LIMIT 1) AND p.name = 'Diseño' LIMIT 1),\n  'lalitera@yahoo.com',\n  'Dolores Padilla',\n  '$2b$10$ZXKdvNnBvGJdvXqvXqvXquZXKdvNnBvGJdvXqvXqvXquZXKdvNnBv',\n  1,\n  NOW(),\n  NOW()\n)\nON DUPLICATE KEY UPDATE updatedAt = NOW()",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute INSERT INTO processLeaderCredentials (processId, leaderEmail, leaderName, pinHash, isActive, createdAt, updatedAt) \nVALUES (\n  (SELECT p.id FROM processes p WHERE p.companyId = (SELECT id FROM companies WHERE name LIKE '%Lalita%' LIMIT 1) AND p.name = 'Diseño' LIMIT 1),\n  'lalitera@yahoo.com',\n  'Dolores Padilla',\n  '$2b$10$ZXKdvNnBvGJdvXqvXqvXquZXKdvNnBvGJdvXqvXqvXquZXKdvNnBv',\n  1,\n  NOW(),\n  NOW()\n)\nON DUPLICATE KEY UPDATE updatedAt = NOW()",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 71
+}

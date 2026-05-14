@@ -1,0 +1,70 @@
+{
+  "query": "SELECT id, companyId, managerEmail, acceptedAt FROM managerInvitations ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, companyId, managerEmail, acceptedAt FROM managerInvitations ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "690001",
+      "companyId": "30001",
+      "managerEmail": "eromanlec@yahoo.com",
+      "acceptedAt": "2026-03-07 19:14:00"
+    },
+    {
+      "id": "660001",
+      "companyId": "150001",
+      "managerEmail": "issaelg5@gmail.com",
+      "acceptedAt": "2026-03-07 17:42:17"
+    },
+    {
+      "id": "630003",
+      "companyId": "150001",
+      "managerEmail": "issaelg5@gmail.com",
+      "acceptedAt": "2026-03-06 21:22:02"
+    },
+    {
+      "id": "630002",
+      "companyId": "150001",
+      "managerEmail": "issaelg5@gmail.com",
+      "acceptedAt": "2026-03-06 21:12:41"
+    },
+    {
+      "id": "630001",
+      "companyId": "150001",
+      "managerEmail": "issaelg5@gmail.com",
+      "acceptedAt": "2026-03-06 21:10:40"
+    },
+    {
+      "id": "600002",
+      "companyId": "60001",
+      "managerEmail": "lalitera@yahoo.com",
+      "acceptedAt": "2026-03-05 21:17:05"
+    },
+    {
+      "id": "600001",
+      "companyId": "60001",
+      "managerEmail": "lalitera@yahoo.com",
+      "acceptedAt": "2026-03-05 21:11:15"
+    },
+    {
+      "id": "570001",
+      "companyId": "30001",
+      "managerEmail": "eromanlec@yahoo.com",
+      "acceptedAt": "2026-03-02 21:48:58"
+    },
+    {
+      "id": "540001",
+      "companyId": "150001",
+      "managerEmail": "issaelg5@gmail.com",
+      "acceptedAt": "2026-03-02 18:59:00"
+    },
+    {
+      "id": "510002",
+      "companyId": "150001",
+      "managerEmail": "issaelg5@gmail.com",
+      "acceptedAt": "2026-03-02 16:35:06"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcompanyId\tmanagerEmail\tacceptedAt\n690001\t30001\teromanlec@yahoo.com\t2026-03-07 19:14:00\n660001\t150001\tissaelg5@gmail.com\t2026-03-07 17:42:17\n630003\t150001\tissaelg5@gmail.com\t2026-03-06 21:22:02\n630002\t150001\tissaelg5@gmail.com\t2026-03-06 21:12:41\n630001\t150001\tissaelg5@gmail.com\t2026-03-06 21:10:40\n600002\t60001\tlalitera@yahoo.com\t2026-03-05 21:17:05\n600001\t60001\tlalitera@yahoo.com\t2026-03-05 21:11:15\n570001\t30001\teromanlec@yahoo.com\t2026-03-02 21:48:58\n540001\t150001\tissaelg5@gmail.com\t2026-03-02 18:59:00\n510002\t150001\tissaelg5@gmail.com\t2026-03-02 16:35:06\n",
+  "stderr": "",
+  "execution_time_ms": 349
+}

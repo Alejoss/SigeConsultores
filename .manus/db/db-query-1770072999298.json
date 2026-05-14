@@ -1,0 +1,9 @@
+{
+  "query": "SELECT id, managerEmail, invitationToken, expiresAt, usedAt FROM companySetupInvitations WHERE invitationToken = '328606dda9023ac8dceecd03b6d7cb8815d7c8beaf91398072423ba23de6d781' LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3sK3HSnCHYuyBQv.root --database ME7ScwrB8Z7RLAVMx2cMEF --execute SELECT id, managerEmail, invitationToken, expiresAt, usedAt FROM companySetupInvitations WHERE invitationToken = '328606dda9023ac8dceecd03b6d7cb8815d7c8beaf91398072423ba23de6d781' LIMIT 1;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 60
+}

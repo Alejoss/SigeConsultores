@@ -1,0 +1,21 @@
+# Staging sin dominio: HTTP en el puerto 80 hacia la app Docker (127.0.0.1:3001).
+# default_server + server_name _ acepta cualquier Host (acceso por IP).
+# Copia a /etc/nginx/sites-available/sige-staging y enlaza en sites-enabled.
+
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    client_max_body_size 50m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+}

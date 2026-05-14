@@ -1,0 +1,128 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import {
+  sendEmail,
+  sendManagerAccessInvitationEmail,
+  sendManagerAccessConfirmationEmail,
+  sendPINRecoveryEmail,
+} from "../emailService";
+
+describe("Email Service - Non-blocking Optimization", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("sendEmail", () => {
+    it("should return true immediately without waiting", async () => {
+      const startTime = Date.now();
+      const result = sendEmail({
+        to: "test@example.com",
+        subject: "Test",
+        htmlContent: "<p>Test</p>",
+      });
+      const endTime = Date.now();
+
+      expect(result).toBe(true);
+      // Should complete in less than 100ms (not waiting for retries)
+      expect(endTime - startTime).toBeLessThan(100);
+    });
+
+    it("should be non-blocking (return immediately)", () => {
+      const result = sendEmail({
+        to: "test@example.com",
+        subject: "Test",
+        htmlContent: "<p>Test</p>",
+      });
+
+      // Should return synchronously
+      expect(typeof result).toBe("boolean");
+      expect(result).toBe(true);
+    });
+  });
+
+  describe("sendManagerAccessInvitationEmail", () => {
+    it("should return true immediately without waiting", () => {
+      const startTime = Date.now();
+      const result = sendManagerAccessInvitationEmail(
+        "manager@example.com",
+        "Test Company",
+        "test-token-123",
+        30,
+        "https://localhost:3000"
+      );
+      const endTime = Date.now();
+
+      expect(result).toBe(true);
+      // Should complete in less than 100ms (not waiting for retries)
+      expect(endTime - startTime).toBeLessThan(100);
+    });
+
+    it("should not be async", () => {
+      const result = sendManagerAccessInvitationEmail(
+        "manager@example.com",
+        "Test Company",
+        "test-token-123",
+        30
+      );
+
+      // Should return a boolean, not a Promise
+      expect(result).toBe(true);
+      expect(result instanceof Promise).toBe(false);
+    });
+  });
+
+  describe("sendManagerAccessConfirmationEmail", () => {
+    it("should return true immediately without waiting", () => {
+      const startTime = Date.now();
+      const result = sendManagerAccessConfirmationEmail(
+        "manager@example.com",
+        "Test Company",
+        "https://localhost:3000"
+      );
+      const endTime = Date.now();
+
+      expect(result).toBe(true);
+      // Should complete in less than 100ms (not waiting for retries)
+      expect(endTime - startTime).toBeLessThan(100);
+    });
+
+    it("should not be async", () => {
+      const result = sendManagerAccessConfirmationEmail(
+        "manager@example.com",
+        "Test Company"
+      );
+
+      // Should return a boolean, not a Promise
+      expect(result).toBe(true);
+      expect(result instanceof Promise).toBe(false);
+    });
+  });
+
+  describe("sendPINRecoveryEmail", () => {
+    it("should return true immediately without waiting", () => {
+      const startTime = Date.now();
+      const result = sendPINRecoveryEmail(
+        "leader@example.com",
+        "John Doe",
+        "reset-token-123",
+        "https://localhost:3000"
+      );
+      const endTime = Date.now();
+
+      expect(result).toBe(true);
+      // Should complete in less than 100ms (not waiting for retries)
+      expect(endTime - startTime).toBeLessThan(100);
+    });
+
+    it("should not be async", () => {
+      const result = sendPINRecoveryEmail(
+        "leader@example.com",
+        "John Doe",
+        "reset-token-123"
+      );
+
+      // Should return a boolean, not a Promise
+      expect(result).toBe(true);
+      expect(result instanceof Promise).toBe(false);
+    });
+  });
+});
