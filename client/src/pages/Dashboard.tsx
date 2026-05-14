@@ -79,37 +79,37 @@ export default function Dashboard() {
 
   const menuItems = useMemo(() => [
     {
-      title: getLabel("sige_modules", "label1", "Propósito, Misión, Visión"),
+      title: getLabel("sige_company_info", "Propósito, Misión, Visión"),
       description: "Define los fundamentos estratégicos de tu empresa",
       path: "/company-info",
       icon: "🎯",
     },
     {
-      title: getLabel("sige_modules", "label2", "Valores Empresariales"),
+      title: getLabel("sige_corporate_values", "Valores Empresariales"),
       description: "Establece los valores que guían tu organización",
       path: "/values",
       icon: "💎",
     },
     {
-      title: getLabel("sige_modules", "label3", "Política"),
+      title: getLabel("sige_policy", "Política"),
       description: "Documenta la política del Sistema Integrado de Gestión",
       path: "/policy",
       icon: "📋",
     },
     {
-      title: getLabel("sige_modules", "label4", "Organigrama"),
+      title: getLabel("sige_organization_chart", "Organigrama"),
       description: "Gestiona la estructura organizacional de tu empresa",
       path: "/organization-chart",
       icon: "🏢",
     },
     {
-      title: getLabel("sige_modules", "label5", "Mapa de Procesos"),
+      title: getLabel("sige_process_map", "Mapa de Procesos"),
       description: "Visualiza y gestiona los procesos empresariales",
       path: "/process-map",
       icon: "🗺️",
     },
     {
-      title: getLabel("sige_modules", "label6", "Objetivos Estratégicos"),
+      title: getLabel("sige_strategic_objectives", "Objetivos Estratégicos"),
       description: "Define los objetivos a largo plazo de la empresa",
       path: "/strategic-objectives",
       icon: "🎪",
@@ -121,7 +121,7 @@ export default function Dashboard() {
       icon: "📈",
     },
     {
-      title: "Indicadores",
+      title: getLabel("sige_indicators", "Indicadores"),
       description: "Monitorea el desempeño de tu Sistema Integrado de Gestión",
       path: "/indicators",
       icon: "📊",

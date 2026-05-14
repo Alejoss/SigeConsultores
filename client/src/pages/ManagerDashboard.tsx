@@ -360,28 +360,17 @@ export default function ManagerDashboard() {
               if (getModulesQuery.isLoading) {
                 return <p className="text-gray-500">Cargando módulos...</p>;
               }
-              const customizations = (getModulesQuery.data || {}) as Record<string, any>;
-              
-              // Map UI module names to DB module names for customization lookup
-              const moduleNameMap: { [key: string]: string } = {
-                "companyInfo": "sige_modules",
-                "values": "sige_modules",
-                "policy": "sige_modules",
-                "strategicObjectives": "strategicObjectives",
-                "processMap": "processMap",
-                "indicators": "indicators",
+              const customizations = (getModulesQuery.data || {}) as Record<string, { customLabel?: string | null }>;
+
+              const customizationKeyMap: Record<string, string> = {
+                companyInfo: "sige_company_info",
+                values: "sige_corporate_values",
+                policy: "sige_policy",
+                strategicObjectives: "sige_strategic_objectives",
+                processMap: "sige_process_map",
+                indicators: "sige_indicators",
               };
-              
-              // Map which label to use for each module (label1, label2, label3)
-              const moduleLabelMap: { [key: string]: string } = {
-                "companyInfo": "label1",
-                "values": "label2",
-                "policy": "label3",
-                "strategicObjectives": "label1",
-                "processMap": "label1",
-                "indicators": "label1",
-              };
-              
+
               const defaultModules = [
                 {
                   moduleName: "companyInfo",
@@ -434,11 +423,11 @@ export default function ManagerDashboard() {
               ];
 
               return defaultModules.map((module, index) => {
-                const dbModuleName = moduleNameMap[module.moduleName] || module.moduleName;
-                const labelKey = moduleLabelMap[module.moduleName] || "label1";
-                const customization = customizations[dbModuleName];
-                // Use customized label if available, otherwise use default title
-                const displayTitle = customization?.[labelKey as keyof typeof customization] || module.title;
+                const labelKey = customizationKeyMap[module.moduleName];
+                const row = labelKey ? customizations[labelKey] : undefined;
+                const cl = row?.customLabel;
+                const displayTitle =
+                  typeof cl === "string" && cl.trim() !== "" ? cl.trim() : module.title;
                 return (
                   <Card 
                     key={index} 

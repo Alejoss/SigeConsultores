@@ -6,130 +6,65 @@ import {
   getAllModuleCustomizations,
 } from "../db";
 
-// Test company ID (use a test company)
 const TEST_COMPANY_ID = 999;
-const TEST_MODULE_NAME = "purpose_mission_vision";
+const TEST_MODULE = "purpose_proposito";
 
 describe("Module Customization", () => {
   beforeAll(async () => {
-    // Clean up before tests
-    await deleteModuleCustomization(TEST_COMPANY_ID, TEST_MODULE_NAME).catch(() => {});
+    await deleteModuleCustomization(TEST_COMPANY_ID, TEST_MODULE).catch(() => {});
+    await deleteModuleCustomization(TEST_COMPANY_ID, "sige_company_info").catch(() => {});
   });
 
   afterAll(async () => {
-    // Clean up after tests
-    await deleteModuleCustomization(TEST_COMPANY_ID, TEST_MODULE_NAME).catch(() => {});
+    await deleteModuleCustomization(TEST_COMPANY_ID, TEST_MODULE).catch(() => {});
+    await deleteModuleCustomization(TEST_COMPANY_ID, "sige_company_info").catch(() => {});
   });
 
-  it("should create a new module customization", async () => {
-    const result = await upsertModuleCustomization(TEST_COMPANY_ID, TEST_MODULE_NAME, {
-      label1: "Por qué",
-      label2: "Qué",
-      label3: "Cómo",
+  it("creates and retrieves a single customLabel per moduleName", async () => {
+    const created = await upsertModuleCustomization(TEST_COMPANY_ID, TEST_MODULE, {
+      label: "¿Por qué?",
     });
+    expect(created?.customLabel).toBe("¿Por qué?");
 
-    expect(result).toBeDefined();
-    expect(result.label1).toBe("Por qué");
-    expect(result.label2).toBe("Qué");
-    expect(result.label3).toBe("Cómo");
+    const row = await getModuleCustomization(TEST_COMPANY_ID, TEST_MODULE);
+    expect(row?.customLabel).toBe("¿Por qué?");
   });
 
-  it("should retrieve module customization", async () => {
-    // First create one
-    await upsertModuleCustomization(TEST_COMPANY_ID, TEST_MODULE_NAME, {
-      label1: "Por qué",
-      label2: "Qué",
-      label3: "Cómo",
-    });
-
-    // Then retrieve it
-    const result = await getModuleCustomization(TEST_COMPANY_ID, TEST_MODULE_NAME);
-
-    expect(result).toBeDefined();
-    expect(result?.label1).toBe("Por qué");
-    expect(result?.label2).toBe("Qué");
-    expect(result?.label3).toBe("Cómo");
+  it("overwrites the previous label for the same moduleName", async () => {
+    await upsertModuleCustomization(TEST_COMPANY_ID, TEST_MODULE, { label: "Primero" });
+    const second = await upsertModuleCustomization(TEST_COMPANY_ID, TEST_MODULE, { label: "Segundo" });
+    expect(second?.customLabel).toBe("Segundo");
   });
 
-  it("should update existing module customization", async () => {
-    // Create initial
-    await upsertModuleCustomization(TEST_COMPANY_ID, TEST_MODULE_NAME, {
-      label1: "Propósito",
-      label2: "Misión",
-      label3: "Visión",
-    });
-
-    // Update it
-    const updated = await upsertModuleCustomization(TEST_COMPANY_ID, TEST_MODULE_NAME, {
-      label1: "Por qué",
-      label2: "Qué",
-      label3: "Cómo",
-    });
-
-    expect(updated.label1).toBe("Por qué");
-    expect(updated.label2).toBe("Qué");
-    expect(updated.label3).toBe("Cómo");
+  it("clears customization when label is null", async () => {
+    await upsertModuleCustomization(TEST_COMPANY_ID, TEST_MODULE, { label: "X" });
+    const cleared = await upsertModuleCustomization(TEST_COMPANY_ID, TEST_MODULE, { label: null });
+    expect(cleared?.customLabel).toBeNull();
   });
 
-  it("should return undefined for non-existent customization", async () => {
+  it("returns undefined for missing row", async () => {
     const result = await getModuleCustomization(999999, "non_existent_module");
     expect(result).toBeUndefined();
   });
 
-  it("should delete module customization", async () => {
-    // Create one
-    await upsertModuleCustomization(TEST_COMPANY_ID, TEST_MODULE_NAME, {
-      label1: "Test",
-      label2: "Test",
-      label3: "Test",
-    });
-
-    // Delete it
-    await deleteModuleCustomization(TEST_COMPANY_ID, TEST_MODULE_NAME);
-
-    // Verify it's deleted
-    const result = await getModuleCustomization(TEST_COMPANY_ID, TEST_MODULE_NAME);
+  it("deletes a customization row", async () => {
+    await upsertModuleCustomization(TEST_COMPANY_ID, TEST_MODULE, { label: "Temp" });
+    await deleteModuleCustomization(TEST_COMPANY_ID, TEST_MODULE);
+    const result = await getModuleCustomization(TEST_COMPANY_ID, TEST_MODULE);
     expect(result).toBeUndefined();
   });
 
-  it("should handle partial label updates", async () => {
-    const result = await upsertModuleCustomization(TEST_COMPANY_ID, TEST_MODULE_NAME, {
-      label1: "Label 1 Only",
-      label2: undefined,
-      label3: undefined,
-    });
+  it("keeps different moduleName rows independent", async () => {
+    await upsertModuleCustomization(TEST_COMPANY_ID, "purpose_proposito", { label: "A" });
+    await upsertModuleCustomization(TEST_COMPANY_ID, "sige_company_info", { label: "B" });
 
-    expect(result.label1).toBe("Label 1 Only");
-    expect(result.label2).toBeUndefined();
-    expect(result.label3).toBeUndefined();
-  });
+    const all = await getAllModuleCustomizations(TEST_COMPANY_ID);
+    const byName = Object.fromEntries(all.map((r) => [r.moduleName, r.customLabel]));
 
-  it("should support multiple modules per company", async () => {
-    const module1 = "purpose_mission_vision";
-    const module2 = "strategic_objectives";
+    expect(byName.purpose_proposito).toBe("A");
+    expect(byName.sige_company_info).toBe("B");
 
-    // Create customizations for different modules
-    await upsertModuleCustomization(TEST_COMPANY_ID, module1, {
-      label1: "Golden Circle - Por qué",
-      label2: "Golden Circle - Qué",
-      label3: "Golden Circle - Cómo",
-    });
-
-    await upsertModuleCustomization(TEST_COMPANY_ID, module2, {
-      label1: "Objetivo Corto Plazo",
-      label2: "Objetivo Mediano Plazo",
-      label3: "Objetivo Largo Plazo",
-    });
-
-    // Verify both exist independently
-    const custom1 = await getModuleCustomization(TEST_COMPANY_ID, module1);
-    const custom2 = await getModuleCustomization(TEST_COMPANY_ID, module2);
-
-    expect(custom1?.label1).toBe("Golden Circle - Por qué");
-    expect(custom2?.label1).toBe("Objetivo Corto Plazo");
-
-    // Clean up
-    await deleteModuleCustomization(TEST_COMPANY_ID, module1);
-    await deleteModuleCustomization(TEST_COMPANY_ID, module2);
+    await deleteModuleCustomization(TEST_COMPANY_ID, "purpose_proposito");
+    await deleteModuleCustomization(TEST_COMPANY_ID, "sige_company_info");
   });
 });

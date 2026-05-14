@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { Save, AlertCircle, CheckCircle2, Download, Loader2 } from 'lucide-react';
 import { trpc } from "@/lib/trpc";
@@ -12,6 +12,7 @@ import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
 import { exportTacticalObjectivesToPDF } from "@/lib/exportTacticalObjectivesToPDF";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
+import { useModuleLabels } from "@/hooks/useModuleLabels";
 
 export default function CompanyInfo() {
   const [, setLocation] = useLocation();
@@ -79,11 +80,7 @@ export default function CompanyInfo() {
     }, 100);
   }, [autoExpandTextarea]);
 
-  // Fetch module customization
-  const { data: customization } = trpc.moduleCustomization.get.useQuery(
-    { companyId: companyId || 0, moduleName: "purpose_mission_vision" },
-    { enabled: false } // Disabled to prevent errors
-  );
+  const { getLabel } = useModuleLabels(companyId);
 
   // Fetch company info from database
   const { data: companyInfo, isLoading, refetch } = trpc.companyInfo.get.useQuery(
@@ -191,13 +188,15 @@ export default function CompanyInfo() {
   // Usar nombre dinámico de la empresa
   const companyName = companyDetails?.name || localStorage.getItem("selectedCompanyName") || "Empresa";
 
-  // Get labels from customization or use defaults
-  const labels = {
-    title: `${customization?.label1 || "Propósito"}, ${customization?.label2 || "Misión"}, ${customization?.label3 || "Visión"}`,
-    proposito: customization?.label1 || "Propósito",
-    mision: customization?.label2 || "Misión",
-    vision: customization?.label3 || "Visión",
-  };
+  const labels = useMemo(
+    () => ({
+      title: `${getLabel("purpose_proposito", "Propósito")}, ${getLabel("purpose_mision", "Misión")}, ${getLabel("purpose_vision", "Visión")}`,
+      proposito: getLabel("purpose_proposito", "Propósito"),
+      mision: getLabel("purpose_mision", "Misión"),
+      vision: getLabel("purpose_vision", "Visión"),
+    }),
+    [getLabel]
+  );
 
   return (
     <DashboardLayout>

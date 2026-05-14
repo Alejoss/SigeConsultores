@@ -1003,21 +1003,26 @@ export type InsertUserCompanyAccess = typeof userCompanyAccess.$inferInsert;
 
 
 /**
- * Company Module Customization - Allows companies to customize labels for SIGE modules
- * For example: Agrogana can change "Propósito, Misión, Visión" to "Por qué, Qué, Cómo" (Golden Circle)
+ * Company Module Customization — one display label per (companyId, moduleName).
+ * moduleName uses stable keys (see shared/moduleLabelDefinitions.ts).
  */
-export const companyModuleCustomization = mysqlTable("companyModuleCustomization", {
-  id: int("id").autoincrement().primaryKey(),
-  companyId: int("companyId").notNull(),
-  moduleName: varchar("moduleName", { length: 100 }).notNull(), // e.g., "purpose_mission_vision"
-  label1: varchar("label1", { length: 255 }), // Custom label for first item
-  label2: varchar("label2", { length: 255 }), // Custom label for second item
-  label3: varchar("label3", { length: 255 }), // Custom label for third item
-  label4: varchar("label4", { length: 255 }), // Custom label for fourth item (if needed)
-  label5: varchar("label5", { length: 255 }), // Custom label for fifth item (if needed)
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+export const companyModuleCustomization = mysqlTable(
+  "companyModuleCustomization",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    moduleName: varchar("moduleName", { length: 100 }).notNull(),
+    customLabel: varchar("customLabel", { length: 255 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    companyModuleNameUnique: unique("company_module_customization_company_module").on(
+      table.companyId,
+      table.moduleName
+    ),
+  })
+);
 
 export type CompanyModuleCustomization = typeof companyModuleCustomization.$inferSelect;
 export type InsertCompanyModuleCustomization = typeof companyModuleCustomization.$inferInsert;

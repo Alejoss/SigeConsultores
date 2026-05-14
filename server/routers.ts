@@ -140,22 +140,16 @@ const moduleCustomizationRouter = router({
     }),
 
   upsert: adminProcedure
-    .input(z.object({
-      companyId: z.number(),
-      moduleName: z.string(),
-      label1: z.string().optional(),
-      label2: z.string().optional(),
-      label3: z.string().optional(),
-      label4: z.string().optional(),
-      label5: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        companyId: z.number(),
+        moduleName: z.string(),
+        label: z.string().nullable().optional(),
+      })
+    )
     .mutation(async ({ input }) => {
       return upsertModuleCustomization(input.companyId, input.moduleName, {
-        label1: input.label1,
-        label2: input.label2,
-        label3: input.label3,
-        label4: input.label4,
-        label5: input.label5,
+        label: input.label,
       });
     }),
 

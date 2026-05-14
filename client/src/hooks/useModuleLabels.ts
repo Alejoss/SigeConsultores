@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 
 /**
@@ -10,7 +10,7 @@ export function useModuleLabels(companyId: number | null) {
   // getLabels returns an object keyed by moduleName, not an array
   const { data: labelsObject = {}, isLoading } = trpc.moduleCustomization.getLabels.useQuery(
     { companyId: companyId || 0 },
-    { enabled: companyId !== null }
+    { enabled: companyId != null && companyId > 0 }
   );
 
   // Use the object directly (it's already keyed by moduleName)
@@ -18,14 +18,17 @@ export function useModuleLabels(companyId: number | null) {
     return labelsObject || {};
   }, [labelsObject]);
 
-  // Helper function to get label for a specific module
-  const getLabel = (moduleName: string, labelKey: string, defaultValue: string) => {
-    const moduleCustomization = labels[moduleName];
-    if (moduleCustomization && moduleCustomization[labelKey]) {
-      return moduleCustomization[labelKey];
-    }
-    return defaultValue;
-  };
+  const getLabel = useCallback(
+    (moduleName: string, defaultValue: string) => {
+      const row = labels[moduleName] as { customLabel?: string | null } | undefined;
+      const v = row?.customLabel;
+      if (typeof v === "string" && v.trim() !== "") {
+        return v.trim();
+      }
+      return defaultValue;
+    },
+    [labels]
+  );
 
   return {
     labels,

@@ -11,9 +11,7 @@ async function main() {
   console.log("=== Todas las personalizaciones ===\n");
   customizations.forEach((c) => {
     console.log(`Company: ${c.companyId}, Module: ${c.moduleName}`);
-    console.log(`  label1: ${c.label1}`);
-    console.log(`  label2: ${c.label2}`);
-    console.log(`  label3: ${c.label3}`);
+    console.log(`  customLabel: ${c.customLabel ?? "(null)"}`);
     console.log("");
   });
 

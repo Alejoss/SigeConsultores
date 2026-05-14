@@ -1027,36 +1027,43 @@ export async function getModuleCustomization(companyId: number, moduleName: stri
 export async function upsertModuleCustomization(
   companyId: number,
   moduleName: string,
-  labels: { label1?: string; label2?: string; label3?: string; label4?: string; label5?: string }
+  payload: { label?: string | null }
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   const existing = await getModuleCustomization(companyId, moduleName);
 
+  if (payload.label === undefined) {
+    return existing;
+  }
+
+  const customLabel =
+    payload.label === null || String(payload.label).trim() === ""
+      ? null
+      : String(payload.label).trim();
+
   if (existing) {
-    // Update existing customization
     await db
       .update(companyModuleCustomization)
-      .set(labels)
+      .set({ customLabel })
       .where(and(eq(companyModuleCustomization.companyId, companyId), eq(companyModuleCustomization.moduleName, moduleName)));
-    return { ...existing, ...labels };
-  } else {
-    // Create new customization
-    await db.insert(companyModuleCustomization).values({
-      companyId,
-      moduleName,
-      ...labels,
-    });
-    return {
-      id: 0, // Will be set by DB
-      companyId,
-      moduleName,
-      ...labels,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    return { ...existing, customLabel };
   }
+
+  await db.insert(companyModuleCustomization).values({
+    companyId,
+    moduleName,
+    customLabel,
+  });
+  return {
+    id: 0,
+    companyId,
+    moduleName,
+    customLabel,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 }
 
 export async function deleteModuleCustomization(companyId: number, moduleName: string) {

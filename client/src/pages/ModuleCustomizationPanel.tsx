@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,59 +9,77 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { AlertCircle } from "lucide-react";
 
+const PURPOSE_KEYS = ["purpose_proposito", "purpose_mision", "purpose_vision"] as const;
+const PURPOSE_DEFAULTS: Record<(typeof PURPOSE_KEYS)[number], string> = {
+  purpose_proposito: "Propósito",
+  purpose_mision: "Misión",
+  purpose_vision: "Visión",
+};
+
 export default function ModuleCustomizationPanel() {
   const [, setLocation] = useLocation();
   const [companyId] = useState<number | null>(() => {
     const stored = localStorage.getItem("selectedCompanyId");
-    return stored ? parseInt(stored) : null;
+    return stored ? parseInt(stored, 10) : null;
   });
   const [companyName] = useState(() => localStorage.getItem("selectedCompanyName") || "Empresa");
 
-  // Fetch current customization
-  const { data: customization, isLoading } = trpc.moduleCustomization.get.useQuery(
-    { companyId: companyId || 0, moduleName: "purpose_mission_vision" },
-    { enabled: companyId !== null }
+  const [proposito, setProposito] = useState("");
+  const [mision, setMision] = useState("");
+  const [vision, setVision] = useState("");
+
+  const labelsQuery = trpc.moduleCustomization.getLabels.useQuery(
+    { companyId: companyId || 0 },
+    { enabled: companyId != null && companyId > 0 }
   );
 
-  // Update customization mutation
   const updateMutation = trpc.moduleCustomization.upsert.useMutation({
     onSuccess: () => {
       toast.success("Personalización guardada exitosamente");
+      void labelsQuery.refetch();
     },
     onError: (error: any) => {
       toast.error(error.message || "Error al guardar la personalización");
     },
   });
 
-  const [title, setTitle] = useState("");
-  const [label1, setLabel1] = useState("");
-  const [label2, setLabel2] = useState("");
-  const [label3, setLabel3] = useState("");
-  const [label4, setLabel4] = useState("");
+  useEffect(() => {
+    if (!labelsQuery.data) return;
+    const data = labelsQuery.data as Record<string, { customLabel?: string | null }>;
+    setProposito(
+      typeof data.purpose_proposito?.customLabel === "string"
+        ? data.purpose_proposito.customLabel
+        : ""
+    );
+    setMision(typeof data.purpose_mision?.customLabel === "string" ? data.purpose_mision.customLabel : "");
+    setVision(typeof data.purpose_vision?.customLabel === "string" ? data.purpose_vision.customLabel : "");
+  }, [labelsQuery.data]);
 
-  // Initialize form with existing values
-  useState(() => {
-    if (customization) {
-      setTitle(customization.label1 || "Propósito, Misión y Visión");
-      setLabel1(customization.label2 || "Propósito");
-      setLabel2(customization.label3 || "Misión");
-      setLabel3(customization.label4 || "Visión");
-      setLabel4(customization.label5 || "");
-    }
-  });
+  const previewTitle = useMemo(() => {
+    const p = proposito.trim() || PURPOSE_DEFAULTS.purpose_proposito;
+    const m = mision.trim() || PURPOSE_DEFAULTS.purpose_mision;
+    const v = vision.trim() || PURPOSE_DEFAULTS.purpose_vision;
+    return `${p}, ${m}, ${v}`;
+  }, [proposito, mision, vision]);
 
   const handleSave = async () => {
     if (!companyId) return;
-
-    await updateMutation.mutateAsync({
-      companyId,
-      moduleName: "purpose_mission_vision",
-      label1: title || "Propósito, Misión y Visión",
-      label2: label1 || "Propósito",
-      label3: label2 || "Misión",
-      label4: label3 || "Visión",
-      label5: label4 || "",
-    });
+    await Promise.all(
+      PURPOSE_KEYS.map((key) => {
+        const val =
+          key === "purpose_proposito"
+            ? proposito
+            : key === "purpose_mision"
+              ? mision
+              : vision;
+        const trimmed = val.trim();
+        return updateMutation.mutateAsync({
+          companyId,
+          moduleName: key,
+          label: trimmed === "" ? null : trimmed,
+        });
+      })
+    );
   };
 
   if (!companyId) {
@@ -103,7 +121,7 @@ export default function ModuleCustomizationPanel() {
           </Button>
         </div>
 
-        {isLoading ? (
+        {labelsQuery.isLoading ? (
           <Card>
             <CardContent className="pt-6">
               <p className="text-center text-slate-600">Cargando personalización...</p>
@@ -111,57 +129,46 @@ export default function ModuleCustomizationPanel() {
           </Card>
         ) : (
           <div className="space-y-6">
-            {/* Purpose, Mission, Vision Module */}
             <Card>
               <CardHeader>
                 <CardTitle>Propósito, Misión, Visión</CardTitle>
                 <CardDescription>
-                  Personaliza los labels de este módulo
+                  Tres nombres independientes (cada uno se guarda en su propia fila y sustituye el valor anterior).
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="title">Título del Módulo</Label>
+                  <Label htmlFor="proposito">Nombre de la sección — Propósito</Label>
                   <Input
-                    id="title"
-                    placeholder="Ej: Propósito, Misión y Visión"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="label1">Label 1 (Propósito)</Label>
-                  <Input
-                    id="label1"
+                    id="proposito"
                     placeholder="Ej: Propósito o ¿Por qué?"
-                    value={label1}
-                    onChange={(e) => setLabel1(e.target.value)}
+                    value={proposito}
+                    onChange={(e) => setProposito(e.target.value)}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="label2">Label 2 (Misión)</Label>
+                  <Label htmlFor="mision">Nombre de la sección — Misión</Label>
                   <Input
-                    id="label2"
+                    id="mision"
                     placeholder="Ej: Misión o ¿Cómo?"
-                    value={label2}
-                    onChange={(e) => setLabel2(e.target.value)}
+                    value={mision}
+                    onChange={(e) => setMision(e.target.value)}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="label3">Label 3 (Visión)</Label>
+                  <Label htmlFor="vision">Nombre de la sección — Visión</Label>
                   <Input
-                    id="label3"
+                    id="vision"
                     placeholder="Ej: Visión o ¿Qué?"
-                    value={label3}
-                    onChange={(e) => setLabel3(e.target.value)}
+                    value={vision}
+                    onChange={(e) => setVision(e.target.value)}
                   />
                 </div>
 
                 <Button
-                  onClick={handleSave}
+                  onClick={() => void handleSave()}
                   disabled={updateMutation.isPending}
                   className="w-full bg-blue-600 hover:bg-blue-700"
                 >
@@ -170,27 +177,26 @@ export default function ModuleCustomizationPanel() {
               </CardContent>
             </Card>
 
-            {/* Preview */}
             <Card className="bg-blue-50 border-blue-200">
               <CardHeader>
                 <CardTitle className="text-lg text-blue-900">Vista Previa</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-blue-800">
                 <div>
-                  <p className="font-semibold text-lg">{title || "Propósito, Misión y Visión"}</p>
+                  <p className="font-semibold text-lg">{previewTitle}</p>
                 </div>
                 <div className="grid grid-cols-3 gap-4 mt-4">
                   <div className="p-3 bg-white rounded border border-blue-200">
-                    <p className="font-semibold">{label1 || "Propósito"}</p>
-                    <p className="text-xs text-slate-600">Label 1</p>
+                    <p className="font-semibold">{proposito.trim() || PURPOSE_DEFAULTS.purpose_proposito}</p>
+                    <p className="text-xs text-slate-600">Propósito</p>
                   </div>
                   <div className="p-3 bg-white rounded border border-blue-200">
-                    <p className="font-semibold">{label2 || "Misión"}</p>
-                    <p className="text-xs text-slate-600">Label 2</p>
+                    <p className="font-semibold">{mision.trim() || PURPOSE_DEFAULTS.purpose_mision}</p>
+                    <p className="text-xs text-slate-600">Misión</p>
                   </div>
                   <div className="p-3 bg-white rounded border border-blue-200">
-                    <p className="font-semibold">{label3 || "Visión"}</p>
-                    <p className="text-xs text-slate-600">Label 3</p>
+                    <p className="font-semibold">{vision.trim() || PURPOSE_DEFAULTS.purpose_vision}</p>
+                    <p className="text-xs text-slate-600">Visión</p>
                   </div>
                 </div>
               </CardContent>
