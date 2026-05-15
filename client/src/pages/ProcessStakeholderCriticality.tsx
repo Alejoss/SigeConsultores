@@ -2,13 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Trash2, MessageCircle, Upload, Eye, X } from "lucide-react";
+import { ArrowLeft, Trash2, MessageCircle, Upload, Eye } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { AIChatPanel } from "@/components/AIChatPanel";
-import * as XLSX from "xlsx";
+
 
 // Función para auto-expandir textareas
 const autoExpandTextarea = (textarea: HTMLTextAreaElement | null) => {
@@ -109,10 +109,14 @@ export default function ProcessStakeholderCriticality() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
-  const [excelData, setExcelData] = useState<{ headers: string[]; rows: any[][] } | null>(null);
-  const [showExcelModal, setShowExcelModal] = useState(false);
   const [excelFileName, setExcelFileName] = useState<string>("");
+  const [excelUploadStatus, setExcelUploadStatus] = useState<'idle' | 'uploading' | 'saved' | 'error'>('idle');
   const excelInputRef = useRef<HTMLInputElement>(null);
+  const uploadExcelMatrixMutation = trpc.processStakeholderCriticality.uploadExcelMatrix.useMutation();
+  const { data: excelMatrixData, refetch: refetchExcelMatrix } = trpc.processStakeholderCriticality.getExcelMatrix.useQuery(
+    { processId: processId ? parseInt(processId) : 0 },
+    { enabled: !!processId }
+  );
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const aiQueryMutation = trpc.ai.query.useMutation();
   
@@ -463,68 +467,35 @@ export default function ProcessStakeholderCriticality() {
     }
   }, [processId, subprocessMapData, criticalityDataFromDb]);
 
-  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Guardar referencia al nombre ANTES de resetear el input
+    if (!processId) {
+      alert('No hay proceso seleccionado. Por favor regresa y selecciona un proceso.');
+      return;
+    }
     const fileName = file.name;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const arrayBuffer = evt.target?.result;
-        if (!arrayBuffer) {
-          console.error('[Excel] FileReader result is null/undefined');
-          return;
-        }
-        const data = new Uint8Array(arrayBuffer as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-        console.log('[Excel] Sheets:', workbook.SheetNames);
-
-        // Buscar la primera hoja que tenga datos
-        let sheetName = workbook.SheetNames[0];
-        let jsonData: any[][] = [];
-        for (const name of workbook.SheetNames) {
-          const sheet = workbook.Sheets[name];
-          const raw: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-          // Filtrar filas completamente vacías
-          const nonEmpty = raw.filter(row => row.some(cell => cell !== '' && cell !== null && cell !== undefined));
-          console.log(`[Excel] Sheet "${name}": ${raw.length} rows, ${nonEmpty.length} non-empty`);
-          if (nonEmpty.length > 0) {
-            sheetName = name;
-            jsonData = nonEmpty;
-            break;
-          }
-        }
-
-        if (jsonData.length === 0) {
-          console.warn('[Excel] No data found in any sheet');
-          setExcelFileName(fileName);
-          setExcelData({ headers: [], rows: [] });
-          setShowExcelModal(true);
-          return;
-        }
-
-        // La primera fila no vacía son los headers
-        const headers = (jsonData[0] as any[]).map(h => String(h ?? '').trim());
-        const rows = jsonData.slice(1);
-        console.log('[Excel] Headers:', headers);
-        console.log('[Excel] Rows count:', rows.length);
-
-        setExcelFileName(fileName);
-        setExcelData({ headers, rows });
-        setShowExcelModal(true);
-      } catch (err) {
-        console.error('[Excel] Error parsing file:', err);
-        alert('Error al leer el archivo Excel. Por favor verifica que el archivo no esté dañado.');
-      }
-    };
-    reader.onerror = () => {
-      console.error('[Excel] FileReader error');
-      alert('Error al leer el archivo. Por favor intenta de nuevo.');
-    };
-    reader.readAsArrayBuffer(file);
-    // Resetear el input DESPUÉS de iniciar la lectura
-    setTimeout(() => { e.target.value = ''; }, 100);
+    setExcelUploadStatus('uploading');
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      await uploadExcelMatrixMutation.mutateAsync({
+        processId: parseInt(processId),
+        fileName,
+        fileData: Array.from(uint8Array),
+        mimeType: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      setExcelFileName(fileName);
+      setExcelUploadStatus('saved');
+      refetchExcelMatrix();
+      setTimeout(() => setExcelUploadStatus('idle'), 3000);
+    } catch (err) {
+      console.error('[Excel] Error uploading file:', err);
+      setExcelUploadStatus('error');
+      alert('Error al subir el archivo. Por favor intenta de nuevo.');
+      setTimeout(() => setExcelUploadStatus('idle'), 3000);
+    }
+    e.target.value = '';
   };
 
   const handleSave = async () => {
@@ -901,67 +872,46 @@ export default function ProcessStakeholderCriticality() {
               />
               <Button
                 onClick={() => excelInputRef.current?.click()}
+                disabled={excelUploadStatus === 'uploading'}
                 className="bg-green-600 hover:bg-green-700 text-white gap-2 text-sm w-fit"
               >
                 <Upload className="w-4 h-4" />
-                Subir Matriz de criticidad de Asociados de negocio
+                {excelUploadStatus === 'uploading' ? 'Subiendo...' : 'Subir Matriz de criticidad de Asociados de negocio'}
               </Button>
+              {excelUploadStatus === 'saved' && (
+                <p className="text-xs text-green-600 font-medium">✓ Archivo guardado correctamente</p>
+              )}
+              {excelUploadStatus === 'error' && (
+                <p className="text-xs text-red-600 font-medium">✗ Error al subir el archivo</p>
+              )}
               <Button
-                onClick={() => excelData ? setShowExcelModal(true) : excelInputRef.current?.click()}
+                onClick={() => {
+                  const url = excelMatrixData?.url;
+                  if (url) {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = excelMatrixData?.fileName || 'matriz.xlsx';
+                    a.target = '_blank';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  }
+                }}
                 variant="outline"
                 className="gap-2 text-sm w-fit"
-                disabled={!excelData}
+                disabled={!excelMatrixData?.url}
               >
                 <Eye className="w-4 h-4" />
                 Mostrar Matriz de Asociados de negocio
-                {excelFileName && <span className="text-xs text-slate-500 ml-1">({excelFileName})</span>}
+                {(excelMatrixData?.fileName || excelFileName) && (
+                  <span className="text-xs text-slate-500 ml-1">({excelMatrixData?.fileName || excelFileName})</span>
+                )}
               </Button>
               <p className="text-xs text-slate-500 italic">
                 Para el área que aplica, la Matriz subida en Excel debe contener los criterios de criticidad de los Asociados de Negocio y detallar los mismos con su respectiva evaluación de criticidad.
               </p>
             </div>
           </div>
-
-          {/* Modal para mostrar el Excel */}
-          {showExcelModal && excelData && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[85vh] flex flex-col">
-                <div className="flex items-center justify-between p-4 border-b">
-                  <h2 className="text-lg font-bold text-slate-800">Matriz de Partes Interesadas — {excelFileName}</h2>
-                  <Button variant="ghost" size="sm" onClick={() => setShowExcelModal(false)}>
-                    <X className="w-5 h-5" />
-                  </Button>
-                </div>
-                <div className="overflow-auto flex-1 p-4">
-                  {excelData.headers.length === 0 ? (
-                    <div className="text-center py-8 text-slate-500">
-                      <p className="font-medium">No se pudieron leer datos del archivo.</p>
-                      <p className="text-sm mt-1">Verifica que el archivo Excel tenga datos en la primera hoja y no esté protegido.</p>
-                    </div>
-                  ) : (
-                  <table className="w-full border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-green-600 text-white">
-                        {excelData.headers.map((h, i) => (
-                          <th key={i} className="border border-slate-300 px-2 py-1 text-left whitespace-nowrap">{h || `Col ${i+1}`}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {excelData.rows.map((row, ri) => (
-                        <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                          {excelData.headers.map((_, ci) => (
-                            <td key={ci} className="border border-slate-200 px-2 py-1">{String(row[ci] ?? '')}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
 
 
           <div className="mb-6 p-4 bg-slate-50 rounded-lg">

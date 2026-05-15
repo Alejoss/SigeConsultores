@@ -1335,3 +1335,18 @@ export const inspectionFiles = mysqlTable("inspectionFiles", {
 });
 export type InspectionFile = typeof inspectionFiles.$inferSelect;
 export type InsertInspectionFile = typeof inspectionFiles.$inferInsert;
+
+/**
+ * Process Stakeholder Matrix File - Stores the uploaded Excel matrix file for each process
+ */
+export const processStakeholderMatrixFiles = mysqlTable("processStakeholderMatrixFiles", {
+  id: int("id").autoincrement().primaryKey(),
+  processId: int("processId").notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileKey: text("fileKey").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ProcessStakeholderMatrixFile = typeof processStakeholderMatrixFiles.$inferSelect;
+export type InsertProcessStakeholderMatrixFile = typeof processStakeholderMatrixFiles.$inferInsert;
