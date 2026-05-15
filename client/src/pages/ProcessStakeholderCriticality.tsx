@@ -783,7 +783,7 @@ export default function ProcessStakeholderCriticality() {
   }
 
   return (
-    <div className="space-y-6 p-6 bg-white min-h-screen">
+    <div className="space-y-6 p-6 bg-white min-h-screen" translate="no">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-blue-900">MATRIZ DE CRITICIDAD DE ASOCIADOS DE NEGOCIO</h1>
