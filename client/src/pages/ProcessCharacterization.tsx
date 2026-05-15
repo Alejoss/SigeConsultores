@@ -27,7 +27,7 @@ const CHARACTERIZATION_MODULES = [
   { id: "participantes", label: "Participantes", icon: "👥" },
   { id: "recursos", label: "Recursos", icon: "📦" },
   { id: "subprocesos", label: "Mapa de\nSubprocesos", icon: "📊" },
-  { id: "criticidad", label: "Criticidad\nPartes Interesadas", icon: "⚠️" },
+  { id: "criticidad", label: "Matriz de\nPartes Interesadas", icon: "⚠️" },
   { id: "foda", label: "FODA", icon: "🎯" },
   { id: "matriz", label: "Matriz", icon: "📋" },
   { id: "objetivos", label: "Objetivos\nTácticos", icon: "🎪" },

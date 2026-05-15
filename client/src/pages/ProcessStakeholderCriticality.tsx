@@ -724,7 +724,7 @@ export default function ProcessStakeholderCriticality() {
   const exportToPDF = () => {
     try {
       // Crear tabla HTML para exportar
-      let htmlContent = '<h1>MATRIZ DE CRITICIDAD DE ASOCIADOS DE NEGOCIO</h1>';
+      let htmlContent = '<h1>MATRIZ DE PARTES INTERESADAS</h1>';
       htmlContent += '<p>Fecha: ' + new Date().toLocaleDateString('es-ES') + '</p>';
       htmlContent += '<table border="1" cellpadding="8" cellspacing="0" style="width:100%; border-collapse:collapse;">';
       htmlContent += '<thead><tr style="background-color:#0066cc; color:white;">';
@@ -786,7 +786,7 @@ export default function ProcessStakeholderCriticality() {
     <div className="space-y-6 p-6 bg-white min-h-screen" translate="no">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-blue-900">MATRIZ DE CRITICIDAD DE ASOCIADOS DE NEGOCIO</h1>
+          <h1 className="text-3xl font-bold text-blue-900">MATRIZ DE PARTES INTERESADAS</h1>
           <p className="text-sm text-slate-600 mt-1">
             {saveStatus === 'saving' && '💾 Guardando cambios...'}
             {saveStatus === 'saved' && '✓ Cambios guardados'}
@@ -823,7 +823,7 @@ export default function ProcessStakeholderCriticality() {
       {showAIChat && (
         <div className="fixed right-6 top-24 w-96 max-h-96 z-50">
           <AIChatPanel
-            title="Asesor Criticidad"
+            title="Asesor Partes Interesadas"
             placeholder="¿Qué quieres saber sobre criticidad?"
             onSendMessage={handleAIQuery}
             onClose={() => setShowAIChat(false)}
@@ -870,7 +870,7 @@ export default function ProcessStakeholderCriticality() {
                 className="bg-green-600 hover:bg-green-700 text-white gap-2 text-sm"
               >
                 <Upload className="w-4 h-4" />
-                Subir matriz de partes interesadas
+                Subir Matriz de criticidad de Asociados de negocio
               </Button>
               <Button
                 onClick={() => excelData ? setShowExcelModal(true) : excelInputRef.current?.click()}
@@ -879,9 +879,12 @@ export default function ProcessStakeholderCriticality() {
                 disabled={!excelData}
               >
                 <Eye className="w-4 h-4" />
-                Mostrar matriz de partes interesadas
+                Mostrar Matriz de Asociados de negocio
                 {excelFileName && <span className="text-xs text-slate-500 ml-1">({excelFileName})</span>}
               </Button>
+              <p className="text-xs text-slate-500 italic max-w-xs">
+                La Matriz subida en Excel debe contener los criterios de criticidad de los Asociados de Negocio y detallar los mismos con su respectiva evaluación de criticidad.
+              </p>
             </div>
           </div>
 
@@ -945,7 +948,8 @@ export default function ProcessStakeholderCriticality() {
             <p className="text-sm text-slate-600 mt-2">{data.stakeholders.filter(s => s.completed === "Si").length} de {data.stakeholders.length} completados</p>
           </div>
 
-          <div className="mb-8 overflow-x-auto">
+          {/* Sección ASOCIADOS DE NEGOCIO eliminada según solicitud del usuario */}
+          <div className="mb-8 overflow-x-auto" style={{display:'none'}}>
             <h3 className="text-lg font-bold text-blue-900 mb-4">ASOCIADOS DE NEGOCIO</h3>
             <table className="w-full border-collapse text-xs">
               <thead>
@@ -1129,7 +1133,7 @@ export default function ProcessStakeholderCriticality() {
           </div>
 
           <div className="mb-8 overflow-x-auto">
-            <h3 className="text-lg font-bold text-blue-900 mb-4">ACCIONES Y SEGUIMIENTO</h3>
+            <h3 className="text-lg font-bold text-blue-900 mb-4">MEJORA CONTINUA ENTRE PARTES INTERESADAS</h3>
             <table className="w-full border-collapse text-xs">
               <thead>
                 <tr className="bg-green-500 text-white">
