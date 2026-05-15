@@ -8,6 +8,7 @@ import { useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { AIChatPanel } from "@/components/AIChatPanel";
+import * as XLSX from "xlsx";
 
 // Función para auto-expandir textareas
 const autoExpandTextarea = (textarea: HTMLTextAreaElement | null) => {
@@ -469,9 +470,7 @@ export default function ProcessStakeholderCriticality() {
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        // Dynamically import xlsx to parse the file
-        import('xlsx').then((XLSX) => {
-          const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
           const sheetName = workbook.SheetNames[0];
           const sheet = workbook.Sheets[sheetName];
@@ -481,7 +480,6 @@ export default function ProcessStakeholderCriticality() {
           const rows = jsonData.slice(1);
           setExcelData({ headers, rows });
           setShowExcelModal(true);
-        });
       } catch (err) {
         console.error('Error parsing Excel:', err);
       }
