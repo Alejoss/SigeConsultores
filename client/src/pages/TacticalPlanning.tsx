@@ -121,6 +121,13 @@ export default function TacticalPlanning() {
       console.log('[TacticalPlanning] No tactical objectives data');
       return;
     }
+    
+    // Esperar a que planningDataFromDB también haya respondido (puede ser [] si no hay datos)
+    // undefined significa que el query aún no terminó; [] significa que terminó pero no hay datos
+    if (planningDataFromDB === undefined) {
+      console.log('[TacticalPlanning] Waiting for planningDataFromDB...');
+      return;
+    }
 
     console.log('[TacticalPlanning] Loaded tactical objectives:', tacticalObjectivesData);
     console.log('[TacticalPlanning] Planning data from DB:', planningDataFromDB);
@@ -174,7 +181,7 @@ export default function TacticalPlanning() {
         unidadMedida: p.unidadMedida,
       })));
     }
-  }, [tacticalObjectivesData]);
+  }, [tacticalObjectivesData, planningDataFromDB]);
 
   // Auto-save to localStorage every 500ms (faster feedback)
   useEffect(() => {
@@ -528,6 +535,11 @@ export default function TacticalPlanning() {
             category: planning.category,
             goal: typeof planning.goal === 'string' ? planning.goal : String(planning.goal || ''),
             resultKeys: planning.resultKeys,
+            ponderacion: planning.ponderacion || 0,
+            puntoPartida: planning.puntoPartida || 0,
+            metaLlegada: planning.metaLlegada || 0,
+            unidadMedida: planning.unidadMedida || '',
+            avanceMeta: planning.avanceMeta || 0,
           }
         ).catch(error => ({ success: false, error }))
       );
