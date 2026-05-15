@@ -245,7 +245,7 @@ export default function TacticalPlanning() {
   }, [plannings, processId, savePlanningMutation]);
 
   const updatePlanning = (id: string, field: string, value: any) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === id) {
         const updated = { ...p, [field]: value };
         if (field === 'avanceMeta' || field === 'puntoPartida' || field === 'metaLlegada') {
@@ -266,7 +266,7 @@ export default function TacticalPlanning() {
   };
 
   const toggleExpanded = (id: string) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === id) {
         return { ...p, expanded: !p.expanded };
       }
@@ -275,7 +275,7 @@ export default function TacticalPlanning() {
   };
 
   const addResultKey = (planningId: string) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === planningId) {
         const newResultKey: ResultKey = {
           id: Date.now().toString(),
@@ -345,7 +345,7 @@ export default function TacticalPlanning() {
   };
 
   const updateResultKey = (planningId: string, resultKeyId: string, field: string, value: any) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === planningId) {
         return {
           ...p,
@@ -369,7 +369,7 @@ export default function TacticalPlanning() {
   };
 
   const deleteResultKey = (planningId: string, resultKeyId: string) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === planningId) {
         return {
           ...p,
@@ -381,7 +381,7 @@ export default function TacticalPlanning() {
   };
 
   const addTask = (planningId: string, resultKeyId: string) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === planningId) {
         return {
           ...p,
@@ -406,7 +406,7 @@ export default function TacticalPlanning() {
   };
 
   const updateTask = (planningId: string, resultKeyId: string, taskId: string, field: string, value: any) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === planningId) {
         return {
           ...p,
@@ -437,7 +437,7 @@ export default function TacticalPlanning() {
   };
 
   const deleteTask = (planningId: string, resultKeyId: string, taskId: string) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === planningId) {
         return {
           ...p,
