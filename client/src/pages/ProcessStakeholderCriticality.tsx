@@ -838,10 +838,24 @@ export default function ProcessStakeholderCriticality() {
           <CardTitle>Proceso: {processName}</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Fila compacta: Matriz de Criticidad + botones Excel */}
-          <div className="mb-4 flex flex-wrap items-start gap-4">
-            {/* Botones Excel */}
-            <div className="flex flex-col gap-2 justify-start">
+          {/* Fila superior: dos columnas */}
+          <div className="mb-6 flex flex-wrap gap-4">
+            {/* Columna izquierda: Nota interconexión + botón Cargar */}
+            <div className="flex-1 min-w-[280px] p-4 bg-blue-50 border border-blue-200 rounded-lg flex flex-col gap-3 justify-start">
+              <p className="text-sm text-blue-900">
+                <strong>Nota:</strong> Esta matriz está interconectada con el Mapa de Subprocesos. Puedes cargar automáticamente los asociados de negocio desde el Mapa de Subprocesos.
+              </p>
+              <Button
+                onClick={loadStakeholdersFromSubprocessMap}
+                className="bg-blue-600 hover:bg-blue-700 text-white gap-2 w-fit"
+                disabled={isLoadingSubprocessMap}
+              >
+                {isLoadingSubprocessMap ? "Cargando..." : "Cargar Partes Interesadas"}
+              </Button>
+            </div>
+
+            {/* Columna derecha: Botones Excel + Nota */}
+            <div className="flex-1 min-w-[280px] p-4 bg-slate-50 border border-slate-200 rounded-lg flex flex-col gap-2 justify-start">
               <input
                 ref={excelInputRef}
                 type="file"
@@ -851,7 +865,7 @@ export default function ProcessStakeholderCriticality() {
               />
               <Button
                 onClick={() => excelInputRef.current?.click()}
-                className="bg-green-600 hover:bg-green-700 text-white gap-2 text-sm"
+                className="bg-green-600 hover:bg-green-700 text-white gap-2 text-sm w-fit"
               >
                 <Upload className="w-4 h-4" />
                 Subir Matriz de criticidad de Asociados de negocio
@@ -859,15 +873,15 @@ export default function ProcessStakeholderCriticality() {
               <Button
                 onClick={() => excelData ? setShowExcelModal(true) : excelInputRef.current?.click()}
                 variant="outline"
-                className="gap-2 text-sm"
+                className="gap-2 text-sm w-fit"
                 disabled={!excelData}
               >
                 <Eye className="w-4 h-4" />
                 Mostrar Matriz de Asociados de negocio
                 {excelFileName && <span className="text-xs text-slate-500 ml-1">({excelFileName})</span>}
               </Button>
-              <p className="text-xs text-slate-500 italic max-w-xs">
-                La Matriz subida en Excel debe contener los criterios de criticidad de los Asociados de Negocio y detallar los mismos con su respectiva evaluación de criticidad.
+              <p className="text-xs text-slate-500 italic">
+                Para el área que aplica, la Matriz subida en Excel debe contener los criterios de criticidad de los Asociados de Negocio y detallar los mismos con su respectiva evaluación de criticidad.
               </p>
             </div>
           </div>
@@ -906,18 +920,6 @@ export default function ProcessStakeholderCriticality() {
             </div>
           )}
 
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-900 mb-3">
-              <strong>Nota:</strong> Esta matriz está interconectada con el Mapa de Subprocesos. Puedes cargar automáticamente los asociados de negocio desde el Mapa de Subprocesos.
-            </p>
-            <Button
-              onClick={loadStakeholdersFromSubprocessMap}
-              className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
-              disabled={isLoadingSubprocessMap}
-            >
-              {isLoadingSubprocessMap ? "Cargando..." : "Cargar Asociados del Mapa de Subprocesos"}
-            </Button>
-          </div>
 
           <div className="mb-6 p-4 bg-slate-50 rounded-lg">
             <h3 className="font-bold mb-2">Porcentaje de Cumplimiento</h3>
