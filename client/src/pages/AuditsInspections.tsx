@@ -76,6 +76,16 @@ export default function AuditsInspections() {
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLocation("/dashboard")}
+              className="flex items-center gap-2"
+            >
+              ← Volver
+            </Button>
+          </div>
           <h1 className="text-2xl font-bold text-slate-800">Auditorías e Inspecciones</h1>
           <p className="text-slate-500 mt-1">
             Con ellas se busca garantizar conformidad, mitigar riesgos y mejorar continuamente.
