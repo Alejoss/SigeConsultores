@@ -6,7 +6,7 @@ import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Download } from 'lucid
 import { toast } from "sonner";
 import { exportTacticalObjectivesToPDF } from "@/lib/exportTacticalObjectivesToPDF";
 import { trpc } from "@/lib/trpc";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 
 
@@ -482,7 +482,7 @@ export default function TacticalPlanning() {
     return Math.ceil(daysMs / (1000 * 60 * 60 * 24));
   };
 
-  const calculateIndicators = () => {
+  const indicators = useMemo(() => {
     if (plannings.length === 0) return { metaAlcanzada: 0, alcanzadoPorOO: 0, alcanzadoPorTareas: 0, isEfficient: false };
     
     // Calculate % Meta Alcanzada = (Meta de OT x Ponderacion OT) sumado para todos los OT
@@ -494,7 +494,15 @@ export default function TacticalPlanning() {
     
     plannings.forEach(planning => {
       const ponderacion = planning.ponderacion || 0;
-      const porcentajeMetaAlcanzado = planning.porcentajeMetaAlcanzado || 0;
+      // Usar el porcentajeMetaAlcanzado almacenado, o recalcularlo si es 0 y hay datos
+      let porcentajeMetaAlcanzado = planning.porcentajeMetaAlcanzado ?? 0;
+      if (porcentajeMetaAlcanzado === 0 && planning.metaLlegada !== planning.puntoPartida) {
+        const avanceMeta = planning.avanceMeta || 0;
+        const puntoPartida = planning.puntoPartida || 0;
+        const metaLlegada = planning.metaLlegada || 0;
+        porcentajeMetaAlcanzado = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
+        porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
+      }
       const avanceOO = calculateObjectiveCompletion(planning);
       const avanceTareas = calculateOTTasksAverage(planning);
       
@@ -516,9 +524,7 @@ export default function TacticalPlanning() {
     const isEfficient = alcanzadoPorOO < metaAlcanzada;
     
     return { metaAlcanzada, alcanzadoPorOO, alcanzadoPorTareas, isEfficient };
-  };
-
-  const indicators = calculateIndicators();
+  }, [plannings]);
   const handleBack = () => {
     setLocation('/process-tactical-objectives');
   };
