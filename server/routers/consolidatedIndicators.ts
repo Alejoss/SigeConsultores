@@ -70,30 +70,41 @@ export const consolidatedIndicatorsRouter = router({
           }
         }
 
-           // Get Objetivos Tácticos - % Meta Alcanzada
+           // Get Objetivos Tácticos - % Meta Alcanzada (promedio ponderado)
+        // Fórmula: suma(porcentajeMetaAlcanzado_i × ponderacion_i / 100) para cada objetivo
+        // porcentajeMetaAlcanzado_i = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) × 100
         const tacticalObjectives = await db.select().from(processTacticalObjectives)
           .where(eq(processTacticalObjectives.processId, input.processId));
         
         let objetivosTacticosMetaAlcanzada = 0;
         if (tacticalObjectives.length > 0) {
-          let totalMetaAlcanzada = 0;
-          let objectiveCount = 0;
+          let totalPonderado = 0;
 
           tacticalObjectives.forEach((obj: any) => {
             if (obj.planningData) {
               try {
                 const planningData = JSON.parse(obj.planningData);
-                // Extract metaAlcanzada from planningData (this is the % Meta Alcanzada value)
-                const metaAlcanzada = planningData.metaAlcanzada || 0;
-                totalMetaAlcanzada += metaAlcanzada;
-                objectiveCount += 1;
+                const ponderacion = parseFloat(planningData.ponderacion) || 0;
+                const puntoPartida = parseFloat(planningData.puntoPartida) || 0;
+                const metaLlegada = parseFloat(planningData.metaLlegada) || 0;
+                const avanceMeta = parseFloat(planningData.avanceMeta) || 0;
+                
+                // Calcular % Meta Alcanzada igual que en el frontend
+                let porcentajeMetaAlcanzado = 0;
+                if (metaLlegada !== puntoPartida) {
+                  porcentajeMetaAlcanzado = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
+                  porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
+                }
+                
+                // Acumular promedio ponderado: porcentaje × (ponderacion / 100)
+                totalPonderado += porcentajeMetaAlcanzado * (ponderacion / 100);
               } catch (e) {
                 console.error("Error parsing planning data:", e);
               }
             }
           });
           
-          objetivosTacticosMetaAlcanzada = objectiveCount > 0 ? Math.round(totalMetaAlcanzada / objectiveCount) : 0;
+          objetivosTacticosMetaAlcanzada = Math.round(totalPonderado);
         }
 
         // Get Cumplimientos - % Promedio de cumplimiento
@@ -141,7 +152,7 @@ export const consolidatedIndicatorsRouter = router({
           {
             id: "alcanzado",
             name: "Objetivos tácticos (Planificación)",
-            indicator: "% Meta Alcanzada",
+            indicator: "% Alcanzado",
             value: objetivosTacticosMetaAlcanzada,
             performance: objetivosTacticosMetaAlcanzada
           },
