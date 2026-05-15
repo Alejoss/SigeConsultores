@@ -103,6 +103,7 @@ import { fodasRouter } from "./routers/fodasRouter";
 import { matrixFODAPDFRouter } from "./routers/matrixFODAPDF";
 import { resourcesPDFRouter } from "./routers/resourcesPDF";
 import { organizationChartRouter } from "./routers/organizationChart";
+import { auditsInspectionsRouter } from "./routers/auditsInspections";
 
 // Module Customization Router
 const moduleCustomizationRouter = router({
@@ -844,6 +845,7 @@ export const appRouter = router({
   moduleCustomization: moduleCustomizationRouter,
   hierarchicalAccess: hierarchicalAccessRouter,
   documents: documentsRouter,
+  auditsInspections: auditsInspectionsRouter,
 
   testEmail: adminProcedure
     .input(z.object({

@@ -74,6 +74,10 @@ import ProcessLeaderAccessSuccess from "./pages/ProcessLeaderAccessSuccess";
 import ProcessLeaderInvitationLink from "./pages/ProcessLeaderInvitationLink";
 import ManagerEditProfile from "./pages/ManagerEditProfile";
 import OrganizationChart from "./pages/OrganizationChart";
+import AuditsInspections from "./pages/AuditsInspections";
+import ManagementSystems from "./pages/ManagementSystems";
+import AuditControl from "./pages/AuditControl";
+import InspectionControl from "./pages/InspectionControl";
 
 // Redirige la raíz: invitación gerente, jefe de proceso, gerente ya logueado, o /login
 function RootRedirect() {
@@ -198,6 +202,10 @@ function Router() {
       <Route path={"/process-leader-invitation-link"} component={ProcessLeaderInvitationLink} />
       <Route path={"/manager-edit-profile"} component={ManagerEditProfile} />
       <Route path={"/organization-chart"} component={OrganizationChart} />
+      <Route path={"/audits-inspections"} component={AuditsInspections} />
+      <Route path={"/audits-inspections/management-systems"} component={ManagementSystems} />
+      <Route path={"/audits-inspections/audits"} component={AuditControl} />
+      <Route path={"/audits-inspections/inspections"} component={InspectionControl} />
 
       <Route path={"/home"} component={Home} />
       <Route path={"/404"} component={NotFound} />
