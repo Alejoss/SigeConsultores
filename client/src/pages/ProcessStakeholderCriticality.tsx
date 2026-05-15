@@ -866,7 +866,7 @@ export default function ProcessStakeholderCriticality() {
               <input
                 ref={excelInputRef}
                 type="file"
-                accept=".xlsx,.xls,.csv"
+                accept="*"
                 style={{ display: 'none' }}
                 onChange={handleExcelUpload}
               />
