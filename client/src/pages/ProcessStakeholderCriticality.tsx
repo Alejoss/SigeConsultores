@@ -840,24 +840,8 @@ export default function ProcessStakeholderCriticality() {
         <CardContent>
           {/* Fila compacta: Matriz de Criticidad + botones Excel */}
           <div className="mb-4 flex flex-wrap items-start gap-4">
-            {/* Matriz compacta */}
-            <div className="p-3 bg-slate-100 rounded-lg flex-shrink-0">
-              <p className="text-xs font-bold text-slate-700 mb-1">Matriz de Criticidad (Incidencia × Riesgo)</p>
-              <p className="text-[10px] text-slate-500 mb-1">Incidencia: 3=Alto, 2=Medio, 1=Bajo | Riesgo: C=Bajo, B=Medio, A=Alto</p>
-              <div className="grid grid-cols-3 gap-1" style={{fontSize:'10px', width:'300px'}}>
-                <div className="bg-red-900 text-white px-1 py-0.5 rounded text-center font-bold">3A=Crítico</div>
-                <div className="bg-red-500 text-white px-1 py-0.5 rounded text-center font-bold">3B=Alto</div>
-                <div className="bg-yellow-400 text-black px-1 py-0.5 rounded text-center font-bold">3C=Medio</div>
-                <div className="bg-red-500 text-white px-1 py-0.5 rounded text-center font-bold">2A=Alto</div>
-                <div className="bg-orange-400 text-white px-1 py-0.5 rounded text-center font-bold">2B=Medio-Alto</div>
-                <div className="bg-yellow-200 text-black px-1 py-0.5 rounded text-center font-bold">2C=Bajo</div>
-                <div className="bg-yellow-400 text-black px-1 py-0.5 rounded text-center font-bold">1A=Medio</div>
-                <div className="bg-yellow-200 text-black px-1 py-0.5 rounded text-center font-bold">1B=Bajo</div>
-                <div className="bg-green-500 text-white px-1 py-0.5 rounded text-center font-bold">1C=Muy Bajo</div>
-              </div>
-            </div>
             {/* Botones Excel */}
-            <div className="flex flex-col gap-2 justify-center pt-2">
+            <div className="flex flex-col gap-2 justify-start">
               <input
                 ref={excelInputRef}
                 type="file"
