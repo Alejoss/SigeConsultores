@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Trash2, MessageCircle } from "lucide-react";
+import { ArrowLeft, Trash2, MessageCircle, Upload, Eye, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -108,6 +108,10 @@ export default function ProcessStakeholderCriticality() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [excelData, setExcelData] = useState<{ headers: string[]; rows: any[][] } | null>(null);
+  const [showExcelModal, setShowExcelModal] = useState(false);
+  const [excelFileName, setExcelFileName] = useState<string>("");
+  const excelInputRef = useRef<HTMLInputElement>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const aiQueryMutation = trpc.ai.query.useMutation();
   
@@ -458,6 +462,35 @@ export default function ProcessStakeholderCriticality() {
     }
   }, [processId, subprocessMapData, criticalityDataFromDb]);
 
+  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setExcelFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        // Dynamically import xlsx to parse the file
+        import('xlsx').then((XLSX) => {
+          const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          if (jsonData.length === 0) return;
+          const headers = (jsonData[0] as any[]).map(h => String(h ?? ''));
+          const rows = jsonData.slice(1);
+          setExcelData({ headers, rows });
+          setShowExcelModal(true);
+        });
+      } catch (err) {
+        console.error('Error parsing Excel:', err);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    // Reset input so the same file can be re-uploaded
+    e.target.value = '';
+  };
+
   const handleSave = async () => {
     if (isSaving) return; // Evitar múltiples guardados simultáneos
     setIsSaving(true);
@@ -805,21 +838,86 @@ export default function ProcessStakeholderCriticality() {
           <CardTitle>Proceso: {processName}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-6 p-4 bg-slate-100 rounded-lg">
-            <h3 className="font-bold mb-2">Matriz de Criticidad (Incidencia × Riesgo):</h3>
-            <p className="text-xs text-slate-600 mb-2">Incidencia: 3=Alto, 2=Medio, 1=Bajo | Riesgo: C=Bajo, B=Medio, A=Alto</p>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <div className="bg-red-900 text-white p-2 rounded text-center font-bold">3A = Crítico</div>
-              <div className="bg-red-500 text-white p-2 rounded text-center font-bold">3B = Alto</div>
-              <div className="bg-yellow-400 text-black p-2 rounded text-center font-bold">3C = Medio</div>
-              <div className="bg-red-500 text-white p-2 rounded text-center font-bold">2A = Alto</div>
-              <div className="bg-orange-400 text-white p-2 rounded text-center font-bold">2B = Medio-Alto</div>
-              <div className="bg-yellow-200 text-black p-2 rounded text-center font-bold">2C = Bajo</div>
-              <div className="bg-yellow-400 text-black p-2 rounded text-center font-bold">1A = Medio</div>
-              <div className="bg-yellow-200 text-black p-2 rounded text-center font-bold">1B = Bajo</div>
-              <div className="bg-green-500 text-white p-2 rounded text-center font-bold">1C = Muy Bajo</div>
+          {/* Fila compacta: Matriz de Criticidad + botones Excel */}
+          <div className="mb-4 flex flex-wrap items-start gap-4">
+            {/* Matriz compacta */}
+            <div className="p-3 bg-slate-100 rounded-lg flex-shrink-0">
+              <p className="text-xs font-bold text-slate-700 mb-1">Matriz de Criticidad (Incidencia × Riesgo)</p>
+              <p className="text-[10px] text-slate-500 mb-1">Incidencia: 3=Alto, 2=Medio, 1=Bajo | Riesgo: C=Bajo, B=Medio, A=Alto</p>
+              <div className="grid grid-cols-3 gap-1" style={{fontSize:'10px', width:'300px'}}>
+                <div className="bg-red-900 text-white px-1 py-0.5 rounded text-center font-bold">3A=Crítico</div>
+                <div className="bg-red-500 text-white px-1 py-0.5 rounded text-center font-bold">3B=Alto</div>
+                <div className="bg-yellow-400 text-black px-1 py-0.5 rounded text-center font-bold">3C=Medio</div>
+                <div className="bg-red-500 text-white px-1 py-0.5 rounded text-center font-bold">2A=Alto</div>
+                <div className="bg-orange-400 text-white px-1 py-0.5 rounded text-center font-bold">2B=Medio-Alto</div>
+                <div className="bg-yellow-200 text-black px-1 py-0.5 rounded text-center font-bold">2C=Bajo</div>
+                <div className="bg-yellow-400 text-black px-1 py-0.5 rounded text-center font-bold">1A=Medio</div>
+                <div className="bg-yellow-200 text-black px-1 py-0.5 rounded text-center font-bold">1B=Bajo</div>
+                <div className="bg-green-500 text-white px-1 py-0.5 rounded text-center font-bold">1C=Muy Bajo</div>
+              </div>
+            </div>
+            {/* Botones Excel */}
+            <div className="flex flex-col gap-2 justify-center pt-2">
+              <input
+                ref={excelInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={handleExcelUpload}
+              />
+              <Button
+                onClick={() => excelInputRef.current?.click()}
+                className="bg-green-600 hover:bg-green-700 text-white gap-2 text-sm"
+              >
+                <Upload className="w-4 h-4" />
+                Subir matriz de partes interesadas
+              </Button>
+              <Button
+                onClick={() => excelData ? setShowExcelModal(true) : excelInputRef.current?.click()}
+                variant="outline"
+                className="gap-2 text-sm"
+                disabled={!excelData}
+              >
+                <Eye className="w-4 h-4" />
+                Mostrar matriz de partes interesadas
+                {excelFileName && <span className="text-xs text-slate-500 ml-1">({excelFileName})</span>}
+              </Button>
             </div>
           </div>
+
+          {/* Modal para mostrar el Excel */}
+          {showExcelModal && excelData && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[85vh] flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h2 className="text-lg font-bold text-slate-800">Matriz de Partes Interesadas — {excelFileName}</h2>
+                  <Button variant="ghost" size="sm" onClick={() => setShowExcelModal(false)}>
+                    <X className="w-5 h-5" />
+                  </Button>
+                </div>
+                <div className="overflow-auto flex-1 p-4">
+                  <table className="w-full border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-green-600 text-white">
+                        {excelData.headers.map((h, i) => (
+                          <th key={i} className="border border-slate-300 px-2 py-1 text-left whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {excelData.rows.map((row, ri) => (
+                        <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                          {excelData.headers.map((_, ci) => (
+                            <td key={ci} className="border border-slate-200 px-2 py-1">{String(row[ci] ?? '')}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-900 mb-3">
