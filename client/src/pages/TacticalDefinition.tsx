@@ -45,6 +45,8 @@ export default function TacticalDefinition() {
   const [lastSaved, setLastSaved] = useState<string>("");
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialLoadRef = useRef(false);
+  // Ref para mantener siempre la referencia más reciente a objectives y evitar stale closure en autoSave
+  const objectivesRef = useRef<TacticalObjectiveDefinition[]>([]);
 
   // Get utils for query invalidation (like SubprocessMap does)
   const utils = trpc.useUtils();
@@ -178,6 +180,12 @@ export default function TacticalDefinition() {
     return true;
   };
 
+  // Mantener objectivesRef sincronizado con el estado objectives
+  // Esto permite que autoSave siempre use los valores más recientes sin stale closure
+  useEffect(() => {
+    objectivesRef.current = objectives;
+  }, [objectives]);
+
   // Auto-save with debounce (like SubprocessMap does)
   // NOTE: Auto-save should NOT validate - only save dirty changes
   // Validation is only for manual save
@@ -193,7 +201,8 @@ export default function TacticalDefinition() {
 
   // Internal save logic
   const handleSaveInternal = async () => {
-    const dirtyObjectives = objectives.filter(obj => obj.isDirty);
+    // Usar objectivesRef.current para evitar el stale closure del debounce
+    const dirtyObjectives = objectivesRef.current.filter(obj => obj.isDirty);
     
     if (dirtyObjectives.length === 0) {
       toast.info("No hay cambios para guardar", { duration: 2000 });
@@ -205,7 +214,7 @@ export default function TacticalDefinition() {
 
     try {
       for (const obj of dirtyObjectives) {
-        if (obj.isNew) {
+        if (obj.isNew && !obj.dbId) {
           // Create new objective
           await createMutation.mutateAsync({
             processId: processId!,
@@ -324,7 +333,7 @@ export default function TacticalDefinition() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 p-4" translate="no">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
