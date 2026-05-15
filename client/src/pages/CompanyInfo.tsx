@@ -118,19 +118,20 @@ export default function CompanyInfo() {
   }, [companyInfo]);
 
   // Guardado automático con debounce
-  const autoSave = () => {
+  // Se pasan los valores actuales como parámetros para evitar el problema de closure stale
+  const autoSave = (currentProposito: string, currentMision: string, currentVision: string) => {
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current);
     }
 
     autoSaveTimeoutRef.current = setTimeout(() => {
-      if (companyId && (proposito.trim() || mision.trim() || vision.trim())) {
+      if (companyId && (currentProposito.trim() || currentMision.trim() || currentVision.trim())) {
         setIsSaving(true);
         updateMutation.mutate({
           companyId,
-          proposito: proposito || undefined,
-          mision: mision || undefined,
-          vision: vision || undefined,
+          proposito: currentProposito || undefined,
+          mision: currentMision || undefined,
+          vision: currentVision || undefined,
         });
       }
     }, 1500); // Esperar 1.5 segundos después de dejar de escribir
@@ -276,8 +277,9 @@ export default function CompanyInfo() {
                   placeholder={`Describe el ${labels.proposito.toLowerCase()} fundamental de tu empresa...`}
                   value={proposito}
                   onChange={(e) => {
-                    setProposito(e.target.value);
-                    autoSave();
+                    const newValue = e.target.value;
+                    setProposito(newValue);
+                    autoSave(newValue, mision, vision);
                   }}
                   className="resize-none overflow-hidden"
                 />
@@ -295,8 +297,9 @@ export default function CompanyInfo() {
                   placeholder={`Describe la ${labels.mision.toLowerCase()} de tu empresa...`}
                   value={mision}
                   onChange={(e) => {
-                    setMision(e.target.value);
-                    autoSave();
+                    const newValue = e.target.value;
+                    setMision(newValue);
+                    autoSave(proposito, newValue, vision);
                   }}
                   className="resize-none overflow-hidden"
                 />
@@ -314,8 +317,9 @@ export default function CompanyInfo() {
                   placeholder={`Describe la ${labels.vision.toLowerCase()} futura de tu empresa...`}
                   value={vision}
                   onChange={(e) => {
-                    setVision(e.target.value);
-                    autoSave();
+                    const newValue = e.target.value;
+                    setVision(newValue);
+                    autoSave(proposito, mision, newValue);
                   }}
                   className="resize-none overflow-hidden"
                 />
