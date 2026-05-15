@@ -4,8 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import { PasswordInput } from "@/components/PasswordInput";
 import { trpc } from "@/lib/trpc";
+import { getApiErrorMessage, PASSWORD_HINT, validatePasswordStrength } from "@/lib/password";
+import { PasswordRequirements } from "@/components/PasswordRequirements";
 
 export default function SetupCompany() {
   const [, setLocation] = useLocation();
@@ -13,8 +16,6 @@ export default function SetupCompany() {
   const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -27,8 +28,8 @@ export default function SetupCompany() {
       // Redirect to home after successful setup
       setLocation("/");
     },
-    onError: (error: any) => {
-      setError(error?.message || "Error al completar la configuración");
+    onError: (error: unknown) => {
+      setError(getApiErrorMessage(error, "Error al completar la configuración"));
       setIsLoading(false);
     },
   });
@@ -46,20 +47,9 @@ export default function SetupCompany() {
       setError("Por favor ingresa una contraseña");
       return false;
     }
-    if (password.length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres");
-      return false;
-    }
-    if (!/[A-Z]/.test(password)) {
-      setError("La contraseña debe contener al menos una mayúscula");
-      return false;
-    }
-    if (!/[a-z]/.test(password)) {
-      setError("La contraseña debe contener al menos una minúscula");
-      return false;
-    }
-    if (!/[0-9]/.test(password)) {
-      setError("La contraseña debe contener al menos un número");
+    const strength = validatePasswordStrength(password);
+    if (!strength.valid) {
+      setError(strength.message!);
       return false;
     }
     if (password !== confirmPassword) {
@@ -155,57 +145,26 @@ export default function SetupCompany() {
 
             <div>
               <label className="block text-sm font-medium mb-1">Contraseña</label>
-              <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Contraseña robusta"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  disabled={isLoading}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Debe contener mayúsculas, minúsculas y números
-              </p>
+              <PasswordInput
+                placeholder="Contraseña robusta"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">{PASSWORD_HINT}</p>
+              <PasswordRequirements className="mt-2" />
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-1">Confirmar Contraseña</label>
-              <div className="relative">
-                <Input
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirma tu contraseña"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={isLoading}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  disabled={isLoading}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
+              <PasswordInput
+                placeholder="Confirma tu contraseña"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={isLoading}
+                required
+              />
             </div>
 
             <Button

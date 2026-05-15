@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/PasswordInput";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { getApiErrorMessage, PASSWORD_HINT, validatePasswordStrength } from "@/lib/password";
+import { PasswordRequirements } from "@/components/PasswordRequirements";
 
 export default function ChangePassword() {
   const [, setLocation] = useLocation();
@@ -41,11 +43,6 @@ export default function ChangePassword() {
       return;
     }
 
-    if (newPassword.length < 8) {
-      setError("La nueva contraseña debe tener al menos 8 caracteres");
-      return;
-    }
-
     if (newPassword !== confirmPassword) {
       setError("Las nuevas contraseñas no coinciden");
       return;
@@ -56,13 +53,9 @@ export default function ChangePassword() {
       return;
     }
 
-    // Check password strength
-    const hasUpperCase = /[A-Z]/.test(newPassword);
-    const hasLowerCase = /[a-z]/.test(newPassword);
-    const hasNumbers = /\d/.test(newPassword);
-
-    if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
-      setError("La contraseña debe contener mayúsculas, minúsculas y números");
+    const strength = validatePasswordStrength(newPassword);
+    if (!strength.valid) {
+      setError(strength.message!);
       return;
     }
 
@@ -90,8 +83,8 @@ export default function ChangePassword() {
       setTimeout(() => {
         setSuccess(false);
       }, 3000);
-    } catch (err: any) {
-      setError(err.message || "Error al cambiar la contraseña. Por favor intenta de nuevo.");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Error al cambiar la contraseña. Por favor intenta de nuevo."));
     } finally {
       setLoading(false);
     }
@@ -126,60 +119,42 @@ export default function ChangePassword() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Contraseña Actual</label>
-              <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Ingresa tu contraseña actual"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  disabled={loading}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  disabled={loading}
-                >
-                  {showPassword ? "Ocultar" : "Mostrar"}
-                </button>
-              </div>
+              <PasswordInput
+                placeholder="Ingresa tu contraseña actual"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                disabled={loading}
+                visible={showPassword}
+                onVisibleChange={setShowPassword}
+              />
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Nueva Contraseña</label>
-              <Input
-                type={showPassword ? "text" : "password"}
+              <PasswordInput
                 placeholder="Ingresa una nueva contraseña"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 disabled={loading}
+                visible={showPassword}
+                onVisibleChange={setShowPassword}
               />
-              <p className="text-xs text-gray-500">
-                Mínimo 8 caracteres, incluye mayúsculas, minúsculas y números
-              </p>
+              <p className="text-xs text-gray-500">{PASSWORD_HINT}</p>
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Confirmar Nueva Contraseña</label>
-              <Input
-                type={showPassword ? "text" : "password"}
+              <PasswordInput
                 placeholder="Confirma tu nueva contraseña"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={loading}
+                visible={showPassword}
+                onVisibleChange={setShowPassword}
               />
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-800">
-              <p className="font-medium mb-1">Requisitos de contraseña:</p>
-              <ul className="list-disc list-inside space-y-1 text-xs">
-                <li>Al menos 8 caracteres</li>
-                <li>Una letra mayúscula (A-Z)</li>
-                <li>Una letra minúscula (a-z)</li>
-                <li>Un número (0-9)</li>
-              </ul>
-            </div>
+            <PasswordRequirements />
 
             <Button
               type="submit"

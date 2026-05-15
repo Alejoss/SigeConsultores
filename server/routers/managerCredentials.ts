@@ -8,23 +8,19 @@ import bcrypt from "bcryptjs";
 import { getRoleIdBySlug } from "../accountAuth";
 import { accountRoles, companyManagers } from "../../drizzle/schema";
 
+import { accountPasswordSchema as managerPasswordSchema } from "../_core/passwordPolicy";
+
 export const managerCredentialsRouter = router({
   setInitialPassword: publicProcedure
     .input(
       z
         .object({
-          invitationToken: z.string().min(1, "Invitation token is required"),
-          password: z
-            .string()
-            .min(8, "Password must be at least 8 characters")
-            .regex(
-              /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[a-zA-Z\d@$!%*?&]/,
-              "Password must contain uppercase, lowercase, number, and special character"
-            ),
+          invitationToken: z.string().min(1, "Token de invitación requerido"),
+          password: managerPasswordSchema,
           confirmPassword: z.string(),
         })
         .refine((data: { password: string; confirmPassword: string }) => data.password === data.confirmPassword, {
-          message: "Passwords do not match",
+          message: "Las contraseñas no coinciden",
           path: ["confirmPassword"],
         })
     )
@@ -148,18 +144,12 @@ export const managerCredentialsRouter = router({
     .input(
       z
         .object({
-          currentPassword: z.string().min(1, "Current password is required"),
-          newPassword: z
-            .string()
-            .min(8, "Password must be at least 8 characters")
-            .regex(
-              /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[a-zA-Z\d@$!%*?&]/,
-              "Password must contain uppercase, lowercase, number, and special character"
-            ),
+          currentPassword: z.string().min(1, "La contraseña actual es requerida"),
+          newPassword: managerPasswordSchema,
           confirmPassword: z.string(),
         })
         .refine((data: { newPassword: string; confirmPassword: string }) => data.newPassword === data.confirmPassword, {
-          message: "Passwords do not match",
+          message: "Las contraseñas no coinciden",
           path: ["confirmPassword"],
         })
     )
@@ -220,18 +210,12 @@ export const managerCredentialsRouter = router({
     .input(
       z
         .object({
-          resetToken: z.string().min(1, "Reset token is required"),
-          newPassword: z
-            .string()
-            .min(8, "Password must be at least 8 characters")
-            .regex(
-              /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[a-zA-Z\d@$!%*?&]/,
-              "Password must contain uppercase, lowercase, number, and special character"
-            ),
+          resetToken: z.string().min(1, "Token de recuperación requerido"),
+          newPassword: managerPasswordSchema,
           confirmPassword: z.string(),
         })
         .refine((data: { newPassword: string; confirmPassword: string }) => data.newPassword === data.confirmPassword, {
-          message: "Passwords do not match",
+          message: "Las contraseñas no coinciden",
           path: ["confirmPassword"],
         })
     )

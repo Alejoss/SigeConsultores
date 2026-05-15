@@ -2,11 +2,14 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/PasswordInput";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader, AlertCircle, ArrowLeft } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { APP_LOGO, APP_TITLE } from "@/const";
 import { toast } from "sonner";
+import { getApiErrorMessage, PASSWORD_HINT, validatePasswordStrength } from "@/lib/password";
+import { PasswordRequirements } from "@/components/PasswordRequirements";
 
 type Step = "email" | "password";
 
@@ -44,8 +47,8 @@ export default function ForgotPasswordManager() {
       } else {
         setError(result.message || "No se pudo iniciar la recuperación de contraseña");
       }
-    } catch (err: any) {
-      setError(err.message || "Error al procesar tu solicitud");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Error al procesar tu solicitud"));
     } finally {
       setIsLoading(false);
     }
@@ -69,8 +72,9 @@ export default function ForgotPasswordManager() {
       return;
     }
 
-    if (newPassword.length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres");
+    const strength = validatePasswordStrength(newPassword);
+    if (!strength.valid) {
+      setError(strength.message!);
       setIsLoading(false);
       return;
     }
@@ -94,8 +98,8 @@ export default function ForgotPasswordManager() {
       } else {
         setError(result.message || "Error al actualizar la contraseña");
       }
-    } catch (err: any) {
-      setError(err.message || "Error al procesar tu solicitud");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Error al procesar tu solicitud"));
     } finally {
       setIsLoading(false);
     }
@@ -174,24 +178,25 @@ export default function ForgotPasswordManager() {
                 <label htmlFor="newPassword" className="text-sm font-medium text-gray-700">
                   Nueva Contraseña
                 </label>
-                <Input
+                <PasswordInput
                   id="newPassword"
-                  type="password"
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Contraseña segura"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   disabled={isLoading}
                   className="w-full"
                 />
+                <p className="text-xs text-gray-500">{PASSWORD_HINT}</p>
               </div>
+
+              <PasswordRequirements />
 
               <div className="space-y-2">
                 <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
                   Confirmar Contraseña
                 </label>
-                <Input
+                <PasswordInput
                   id="confirmPassword"
-                  type="password"
                   placeholder="Repite tu contraseña"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}

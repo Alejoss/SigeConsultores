@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/PasswordInput";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader, AlertCircle, CheckCircle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { getApiErrorMessage } from "@/lib/password";
 
 interface CreateManagerWithCredentialsProps {
   companyId: number;
@@ -35,8 +37,8 @@ export default function CreateManagerWithCredentials({
         onSuccess?.();
       }, 2000);
     },
-    onError: (error: any) => {
-      setError(error.message || "Error al crear el manager");
+    onError: (error: unknown) => {
+      setError(getApiErrorMessage(error, "Error al crear el manager"));
       setIsLoading(false);
     },
   });
@@ -131,9 +133,8 @@ export default function CreateManagerWithCredentials({
             <label htmlFor="password" className="text-sm font-medium text-gray-700">
               Contraseña
             </label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               placeholder="Mínimo 12 caracteres con mayúsculas, números y símbolos"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -146,9 +147,8 @@ export default function CreateManagerWithCredentials({
             <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
               Confirmar Contraseña
             </label>
-            <Input
+            <PasswordInput
               id="confirmPassword"
-              type="password"
               placeholder="Repite la contraseña"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}

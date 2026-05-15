@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { trpc } from "@/lib/trpc";
-import { AlertCircle, CheckCircle2, Loader2, Eye, EyeOff } from "lucide-react";
+import { getApiErrorMessage } from "@/lib/password";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export default function ManagerAccess() {
   const [, navigate] = useLocation();
@@ -15,8 +16,6 @@ export default function ManagerAccess() {
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [step, setStep] = useState<"validate" | "accept" | "success" | "error">("validate");
   const [errorMessage, setErrorMessage] = useState("");
   const [invitationData, setInvitationData] = useState<any>(null);
@@ -35,8 +34,8 @@ export default function ManagerAccess() {
     onSuccess: (data) => {
       setStep("success");
     },
-    onError: (error: any) => {
-      setErrorMessage(error.message || "Error al aceptar la invitación");
+    onError: (error: unknown) => {
+      setErrorMessage(getApiErrorMessage(error, "Error al aceptar la invitación"));
       setStep("error");
     },
   });
@@ -197,24 +196,13 @@ export default function ManagerAccess() {
             {/* Password */}
             <div className="space-y-2">
               <Label htmlFor="password">Contraseña *</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="12+ caracteres (mayús, minús, números, signos)"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
+              <PasswordInput
+                id="password"
+                placeholder="12+ caracteres (mayús, minús, números, signos)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
               {password && (
                 <div className="text-sm space-y-1">
                   {passwordValidation.errors.map((error, idx) => (
@@ -234,24 +222,13 @@ export default function ManagerAccess() {
             {/* Confirm Password */}
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirmar Contraseña *</Label>
-              <div className="relative">
-                <Input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Repite tu contraseña"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
+              <PasswordInput
+                id="confirmPassword"
+                placeholder="Repite tu contraseña"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
               {confirmPassword && password !== confirmPassword && (
                 <div className="text-sm text-red-600 flex items-center gap-1">
                   <span className="text-xs">✗</span> Las contraseñas no coinciden
