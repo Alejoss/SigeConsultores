@@ -119,7 +119,12 @@ export default function CreateManagerInvitation({
           </DialogDescription>
         </DialogHeader>
 
-        {!invitationResult ? (
+        {/*
+          Keep the form (including Radix Select with its portal) mounted while showing the
+          success state. Tearing down Select inside Dialog in the same commit as the mutation
+          success has been observed to trigger NotFoundError: removeChild in production.
+        */}
+        <div className="space-y-4" hidden={!!invitationResult}>
           <form onSubmit={handleCreateInvitation} className="space-y-4">
             {/* Error Message */}
             {error && (
@@ -192,7 +197,8 @@ export default function CreateManagerInvitation({
               )}
             </Button>
           </form>
-        ) : (
+        </div>
+        {invitationResult ? (
           <div className="space-y-4">
             {/* Success Message */}
             <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md text-green-700">
@@ -278,7 +284,7 @@ export default function CreateManagerInvitation({
               Cerrar
             </Button>
           </div>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
   );
