@@ -132,6 +132,9 @@ export default function TacticalPlanning() {
     console.log('[TacticalPlanning] Loaded tactical objectives:', tacticalObjectivesData);
     console.log('[TacticalPlanning] Planning data from DB:', planningDataFromDB);
 
+    // Marcar como cargado para evitar re-ejecuciones del useEffect
+    hasLoadedRef.current = true;
+
     // First try to load from database
     if (planningDataFromDB && planningDataFromDB.length > 0) {
       console.log('[TacticalPlanning] Using planning data from DB');
@@ -619,7 +622,7 @@ export default function TacticalPlanning() {
           <CardContent>
             <div className="grid grid-cols-3 gap-6">
               <div className="text-center p-4 bg-white rounded-lg border-2 border-blue-300">
-                <p className="text-sm font-semibold text-gray-600 mb-2">% Meta alcanzada por Objetivo Táctico</p>
+                <p className="text-sm font-semibold text-gray-600 mb-2">% Meta alcanzada por Objetivos Tácticos</p>
                 <p className="text-4xl font-bold text-blue-600">{indicators.metaAlcanzada}%</p>
               </div>
               <div className="text-center p-4 bg-white rounded-lg border-2 border-green-300">

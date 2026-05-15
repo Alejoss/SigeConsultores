@@ -152,7 +152,7 @@ export const consolidatedIndicatorsRouter = router({
           {
             id: "alcanzado",
             name: "Objetivos tácticos (Planificación)",
-            indicator: "% Alcanzado",
+            indicator: "% Meta alcanzada por Objetivos Tácticos",
             value: objetivosTacticosMetaAlcanzada,
             performance: objetivosTacticosMetaAlcanzada
           },
