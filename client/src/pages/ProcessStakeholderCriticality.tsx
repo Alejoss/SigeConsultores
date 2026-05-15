@@ -896,7 +896,7 @@ export default function ProcessStakeholderCriticality() {
                 ref={excelInputRef}
                 type="file"
                 accept=".xlsx,.xls,.csv"
-                style={{ position: 'absolute', opacity: 0, width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }}
+                style={{ display: 'none' }}
                 onChange={handleExcelUpload}
               />
               <Button
