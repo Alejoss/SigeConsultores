@@ -466,27 +466,65 @@ export default function ProcessStakeholderCriticality() {
   const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setExcelFileName(file.name);
+    // Guardar referencia al nombre ANTES de resetear el input
+    const fileName = file.name;
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const sheetName = workbook.SheetNames[0];
-          const sheet = workbook.Sheets[sheetName];
-          const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-          if (jsonData.length === 0) return;
-          const headers = (jsonData[0] as any[]).map(h => String(h ?? ''));
-          const rows = jsonData.slice(1);
-          setExcelData({ headers, rows });
+        const arrayBuffer = evt.target?.result;
+        if (!arrayBuffer) {
+          console.error('[Excel] FileReader result is null/undefined');
+          return;
+        }
+        const data = new Uint8Array(arrayBuffer as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+        console.log('[Excel] Sheets:', workbook.SheetNames);
+
+        // Buscar la primera hoja que tenga datos
+        let sheetName = workbook.SheetNames[0];
+        let jsonData: any[][] = [];
+        for (const name of workbook.SheetNames) {
+          const sheet = workbook.Sheets[name];
+          const raw: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+          // Filtrar filas completamente vacías
+          const nonEmpty = raw.filter(row => row.some(cell => cell !== '' && cell !== null && cell !== undefined));
+          console.log(`[Excel] Sheet "${name}": ${raw.length} rows, ${nonEmpty.length} non-empty`);
+          if (nonEmpty.length > 0) {
+            sheetName = name;
+            jsonData = nonEmpty;
+            break;
+          }
+        }
+
+        if (jsonData.length === 0) {
+          console.warn('[Excel] No data found in any sheet');
+          setExcelFileName(fileName);
+          setExcelData({ headers: [], rows: [] });
           setShowExcelModal(true);
+          return;
+        }
+
+        // La primera fila no vacía son los headers
+        const headers = (jsonData[0] as any[]).map(h => String(h ?? '').trim());
+        const rows = jsonData.slice(1);
+        console.log('[Excel] Headers:', headers);
+        console.log('[Excel] Rows count:', rows.length);
+
+        setExcelFileName(fileName);
+        setExcelData({ headers, rows });
+        setShowExcelModal(true);
       } catch (err) {
-        console.error('Error parsing Excel:', err);
+        console.error('[Excel] Error parsing file:', err);
+        alert('Error al leer el archivo Excel. Por favor verifica que el archivo no esté dañado.');
       }
     };
+    reader.onerror = () => {
+      console.error('[Excel] FileReader error');
+      alert('Error al leer el archivo. Por favor intenta de nuevo.');
+    };
     reader.readAsArrayBuffer(file);
-    // Reset input so the same file can be re-uploaded
-    e.target.value = '';
+    // Resetear el input DESPUÉS de iniciar la lectura
+    setTimeout(() => { e.target.value = ''; }, 100);
   };
 
   const handleSave = async () => {
@@ -895,11 +933,17 @@ export default function ProcessStakeholderCriticality() {
                   </Button>
                 </div>
                 <div className="overflow-auto flex-1 p-4">
+                  {excelData.headers.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500">
+                      <p className="font-medium">No se pudieron leer datos del archivo.</p>
+                      <p className="text-sm mt-1">Verifica que el archivo Excel tenga datos en la primera hoja y no esté protegido.</p>
+                    </div>
+                  ) : (
                   <table className="w-full border-collapse text-xs">
                     <thead>
                       <tr className="bg-green-600 text-white">
                         {excelData.headers.map((h, i) => (
-                          <th key={i} className="border border-slate-300 px-2 py-1 text-left whitespace-nowrap">{h}</th>
+                          <th key={i} className="border border-slate-300 px-2 py-1 text-left whitespace-nowrap">{h || `Col ${i+1}`}</th>
                         ))}
                       </tr>
                     </thead>
@@ -913,6 +957,7 @@ export default function ProcessStakeholderCriticality() {
                       ))}
                     </tbody>
                   </table>
+                  )}
                 </div>
               </div>
             </div>
