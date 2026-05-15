@@ -637,15 +637,15 @@ export default function TacticalPlanning() {
             <div className="grid grid-cols-3 gap-6">
               <div className="text-center p-4 bg-white rounded-lg border-2 border-blue-300">
                 <p className="text-sm font-semibold text-gray-600 mb-2">% Meta alcanzada por Objetivos Tácticos</p>
-                <p className="text-4xl font-bold text-blue-600">{indicators.metaAlcanzada}%</p>
+                {plannings.length === 0 ? <p className="text-4xl font-bold text-gray-400">...</p> : <p className="text-4xl font-bold text-blue-600">{indicators.metaAlcanzada}%</p>}
               </div>
               <div className="text-center p-4 bg-white rounded-lg border-2 border-green-300">
                 <p className="text-sm font-semibold text-gray-600 mb-2">Avance Objetivos Operativos</p>
-                <p className="text-4xl font-bold text-green-600">{indicators.alcanzadoPorOO}%</p>
+                {plannings.length === 0 ? <p className="text-4xl font-bold text-gray-400">...</p> : <p className="text-4xl font-bold text-green-600">{indicators.alcanzadoPorOO}%</p>}
               </div>
               <div className="text-center p-4 bg-white rounded-lg border-2 border-purple-300">
                 <p className="text-sm font-semibold text-gray-600 mb-2">Avance de Tareas</p>
-                <p className="text-4xl font-bold text-purple-600">{indicators.alcanzadoPorTareas}%</p>
+                {plannings.length === 0 ? <p className="text-4xl font-bold text-gray-400">...</p> : <p className="text-4xl font-bold text-purple-600">{indicators.alcanzadoPorTareas}%</p>}
               </div>
             </div>
           </CardContent>
@@ -813,11 +813,12 @@ export default function TacticalPlanning() {
                                     step="0.01"
                                     value={vals[idx] || 0}
                                     onChange={(e) => {
-                                      const newVals = [...(planning.monthlyValues || Array(12).fill(0))];
-                                      newVals[idx] = parseFloat(e.target.value) || 0;
-                                      const total = newVals.reduce((s, v) => s + (v || 0), 0);
-                                      setPlannings(plannings.map(p => {
+                                      const inputVal = parseFloat(e.target.value) || 0;
+                                      setPlannings(prev => prev.map(p => {
                                         if (p.id === planning.id) {
+                                          const newVals = [...(p.monthlyValues || Array(12).fill(0))];
+                                          newVals[idx] = inputVal;
+                                          const total = newVals.reduce((s, v) => s + (v || 0), 0);
                                           const pp = p.puntoPartida || 0;
                                           const m = p.metaLlegada || 0;
                                           let pct = 0;
@@ -964,15 +965,16 @@ export default function TacticalPlanning() {
                                           step="0.01"
                                           value={vals[idx] || 0}
                                           onChange={(e) => {
-                                            const newVals = [...(resultKey.ooMonthlyValues || Array(12).fill(0))];
-                                            newVals[idx] = parseFloat(e.target.value) || 0;
-                                            const total = newVals.reduce((s, v) => s + (v || 0), 0);
-                                            setPlannings(plannings.map(p => {
+                                            const inputVal = parseFloat(e.target.value) || 0;
+                                            setPlannings(prev => prev.map(p => {
                                               if (p.id === planning.id) {
                                                 return {
                                                   ...p,
                                                   resultKeys: p.resultKeys.map(rk => {
                                                     if (rk.id === resultKey.id) {
+                                                      const newVals = [...(rk.ooMonthlyValues || Array(12).fill(0))];
+                                                      newVals[idx] = inputVal;
+                                                      const total = newVals.reduce((s, v) => s + (v || 0), 0);
                                                       const ci = rk.condicionInicial || 0;
                                                       const m = rk.meta || 0;
                                                       const pct = calculatePorcentajeAlcanzado(ci, m, total);
