@@ -444,7 +444,8 @@ export default function ProcessCharacterization() {
 
             {activeModule === "procedimientos" && processId && (
               <ProceduresCharacterization 
-                processId={processId} 
+                processId={processId}
+                processName={processName}
                 onVolver={() => setActiveModule("datos")}
               />
             )}
