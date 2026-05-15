@@ -47,6 +47,9 @@ export default function CompanyInfo() {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Flag para bloquear la sincronización del servidor mientras el usuario está editando.
+  // Se activa en onChange y se desactiva cuando el autosave confirma el guardado.
+  const isEditingRef = useRef(false);
   const propositoRef = useRef<HTMLTextAreaElement>(null);
   const misionRef = useRef<HTMLTextAreaElement>(null);
   const visionRef = useRef<HTMLTextAreaElement>(null);
@@ -108,18 +111,23 @@ export default function CompanyInfo() {
     },
   });
 
-  // Cargar datos iniciales desde la BD
+  // Cargar datos iniciales desde la BD.
+  // Si el usuario está editando activamente (isEditingRef = true), no sobreescribir el estado local.
   useEffect(() => {
-    if (companyInfo) {
+    if (companyInfo && !isEditingRef.current) {
       setProposito(companyInfo.proposito || "");
       setMision(companyInfo.mision || "");
       setVision(companyInfo.vision || "");
     }
   }, [companyInfo]);
 
-  // Guardado automático con debounce
-  // Se pasan los valores actuales como parámetros para evitar el problema de closure stale
+  // Guardado automático con debounce.
+  // Se pasan los valores actuales como parámetros para evitar el problema de closure stale.
+  // isEditingRef se activa al empezar a editar y se desactiva cuando el guardado confirma éxito.
   const autoSave = (currentProposito: string, currentMision: string, currentVision: string) => {
+    // Marcar que el usuario está editando para bloquear la sincronización del servidor
+    isEditingRef.current = true;
+
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current);
     }
@@ -127,12 +135,23 @@ export default function CompanyInfo() {
     autoSaveTimeoutRef.current = setTimeout(() => {
       if (companyId && (currentProposito.trim() || currentMision.trim() || currentVision.trim())) {
         setIsSaving(true);
-        updateMutation.mutate({
-          companyId,
-          proposito: currentProposito || undefined,
-          mision: currentMision || undefined,
-          vision: currentVision || undefined,
-        });
+        updateMutation.mutate(
+          {
+            companyId,
+            proposito: currentProposito || undefined,
+            mision: currentMision || undefined,
+            vision: currentVision || undefined,
+          },
+          {
+            onSuccess: () => {
+              // Solo desactivar el flag después de que el guardado se confirme
+              isEditingRef.current = false;
+            },
+          }
+        );
+      } else {
+        // Si no hay contenido que guardar, desactivar el flag igualmente
+        isEditingRef.current = false;
       }
     }, 1500); // Esperar 1.5 segundos después de dejar de escribir
   };
