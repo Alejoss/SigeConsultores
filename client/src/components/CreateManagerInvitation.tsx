@@ -10,13 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, CheckCircle, Copy, Loader2, Mail } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -119,11 +112,6 @@ export default function CreateManagerInvitation({
           </DialogDescription>
         </DialogHeader>
 
-        {/*
-          Keep the form (including Radix Select with its portal) mounted while showing the
-          success state. Tearing down Select inside Dialog in the same commit as the mutation
-          success has been observed to trigger NotFoundError: removeChild in production.
-        */}
         <div className="space-y-4" hidden={!!invitationResult}>
           <form onSubmit={handleCreateInvitation} className="space-y-4">
             {/* Error Message */}
@@ -134,21 +122,23 @@ export default function CreateManagerInvitation({
               </div>
             )}
 
-            {/* Company Selection */}
+            {/* Native select: Radix Select portal inside Dialog causes removeChild errors */}
             <div className="space-y-2">
               <Label htmlFor="company">Empresa *</Label>
-              <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                <SelectTrigger id="company">
-                  <SelectValue placeholder="Selecciona una empresa" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id.toString()}>
-                      {company.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <select
+                id="company"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                value={selectedCompanyId}
+                onChange={(e) => setSelectedCompanyId(e.target.value)}
+                disabled={createMutation.isPending}
+              >
+                <option value="">Selecciona una empresa</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id.toString()}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Manager Email */}

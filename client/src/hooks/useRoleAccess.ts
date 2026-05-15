@@ -10,7 +10,7 @@ export enum UserRole {
 
 /**
  * Hook to determine current user role and access permissions
- * Handles both OAuth (Admin/General Manager) and PIN (Process Leader) authentication
+ * Handles OAuth (admin), manager session, and process leader (email + password) authentication
  */
 export function useRoleAccess() {
   const { user: oauthUser, isAuthenticated: isOAuthAuthenticated } = useAuth();

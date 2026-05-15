@@ -18,7 +18,7 @@ import {
 const unifiedLoginBodySchema = z.object({
   email: z.string().email(),
   password: z.string().min(1, "Contraseña requerida"),
-  /** Si se envía (p. ej. jefe de proceso), limita el intento de PIN a ese proceso. */
+  /** Si se envía, limita el login unificado al jefe de proceso de ese proceso. */
   processId: z.coerce.number().int().positive().optional(),
 });
 

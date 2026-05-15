@@ -45,14 +45,15 @@ import AdminApproveCompanies from "./pages/AdminApproveCompanies";
 import SetupManagerPassword from "./pages/SetupManagerPassword";
 import ChangePassword from "./pages/ChangePassword";
 import ForgotPassword from "./pages/ForgotPassword";
+import SetupProcessLeaderPassword from "./pages/SetupProcessLeaderPassword";
 import SetupProcessLeaderPIN from "./pages/SetupProcessLeaderPIN";
 import ResetProcessLeaderPIN from "./pages/ResetProcessLeaderPIN";
+import ProcessLeaderPINRecovery from "./pages/ProcessLeaderPINRecovery";
 import AdminDashboard from "./pages/AdminDashboard";
 import FODA from "./pages/FODA";
 import RequestCompanyAccessProtected from "./pages/RequestCompanyAccessProtected";
 import DebugUserInfo from "./pages/DebugUserInfo";
 import ProcessDashboard from "./pages/ProcessDashboard";
-import ProcessLeaderPINRecovery from "./pages/ProcessLeaderPINRecovery";
 import ProcessLeaderDashboard from "./pages/ProcessLeaderDashboard";
 import AccessDenied from "./pages/AccessDenied";
 import SetupCompany from "./pages/SetupCompany";
@@ -171,6 +172,7 @@ function Router() {
       <Route path={"/setup-password"} component={SetupManagerPassword} />
       <Route path={"/change-password"} component={ChangePassword} />
       <Route path={"/forgot-password"} component={ForgotPassword} />
+      <Route path={"/setup-process-leader-password"} component={SetupProcessLeaderPassword} />
       <Route path={"/setup-process-leader-pin"} component={SetupProcessLeaderPIN} />
       <Route path={"/reset-process-leader-pin"} component={ResetProcessLeaderPIN} />
       <Route path={"/admin-dashboard"} component={AdminDashboard} />

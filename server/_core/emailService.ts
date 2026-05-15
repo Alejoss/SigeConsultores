@@ -255,106 +255,6 @@ async function sendEmailWithRetries(options: EmailOptions, correlationId: string
 }
 
 /**
- * Send PIN recovery email to process leader (non-blocking)
- */
-export function sendPINRecoveryEmail(
-  leaderEmail: string,
-  leaderName: string,
-  resetToken: string,
-  frontendUrl: string = process.env.VITE_FRONTEND_URL || "http://localhost:3000"
-): boolean {
-  const resetLink = `${frontendUrl}/process-leader-pin-recovery?token=${encodeURIComponent(
-    resetToken
-  )}`;
-
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #0066cc; color: white; padding: 20px; border-radius: 5px 5px 0 0; text-align: center; }
-          .content { background-color: #f9f9f9; padding: 20px; border: 1px solid #ddd; }
-          .footer { background-color: #f0f0f0; padding: 10px; text-align: center; font-size: 12px; color: #666; }
-          .code-box { background-color: #fff; padding: 15px; border-left: 4px solid #0066cc; margin: 20px 0; font-family: monospace; font-size: 14px; }
-          .button { display: inline-block; background-color: #0066cc; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Recuperacion de PIN - Plataforma SIGE</h1>
-          </div>
-          <div class="content">
-            <p>Hola <strong>${leaderName}</strong>,</p>
-            
-            <p>Hemos recibido una solicitud para recuperar tu PIN de acceso a la Plataforma SIGE.</p>
-            
-            <p>Para establecer un nuevo PIN, utiliza el siguiente codigo:</p>
-            
-            <div class="code-box">
-              <strong>${resetToken}</strong>
-            </div>
-            
-            <p>O haz clic en el siguiente enlace:</p>
-            
-            <center>
-              <a href="${resetLink}" class="button">Recuperar PIN</a>
-            </center>
-            
-            <p style="color: #666; font-size: 14px;">
-              <strong>Nota de seguridad:</strong> Este codigo expirara en 1 hora. Si no solicitaste esta recuperacion, ignora este email.
-            </p>
-            
-            <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
-            
-            <p style="font-size: 12px; color: #999;">
-              Este es un email automatico. Por favor, no respondas a este mensaje.
-            </p>
-          </div>
-          <div class="footer">
-            <p>© 2026 Plataforma SIGE - Sistema Integrado de Gestion Empresarial</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
-
-  const textContent = `
-Recuperacion de PIN - Plataforma SIGE
-
-Hola ${leaderName},
-
-Hemos recibido una solicitud para recuperar tu PIN de acceso a la Plataforma SIGE.
-
-Para establecer un nuevo PIN, utiliza el siguiente codigo:
-${resetToken}
-
-O abre el siguiente enlace en tu navegador:
-${resetLink}
-
-Este codigo expirara en 1 hora.
-
-Si no solicitaste esta recuperacion, ignora este email.
-
-© 2026 Plataforma SIGE - Sistema Integrado de Gestion Empresarial
-  `;
-
-  // Send email in background without waiting
-  sendEmail({
-    to: leaderEmail,
-    subject: "Recuperacion de PIN - Plataforma SIGE",
-    htmlContent,
-    textContent,
-  });
-  
-  // Return immediately (optimistic)
-  return true;
-}
-
-/**
  * Send manager access invitation email (non-blocking)
  */
 export function sendManagerAccessInvitationEmail(
@@ -589,17 +489,99 @@ Si tiene preguntas, contacte a su administrador.
 }
 
 /**
- * Send process leader invitation email
+ * Send process leader access confirmation after password setup (non-blocking)
  */
-export async function sendProcessLeaderInvitationEmail(
+export function sendProcessLeaderAccessConfirmationEmail(
+  leaderEmail: string,
+  leaderName: string,
+  companyName: string,
+  processName: string,
+  baseUrl: string = process.env.VITE_FRONTEND_URL || "http://localhost:3000"
+): boolean {
+  const loginUrl = `${baseUrl}/login`;
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+          .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; }
+          .footer { background: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #6b7280; }
+          .info-box { background: #dbeafe; border-left: 4px solid #1e40af; padding: 15px; margin: 15px 0; }
+          .credentials-box { background: #f0f9ff; border: 1px solid #bfdbfe; padding: 15px; margin: 15px 0; border-radius: 6px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>¡Bienvenido a SIGE!</h1>
+            <p>Sistema Integrado de Gestión Empresarial</p>
+          </div>
+          <div class="content">
+            <p>Hola <strong>${leaderName}</strong>,</p>
+            <p>Su invitación ha sido <strong>aceptada exitosamente</strong>. Ya puede acceder como Jefe del Proceso <strong>"${processName}"</strong> en <strong>${companyName}</strong>.</p>
+            <div class="info-box">
+              <strong>✓ Acceso confirmado</strong><br>
+              Su cuenta está lista para usar.
+            </div>
+            <p><strong>Para acceder a la plataforma:</strong></p>
+            <p style="background: #f3f4f6; padding: 15px; border-radius: 4px; word-break: break-all; font-size: 14px;">
+              <strong>${loginUrl}</strong>
+            </p>
+            <div class="credentials-box">
+              <strong>Sus credenciales:</strong><br><br>
+              <strong>Correo:</strong> ${leaderEmail}<br>
+              <strong>Contraseña:</strong> La que creó al aceptar la invitación
+            </div>
+            <p>Saludos,<br>El equipo de SIGE</p>
+          </div>
+          <div class="footer">
+            <p>&copy; 2026 SIGE - Sistema Integrado de Gestión Empresarial</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const textContent = `
+Bienvenido a SIGE
+
+Hola ${leaderName},
+
+Su invitación fue aceptada. Ya puede acceder como Jefe del Proceso "${processName}" en ${companyName}.
+
+Inicie sesión en: ${loginUrl}
+Correo: ${leaderEmail}
+Contraseña: la que creó al aceptar la invitación
+
+© 2026 SIGE
+  `;
+
+  sendEmail({
+    to: leaderEmail,
+    subject: `Bienvenido a SIGE - ${companyName}`,
+    htmlContent,
+    textContent,
+  });
+  return true;
+}
+
+/**
+ * Send process leader invitation email (non-blocking, same pattern as manager invitation)
+ */
+export function sendProcessLeaderInvitationEmail(
   leaderEmail: string,
   leaderName: string,
   processName: string,
   companyName: string,
   invitationToken: string,
-  baseUrl: string = "http://localhost:3000"
-): Promise<boolean> {
-  const setupUrl = `${baseUrl}/setup-process-leader-pin?token=${encodeURIComponent(invitationToken)}`;
+  baseUrl: string = ENV.frontendUrl
+): boolean {
+  const setupUrl = `${baseUrl.replace(/\/$/, "")}/setup-process-leader-password?token=${encodeURIComponent(invitationToken)}`;
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -632,12 +614,12 @@ export async function sendProcessLeaderInvitationEmail(
             <div class="info-box">
               <strong>Próximos pasos:</strong><br>
               1. Haga clic en el botón de abajo<br>
-              2. Establezca su PIN personal<br>
+              2. Cree su contraseña personal<br>
               3. Acceda a su panel de Jefe de Proceso
             </div>
             
             <center>
-              <a href="${setupUrl}" class="button">Configurar PIN y Acceder</a>
+              <a href="${setupUrl}" class="button">Aceptar invitación</a>
             </center>
             
             <p style="text-align: center; color: #666; font-size: 14px;">
@@ -679,7 +661,7 @@ Hola ${leaderName},
 
 Ha sido invitado a ser Jefe del Proceso "${processName}" en la empresa ${companyName} en la plataforma SIGE.
 
-Para configurar su PIN y acceder, abra el siguiente enlace en su navegador:
+Para crear su contraseña y acceder, abra el siguiente enlace en su navegador:
 ${setupUrl}
 
 Este enlace expirará en 7 días.
@@ -689,12 +671,21 @@ Si tiene preguntas, contacte a su administrador.
 © 2026 SIGE - Sistema Integrado de Gestión Empresarial
   `;
 
-  return sendEmail({
+  console.log("[ProcessLeaderInvitation] Queuing invitation email", {
+    toDomain: leaderEmail.includes("@") ? leaderEmail.split("@")[1] : "?",
+    processName,
+    companyName,
+    setupUrl,
+  });
+
+  sendEmail({
     to: leaderEmail,
     subject: `Invitación - Jefe de Proceso "${processName}" - ${companyName}`,
     htmlContent,
     textContent,
   });
+
+  return true;
 }
 
 /**
@@ -956,3 +947,4 @@ El equipo de SIGE
     textContent,
   });
 }
+

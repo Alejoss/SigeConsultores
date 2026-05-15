@@ -16,7 +16,7 @@ export default function ProcessLeaderInvitationLink() {
     const token = params.get("token");
     
     if (token) {
-      const link = `${window.location.origin}/setup-process-leader-pin?token=${encodeURIComponent(token)}`;
+      const link = `${window.location.origin}/setup-process-leader-password?token=${encodeURIComponent(token)}`;
       setInvitationLink(link);
     }
   }, []);

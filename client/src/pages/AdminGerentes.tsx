@@ -177,7 +177,7 @@ export default function AdminGerentes() {
             • Cada gerente recibe un <strong>link único</strong> para acceder al panel "Administración [Nombre Empresa]"
           </p>
           <p>
-            • Desde ese panel, pueden crear invitaciones para los Dueños de Proceso con códigos de acceso de 4 dígitos
+            • Desde ese panel, pueden invitar Jefes de Proceso por correo con enlace para crear su contraseña
           </p>
           <p>
             • Los Dueños de Proceso solo pueden acceder a los módulos de SIGE y a su proceso específico en "Mapa de

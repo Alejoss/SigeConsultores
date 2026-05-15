@@ -3,7 +3,7 @@ import {
   sendEmail,
   sendManagerAccessInvitationEmail,
   sendManagerAccessConfirmationEmail,
-  sendPINRecoveryEmail,
+  sendProcessLeaderAccessConfirmationEmail,
 } from "../emailService";
 
 describe("Email Service - Non-blocking Optimization", () => {
@@ -97,30 +97,30 @@ describe("Email Service - Non-blocking Optimization", () => {
     });
   });
 
-  describe("sendPINRecoveryEmail", () => {
+  describe("sendProcessLeaderAccessConfirmationEmail", () => {
     it("should return true immediately without waiting", () => {
       const startTime = Date.now();
-      const result = sendPINRecoveryEmail(
+      const result = sendProcessLeaderAccessConfirmationEmail(
         "leader@example.com",
         "John Doe",
-        "reset-token-123",
+        "Test Company",
+        "Sales Process",
         "https://localhost:3000"
       );
       const endTime = Date.now();
 
       expect(result).toBe(true);
-      // Should complete in less than 100ms (not waiting for retries)
       expect(endTime - startTime).toBeLessThan(100);
     });
 
     it("should not be async", () => {
-      const result = sendPINRecoveryEmail(
+      const result = sendProcessLeaderAccessConfirmationEmail(
         "leader@example.com",
         "John Doe",
-        "reset-token-123"
+        "Test Company",
+        "Sales Process"
       );
 
-      // Should return a boolean, not a Promise
       expect(result).toBe(true);
       expect(result instanceof Promise).toBe(false);
     });

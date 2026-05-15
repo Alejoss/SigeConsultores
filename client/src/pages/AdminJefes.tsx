@@ -213,7 +213,7 @@ export default function AdminJefes() {
             • Pueden compartir el link de acceso con sus colaboradores, quienes tendrán el mismo nivel de acceso
           </p>
           <p>
-            • Son creados a través de invitaciones generadas por el Gerente de Empresa con un código de 4 dígitos
+            • Son creados mediante invitaciones por correo con enlace de registro (contraseña), generadas por el Gerente de Empresa
           </p>
         </CardContent>
       </Card>

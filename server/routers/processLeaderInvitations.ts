@@ -13,10 +13,16 @@ import {
 } from "../../drizzle/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { notifyOwner } from "../_core/notification";
-import { sendAccessInvitationEmail } from "../_core/emailService";
+import {
+  sendProcessLeaderAccessConfirmationEmail,
+  sendProcessLeaderInvitationEmail,
+} from "../_core/emailService";
+import { changePasswordInputSchema, setInitialPasswordInputSchema } from "../_core/passwordPolicy";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { getRoleIdBySlug } from "../accountAuth";
+
+const PROCESS_LEADER_SETUP_PATH = "/setup-process-leader-password";
 
 function getFrontendUrlFromRequest(req: { protocol?: string; get?: (h: string) => string | undefined }): string {
   try {
@@ -26,6 +32,38 @@ function getFrontendUrlFromRequest(req: { protocol?: string; get?: (h: string) =
   } catch {
     return ENV.frontendUrl;
   }
+}
+
+/** Public site URL for links in emails (prefer FRONTEND_URL in production). */
+function resolveInvitationFrontendUrl(req: { protocol?: string; get?: (h: string) => string | undefined }): string {
+  const configured = ENV.frontendUrl?.replace(/\/$/, "") ?? "";
+  if (ENV.isProduction && configured && !/localhost|127\.0\.0\.1/i.test(configured)) {
+    return configured;
+  }
+  return getFrontendUrlFromRequest(req).replace(/\/$/, "");
+}
+
+function queueProcessLeaderInvitationEmail(params: {
+  leaderEmail: string;
+  leaderName: string;
+  processName: string;
+  companyName: string;
+  invitationToken: string;
+  frontendUrl: string;
+}) {
+  sendProcessLeaderInvitationEmail(
+    params.leaderEmail,
+    params.leaderName,
+    params.processName,
+    params.companyName,
+    params.invitationToken,
+    params.frontendUrl
+  );
+  console.log("[processLeaderInvitations] Invitation email queued via EmailService", {
+    toDomain: params.leaderEmail.split("@")[1] ?? "?",
+    frontendUrl: params.frontendUrl,
+    setupPath: PROCESS_LEADER_SETUP_PATH,
+  });
 }
 
 async function ensureProcessLeaderRole(
@@ -117,31 +155,34 @@ export const processLeaderInvitationsRouter = router({
         description: `Process leader ${input.leaderName} (${input.leaderEmail}) invited for process ${proc[0].name}`,
       });
 
-      const protocol = ctx.req.protocol || "https";
-      const host = ctx.req.get("host") || ctx.req.get("x-forwarded-host") || "localhost:3000";
-      const frontendUrl = `${protocol}://${host}`;
-      const setupUrl = `${frontendUrl}/setup-process-leader-pin?token=${invitationToken}`;
+      const frontendUrl = resolveInvitationFrontendUrl(ctx.req);
+      const setupUrl = `${frontendUrl}${PROCESS_LEADER_SETUP_PATH}?token=${encodeURIComponent(invitationToken)}`;
 
       await notifyOwner({
         title: "Process Leader Invitation Created",
         content: `Invitation created for ${input.leaderEmail} for process ${proc[0].name}. Share this link: ${setupUrl}`,
       });
 
-      return { success: true, message: "Invitation sent successfully", invitationToken };
+      queueProcessLeaderInvitationEmail({
+        leaderEmail: input.leaderEmail,
+        leaderName: input.leaderName,
+        processName: proc[0].name,
+        companyName: comp[0].name,
+        invitationToken,
+        frontendUrl,
+      });
+
+      return {
+        success: true,
+        message: `Invitación creada. Email en cola para ${input.leaderEmail}`,
+        invitationToken,
+        invitationUrl: setupUrl,
+        emailSent: true,
+      };
     }),
 
-  setInitialPIN: publicProcedure
-    .input(
-      z.object({
-        invitationToken: z.string().min(1, "Invitation token is required"),
-        pin: z.string().min(8, "Password must be at least 8 characters"),
-        confirmPin: z.string(),
-      })
-      .refine((data) => data.pin === data.confirmPin, {
-        message: "Passwords do not match",
-        path: ["confirmPin"],
-      })
-    )
+  setInitialPassword: publicProcedure
+    .input(setInitialPasswordInputSchema)
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -182,7 +223,7 @@ export const processLeaderInvitationsRouter = router({
         if (new Date() > invitation.expiresAt) throw new Error("Invitation has expired");
       }
 
-      const pinHash = await bcrypt.hash(input.pin, 10);
+      const passwordHash = await bcrypt.hash(input.password, 10);
       const emailNorm = invitation.email.trim().toLowerCase();
 
       let accRows = await db
@@ -198,7 +239,7 @@ export const processLeaderInvitationsRouter = router({
           openId,
           email: invitation.email,
           name: invitation.inviteeName ?? invitation.email,
-          passwordHash: pinHash,
+          passwordHash,
           loginMethod: "local",
           status: "active",
         });
@@ -208,7 +249,7 @@ export const processLeaderInvitationsRouter = router({
         await db
           .update(accounts)
           .set({
-            passwordHash: pinHash,
+            passwordHash,
             name: invitation.inviteeName ?? account.name,
             loginMethod: "local",
             status: "active",
@@ -237,7 +278,13 @@ export const processLeaderInvitationsRouter = router({
       const company = await db.select().from(companies).where(eq(companies.id, cid)).limit(1);
       const companyName = company[0]?.name || "Unknown Company";
       const frontendUrl = getFrontendUrlFromRequest(ctx.req);
-      sendAccessInvitationEmail(invitation.email, invitation.inviteeName || invitation.email, companyName, frontendUrl);
+      void sendProcessLeaderAccessConfirmationEmail(
+        invitation.email,
+        invitation.inviteeName || invitation.email,
+        companyName,
+        process[0]?.name ?? "Proceso",
+        frontendUrl
+      );
 
       return {
         success: true,
@@ -252,20 +299,10 @@ export const processLeaderInvitationsRouter = router({
       };
     }),
 
-  changePIN: companyProcedure
+  changePassword: companyProcedure
     .input(
-      z.object({
+      changePasswordInputSchema.extend({
         processId: z.number(),
-        currentPin: z.string(),
-        newPin: z
-          .string()
-          .length(4, "PIN must be exactly 4 digits")
-          .regex(/^\d{4}$/, "PIN must contain only digits"),
-        confirmPin: z.string(),
-      })
-      .refine((data) => data.newPin === data.confirmPin, {
-        message: "PINs do not match",
-        path: ["confirmPin"],
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -274,7 +311,10 @@ export const processLeaderInvitationsRouter = router({
 
       const pl = ctx.processLeader;
       if (!pl) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Solo los jefes de proceso autenticados pueden cambiar el PIN" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Solo los jefes de proceso autenticados pueden cambiar la contraseña",
+        });
       }
       if (pl.processId !== input.processId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Proceso no autorizado" });
@@ -286,95 +326,23 @@ export const processLeaderInvitationsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Credentials not found" });
       }
 
-      const pinMatch = await bcrypt.compare(input.currentPin, acc.passwordHash);
-      if (!pinMatch) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Current PIN is incorrect" });
+      const passwordMatch = await bcrypt.compare(input.currentPassword, acc.passwordHash);
+      if (!passwordMatch) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "La contraseña actual es incorrecta" });
       }
 
-      const newPinHash = await bcrypt.hash(input.newPin, 10);
-      await db.update(accounts).set({ passwordHash: newPinHash, updatedAt: new Date() }).where(eq(accounts.id, acc.id));
+      const newPasswordHash = await bcrypt.hash(input.newPassword, 10);
+      await db
+        .update(accounts)
+        .set({ passwordHash: newPasswordHash, updatedAt: new Date() })
+        .where(eq(accounts.id, acc.id));
 
       await db.insert(accessAuditLog).values({
         eventType: "process_leader_pin_changed",
-        description: `Process leader changed PIN for process ID ${input.processId}`,
+        description: `Process leader changed password for process ID ${input.processId}`,
       });
 
-      return { success: true, message: "PIN changed successfully" };
-    }),
-
-  validateCredentials: publicProcedure
-    .input(
-      z.object({
-        processId: z.number(),
-        leaderEmail: z.string().email(),
-        pin: z.string(),
-      })
-    )
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      const emailNorm = input.leaderEmail.trim().toLowerCase();
-      const plRoleId = await getRoleIdBySlug(db, "process_leader");
-      if (plRoleId == null) {
-        return { valid: false as const, message: "Invalid credentials" };
-      }
-
-      const rows = await db
-        .select({ acc: accounts })
-        .from(accounts)
-        .innerJoin(accountRoles, eq(accountRoles.accountId, accounts.id))
-        .where(
-          and(
-            sql`LOWER(${accounts.email}) = ${emailNorm}`,
-            eq(accountRoles.roleId, plRoleId),
-            eq(accountRoles.processId, input.processId),
-            eq(accounts.status, "active")
-          )
-        )
-        .limit(1);
-
-      if (!rows.length || !rows[0].acc.passwordHash) {
-        await db.insert(accessAuditLog).values({
-          eventType: "process_leader_login_failed",
-          description: `Login failed: credentials not found for ${input.leaderEmail}`,
-        });
-        return { valid: false as const, message: "Invalid credentials" };
-      }
-
-      const acc = rows[0].acc;
-      const pinMatch = await bcrypt.compare(input.pin, acc.passwordHash);
-      if (!pinMatch) {
-        await db.insert(accessAuditLog).values({
-          eventType: "process_leader_login_failed",
-          description: `Login failed: invalid PIN for ${input.leaderEmail}`,
-        });
-        return { valid: false as const, message: "Invalid credentials" };
-      }
-
-      const processDetails = await db.select().from(processes).where(eq(processes.id, input.processId)).limit(1);
-      let companyName = "Empresa";
-      let companyId = 0;
-      if (processDetails.length) {
-        companyId = processDetails[0].companyId;
-        const companyDetails = await db.select().from(companies).where(eq(companies.id, companyId)).limit(1);
-        if (companyDetails.length) companyName = companyDetails[0].name;
-      }
-
-      await db.insert(accessAuditLog).values({
-        eventType: "process_leader_login_success",
-        accountId: acc.id,
-        description: `Process leader ${input.leaderEmail} logged in for process ID ${input.processId}`,
-      });
-
-      return {
-        valid: true as const,
-        message: "Credentials valid",
-        processLeaderId: acc.id,
-        leaderName: acc.name,
-        companyId,
-        companyName,
-      };
+      return { success: true, message: "Contraseña actualizada correctamente" };
     }),
 
   deactivateLeader: companyProcedure
@@ -433,7 +401,7 @@ export const processLeaderInvitationsRouter = router({
         leaderName: z.string().min(1),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -474,10 +442,24 @@ export const processLeaderInvitationsRouter = router({
         expiresAt,
       });
 
+      const frontendUrl = resolveInvitationFrontendUrl(ctx.req);
+      const invitationUrl = `${frontendUrl}${PROCESS_LEADER_SETUP_PATH}?token=${encodeURIComponent(invitationToken)}`;
+
+      queueProcessLeaderInvitationEmail({
+        leaderEmail: input.leaderEmail,
+        leaderName: input.leaderName,
+        processName: process[0].name,
+        companyName: company[0].name,
+        invitationToken,
+        frontendUrl,
+      });
+
       return {
         success: true,
-        message: "Invitacion enviada exitosamente",
+        message: `Invitación creada. Email en cola para ${input.leaderEmail}`,
         invitationToken,
+        invitationUrl,
+        emailSent: true,
       };
     }),
 });
