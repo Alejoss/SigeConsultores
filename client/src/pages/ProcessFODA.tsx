@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocation } from "wouter";
-import { ArrowLeft, Plus, Trash2, Save, AlertCircle, Download } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, AlertCircle, Download, Check } from 'lucide-react';
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { exportFODAToPDF } from "@/lib/exportFODAToPDF";
@@ -31,6 +31,11 @@ export default function ProcessFODA() {
   const [processId, setProcessId] = useState<number | null>(null);
   const [processName, setProcessName] = useState("");
   
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLoadingDataRef = useRef(false);
+
   const [elements, setElements] = useState<FODAElement[]>([
     { id: 1, type: 'Fortaleza', subprocess: '', policyObjective: '', selectedObjectiveContent: '', statement: '', description: '' },
   ]);
@@ -101,6 +106,7 @@ export default function ProcessFODA() {
   // Load FODA data from database
   useEffect(() => {
     if (fodaData && fodaData.strengths) {
+      isLoadingDataRef.current = true;
       try {
         const strengths = JSON.parse(fodaData.strengths || '[]');
         const opportunities = JSON.parse(fodaData.opportunities || '[]');
@@ -116,17 +122,38 @@ export default function ProcessFODA() {
         
         if (loaded.length > 0) {
           setElements(loaded);
+          setTimeout(() => { isLoadingDataRef.current = false; }, 100);
+        } else {
+          isLoadingDataRef.current = false;
         }
       } catch (error) {
         console.error("Error loading FODA data:", error);
+        isLoadingDataRef.current = false;
       }
     }
   }, [fodaData]);
 
+  // Autosave: trigger on elements change (skip during initial data load)
+  useEffect(() => {
+    if (isLoadingDataRef.current || !processId) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      setIsSaving(true);
+      updateMutation.mutate({
+        processId,
+        strengths: JSON.stringify(elements.filter(e => e.type === 'Fortaleza')),
+        opportunities: JSON.stringify(elements.filter(e => e.type === 'Oportunidad')),
+        weaknesses: JSON.stringify(elements.filter(e => e.type === 'Debilidad')),
+        threats: JSON.stringify(elements.filter(e => e.type === 'Amenaza')),
+      });
+    }, 1500);
+  }, [elements]);
+
   // Update FODA mutation
   const updateMutation = trpc.processFODA.upsert.useMutation({
     onSuccess: () => {
-      toast.success("Análisis FODA guardado exitosamente");
+      setIsSaving(false);
+      setLastSaved(new Date());
       refetch();
     },
     onError: (error: any) => {
@@ -136,7 +163,8 @@ export default function ProcessFODA() {
 
   const handleSave = async () => {
     if (!processId) return;
-
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    setIsSaving(true);
     await updateMutation.mutateAsync({
       processId,
       strengths: JSON.stringify(elements.filter(e => e.type === 'Fortaleza')),
@@ -293,14 +321,32 @@ export default function ProcessFODA() {
           <h1 className="text-3xl font-bold text-blue-900">ANÁLISIS FODA</h1>
           <p className="text-slate-600 mt-2">Proceso: <strong>{processName}</strong></p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setLocation("/process-characterization")}
-          className="gap-2"
-        >
-          <ArrowLeft size={16} />
-          VOLVER
-        </Button>
+        <div className="flex items-center gap-3">
+          {isSaving && (
+            <span className="text-xs text-slate-500">Guardando...</span>
+          )}
+          {!isSaving && lastSaved && (
+            <span className="text-xs text-green-600 flex items-center gap-1">
+              <Check size={12} /> Guardado a las {lastSaved.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <Button
+            onClick={handleSave}
+            disabled={updateMutation.isPending}
+            className="bg-blue-600 hover:bg-blue-700 gap-2"
+          >
+            <Save size={16} />
+            Guardar Análisis FODA
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setLocation("/process-characterization")}
+            className="gap-2"
+          >
+            <ArrowLeft size={16} />
+            VOLVER
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -318,17 +364,8 @@ export default function ProcessFODA() {
             {renderFODACard('Amenazas', 'Amenaza', amenazas, 'bg-red-50', 'border-red-500', 'Agregar Amenaza')}
           </div>
 
-          {/* Save Button */}
+          {/* Export Button */}
           <div className="flex gap-2 mt-6">
-            <Button
-              onClick={handleSave}
-              disabled={updateMutation.isPending}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 gap-2"
-              size="lg"
-            >
-              <Save size={20} />
-              Guardar Análisis FODA
-            </Button>
             <Button
               onClick={() => {
                 const success = exportFODAToPDF(elements, processName);
@@ -343,13 +380,6 @@ export default function ProcessFODA() {
             >
               <Download size={20} />
               Exportar a PDF
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setLocation("/process-characterization")}
-              className="flex-1"
-            >
-              Volver a Caracterización
             </Button>
           </div>
         </>
