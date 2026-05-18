@@ -6,6 +6,43 @@ En los ejemplos de SSH, `STAGING_DROPLET_IP` es un marcador: sustitúyelo por la
 
 **Ruta del proyecto en el servidor:** usa siempre la misma carpeta donde clonaste el repo (en esta guía aparece `/opt/sige-app-staging` o `~/sige-app-staging`; sustituye por la tuya).
 
+**Rama en GitHub:** `main`.
+
+---
+
+## Comando de deploy (staging)
+
+En el droplet, después de conectar por SSH:
+
+```bash
+cd /opt/sige-app-staging
+chmod +x scripts/deploy-staging-droplet.sh
+./scripts/deploy-staging-droplet.sh
+```
+
+Ese único script hace todo el despliegue habitual:
+
+1. `git fetch` + `git reset --hard origin/main` (código = GitHub; no uses `git pull` a mano)
+2. `./scripts/staging-db-migrate.sh` (esquema MySQL en Docker, sin arrancar la API)
+3. `docker build -t sige-staging:local .`
+4. `docker compose --env-file .env.staging -f docker-compose.staging.yml up -d`
+
+Opciones:
+
+```bash
+SKIP_MIGRATE=1 ./scripts/deploy-staging-droplet.sh   # solo código, sin drizzle
+SKIP_BUILD=1 ./scripts/deploy-staging-droplet.sh     # reinicio sin rebuild de imagen
+```
+
+Antes de migraciones arriesgadas, backup a S3: `bash scripts/backup-cron.sh` (ver [paso 3b](#3b-backup-de-mysql-a-s3-antes-de-migraciones-destructivas)).
+
+Ver logs tras el deploy:
+
+```bash
+docker compose --env-file .env.staging -f docker-compose.staging.yml ps
+docker compose --env-file .env.staging -f docker-compose.staging.yml logs app --tail 80
+```
+
 ---
 
 ## Referencia rápida (lo más habitual)
@@ -26,29 +63,11 @@ Sustituye la IP por la pública de tu droplet. La primera vez, confirma el finge
 cd /opt/sige-app-staging
 ```
 
-### 3. Desplegar (recomendado: un solo comando)
+### 3. Desplegar
 
-En el servidor **no edites** archivos del repo (scripts, compose, etc.). Solo `.env.staging` (está en `.gitignore`). Si editas scripts a mano, `git pull` fallará.
+Usa el [comando de deploy](#comando-de-deploy-staging) de arriba: `./scripts/deploy-staging-droplet.sh`.
 
-```bash
-cd /opt/sige-app-staging
-./scripts/deploy-staging-droplet.sh
-```
-
-Ese script hace, en orden:
-
-1. `git fetch` + `git reset --hard origin/main` (descarta cambios locales accidentales en archivos versionados)
-2. `./scripts/staging-db-migrate.sh` (esquema BD, sin arrancar la API)
-3. `docker build` + `compose up -d`
-
-Opciones:
-
-```bash
-SKIP_MIGRATE=1 ./scripts/deploy-staging-droplet.sh   # solo código, sin drizzle
-SKIP_BUILD=1 ./scripts/deploy-staging-droplet.sh     # sin rebuild de imagen
-```
-
-**No uses `gitignore` para scripts de deploy:** deben versionarse en GitHub y bajar con el reset. El problema no es que estén en git, sino editarlos en el droplet.
+En el servidor **no edites** archivos del repo (scripts, compose, etc.). Solo `.env.staging` (está en `.gitignore`).
 
 ### 3a. Solo sincronizar código (avanzado)
 
@@ -80,12 +99,11 @@ docker compose --env-file .env.staging -f docker-compose.staging.yml down
 
 Si quedó un contenedor huérfano: `docker stop sige-app-staging-app-1 && docker rm sige-app-staging-app-1` y vuelve a ejecutar el `down` de arriba.
 
-### 4. Build y levantar contenedor
-
-Si no usaste el script del paso 3, tras actualizar el repo la app dentro de Docker **no** se actualiza sola: hay que reconstruir imagen y recrear el contenedor `app`.
+### 4. Build y levantar (solo si no usaste `deploy-staging-droplet.sh`)
 
 ```bash
 cd /opt/sige-app-staging
+git fetch origin main && git reset --hard origin/main
 ./scripts/staging-db-migrate.sh
 docker build -t sige-staging:local .
 docker compose --env-file .env.staging -f docker-compose.staging.yml up -d
