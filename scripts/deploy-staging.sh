@@ -19,7 +19,7 @@ fi
 echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 
 docker compose -f docker-compose.staging.yml pull app
-docker compose -f docker-compose.staging.yml up -d mysql
+sh scripts/staging-db-migrate.sh
 docker compose -f docker-compose.staging.yml up -d app
 docker image prune -f
 

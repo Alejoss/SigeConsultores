@@ -15,11 +15,12 @@ services:
       test:
         [
           "CMD-SHELL",
-          "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD || exit 1",
+          "mysqladmin ping -h localhost -uroot -p\"$$MYSQL_ROOT_PASSWORD\" || exit 1",
         ]
       interval: 10s
-      timeout: 5s
-      retries: 10
+      timeout: 10s
+      retries: 30
+      start_period: 120s
     ports:
       - "127.0.0.1:3307:3306"
 
@@ -32,7 +33,8 @@ services:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
-      RUN_DB_PUSH_ON_STARTUP: "true"
+      # Schema changes: run once per deploy (see scripts/staging-db-migrate.sh), not on every container restart.
+      RUN_DB_PUSH_ON_STARTUP: "false"
     depends_on:
       mysql:
         condition: service_healthy
