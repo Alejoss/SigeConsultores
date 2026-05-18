@@ -10,17 +10,18 @@ services:
       - --collation-server=utf8mb4_unicode_ci
     volumes:
       - mysql_staging_data:/var/lib/mysql
-    # Expande la contraseña dentro del contenedor (lee env_file); evita depender de un .env en el host solo para el healthcheck.
+    # MYSQL_PWD evita que caracteres especiales en la contraseña rompan el shell del healthcheck.
+    # start_period: en este droplet MySQL tarda ~6 min en "ready for connections" tras recovery/InnoDB.
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "mysqladmin ping -h localhost -uroot -p\"$$MYSQL_ROOT_PASSWORD\" || exit 1",
+          "export MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" && mysqladmin ping -h 127.0.0.1 -uroot || exit 1",
         ]
-      interval: 10s
+      interval: 15s
       timeout: 10s
-      retries: 30
-      start_period: 120s
+      retries: 20
+      start_period: 420s
     ports:
       - "127.0.0.1:3307:3306"
 
