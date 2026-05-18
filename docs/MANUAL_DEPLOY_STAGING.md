@@ -12,7 +12,26 @@ En los ejemplos de SSH, `STAGING_DROPLET_IP` es un marcador: sustitúyelo por la
 
 ## Comando de deploy (staging)
 
-En el droplet, después de conectar por SSH:
+En el droplet, después de conectar por SSH.
+
+### Droplets con poca RAM (recomendado)
+
+`docker build` consume mucha memoria. **Baja el stack antes del deploy** y vuelve a subirlo al final (el script de deploy hace `up -d` al terminar):
+
+```bash
+cd /opt/sige-app-staging
+
+docker compose --env-file .env.staging -f docker-compose.staging.yml down
+
+chmod +x scripts/deploy-staging-droplet.sh
+./scripts/deploy-staging-droplet.sh
+```
+
+**No uses** `docker compose down` sin `-f docker-compose.staging.yml`: el `docker-compose.yml` por defecto del repo es otro stack (MySQL local) y no apaga `sige-app-staging-*`.
+
+Si el `down` deja un contenedor colgado: `docker stop sige-app-staging-app-1 && docker rm sige-app-staging-app-1` y repite el `down`.
+
+### Deploy (secuencia completa)
 
 ```bash
 cd /opt/sige-app-staging
@@ -20,7 +39,7 @@ chmod +x scripts/deploy-staging-droplet.sh
 ./scripts/deploy-staging-droplet.sh
 ```
 
-Ese único script hace todo el despliegue habitual:
+Ese script hace todo el despliegue habitual:
 
 1. `git fetch` + `git reset --hard origin/main` (código = GitHub; no uses `git pull` a mano)
 2. `./scripts/staging-db-migrate.sh` (esquema MySQL en Docker, sin arrancar la API)
@@ -87,17 +106,9 @@ bash scripts/backup-cron.sh
 
 Requisitos: `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY` en `.env.staging`; contenedor `mysql` arriba (el script lo inicia si hace falta). Cron diario (opcional): `sudo bash scripts/setup-backup-cron.sh /opt/sige-app-staging`.
 
-### 3c. (Opcional) Bajar el stack antes del build
+### 3c. Bajar el stack antes del build (poca RAM)
 
-Para liberar RAM antes de `docker build`, baja staging con **exactamente los mismos** flags que usas en el `up`:
-
-```bash
-docker compose --env-file .env.staging -f docker-compose.staging.yml down
-```
-
-**No uses** `docker compose down` a secas: el repo tiene un `docker-compose.yml` distinto (MySQL local + Adminer). Compose tomaría ese archivo por defecto y **no** apagaría los contenedores `sige-app-staging-`*, dejando `app` arriba y la red “en uso” con mensajes confusos.
-
-Si quedó un contenedor huérfano: `docker stop sige-app-staging-app-1 && docker rm sige-app-staging-app-1` y vuelve a ejecutar el `down` de arriba.
+Mismo comando que en [Comando de deploy → Droplets con poca RAM](#droplets-con-poca-ram-recomendado). Hazlo **antes** de `./scripts/deploy-staging-droplet.sh` si el build falla por memoria o el droplet se queda lento.
 
 ### 4. Build y levantar (solo si no usaste `deploy-staging-droplet.sh`)
 
