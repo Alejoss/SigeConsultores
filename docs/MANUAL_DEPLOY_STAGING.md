@@ -26,13 +26,36 @@ Sustituye la IP por la pública de tu droplet. La primera vez, confirma el finge
 cd /opt/sige-app-staging
 ```
 
-### 3. Pullear cambios del repo (git pull)
+### 3. Desplegar (recomendado: un solo comando)
+
+En el servidor **no edites** archivos del repo (scripts, compose, etc.). Solo `.env.staging` (está en `.gitignore`). Si editas scripts a mano, `git pull` fallará.
 
 ```bash
-git pull --ff-only origin infra/staging-cicd
+cd /opt/sige-app-staging
+./scripts/deploy-staging-droplet.sh
 ```
 
-Si usas otra rama, reemplaza `infra/staging-cicd` por la tuya.
+Ese script hace, en orden:
+
+1. `git fetch` + `git reset --hard origin/main` (descarta cambios locales accidentales en archivos versionados)
+2. `./scripts/staging-db-migrate.sh` (esquema BD, sin arrancar la API)
+3. `docker build` + `compose up -d`
+
+Opciones:
+
+```bash
+SKIP_MIGRATE=1 ./scripts/deploy-staging-droplet.sh   # solo código, sin drizzle
+SKIP_BUILD=1 ./scripts/deploy-staging-droplet.sh     # sin rebuild de imagen
+```
+
+**No uses `gitignore` para scripts de deploy:** deben versionarse en GitHub y bajar con el reset. El problema no es que estén en git, sino editarlos en el droplet.
+
+### 3a. Solo sincronizar código (avanzado)
+
+```bash
+git fetch origin main
+git reset --hard origin/main
+```
 
 ### 3b. (Opcional) Bajar el stack antes del build
 
@@ -48,10 +71,11 @@ Si quedó un contenedor huérfano: `docker stop sige-app-staging-app-1 && docker
 
 ### 4. Build y levantar contenedor
 
-Tras `git pull`, la app dentro de Docker **no** se actualiza sola: hay que reconstruir imagen y recrear el contenedor `app`.
+Si no usaste el script del paso 3, tras actualizar el repo la app dentro de Docker **no** se actualiza sola: hay que reconstruir imagen y recrear el contenedor `app`.
 
 ```bash
 cd /opt/sige-app-staging
+./scripts/staging-db-migrate.sh
 docker build -t sige-staging:local .
 docker compose --env-file .env.staging -f docker-compose.staging.yml up -d
 ```
@@ -87,18 +111,17 @@ sudo tail -n 120 /var/log/nginx/access.log
 
 La app escucha en el droplet en **127.0.0.1:3001** (detrás suele ir Nginx en 80/443).
 
-### 6. Actualizar el código del repo en disco (compose, scripts, nginx de ejemplo)
+### 6. Actualizar solo el código en disco
 
-Cuando necesites **archivos del repositorio** en el servidor (`git pull`). Eso **no** actualiza el JavaScript ni el servidor Node dentro del contenedor: después del pull, en casi todos los cambios de app hay que repetir el **paso 4** (`docker build` + `compose up`).
+Preferir siempre `./scripts/deploy-staging-droplet.sh`. Si solo necesitas sincronizar el repo:
 
 ```bash
 cd /opt/sige-app-staging
-git fetch origin
-git checkout develop
-git pull --ff-only origin develop
+git fetch origin main
+git reset --hard origin/main
 ```
 
-Si tu rama es otra (p. ej. `infra/staging-cicd`), sustituye `develop` en `checkout` y `pull`.
+Evita `git pull` en el servidor si alguna vez se editaron scripts a mano: usa `reset --hard` como arriba.
 
 ### 7. Crear o actualizar usuario administrador (platform admin)
 
