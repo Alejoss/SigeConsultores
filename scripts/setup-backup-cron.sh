@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # One-time setup: installs awscli and registers the daily backup cron job.
-# Run on the droplet:  sudo bash scripts/setup-backup-cron.sh /opt/sige-app
+# Run on the droplet:
+#   sudo bash scripts/setup-backup-cron.sh /opt/sige-app
+#   sudo bash scripts/setup-backup-cron.sh /opt/sige-app-staging
 set -euo pipefail
 
 DEPLOY_PATH="${1:?Usage: $0 <deploy-path>  (e.g. /opt/sige-app)}"
