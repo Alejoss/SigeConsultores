@@ -39,7 +39,6 @@ Si usas otra rama, reemplaza `infra/staging-cicd` por la tuya.
 Para liberar RAM antes de `docker build`, baja staging con **exactamente los mismos** flags que usas en el `up`:
 
 ```bash
-cd /opt/sige-app-staging
 docker compose --env-file .env.staging -f docker-compose.staging.yml down
 ```
 

@@ -301,7 +301,7 @@ export const processLeaderInvitationsRouter = router({
 
   changePassword: companyProcedure
     .input(
-      changePasswordInputSchema.extend({
+      changePasswordInputSchema.safeExtend({
         processId: z.number(),
       })
     )
