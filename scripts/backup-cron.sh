@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# Cron-triggered database backup: mysqldump → gzip → S3 (streaming, no temp files)
+# Database backup: mysqldump (MySQL container) → gzip → S3 (host AWS CLI).
+# MySQL credentials come from the container env (docker-compose env_file), not from sourcing .env on the host.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Optional overrides (e.g. in /etc/cron.d/sige-backup):
-#   SIGE_ENV_FILE=/opt/sige-app-staging/.env.staging
-#   SIGE_COMPOSE_FILE=/opt/sige-app-staging/docker-compose.staging.yml
+# shellcheck source=scripts/load-env-file.sh
+. "${SCRIPT_DIR}/load-env-file.sh"
+
 if [ -n "${SIGE_ENV_FILE:-}" ]; then
   ENV_FILE="$SIGE_ENV_FILE"
   COMPOSE_FILE="${SIGE_COMPOSE_FILE:?Set SIGE_COMPOSE_FILE when using SIGE_ENV_FILE}"
@@ -27,9 +28,9 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
-# shellcheck source=scripts/load-env-file.sh
-. "${SCRIPT_DIR}/load-env-file.sh"
-load_env_file "$ENV_FILE"
+# Only AWS keys on the host (for `aws s3 cp`). MySQL vars stay inside the mysql service.
+load_env_file_keys "$ENV_FILE" \
+  AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_S3_REGION AWS_S3_BUCKET AWS_REGION
 
 TIMESTAMP=$(date -u +%Y-%m-%dT%H%MZ)
 BACKUP_PREFIX="sige-backup-"
@@ -41,21 +42,26 @@ BUCKET="${AWS_S3_BUCKET:-sige-backups}"
 REGION="${AWS_S3_REGION:-${AWS_REGION:-us-east-2}}"
 S3_PATH="s3://${BUCKET}/backups/${FILENAME}"
 
-export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID not set}"
-export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY not set}"
+export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID not set in $ENV_FILE}"
+export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY not set in $ENV_FILE}"
 export AWS_DEFAULT_REGION="${REGION}"
 
-COMPOSE_CMD=(docker compose -f "$COMPOSE_FILE")
-if [[ "$ENV_FILE" == *".env.staging"* ]]; then
-  COMPOSE_CMD+=(--env-file "$ENV_FILE")
-fi
+COMPOSE_CMD=(docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE")
 
 echo "[$(date -u)] Starting backup → ${S3_PATH}"
-echo "[$(date -u)] Using compose: ${COMPOSE_FILE}"
+echo "[$(date -u)] Compose: ${COMPOSE_FILE}"
 
-"${COMPOSE_CMD[@]}" exec -T mysql \
-  mysqldump -uroot -p"${MYSQL_ROOT_PASSWORD}" "${MYSQL_DATABASE}" \
-    --single-transaction --quick --lock-tables=false --set-gtid-purged=OFF \
+if ! "${COMPOSE_CMD[@]}" ps --status running mysql 2>/dev/null | grep -q mysql; then
+  echo "[$(date -u)] MySQL container not running; starting mysql service..."
+  "${COMPOSE_CMD[@]}" up -d mysql
+  "${COMPOSE_CMD[@]}" exec mysql sh -c \
+    'until mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent 2>/dev/null; do sleep 2; done'
+fi
+
+# Credentials: MYSQL_ROOT_PASSWORD and MYSQL_DATABASE are already in the mysql container (env_file in compose).
+"${COMPOSE_CMD[@]}" exec -T mysql sh -c \
+  'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" \
+    --single-transaction --quick --lock-tables=false --set-gtid-purged=OFF' \
   | gzip -9 \
   | aws s3 cp - "${S3_PATH}" \
       --content-type "application/gzip" \

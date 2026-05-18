@@ -57,7 +57,18 @@ git fetch origin main
 git reset --hard origin/main
 ```
 
-### 3b. (Opcional) Bajar el stack antes del build
+### 3b. Backup de MySQL a S3 (antes de migraciones destructivas)
+
+La BD corre en Docker; el script oficial hace `docker compose exec mysql mysqldump` y sube a S3. Detalle: [BACKUP_SYSTEM.md](./BACKUP_SYSTEM.md).
+
+```bash
+cd /opt/sige-app-staging
+bash scripts/backup-cron.sh
+```
+
+Requisitos: `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY` en `.env.staging`; contenedor `mysql` arriba (el script lo inicia si hace falta). Cron diario (opcional): `sudo bash scripts/setup-backup-cron.sh /opt/sige-app-staging`.
+
+### 3c. (Opcional) Bajar el stack antes del build
 
 Para liberar RAM antes de `docker build`, baja staging con **exactamente los mismos** flags que usas en el `up`:
 

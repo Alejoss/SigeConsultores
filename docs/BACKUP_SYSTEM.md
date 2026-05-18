@@ -4,7 +4,7 @@
 
 ## Descripción General
 
-Respaldo diario automatizado de la base de datos MySQL del droplet de producción hacia AWS S3.
+Respaldo diario automatizado de la base de datos MySQL (contenedor Docker en el droplet) hacia AWS S3. Funciona en **producción** (`/opt/sige-app`, `.env.production`) y **staging** (`/opt/sige-app-staging`, `.env.staging`).
 
 - Frecuencia: diaria a las 2:00 AM UTC (cron job en el droplet)
 - Destino: `s3://sige-backups/backups/`
@@ -52,8 +52,16 @@ Respaldo diario automatizado de la base de datos MySQL del droplet de producció
 
 ## Setup inicial (una sola vez en el droplet)
 
+Producción:
+
 ```bash
 sudo bash scripts/setup-backup-cron.sh /opt/sige-app
+```
+
+Staging:
+
+```bash
+sudo bash scripts/setup-backup-cron.sh /opt/sige-app-staging
 ```
 
 Esto:
@@ -63,23 +71,28 @@ Esto:
 
 ### Variables de entorno requeridas
 
-Deben estar en `.env.production` del proyecto:
+En `.env.production` o `.env.staging` (el mismo archivo que usa `docker compose --env-file`):
 
 ```bash
-MYSQL_ROOT_PASSWORD=...
-MYSQL_DATABASE=sige_platform
-AWS_ACCESS_KEY_ID=AKIA...
+MYSQL_ROOT_PASSWORD=...   # usado por el contenedor mysql (compose env_file)
+MYSQL_DATABASE=...        # idem
+AWS_ACCESS_KEY_ID=AKIA... # solo en el host, para `aws s3 cp`
 AWS_SECRET_ACCESS_KEY=...
 AWS_S3_REGION=us-east-2       # opcional, default: us-east-2
 AWS_S3_BUCKET=sige-backups    # opcional, default: sige-backups
 ```
 
+`backup-cron.sh` **no hace `source` del .env completo** (valores con `()`, `$`, etc. romperían bash). El dump usa las variables **dentro del contenedor** `mysql`; en el host solo lee claves `AWS_*`.
+
 ## Operaciones comunes
 
 ### Ejecutar backup manual
 
+Desde la raíz del clone en el servidor (MySQL debe estar arriba o el script lo levanta):
+
 ```bash
-bash /opt/sige-app/scripts/backup-cron.sh
+cd /opt/sige-app-staging   # o /opt/sige-app
+bash scripts/backup-cron.sh
 ```
 
 ### Ver logs del backup automático
@@ -154,11 +167,15 @@ docker compose -f /opt/sige-app/docker-compose.prod.yml ps mysql
 sudo apt-get install -y awscli
 ```
 
+### Error "syntax error near unexpected token" al ejecutar backup-cron.sh
+
+Causa antigua: `source .env` en bash. Versión actual: solo lee `AWS_*` y el dump va por `docker compose exec mysql`. Actualiza el repo (`git reset --hard origin/main`) y vuelve a ejecutar.
+
 ### Error "Access Denied" en S3
 
-Verificar credenciales en `.env.production`:
+Verificar credenciales AWS en el `.env` del entorno:
 ```bash
-grep AWS_ /opt/sige-app/.env.production
+grep AWS_ /opt/sige-app-staging/.env.staging
 ```
 
 El usuario IAM (`sige-s3-backup`) debe tener permisos `s3:PutObject` y `s3:GetObject` sobre `arn:aws:s3:::sige-backups/*`.
