@@ -9,8 +9,9 @@ $COMPOSE up -d mysql
 $COMPOSE exec mysql sh -c 'until mysqladmin ping -h localhost -uroot -p"$MYSQL_ROOT_PASSWORD" --silent 2>/dev/null; do sleep 2; done'
 
 echo "[staging-db-migrate] Legacy schema compat + drizzle push (one-off container)..."
+# --entrypoint sh: the image ENTRYPOINT always starts node; without this, run would boot the API instead of migrating.
 $COMPOSE run --rm --no-deps \
-  -e RUN_DB_PUSH_ON_STARTUP=false \
-  app sh -c 'node scripts/pre-push-schema-compat.mjs && pnpm exec drizzle-kit push --force'
+  --entrypoint sh \
+  app -c 'node scripts/pre-push-schema-compat.mjs && pnpm exec drizzle-kit push --force'
 
 echo "[staging-db-migrate] Done."
