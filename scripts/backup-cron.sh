@@ -46,6 +46,12 @@ export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID not set in $ENV
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY not set in $ENV_FILE}"
 export AWS_DEFAULT_REGION="${REGION}"
 
+if ! command -v aws &>/dev/null; then
+  echo "[ERROR] AWS CLI not found on this host (required for s3 upload)." >&2
+  echo "Install once:  sudo bash ${SCRIPT_DIR}/setup-backup-cron.sh ${PROJECT_DIR}" >&2
+  exit 1
+fi
+
 COMPOSE_CMD=(docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE")
 
 echo "[$(date -u)] Starting backup → ${S3_PATH}"

@@ -88,12 +88,20 @@ AWS_S3_BUCKET=sige-backups    # opcional, default: sige-backups
 
 ### Ejecutar backup manual
 
-Desde la raíz del clone en el servidor (MySQL debe estar arriba o el script lo levanta):
+**Primera vez en el droplet:** instala AWS CLI y (opcional) el cron:
+
+```bash
+sudo bash scripts/setup-backup-cron.sh /opt/sige-app-staging
+```
+
+Luego, desde la raíz del clone (MySQL debe estar arriba o el script lo levanta):
 
 ```bash
 cd /opt/sige-app-staging   # o /opt/sige-app
 bash scripts/backup-cron.sh
 ```
+
+Sin `setup-backup-cron.sh`, verás `aws: command not found`: el dump en Docker puede funcionar pero **no se sube nada a S3**.
 
 ### Ver logs del backup automático
 
