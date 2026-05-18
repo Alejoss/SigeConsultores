@@ -554,12 +554,13 @@ export default function ProcessRiskMatrix() {
                             value={row.probabilidad || 'A'}
                             onChange={(e) => updateRow(row.id, 'probabilidad', e.target.value as ProbabilidadType)}
                             className="w-full border rounded p-2 text-sm"
+                            translate="no"
                           >
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                            <option value="D">D</option>
-                            <option value="E">E</option>
+                            <option value="A" translate="no">A</option>
+                            <option value="B" translate="no">B</option>
+                            <option value="C" translate="no">C</option>
+                            <option value="D" translate="no">D</option>
+                            <option value="E" translate="no">E</option>
                           </select>
                         </div>
                         <div>
@@ -784,12 +785,13 @@ export default function ProcessRiskMatrix() {
                                 value={row.probabilidadNueva || row.probabilidad || 'A'}
                                 onChange={(e) => updateRow(row.id, 'probabilidadNueva', e.target.value as ProbabilidadType)}
                                 className="w-full border rounded p-2 text-sm"
+                                translate="no"
                               >
-                                <option value="A">A</option>
-                                <option value="B">B</option>
-                                <option value="C">C</option>
-                                <option value="D">D</option>
-                                <option value="E">E</option>
+                                <option value="A" translate="no">A</option>
+                                <option value="B" translate="no">B</option>
+                                <option value="C" translate="no">C</option>
+                                <option value="D" translate="no">D</option>
+                                <option value="E" translate="no">E</option>
                               </select>
                             </div>
                             <div>

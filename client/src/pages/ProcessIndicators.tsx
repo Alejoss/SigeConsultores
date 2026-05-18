@@ -51,7 +51,7 @@ export default function ProcessIndicators() {
       id: "objetivos",
       name: "Objetivos tácticos (Planificación)",
       indicators: [
-        { id: "alcanzado", name: "% Alcanzado", value: 0 }
+        { id: "alcanzado", name: "% Meta alcanzada por Objetivos Tácticos", value: 0 }
       ]
     },
     {

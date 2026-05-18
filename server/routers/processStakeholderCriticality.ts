@@ -1,8 +1,10 @@
 import z from "zod";
 import { protectedProcedure, router, companyProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { stakeholderCriticalities } from "../../drizzle/schema";
+import { stakeholderCriticalities, processStakeholderMatrixFiles } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
+import { storagePut, storageGet } from "../storage";
+import { randomUUID } from "crypto";
 
 export const processStakeholderCriticalityRouter = router({
   getByProcessId: companyProcedure
@@ -108,5 +110,56 @@ export const processStakeholderCriticalityRouter = router({
         .where(eq(stakeholderCriticalities.id, input.id));
 
       return { success: true };
+    }),
+
+  uploadExcelMatrix: companyProcedure
+    .input(z.object({
+      processId: z.number(),
+      fileName: z.string(),
+      fileData: z.array(z.number()),
+      mimeType: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const fileBuffer = Buffer.from(input.fileData);
+      const fileKey = `stakeholder-matrix/${input.processId}/${randomUUID()}-${input.fileName}`;
+      const mimeType = input.mimeType || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      const { url } = await storagePut(fileKey, fileBuffer, mimeType);
+
+      // Upsert: delete old record for this process if exists, then insert new
+      await db.delete(processStakeholderMatrixFiles)
+        .where(eq(processStakeholderMatrixFiles.processId, input.processId));
+
+      await db.insert(processStakeholderMatrixFiles).values({
+        processId: input.processId,
+        fileName: input.fileName,
+        fileKey,
+      });
+
+      return { success: true, url, fileName: input.fileName };
+    }),
+
+  getExcelMatrix: companyProcedure
+    .input(z.object({ processId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+
+      const records = await db.select()
+        .from(processStakeholderMatrixFiles)
+        .where(eq(processStakeholderMatrixFiles.processId, input.processId))
+        .limit(1);
+
+      if (records.length === 0) return null;
+
+      const record = records[0];
+      try {
+        const { url } = await storageGet(record.fileKey);
+        return { fileName: record.fileName, url };
+      } catch {
+        return { fileName: record.fileName, url: null };
+      }
     }),
 });

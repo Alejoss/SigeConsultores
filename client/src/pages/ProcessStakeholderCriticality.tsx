@@ -2,12 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Trash2, MessageCircle } from "lucide-react";
+import { ArrowLeft, Trash2, MessageCircle, Upload, Eye } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { AIChatPanel } from "@/components/AIChatPanel";
+
 
 // Función para auto-expandir textareas
 const autoExpandTextarea = (textarea: HTMLTextAreaElement | null) => {
@@ -108,6 +109,14 @@ export default function ProcessStakeholderCriticality() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [excelFileName, setExcelFileName] = useState<string>("");
+  const [excelUploadStatus, setExcelUploadStatus] = useState<'idle' | 'uploading' | 'saved' | 'error'>('idle');
+  const excelInputRef = useRef<HTMLInputElement>(null);
+  const uploadExcelMatrixMutation = trpc.processStakeholderCriticality.uploadExcelMatrix.useMutation();
+  const { data: excelMatrixData, refetch: refetchExcelMatrix } = trpc.processStakeholderCriticality.getExcelMatrix.useQuery(
+    { processId: processId ? parseInt(processId) : 0 },
+    { enabled: !!processId }
+  );
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const aiQueryMutation = trpc.ai.query.useMutation();
   
@@ -458,6 +467,37 @@ export default function ProcessStakeholderCriticality() {
     }
   }, [processId, subprocessMapData, criticalityDataFromDb]);
 
+  const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!processId) {
+      alert('No hay proceso seleccionado. Por favor regresa y selecciona un proceso.');
+      return;
+    }
+    const fileName = file.name;
+    setExcelUploadStatus('uploading');
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      await uploadExcelMatrixMutation.mutateAsync({
+        processId: parseInt(processId),
+        fileName,
+        fileData: Array.from(uint8Array),
+        mimeType: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      setExcelFileName(fileName);
+      setExcelUploadStatus('saved');
+      refetchExcelMatrix();
+      setTimeout(() => setExcelUploadStatus('idle'), 3000);
+    } catch (err) {
+      console.error('[Excel] Error uploading file:', err);
+      setExcelUploadStatus('error');
+      alert('Error al subir el archivo. Por favor intenta de nuevo.');
+      setTimeout(() => setExcelUploadStatus('idle'), 3000);
+    }
+    e.target.value = '';
+  };
+
   const handleSave = async () => {
     if (isSaving) return; // Evitar múltiples guardados simultáneos
     setIsSaving(true);
@@ -691,7 +731,7 @@ export default function ProcessStakeholderCriticality() {
   const exportToPDF = () => {
     try {
       // Crear tabla HTML para exportar
-      let htmlContent = '<h1>MATRIZ DE CRITICIDAD DE ASOCIADOS DE NEGOCIO</h1>';
+      let htmlContent = '<h1>MATRIZ DE PARTES INTERESADAS</h1>';
       htmlContent += '<p>Fecha: ' + new Date().toLocaleDateString('es-ES') + '</p>';
       htmlContent += '<table border="1" cellpadding="8" cellspacing="0" style="width:100%; border-collapse:collapse;">';
       htmlContent += '<thead><tr style="background-color:#0066cc; color:white;">';
@@ -750,10 +790,10 @@ export default function ProcessStakeholderCriticality() {
   }
 
   return (
-    <div className="space-y-6 p-6 bg-white min-h-screen">
+    <div className="space-y-6 p-6 bg-white min-h-screen" translate="no">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-blue-900">MATRIZ DE CRITICIDAD DE ASOCIADOS DE NEGOCIO</h1>
+          <h1 className="text-3xl font-bold text-blue-900">MATRIZ DE PARTES INTERESADAS</h1>
           <p className="text-sm text-slate-600 mt-1">
             {saveStatus === 'saving' && '💾 Guardando cambios...'}
             {saveStatus === 'saved' && '✓ Cambios guardados'}
@@ -790,7 +830,7 @@ export default function ProcessStakeholderCriticality() {
       {showAIChat && (
         <div className="fixed right-6 top-24 w-96 max-h-96 z-50">
           <AIChatPanel
-            title="Asesor Criticidad"
+            title="Asesor Partes Interesadas"
             placeholder="¿Qué quieres saber sobre criticidad?"
             onSendMessage={handleAIQuery}
             onClose={() => setShowAIChat(false)}
@@ -805,34 +845,74 @@ export default function ProcessStakeholderCriticality() {
           <CardTitle>Proceso: {processName}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-6 p-4 bg-slate-100 rounded-lg">
-            <h3 className="font-bold mb-2">Matriz de Criticidad (Incidencia × Riesgo):</h3>
-            <p className="text-xs text-slate-600 mb-2">Incidencia: 3=Alto, 2=Medio, 1=Bajo | Riesgo: C=Bajo, B=Medio, A=Alto</p>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <div className="bg-red-900 text-white p-2 rounded text-center font-bold">3A = Crítico</div>
-              <div className="bg-red-500 text-white p-2 rounded text-center font-bold">3B = Alto</div>
-              <div className="bg-yellow-400 text-black p-2 rounded text-center font-bold">3C = Medio</div>
-              <div className="bg-red-500 text-white p-2 rounded text-center font-bold">2A = Alto</div>
-              <div className="bg-orange-400 text-white p-2 rounded text-center font-bold">2B = Medio-Alto</div>
-              <div className="bg-yellow-200 text-black p-2 rounded text-center font-bold">2C = Bajo</div>
-              <div className="bg-yellow-400 text-black p-2 rounded text-center font-bold">1A = Medio</div>
-              <div className="bg-yellow-200 text-black p-2 rounded text-center font-bold">1B = Bajo</div>
-              <div className="bg-green-500 text-white p-2 rounded text-center font-bold">1C = Muy Bajo</div>
+          {/* Fila superior: dos columnas */}
+          <div className="mb-6 flex flex-wrap gap-4">
+            {/* Columna izquierda: Nota interconexión + botón Cargar */}
+            <div className="flex-1 min-w-[280px] p-4 bg-blue-50 border border-blue-200 rounded-lg flex flex-col gap-3 justify-start">
+              <p className="text-sm text-blue-900">
+                <strong>Nota:</strong> Esta matriz está interconectada con el Mapa de Subprocesos. Puedes cargar automáticamente los asociados de negocio desde el Mapa de Subprocesos.
+              </p>
+              <Button
+                onClick={loadStakeholdersFromSubprocessMap}
+                className="bg-blue-600 hover:bg-blue-700 text-white gap-2 w-fit"
+                disabled={isLoadingSubprocessMap}
+              >
+                {isLoadingSubprocessMap ? "Cargando..." : "Cargar Partes Interesadas"}
+              </Button>
+            </div>
+
+            {/* Columna derecha: Botones Excel + Nota */}
+            <div className="flex-1 min-w-[280px] p-4 bg-slate-50 border border-slate-200 rounded-lg flex flex-col gap-2 justify-start">
+              <input
+                ref={excelInputRef}
+                type="file"
+                accept="*"
+                style={{ display: 'none' }}
+                onChange={handleExcelUpload}
+              />
+              <Button
+                onClick={() => excelInputRef.current?.click()}
+                disabled={excelUploadStatus === 'uploading'}
+                className="bg-green-600 hover:bg-green-700 text-white gap-2 text-sm w-fit"
+              >
+                <Upload className="w-4 h-4" />
+                {excelUploadStatus === 'uploading' ? 'Subiendo...' : 'Subir Matriz de criticidad de Asociados de negocio'}
+              </Button>
+              {excelUploadStatus === 'saved' && (
+                <p className="text-xs text-green-600 font-medium">✓ Archivo guardado correctamente</p>
+              )}
+              {excelUploadStatus === 'error' && (
+                <p className="text-xs text-red-600 font-medium">✗ Error al subir el archivo</p>
+              )}
+              <Button
+                onClick={() => {
+                  const url = excelMatrixData?.url;
+                  if (url) {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = excelMatrixData?.fileName || 'matriz.xlsx';
+                    a.target = '_blank';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  }
+                }}
+                variant="outline"
+                className="gap-2 text-sm w-fit"
+                disabled={!excelMatrixData?.url}
+              >
+                <Eye className="w-4 h-4" />
+                Mostrar Matriz de Asociados de negocio
+                {(excelMatrixData?.fileName || excelFileName) && (
+                  <span className="text-xs text-slate-500 ml-1">({excelMatrixData?.fileName || excelFileName})</span>
+                )}
+              </Button>
+              <p className="text-xs text-slate-500 italic">
+                Para el área que aplica, la Matriz subida en Excel debe contener los criterios de criticidad de los Asociados de Negocio y detallar los mismos con su respectiva evaluación de criticidad.
+              </p>
             </div>
           </div>
 
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-900 mb-3">
-              <strong>Nota:</strong> Esta matriz está interconectada con el Mapa de Subprocesos. Puedes cargar automáticamente los asociados de negocio desde el Mapa de Subprocesos.
-            </p>
-            <Button
-              onClick={loadStakeholdersFromSubprocessMap}
-              className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
-              disabled={isLoadingSubprocessMap}
-            >
-              {isLoadingSubprocessMap ? "Cargando..." : "Cargar Asociados del Mapa de Subprocesos"}
-            </Button>
-          </div>
 
           <div className="mb-6 p-4 bg-slate-50 rounded-lg">
             <h3 className="font-bold mb-2">Porcentaje de Cumplimiento</h3>
@@ -847,7 +927,8 @@ export default function ProcessStakeholderCriticality() {
             <p className="text-sm text-slate-600 mt-2">{data.stakeholders.filter(s => s.completed === "Si").length} de {data.stakeholders.length} completados</p>
           </div>
 
-          <div className="mb-8 overflow-x-auto">
+          {/* Sección ASOCIADOS DE NEGOCIO eliminada según solicitud del usuario */}
+          <div className="mb-8 overflow-x-auto" style={{display:'none'}}>
             <h3 className="text-lg font-bold text-blue-900 mb-4">ASOCIADOS DE NEGOCIO</h3>
             <table className="w-full border-collapse text-xs">
               <thead>
@@ -1031,7 +1112,7 @@ export default function ProcessStakeholderCriticality() {
           </div>
 
           <div className="mb-8 overflow-x-auto">
-            <h3 className="text-lg font-bold text-blue-900 mb-4">ACCIONES Y SEGUIMIENTO</h3>
+            <h3 className="text-lg font-bold text-blue-900 mb-4">MEJORA CONTINUA ENTRE PARTES INTERESADAS</h3>
             <table className="w-full border-collapse text-xs">
               <thead>
                 <tr className="bg-green-500 text-white">

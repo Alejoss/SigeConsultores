@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -360,21 +359,18 @@ export default function ProcessCompliances() {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Obligación *</label>
-              <Select
+              <select
                 value={formData.obligationType}
-                onValueChange={(value) => setFormData({ ...formData, obligationType: value as any })}
+                onChange={(e) => setFormData({ ...formData, obligationType: e.target.value as any })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona el tipo de obligación" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Legal">Legal</SelectItem>
-                  <SelectItem value="Reglamentaria">Reglamentaria</SelectItem>
-                  <SelectItem value="Concesion">Concesión</SelectItem>
-                  <SelectItem value="Sistema de Gestion">Sistema de Gestión</SelectItem>
-                  <SelectItem value="Otros">Otros</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="" disabled>Selecciona el tipo de obligación</option>
+                <option value="Legal">Legal</option>
+                <option value="Reglamentaria">Reglamentaria</option>
+                <option value="Concesion">Concesión</option>
+                <option value="Sistema de Gestion">Sistema de Gestión</option>
+                <option value="Otros">Otros</option>
+              </select>
             </div>
 
             {formData.obligationType === "Otros" && (
@@ -430,18 +426,14 @@ export default function ProcessCompliances() {
               }`}>
                 {formData.completed}
               </div>
-              <Select
+              <select
                 value={formData.completed}
-                onValueChange={(value) => setFormData({ ...formData, completed: value as "SI" | "NO" })}
+                onChange={(e) => setFormData({ ...formData, completed: e.target.value as "SI" | "NO" })}
+                className="mt-2 w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <SelectTrigger className="mt-2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SI">SI</SelectItem>
-                  <SelectItem value="NO">NO</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="SI">SI</option>
+                <option value="NO">NO</option>
+              </select>
             </div>
 
             <div>

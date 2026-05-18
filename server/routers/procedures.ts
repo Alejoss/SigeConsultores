@@ -288,13 +288,13 @@ export const proceduresRouter = router({
     .input(
       z.object({
         fileName: z.string(),
-        fileContent: z.string(),
+        fileData: z.array(z.number()),
         fileType: z.string(),
       })
     )
     .mutation(async ({ input, ctx }) => {
       try {
-        const buffer = Buffer.from(input.fileContent, "base64");
+        const buffer = Buffer.from(input.fileData);
         const userId = ctx.user?.id || 0;
         const fileKey = `procedures/${userId}/${Date.now()}-${input.fileName}`;
         const result = await storagePut(fileKey, buffer, input.fileType);

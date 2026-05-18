@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, FileText } from 'lucide-react';
 
 interface ProcedureRecord {
   id?: number;
@@ -53,10 +54,11 @@ interface FormData {
 
 interface Props {
   processId: number;
+  processName?: string;
   onVolver?: () => void;
 }
 
-export default function ProceduresCharacterization({ processId: propProcessId, onVolver }: Props) {
+export default function ProceduresCharacterization({ processId: propProcessId, processName: propProcessName, onVolver }: Props) {
   const [, setLocation] = useLocation();
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -123,24 +125,14 @@ export default function ProceduresCharacterization({ processId: propProcessId, o
   }, [expandedId]);
 
   const uploadFile = async (file: File): Promise<{ url: string; key: string }> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const base64 = (reader.result as string).split(",")[1];
-          const result = await uploadFileMutation.mutateAsync({
-            fileName: file.name,
-            fileContent: base64,
-            fileType: file.type,
-          });
-          resolve(result);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      reader.onerror = () => reject(new Error("Error reading file"));
-      reader.readAsDataURL(file);
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    const result = await uploadFileMutation.mutateAsync({
+      fileName: file.name,
+      fileData: Array.from(uint8Array),
+      fileType: file.type,
     });
+    return result;
   };
 
   const handleEditRecord = (record: ProcedureRecord) => {
@@ -490,33 +482,113 @@ export default function ProceduresCharacterization({ processId: propProcessId, o
     }
   };
 
-  const generateControlDocument = (procedure: Procedure) => {
-    const wb = XLSX.utils.book_new();
-    const data: any[] = [
-      ["Control de Documentos"],
-      [],
-      ["Procedimiento:", procedure.name],
-      ["Objetivo:", procedure.objective || ""],
-      ["Código:", procedure.code],
-      ["Versión:", procedure.version],
-      ["Fecha:", procedure.createdDate || "N/A"],
-      [],
-      ["REGISTROS DEL PROCEDIMIENTO"],
-      [],
-      ["Nombre del Registro", "Código", "Versión", "Fecha"],
-    ];
+  const generateControlDocumentPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 14;
+    const maxWidth = pageWidth - 2 * margin;
+    let y = 18;
+    const processLabel = propProcessName || `Proceso #${propProcessId}`;
+    const today = new Date().toLocaleDateString('es-ES');
 
-    const records = procedureRecords[procedure.id];
-    if (records && records.length > 0) {
-      records.forEach((record) => {
-        const dateStr = record.date || "N/A";
-        data.push([record.name, record.code, record.version, dateStr]);
-      });
+    const checkPage = (needed: number) => {
+      if (y + needed > pageHeight - 15) { doc.addPage(); y = 18; }
+    };
+
+    // ── Encabezado del documento ──────────────────────────────────────────
+    doc.setFillColor(30, 58, 138);
+    doc.rect(margin, y - 6, maxWidth, 12, 'F');
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text('CONTROL DE DOCUMENTOS', pageWidth / 2, y + 1, { align: 'center' });
+    y += 12;
+
+    doc.setFontSize(10);
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Proceso: ${processLabel}`, margin, y);
+    y += 6;
+    doc.text(`Fecha de generación: ${today}`, margin, y);
+    y += 6;
+    doc.text(`Total de procedimientos: ${procedures.length}`, margin, y);
+    y += 10;
+
+    // ── Un bloque por cada procedimiento ─────────────────────────────────
+    procedures.forEach((proc, idx) => {
+      checkPage(40);
+
+      // Cabecera del procedimiento
+      doc.setFillColor(220, 234, 255);
+      doc.rect(margin, y - 4, maxWidth, 8, 'F');
+      doc.setFontSize(11);
+      doc.setTextColor(30, 58, 138);
+      const title = `${idx + 1}. ${proc.name}`;
+      const titleLines = doc.splitTextToSize(title, maxWidth - 4);
+      doc.text(titleLines as string[], margin + 2, y);
+      y += titleLines.length * 5 + 3;
+
+      // Datos del procedimiento
+      doc.setFontSize(9);
+      doc.setTextColor(50, 50, 50);
+      const objLines = doc.splitTextToSize(`Objetivo: ${proc.objective || 'N/A'}`, maxWidth);
+      checkPage(objLines.length * 4 + 16);
+      doc.text(objLines as string[], margin, y);
+      y += objLines.length * 4 + 2;
+
+      doc.text(`Código: ${proc.code}   |   Versión: ${proc.version}   |   Fecha: ${proc.createdDate || 'N/A'}`, margin, y);
+      y += 6;
+
+      // Tabla de registros
+      const records = procedureRecords[proc.id];
+      if (records && records.length > 0) {
+        checkPage(14);
+        // Encabezado de la tabla
+        doc.setFillColor(34, 197, 94);
+        doc.rect(margin, y - 3, maxWidth, 7, 'F');
+        doc.setFontSize(8);
+        doc.setTextColor(255, 255, 255);
+        const colW = [maxWidth * 0.45, maxWidth * 0.2, maxWidth * 0.15, maxWidth * 0.2];
+        doc.text('Nombre del Registro', margin + 2, y + 1);
+        doc.text('Código', margin + colW[0] + 2, y + 1);
+        doc.text('Versión', margin + colW[0] + colW[1] + 2, y + 1);
+        doc.text('Fecha', margin + colW[0] + colW[1] + colW[2] + 2, y + 1);
+        y += 7;
+
+        records.forEach((rec, ri) => {
+          const nameLines = doc.splitTextToSize(rec.name, colW[0] - 4);
+          const rowH = Math.max(nameLines.length * 4, 6) + 2;
+          checkPage(rowH);
+          doc.setFillColor(ri % 2 === 0 ? 248 : 255, ri % 2 === 0 ? 250 : 255, ri % 2 === 0 ? 252 : 255);
+          doc.rect(margin, y - 3, maxWidth, rowH, 'F');
+          doc.setFontSize(8);
+          doc.setTextColor(40, 40, 40);
+          doc.text(nameLines as string[], margin + 2, y);
+          doc.text(rec.code || '', margin + colW[0] + 2, y);
+          doc.text(rec.version || '', margin + colW[0] + colW[1] + 2, y);
+          doc.text(rec.date || 'N/A', margin + colW[0] + colW[1] + colW[2] + 2, y);
+          y += rowH;
+        });
+      } else {
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text('Sin registros asociados', margin + 4, y);
+        y += 5;
+      }
+
+      y += 6; // Espacio entre procedimientos
+    });
+
+    // ── Pie de página en cada hoja ────────────────────────────────────────
+    const totalPages = (doc.internal as any).getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7);
+      doc.setTextColor(160, 160, 160);
+      doc.text(`Página ${i} de ${totalPages}  |  SIGE Platform  |  ${today}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
     }
 
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, ws, "Control de Documentos");
-    XLSX.writeFile(wb, `Control_Documentos_${procedure.code}.xlsx`);
+    const fileName = `Control_Documentos_${processLabel.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
   };
 
   const filtered = procedures.filter((proc) => {
@@ -526,28 +598,36 @@ export default function ProceduresCharacterization({ processId: propProcessId, o
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-2">
         <h2 className="text-2xl font-bold">Procedimientos</h2>
-        <Button
-          variant="outline"
-          onClick={() => {
-            console.log('[ProceduresCharacterization] Volver button clicked, onVolver:', !!onVolver);
-            if (onVolver) {
-              console.log('[ProceduresCharacterization] Calling onVolver callback');
-              onVolver();
-            } else {
-              console.log('[ProceduresCharacterization] No onVolver callback, navigating to /process-characterization');
-              setLocation("/process-characterization");
-            }
-          }}
-          className="gap-2"
-        >
-          <ArrowLeft size={16} />
-          VOLVER
-        </Button>
-        <Button onClick={() => setShowForm(!showForm)} variant="default">
-          {showForm ? "Cancelar" : "Registrar nuevo procedimiento"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (onVolver) {
+                onVolver();
+              } else {
+                setLocation("/process-characterization");
+              }
+            }}
+            className="gap-2"
+          >
+            <ArrowLeft size={16} />
+            VOLVER
+          </Button>
+          <Button
+            variant="outline"
+            onClick={generateControlDocumentPDF}
+            disabled={procedures.length === 0}
+            className="gap-2"
+          >
+            <FileText size={16} />
+            Generar Control de Documentos
+          </Button>
+          <Button onClick={() => setShowForm(!showForm)} variant="default">
+            {showForm ? "Cancelar" : "Registrar nuevo procedimiento"}
+          </Button>
+        </div>
       </div>
 
       {showForm && (
@@ -764,10 +844,6 @@ export default function ProceduresCharacterization({ processId: propProcessId, o
                     📊 Descargar Flujograma
                   </Button>
                 )}
-
-                <Button onClick={() => generateControlDocument(procedure)} variant="outline" className="w-full">
-                  📋 Generar Control de Documentos
-                </Button>
 
                 {procedureRecords[procedure.id] && procedureRecords[procedure.id].length > 0 && (
                   <div className="mt-6 space-y-3">

@@ -788,10 +788,10 @@ export const procedures = mysqlTable("procedures", {
   version: varchar("version", { length: 20 }).notNull(),
   createdDate: varchar("createdDate", { length: 10 }),
   lastVersion: varchar("lastVersion", { length: 20 }),
-  procedureFileUrl: varchar("procedureFileUrl", { length: 500 }),
-  procedureFileKey: varchar("procedureFileKey", { length: 500 }),
-  flowchartFileUrl: varchar("flowchartFileUrl", { length: 500 }),
-  flowchartFileKey: varchar("flowchartFileKey", { length: 500 }),
+  procedureFileUrl: text("procedureFileUrl"),
+  procedureFileKey: text("procedureFileKey"),
+  flowchartFileUrl: text("flowchartFileUrl"),
+  flowchartFileKey: text("flowchartFileKey"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -809,8 +809,8 @@ export const procedureRecords = mysqlTable("procedureRecords", {
   code: varchar("code", { length: 50 }).notNull(),
   version: varchar("version", { length: 20 }).notNull(),
   date: varchar("date", { length: 10 }),
-  fileUrl: varchar("fileUrl", { length: 500 }),
-  fileKey: varchar("fileKey", { length: 500 }),
+  fileUrl: text("fileUrl"),
+  fileKey: text("fileKey"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1229,3 +1229,124 @@ export const organizationChartFiles = mysqlTable("organizationChartFiles", {
 
 export type OrganizationChartFile = typeof organizationChartFiles.$inferSelect;
 export type InsertOrganizationChartFile = typeof organizationChartFiles.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MÓDULO: AUDITORÍAS E INSPECCIONES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Sistema de Gestión — registros de sistemas de gestión por empresa,
+ * con archivos de certificación y check lists de auditoría.
+ */
+export const managementSystems = mysqlTable("managementSystems", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  systemName: varchar("systemName", { length: 255 }).notNull().default(""),
+  certification: varchar("certification", { length: 255 }).notNull().default(""),
+  orderIndex: int("orderIndex").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ManagementSystem = typeof managementSystems.$inferSelect;
+export type InsertManagementSystem = typeof managementSystems.$inferInsert;
+
+/**
+ * Archivos adjuntos de sistemas de gestión (certificaciones y check lists).
+ */
+export const managementSystemFiles = mysqlTable("managementSystemFiles", {
+  id: int("id").autoincrement().primaryKey(),
+  managementSystemId: int("managementSystemId").notNull(),
+  companyId: int("companyId").notNull(),
+  fileType: mysqlEnum("fileType", ["certification", "checklist"]).notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileUrl: varchar("fileUrl", { length: 1024 }).notNull(),
+  fileKey: varchar("fileKey", { length: 1024 }).notNull(),
+  uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+});
+export type ManagementSystemFile = typeof managementSystemFiles.$inferSelect;
+export type InsertManagementSystemFile = typeof managementSystemFiles.$inferInsert;
+
+/**
+ * Control de Auditorías — una fila por auditoría realizada.
+ */
+export const audits = mysqlTable("audits", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  managementSystem: varchar("managementSystem", { length: 255 }).notNull().default(""),
+  auditDate: varchar("auditDate", { length: 20 }).notNull().default(""),
+  auditType: mysqlEnum("auditType", ["Interna", "Externa"]).notNull().default("Interna"),
+  findingsObservations: int("findingsObservations").notNull().default(0),
+  findingsMajorNC: int("findingsMajorNC").notNull().default(0),
+  findingsMinorNC: int("findingsMinorNC").notNull().default(0),
+  closuresObservations: int("closuresObservations").notNull().default(0),
+  closuresMajorNC: int("closuresMajorNC").notNull().default(0),
+  closuresMinorNC: int("closuresMinorNC").notNull().default(0),
+  orderIndex: int("orderIndex").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Audit = typeof audits.$inferSelect;
+export type InsertAudit = typeof audits.$inferInsert;
+
+/**
+ * Archivos de hallazgos de auditorías (Excel o PDF por fila de auditoría).
+ */
+export const auditFiles = mysqlTable("auditFiles", {
+  id: int("id").autoincrement().primaryKey(),
+  auditId: int("auditId").notNull(),
+  companyId: int("companyId").notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileUrl: varchar("fileUrl", { length: 1024 }).notNull(),
+  fileKey: varchar("fileKey", { length: 1024 }).notNull(),
+  uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+});
+export type AuditFile = typeof auditFiles.$inferSelect;
+export type InsertAuditFile = typeof auditFiles.$inferInsert;
+
+/**
+ * Control de Inspecciones — una fila por inspección realizada.
+ */
+export const inspections = mysqlTable("inspections", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  managementSystem: varchar("managementSystem", { length: 255 }).notNull().default(""),
+  inspectionDate: varchar("inspectionDate", { length: 20 }).notNull().default(""),
+  area: varchar("area", { length: 255 }).notNull().default(""),
+  findings: int("findings").notNull().default(0),
+  closures: int("closures").notNull().default(0),
+  orderIndex: int("orderIndex").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Inspection = typeof inspections.$inferSelect;
+export type InsertInspection = typeof inspections.$inferInsert;
+
+/**
+ * Archivos de hallazgos de inspecciones (Excel o PDF por fila de inspección).
+ */
+export const inspectionFiles = mysqlTable("inspectionFiles", {
+  id: int("id").autoincrement().primaryKey(),
+  inspectionId: int("inspectionId").notNull(),
+  companyId: int("companyId").notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileUrl: varchar("fileUrl", { length: 1024 }).notNull(),
+  fileKey: varchar("fileKey", { length: 1024 }).notNull(),
+  uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+});
+export type InspectionFile = typeof inspectionFiles.$inferSelect;
+export type InsertInspectionFile = typeof inspectionFiles.$inferInsert;
+
+/**
+ * Process Stakeholder Matrix File - Stores the uploaded Excel matrix file for each process
+ */
+export const processStakeholderMatrixFiles = mysqlTable("processStakeholderMatrixFiles", {
+  id: int("id").autoincrement().primaryKey(),
+  processId: int("processId").notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileKey: text("fileKey").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ProcessStakeholderMatrixFile = typeof processStakeholderMatrixFiles.$inferSelect;
+export type InsertProcessStakeholderMatrixFile = typeof processStakeholderMatrixFiles.$inferInsert;

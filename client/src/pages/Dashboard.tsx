@@ -121,6 +121,12 @@ export default function Dashboard() {
       icon: "📈",
     },
     {
+      title: "Auditorías e Inspecciones",
+      description: "Con ellas se busca garantizar conformidad, mitigar riesgos y mejorar continuamente.",
+      path: "/audits-inspections",
+      icon: "🔍",
+    },
+    {
       title: getLabel("sige_indicators", "Indicadores"),
       description: "Monitorea el desempeño de tu Sistema Integrado de Gestión",
       path: "/indicators",

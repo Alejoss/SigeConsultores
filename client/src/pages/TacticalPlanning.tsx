@@ -6,7 +6,7 @@ import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Download } from 'lucid
 import { toast } from "sonner";
 import { exportTacticalObjectivesToPDF } from "@/lib/exportTacticalObjectivesToPDF";
 import { trpc } from "@/lib/trpc";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 
 
@@ -36,6 +36,8 @@ interface ResultKey {
   meta?: number;
   condicionActual?: number;
   porcentajeAlcanzado?: number;
+  ooTrackingType?: 'puntual' | 'mensual'; // Tipo de seguimiento del OO
+  ooMonthlyValues?: number[]; // 12 valores numéricos mensuales para modo mensual
 }
 
 interface TacticalPlanning {
@@ -55,6 +57,8 @@ interface TacticalPlanning {
   unidadMedida?: string;
   avanceMeta?: number;
   porcentajeMetaAlcanzado?: number;
+  trackingType?: 'puntual' | 'mensual'; // Tipo de seguimiento del OT
+  monthlyValues?: number[]; // 12 valores numéricos mensuales para modo mensual
 }
 
 const CATEGORIES = ['Finanzas', 'Cliente', 'Procesos Internos', 'Aprendizaje', 'Crecimiento'];
@@ -121,9 +125,19 @@ export default function TacticalPlanning() {
       console.log('[TacticalPlanning] No tactical objectives data');
       return;
     }
+    
+    // Esperar a que planningDataFromDB también haya respondido (puede ser [] si no hay datos)
+    // undefined significa que el query aún no terminó; [] significa que terminó pero no hay datos
+    if (planningDataFromDB === undefined) {
+      console.log('[TacticalPlanning] Waiting for planningDataFromDB...');
+      return;
+    }
 
     console.log('[TacticalPlanning] Loaded tactical objectives:', tacticalObjectivesData);
     console.log('[TacticalPlanning] Planning data from DB:', planningDataFromDB);
+
+    // Marcar como cargado para evitar re-ejecuciones del useEffect
+    hasLoadedRef.current = true;
 
     // First try to load from database
     if (planningDataFromDB && planningDataFromDB.length > 0) {
@@ -174,7 +188,7 @@ export default function TacticalPlanning() {
         unidadMedida: p.unidadMedida,
       })));
     }
-  }, [tacticalObjectivesData]);
+  }, [tacticalObjectivesData, planningDataFromDB]);
 
   // Auto-save to localStorage every 500ms (faster feedback)
   useEffect(() => {
@@ -207,6 +221,8 @@ export default function TacticalPlanning() {
               metaLlegada: planning.metaLlegada || 0,
               unidadMedida: planning.unidadMedida || '',
               avanceMeta: planning.avanceMeta || 0,
+              trackingType: planning.trackingType || 'puntual',
+              monthlyValues: planning.monthlyValues || [],
             }
           ).catch(error => ({ success: false, error }))
         );
@@ -229,7 +245,7 @@ export default function TacticalPlanning() {
   }, [plannings, processId, savePlanningMutation]);
 
   const updatePlanning = (id: string, field: string, value: any) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === id) {
         const updated = { ...p, [field]: value };
         if (field === 'avanceMeta' || field === 'puntoPartida' || field === 'metaLlegada') {
@@ -250,7 +266,7 @@ export default function TacticalPlanning() {
   };
 
   const toggleExpanded = (id: string) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === id) {
         return { ...p, expanded: !p.expanded };
       }
@@ -259,7 +275,7 @@ export default function TacticalPlanning() {
   };
 
   const addResultKey = (planningId: string) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === planningId) {
         const newResultKey: ResultKey = {
           id: Date.now().toString(),
@@ -329,7 +345,7 @@ export default function TacticalPlanning() {
   };
 
   const updateResultKey = (planningId: string, resultKeyId: string, field: string, value: any) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === planningId) {
         return {
           ...p,
@@ -353,7 +369,7 @@ export default function TacticalPlanning() {
   };
 
   const deleteResultKey = (planningId: string, resultKeyId: string) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === planningId) {
         return {
           ...p,
@@ -365,7 +381,7 @@ export default function TacticalPlanning() {
   };
 
   const addTask = (planningId: string, resultKeyId: string) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === planningId) {
         return {
           ...p,
@@ -390,7 +406,7 @@ export default function TacticalPlanning() {
   };
 
   const updateTask = (planningId: string, resultKeyId: string, taskId: string, field: string, value: any) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === planningId) {
         return {
           ...p,
@@ -421,7 +437,7 @@ export default function TacticalPlanning() {
   };
 
   const deleteTask = (planningId: string, resultKeyId: string, taskId: string) => {
-    setPlannings(plannings.map(p => {
+    setPlannings(prev => prev.map(p => {
       if (p.id === planningId) {
         return {
           ...p,
@@ -472,7 +488,7 @@ export default function TacticalPlanning() {
     return Math.ceil(daysMs / (1000 * 60 * 60 * 24));
   };
 
-  const calculateIndicators = () => {
+  const indicators = useMemo(() => {
     if (plannings.length === 0) return { metaAlcanzada: 0, alcanzadoPorOO: 0, alcanzadoPorTareas: 0, isEfficient: false };
     
     // Calculate % Meta Alcanzada = (Meta de OT x Ponderacion OT) sumado para todos los OT
@@ -484,7 +500,15 @@ export default function TacticalPlanning() {
     
     plannings.forEach(planning => {
       const ponderacion = planning.ponderacion || 0;
-      const porcentajeMetaAlcanzado = planning.porcentajeMetaAlcanzado || 0;
+      // Usar el porcentajeMetaAlcanzado almacenado, o recalcularlo si es 0 y hay datos
+      let porcentajeMetaAlcanzado = planning.porcentajeMetaAlcanzado ?? 0;
+      if (porcentajeMetaAlcanzado === 0 && planning.metaLlegada !== planning.puntoPartida) {
+        const avanceMeta = planning.avanceMeta || 0;
+        const puntoPartida = planning.puntoPartida || 0;
+        const metaLlegada = planning.metaLlegada || 0;
+        porcentajeMetaAlcanzado = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
+        porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
+      }
       const avanceOO = calculateObjectiveCompletion(planning);
       const avanceTareas = calculateOTTasksAverage(planning);
       
@@ -506,9 +530,7 @@ export default function TacticalPlanning() {
     const isEfficient = alcanzadoPorOO < metaAlcanzada;
     
     return { metaAlcanzada, alcanzadoPorOO, alcanzadoPorTareas, isEfficient };
-  };
-
-  const indicators = calculateIndicators();
+  }, [plannings]);
   const handleBack = () => {
     setLocation('/process-tactical-objectives');
   };
@@ -528,6 +550,13 @@ export default function TacticalPlanning() {
             category: planning.category,
             goal: typeof planning.goal === 'string' ? planning.goal : String(planning.goal || ''),
             resultKeys: planning.resultKeys,
+            ponderacion: planning.ponderacion || 0,
+            puntoPartida: planning.puntoPartida || 0,
+            metaLlegada: planning.metaLlegada || 0,
+            unidadMedida: planning.unidadMedida || '',
+            avanceMeta: planning.avanceMeta || 0,
+            trackingType: planning.trackingType || 'puntual',
+            monthlyValues: planning.monthlyValues || [],
           }
         ).catch(error => ({ success: false, error }))
       );
@@ -607,16 +636,16 @@ export default function TacticalPlanning() {
           <CardContent>
             <div className="grid grid-cols-3 gap-6">
               <div className="text-center p-4 bg-white rounded-lg border-2 border-blue-300">
-                <p className="text-sm font-semibold text-gray-600 mb-2">% Meta alcanzada por Objetivo Táctico</p>
-                <p className="text-4xl font-bold text-blue-600">{indicators.metaAlcanzada}%</p>
+                <p className="text-sm font-semibold text-gray-600 mb-2">% Meta alcanzada por Objetivos Tácticos</p>
+                {plannings.length === 0 ? <p className="text-4xl font-bold text-gray-400">...</p> : <p className="text-4xl font-bold text-blue-600">{indicators.metaAlcanzada}%</p>}
               </div>
               <div className="text-center p-4 bg-white rounded-lg border-2 border-green-300">
                 <p className="text-sm font-semibold text-gray-600 mb-2">Avance Objetivos Operativos</p>
-                <p className="text-4xl font-bold text-green-600">{indicators.alcanzadoPorOO}%</p>
+                {plannings.length === 0 ? <p className="text-4xl font-bold text-gray-400">...</p> : <p className="text-4xl font-bold text-green-600">{indicators.alcanzadoPorOO}%</p>}
               </div>
               <div className="text-center p-4 bg-white rounded-lg border-2 border-purple-300">
                 <p className="text-sm font-semibold text-gray-600 mb-2">Avance de Tareas</p>
-                <p className="text-4xl font-bold text-purple-600">{indicators.alcanzadoPorTareas}%</p>
+                {plannings.length === 0 ? <p className="text-4xl font-bold text-gray-400">...</p> : <p className="text-4xl font-bold text-purple-600">{indicators.alcanzadoPorTareas}%</p>}
               </div>
             </div>
           </CardContent>
@@ -727,22 +756,104 @@ export default function TacticalPlanning() {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-3">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">Avance de la Meta</label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={planning.avanceMeta || 0}
-                          onChange={(e) => updatePlanning(planning.id, 'avanceMeta', parseFloat(e.target.value) || 0)}
-                          placeholder="Avance actual"
-                          className="border-gray-300"
-                        />
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Tipo de Seguimiento</label>
+                        <select
+                          value={planning.trackingType || 'puntual'}
+                          onChange={(e) => {
+                            const newType = e.target.value as 'puntual' | 'mensual';
+                            if (newType === 'mensual') {
+                              // Initialize 12 monthly values if switching to mensual
+                              const currentValues = planning.monthlyValues || Array(12).fill(0);
+                              const total = currentValues.reduce((s: number, v: number) => s + (v || 0), 0);
+                              updatePlanning(planning.id, 'trackingType', newType);
+                              if (!planning.monthlyValues) {
+                                updatePlanning(planning.id, 'monthlyValues', Array(12).fill(0));
+                              }
+                            } else {
+                              updatePlanning(planning.id, 'trackingType', newType);
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        >
+                          <option value="puntual">Puntual (valor directo)</option>
+                          <option value="mensual">Mensual (12 meses)</option>
+                        </select>
                       </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">% Meta alcanzada</label>
-                        <p className="text-2xl font-bold text-blue-600">{(planning.porcentajeMetaAlcanzado || 0).toFixed(0)}%</p>
-                      </div>
+
+                      {(planning.trackingType || 'puntual') === 'puntual' ? (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Avance de la Meta</label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={planning.avanceMeta || 0}
+                              onChange={(e) => updatePlanning(planning.id, 'avanceMeta', parseFloat(e.target.value) || 0)}
+                              placeholder="Avance actual"
+                              className="border-gray-300"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">% Meta alcanzada</label>
+                            <p className="text-2xl font-bold text-blue-600">{(planning.porcentajeMetaAlcanzado || 0).toFixed(0)}%</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-6 gap-2">
+                            {['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'].map((mes, idx) => {
+                              const vals = planning.monthlyValues || Array(12).fill(0);
+                              return (
+                                <div key={`ot_month_${idx}`} className="flex flex-col items-center gap-1">
+                                  <label className="text-xs font-semibold text-gray-600">{mes}</label>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={vals[idx] || 0}
+                                    onChange={(e) => {
+                                      const inputVal = parseFloat(e.target.value) || 0;
+                                      setPlannings(prev => prev.map(p => {
+                                        if (p.id === planning.id) {
+                                          const newVals = [...(p.monthlyValues || Array(12).fill(0))];
+                                          newVals[idx] = inputVal;
+                                          const total = newVals.reduce((s, v) => s + (v || 0), 0);
+                                          const pp = p.puntoPartida || 0;
+                                          const m = p.metaLlegada || 0;
+                                          let pct = 0;
+                                          if (m !== pp) {
+                                            pct = ((total - pp) / (m - pp)) * 100;
+                                            pct = Math.max(-100, Math.min(100, pct));
+                                          }
+                                          return { ...p, monthlyValues: newVals, avanceMeta: total, porcentajeMetaAlcanzado: pct };
+                                        }
+                                        return p;
+                                      }));
+                                    }}
+                                    className="border-gray-300 text-xs px-1 py-1 text-center"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-1">Total acumulado (Avance)</label>
+                              <div className="p-2 bg-green-50 border border-green-300 rounded-lg text-center">
+                                <span className="text-xl font-bold text-green-700">
+                                  {((planning.monthlyValues || Array(12).fill(0)).reduce((s: number, v: number) => s + (v || 0), 0)).toFixed(2)}
+                                  {planning.unidadMedida ? ` ${planning.unidadMedida}` : ''}
+                                </span>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-1">% Meta alcanzada</label>
+                              <p className="text-2xl font-bold text-blue-600">{(planning.porcentajeMetaAlcanzado || 0).toFixed(0)}%</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -798,29 +909,100 @@ export default function TacticalPlanning() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Meta</label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={resultKey.meta || 0}
+                              onChange={(e) => updateResultKey(planning.id, resultKey.id, 'meta', parseFloat(e.target.value) || 0)}
+                              placeholder="Meta"
+                              className="border-gray-300"
+                            />
+                          </div>
+
+                          <div className="space-y-3">
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">Meta</label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={resultKey.meta || 0}
-                                onChange={(e) => updateResultKey(planning.id, resultKey.id, 'meta', parseFloat(e.target.value) || 0)}
-                                placeholder="Meta"
-                                className="border-gray-300"
-                              />
+                              <label className="block text-sm font-semibold text-gray-700 mb-1">Tipo de Seguimiento</label>
+                              <select
+                                value={resultKey.ooTrackingType || 'puntual'}
+                                onChange={(e) => {
+                                  const newType = e.target.value as 'puntual' | 'mensual';
+                                  updateResultKey(planning.id, resultKey.id, 'ooTrackingType', newType);
+                                  if (newType === 'mensual' && !resultKey.ooMonthlyValues) {
+                                    updateResultKey(planning.id, resultKey.id, 'ooMonthlyValues', Array(12).fill(0));
+                                  }
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                              >
+                                <option value="puntual">Puntual (valor directo)</option>
+                                <option value="mensual">Mensual (12 meses)</option>
+                              </select>
                             </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">Condicion Actual</label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={resultKey.condicionActual || 0}
-                                onChange={(e) => updateResultKey(planning.id, resultKey.id, 'condicionActual', parseFloat(e.target.value) || 0)}
-                                placeholder="Condicion actual"
-                                className="border-gray-300"
-                              />
-                            </div>
+
+                            {(resultKey.ooTrackingType || 'puntual') === 'puntual' ? (
+                              <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Condición Actual</label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={resultKey.condicionActual || 0}
+                                  onChange={(e) => updateResultKey(planning.id, resultKey.id, 'condicionActual', parseFloat(e.target.value) || 0)}
+                                  placeholder="Condicion actual"
+                                  className="border-gray-300"
+                                />
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-6 gap-2">
+                                  {['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'].map((mes, idx) => {
+                                    const vals = resultKey.ooMonthlyValues || Array(12).fill(0);
+                                    return (
+                                      <div key={`oo_month_${idx}`} className="flex flex-col items-center gap-1">
+                                        <label className="text-xs font-semibold text-gray-600">{mes}</label>
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          value={vals[idx] || 0}
+                                          onChange={(e) => {
+                                            const inputVal = parseFloat(e.target.value) || 0;
+                                            setPlannings(prev => prev.map(p => {
+                                              if (p.id === planning.id) {
+                                                return {
+                                                  ...p,
+                                                  resultKeys: p.resultKeys.map(rk => {
+                                                    if (rk.id === resultKey.id) {
+                                                      const newVals = [...(rk.ooMonthlyValues || Array(12).fill(0))];
+                                                      newVals[idx] = inputVal;
+                                                      const total = newVals.reduce((s, v) => s + (v || 0), 0);
+                                                      const ci = rk.condicionInicial || 0;
+                                                      const m = rk.meta || 0;
+                                                      const pct = calculatePorcentajeAlcanzado(ci, m, total);
+                                                      return { ...rk, ooMonthlyValues: newVals, condicionActual: total, porcentajeAlcanzado: pct };
+                                                    }
+                                                    return rk;
+                                                  }),
+                                                };
+                                              }
+                                              return p;
+                                            }));
+                                          }}
+                                          className="border-gray-300 text-xs px-1 py-1 text-center"
+                                        />
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-semibold text-gray-700 mb-1">Total acumulado (Condición Actual)</label>
+                                  <div className="p-2 bg-green-50 border border-green-300 rounded-lg text-center">
+                                    <span className="text-xl font-bold text-green-700">
+                                      {((resultKey.ooMonthlyValues || Array(12).fill(0)).reduce((s: number, v: number) => s + (v || 0), 0)).toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           <div>
