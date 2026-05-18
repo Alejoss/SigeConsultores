@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import { trpc } from "@/lib/trpc";
 
 const PROCESS_PARTS = [
@@ -122,18 +122,21 @@ export default function ProcessSelector({
       {/* Add Process Dropdown */}
       {companyId && (
         <div className="flex gap-2">
-          <Select value={newProcessId?.toString() || ""} onValueChange={(value) => setNewProcessId(parseInt(value))}>
-            <SelectTrigger className="flex-1">
-              <SelectValue placeholder="Selecciona un proceso..." />
-            </SelectTrigger>
-            <SelectContent>
-              {availableProcesses.map((process) => (
-                <SelectItem key={process.id} value={process.id.toString()}>
-                  {process.name} ({process.processType})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <NativeSelect
+            className="flex-1"
+            value={newProcessId?.toString() ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              setNewProcessId(v ? parseInt(v, 10) : null);
+            }}
+          >
+            <option value="">Selecciona un proceso...</option>
+            {availableProcesses.map((process) => (
+              <option key={process.id} value={process.id.toString()}>
+                {process.name} ({process.processType})
+              </option>
+            ))}
+          </NativeSelect>
           <Button onClick={handleAddProcess} disabled={!newProcessId} variant="outline">
             Agregar
           </Button>

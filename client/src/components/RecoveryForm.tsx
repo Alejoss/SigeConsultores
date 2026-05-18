@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -238,24 +238,22 @@ export default function RecoveryForm() {
         {/* Company Selector */}
         <div className="space-y-2">
           <Label htmlFor="company">Empresa</Label>
-          <Select
-            value={selectedCompanyId?.toString() || ""}
-            onValueChange={(value) => {
-              setSelectedCompanyId(parseInt(value));
+          <NativeSelect
+            id="company"
+            value={selectedCompanyId?.toString() ?? ""}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSelectedCompanyId(value ? parseInt(value, 10) : null);
               setSelectedProcesses(new Map());
             }}
           >
-            <SelectTrigger id="company">
-              <SelectValue placeholder="Selecciona una empresa..." />
-            </SelectTrigger>
-            <SelectContent>
-              {companiesQuery.data?.map((company) => (
-                <SelectItem key={company.id} value={company.id.toString()}>
-                  {company.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <option value="">Selecciona una empresa...</option>
+            {companiesQuery.data?.map((company) => (
+              <option key={company.id} value={company.id.toString()}>
+                {company.name}
+              </option>
+            ))}
+          </NativeSelect>
         </div>
 
         {/* Recovery Date */}

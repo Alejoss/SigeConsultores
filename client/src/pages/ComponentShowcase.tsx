@@ -121,13 +121,7 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
@@ -397,17 +391,15 @@ export default function ComponentsShowcase() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Select</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a fruit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="apple">Apple</SelectItem>
-                      <SelectItem value="banana">Banana</SelectItem>
-                      <SelectItem value="orange">Orange</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="fruit-select">Select</Label>
+                  <NativeSelect id="fruit-select" defaultValue="">
+                    <option value="" disabled>
+                      Select a fruit
+                    </option>
+                    <option value="apple">Apple</option>
+                    <option value="banana">Banana</option>
+                    <option value="orange">Orange</option>
+                  </NativeSelect>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox id="terms" />
@@ -599,49 +591,37 @@ export default function ComponentsShowcase() {
                       <Label htmlFor="month" className="text-sm font-medium">
                         Month
                       </Label>
-                      <Select
+                      <NativeSelect
+                        id="month"
                         value={selectedMonth}
-                        onValueChange={setSelectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
                       >
-                        <SelectTrigger id="month">
-                          <SelectValue placeholder="MM" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 12 }, (_, i) => i + 1).map(
-                            month => (
-                              <SelectItem
-                                key={month}
-                                value={month.toString().padStart(2, "0")}
-                              >
-                                {month.toString().padStart(2, "0")}
-                              </SelectItem>
-                            )
-                          )}
-                        </SelectContent>
-                      </Select>
+                        <option value="">MM</option>
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                          <option key={month} value={month.toString().padStart(2, "0")}>
+                            {month.toString().padStart(2, "0")}
+                          </option>
+                        ))}
+                      </NativeSelect>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="year" className="text-sm font-medium">
                         Year
                       </Label>
-                      <Select
+                      <NativeSelect
+                        id="year"
                         value={selectedYear}
-                        onValueChange={setSelectedYear}
+                        onChange={(e) => setSelectedYear(e.target.value)}
                       >
-                        <SelectTrigger id="year">
-                          <SelectValue placeholder="YYYY" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from(
-                            { length: 10 },
-                            (_, i) => new Date().getFullYear() - 5 + i
-                          ).map(year => (
-                            <SelectItem key={year} value={year.toString()}>
+                        <option value="">YYYY</option>
+                        {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map(
+                          (year) => (
+                            <option key={year} value={year.toString()}>
                               {year}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                            </option>
+                          )
+                        )}
+                      </NativeSelect>
                     </div>
                   </div>
                   {selectedMonth && selectedYear && (

@@ -7,6 +7,7 @@ import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { MODULE_LABEL_DEFINITIONS } from "@shared/moduleLabelDefinitions";
+import { NativeSelect } from "@/components/ui/native-select";
 
 interface CustomizeModulesPanelProps {
   allCompanies: any[];
@@ -130,9 +131,8 @@ export default function CustomizeModulesPanel({
       <CardContent className="space-y-6">
         <div className="space-y-3">
           <Label htmlFor="company-select">Seleccionar Empresa</Label>
-          <select
+          <NativeSelect
             id="company-select"
-            className="w-full px-3 py-2 border rounded-md text-sm"
             value={selectedCompanyId || ""}
             onChange={(e) => {
               const companyId = parseInt(e.target.value, 10);
@@ -146,7 +146,7 @@ export default function CustomizeModulesPanel({
                 {company.name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
 
         {selectedCompanyId && (

@@ -1,13 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Copy, Check } from "lucide-react";
+import { Loader2, Copy, Check } from "lucide-react";
 
 /**
  * Admin page to view and manage company managers (Gerentes)
@@ -61,19 +59,19 @@ export default function AdminGerentes() {
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium">Seleccionar Empresa</label>
-              <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Todas las empresas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Todas las empresas</SelectItem>
-                  {companiesQuery.data?.map((company: any) => (
-                    <SelectItem key={company.id} value={company.id.toString()}>
-                      {company.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <NativeSelect
+                id="filter-company"
+                className="mt-2"
+                value={selectedCompanyId}
+                onChange={(e) => setSelectedCompanyId(e.target.value)}
+              >
+                <option value="">Todas las empresas</option>
+                {companiesQuery.data?.map((company: any) => (
+                  <option key={company.id} value={company.id.toString()}>
+                    {company.name}
+                  </option>
+                ))}
+              </NativeSelect>
             </div>
           </div>
         </CardContent>

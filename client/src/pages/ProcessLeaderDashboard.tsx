@@ -3,10 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LogOut, Building2, Settings } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { APP_TITLE } from "@/const";
-import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
+import DashboardModulesGrid from "@/components/DashboardModulesGrid";
+import { buildScopedModuleRoute } from "@shared/dashboardModules";
 
 // Welcome Card Component
 function WelcomeCard({ companyId, companyName, processName }: { companyId: number | null; companyName: string | null; processName: string | null }) {
@@ -43,12 +44,6 @@ export default function ProcessLeaderDashboard() {
   const { session: processLeaderSession, logout, isLoading: contextLoading } = useProcessLeaderAuth();
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch custom modules for the company
-  const getModulesQuery = trpc.moduleCustomization.getLabels.useQuery(
-    { companyId: processLeaderSession?.companyId || 0 },
-    { enabled: !!processLeaderSession?.companyId }
-  );
-
   useEffect(() => {
     // Wait for context to finish loading before checking authentication
     if (contextLoading) {
@@ -66,32 +61,6 @@ export default function ProcessLeaderDashboard() {
   const handleLogout = () => {
     logout();
     setLocation("/login");
-  };
-
-  const handleModuleClick = (moduleNameOrTitle: string, moduleName?: string) => {
-    if (!processLeaderSession?.processId) {
-      toast.error("ID de proceso no disponible");
-      return;
-    }
-
-    // Use moduleName if provided, otherwise use moduleNameOrTitle as fallback
-    const actualModuleName = moduleName || moduleNameOrTitle;
-
-    const moduleRoutes: { [key: string]: string } = {
-      "companyInfo": `/company-info?companyId=${processLeaderSession.companyId}&processId=${processLeaderSession.processId}`,
-      "values": `/values?companyId=${processLeaderSession.companyId}&processId=${processLeaderSession.processId}`,
-      "policy": `/policy?companyId=${processLeaderSession.companyId}&processId=${processLeaderSession.processId}`,
-      "strategicObjectives": `/strategic-objectives?companyId=${processLeaderSession.companyId}&processId=${processLeaderSession.processId}`,
-      "processMap": `/process-map?companyId=${processLeaderSession.companyId}&processId=${processLeaderSession.processId}`,
-      "indicators": `/indicators?companyId=${processLeaderSession.companyId}&processId=${processLeaderSession.processId}`,
-    };
-
-    const route = moduleRoutes[actualModuleName];
-    if (route) {
-      setLocation(route);
-    } else {
-      toast.info(`Módulo "${moduleNameOrTitle}" - Próximamente disponible`);
-    }
   };
 
   if (isLoading) {
@@ -204,88 +173,18 @@ export default function ProcessLeaderDashboard() {
         <div>
           <h2 className="text-xl font-bold text-gray-900 mb-4">Módulos Disponibles</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(() => {
-              // Wait for customizations to load before rendering modules
-              if (getModulesQuery.isLoading) {
-                return <p className="text-gray-500">Cargando módulos...</p>;
-              }
-              const customizations = (getModulesQuery.data || {}) as Record<string, { customLabel?: string | null }>;
-
-              const customizationKeyMap: Record<string, string> = {
-                companyInfo: "sige_company_info",
-                values: "sige_corporate_values",
-                policy: "sige_policy",
-                strategicObjectives: "sige_strategic_objectives",
-                processMap: "sige_process_map",
-                indicators: "sige_indicators",
-              };
-
-              const defaultModules = [
-                {
-                  moduleName: "companyInfo",
-                  title: "Propósito, Misión, Visión",
-                  description: "Define los fundamentos estratégicos de tu empresa",
-                  icon: "🎯",
-                },
-                {
-                  moduleName: "values",
-                  title: "Valores Empresariales",
-                  description: "Establece los valores que guían tu organización",
-                  icon: "💎",
-                },
-                {
-                  moduleName: "policy",
-                  title: "Política",
-                  description: "Documenta la política del Sistema Integrado de Gestión",
-                  icon: "📋",
-                },
-                {
-                  moduleName: "strategicObjectives",
-                  title: "Objetivos Estratégicos",
-                  description: "Define los objetivos a largo plazo de la empresa",
-                  icon: "🎪",
-                },
-                {
-                  moduleName: "processMap",
-                  title: "Mapa de Procesos",
-                  description: "Visualiza y gestiona los procesos empresariales",
-                  icon: "🗺️",
-                },
-                {
-                  moduleName: "indicators",
-                  title: "Indicadores",
-                  description: "Monitorea el desempeño de tu Sistema Integrado de Gestión",
-                  icon: "📊",
-                },
-              ];
-
-              return defaultModules.map((module, index) => {
-                const labelKey = customizationKeyMap[module.moduleName];
-                const row = labelKey ? customizations[labelKey] : undefined;
-                const cl = row?.customLabel;
-                const displayTitle =
-                  typeof cl === "string" && cl.trim() !== "" ? cl.trim() : module.title;
-                return (
-                  <Card 
-                    key={index} 
-                    className="hover:shadow-lg transition-shadow cursor-pointer"
-                    onClick={() => handleModuleClick(displayTitle, module.moduleName)}
-                    title={displayTitle}
-                  >
-                    <CardHeader>
-                      <div className="text-3xl mb-2">{module.icon}</div>
-                      <CardTitle className="text-lg" title={displayTitle}>{displayTitle}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-gray-600 mb-4">{module.description}</p>
-                      <Button variant="default" className="w-full">
-                        Acceder
-                      </Button>
-                    </CardContent>
-                  </Card>
-                );
-              });
-            })()}
+            {processLeaderSession.companyId && processLeaderSession.processId ? (
+              <DashboardModulesGrid
+                companyId={processLeaderSession.companyId}
+                onNavigate={setLocation}
+                getPath={(moduleName) =>
+                  buildScopedModuleRoute(moduleName, {
+                    companyId: processLeaderSession.companyId,
+                    processId: processLeaderSession.processId,
+                  })
+                }
+              />
+            ) : null}
           </div>
         </div>
 

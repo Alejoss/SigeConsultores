@@ -1,6 +1,12 @@
-import * as React from "react";
+/**
+ * @deprecated Use `NativeSelect` from `@/components/ui/native-select` instead.
+ * Radix Select portals conflict with Dialog and can cause:
+ * NotFoundError: Failed to execute 'removeChild' on 'Node'.
+ */
+/** @deprecated Prefer NativeSelect from @/components/ui/native-select (Radix Select + Dialog → removeChild errors). */
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -52,7 +58,6 @@ function SelectContent({
   className,
   children,
   position = "popper",
-  align = "center",
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
   return (
@@ -66,7 +71,6 @@ function SelectContent({
           className
         )}
         position={position}
-        align={align}
         {...props}
       >
         <SelectScrollUpButton />

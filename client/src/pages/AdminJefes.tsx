@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -73,40 +73,40 @@ export default function AdminJefes() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium">Seleccionar Empresa</label>
-              <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Todas las empresas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Todas las empresas</SelectItem>
-                  {companiesQuery.data?.map((company: any) => (
-                    <SelectItem key={company.id} value={company.id.toString()}>
-                      {company.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <NativeSelect
+                id="filter-company"
+                className="mt-2"
+                value={selectedCompanyId}
+                onChange={(e) => {
+                  setSelectedCompanyId(e.target.value);
+                  setSelectedProcessId("");
+                }}
+              >
+                <option value="">Todas las empresas</option>
+                {companiesQuery.data?.map((company: any) => (
+                  <option key={company.id} value={company.id.toString()}>
+                    {company.name}
+                  </option>
+                ))}
+              </NativeSelect>
             </div>
 
             <div>
               <label className="text-sm font-medium">Seleccionar Proceso</label>
-              <Select
+              <NativeSelect
+                id="filter-process"
+                className="mt-2"
                 value={selectedProcessId}
-                onValueChange={setSelectedProcessId}
+                onChange={(e) => setSelectedProcessId(e.target.value)}
                 disabled={!selectedCompanyId}
               >
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Todos los procesos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Todos los procesos</SelectItem>
-                  {processesQuery.data?.map((process: any) => (
-                    <SelectItem key={process.id} value={process.id.toString()}>
-                      {process.processName || process.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="">Todos los procesos</option>
+                {processesQuery.data?.map((process: any) => (
+                  <option key={process.id} value={process.id.toString()}>
+                    {process.processName || process.name}
+                  </option>
+                ))}
+              </NativeSelect>
             </div>
           </div>
         </CardContent>

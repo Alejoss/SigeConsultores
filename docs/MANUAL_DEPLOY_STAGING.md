@@ -4,12 +4,14 @@ Guía para el droplet de staging (Ubuntu 22.04/24.04, usuario `deploy` con sudo,
 
 **Droplet staging (DigitalOcean):**
 
-| Dato | Valor |
-|------|--------|
-| IP pública | `167.172.127.47` |
-| Hostname (panel DO) | `sige-ubuntu-droplet` |
-| Usuario SSH habitual | `deploy` (con sudo) |
-| Usuario si entras como admin | `root` |
+
+| Dato                         | Valor                 |
+| ---------------------------- | --------------------- |
+| IP pública                   | `167.172.127.47`      |
+| Hostname (panel DO)          | `sige-ubuntu-droplet` |
+| Usuario SSH habitual         | `deploy` (con sudo)   |
+| Usuario si entras como admin | `root`                |
+
 
 **Ruta del proyecto en el servidor:** `/opt/sige-app-staging`
 
@@ -33,7 +35,7 @@ docker compose --env-file .env.staging -f docker-compose.staging.yml down
 sh scripts/deploy-staging-droplet.sh
 ```
 
-**No uses** `docker compose down` sin `-f docker-compose.staging.yml`: el `docker-compose.yml` por defecto del repo es otro stack (MySQL local) y no apaga `sige-app-staging-*`.
+**No uses** `docker compose down` sin `-f docker-compose.staging.yml`: el `docker-compose.yml` por defecto del repo es otro stack (MySQL local) y no apaga `sige-app-staging-`*.
 
 Si el `down` deja un contenedor colgado: `docker stop sige-app-staging-app-1 && docker rm sige-app-staging-app-1` y repite el `down`.
 

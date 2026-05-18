@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Copy, Check, Mail, ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
@@ -143,18 +143,20 @@ export default function ManagerCompanyAdmin() {
             <CardDescription>Elige la empresa que deseas administrar</CardDescription>
           </CardHeader>
           <CardContent>
-            <Select value={companyId?.toString() || ""} onValueChange={(val) => setCompanyId(parseInt(val))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona una empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                {userCompaniesQuery.data?.map((company: any) => (
-                  <SelectItem key={company.id} value={company.id.toString()}>
-                    {company.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <NativeSelect
+              value={companyId?.toString() ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setCompanyId(v ? parseInt(v, 10) : null);
+              }}
+            >
+              <option value="">Selecciona una empresa</option>
+              {userCompaniesQuery.data?.map((company: any) => (
+                <option key={company.id} value={company.id.toString()}>
+                  {company.name}
+                </option>
+              ))}
+            </NativeSelect>
           </CardContent>
         </Card>
       )}
@@ -167,18 +169,20 @@ export default function ManagerCompanyAdmin() {
             <CardDescription>Elige el proceso para el cual deseas crear una invitación</CardDescription>
           </CardHeader>
           <CardContent>
-            <Select value={selectedProcessId?.toString() || ""} onValueChange={(val) => setSelectedProcessId(parseInt(val))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona un proceso" />
-              </SelectTrigger>
-              <SelectContent>
-                {processesList.map((process: any) => (
-                  <SelectItem key={process.id} value={process.id.toString()}>
-                    {process.processName || process.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <NativeSelect
+              value={selectedProcessId?.toString() ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSelectedProcessId(v ? parseInt(v, 10) : null);
+              }}
+            >
+              <option value="">Selecciona un proceso</option>
+              {processesList.map((process: any) => (
+                <option key={process.id} value={process.id.toString()}>
+                  {process.processName || process.name}
+                </option>
+              ))}
+            </NativeSelect>
           </CardContent>
         </Card>
       )}
@@ -215,7 +219,7 @@ export default function ManagerCompanyAdmin() {
               </DialogHeader>
 
               <div className="space-y-4">
-                {/* Process Selection - Only render SelectContent if data is ready */}
+                {/* Process selection */}
                 <div>
                   <Label htmlFor="process">Seleccionar Proceso</Label>
                   {processesQuery.isLoading ? (
@@ -227,24 +231,19 @@ export default function ManagerCompanyAdmin() {
                       No hay procesos disponibles
                     </div>
                   ) : (
-                    <Select 
-                      value={formData.processId} 
-                      onValueChange={(val) => setFormData({ ...formData, processId: val })}
+                    <NativeSelect
+                      id="process"
+                      className="mt-2"
+                      value={formData.processId}
+                      onChange={(e) => setFormData({ ...formData, processId: e.target.value })}
                     >
-                      <SelectTrigger id="process" className="mt-2">
-                        <SelectValue placeholder="Selecciona un proceso" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {processesList.map((process: any) => (
-                          <SelectItem 
-                            key={`process-item-${process.id}`} 
-                            value={process.id.toString()}
-                          >
-                            {process.processName || process.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <option value="">Selecciona un proceso</option>
+                      {processesList.map((process: any) => (
+                        <option key={`process-item-${process.id}`} value={process.id.toString()}>
+                          {process.processName || process.name}
+                        </option>
+                      ))}
+                    </NativeSelect>
                   )}
                 </div>
 

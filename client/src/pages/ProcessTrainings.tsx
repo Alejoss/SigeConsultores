@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -429,19 +429,15 @@ export default function ProcessTrainings() {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo *</label>
-              <Select
+              <NativeSelect
                 value={formData.type}
-                onValueChange={(value) => setFormData({ ...formData, type: value as any })}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value as typeof formData.type })}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona el tipo de capacitación" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Mandatoria">Mandatoria</SelectItem>
-                  <SelectItem value="Reglamentaria">Reglamentaria</SelectItem>
-                  <SelectItem value="Sugerida">Sugerida</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="">Selecciona el tipo de capacitación</option>
+                <option value="Mandatoria">Mandatoria</option>
+                <option value="Reglamentaria">Reglamentaria</option>
+                <option value="Sugerida">Sugerida</option>
+              </NativeSelect>
             </div>
 
             <div>
@@ -465,19 +461,17 @@ export default function ProcessTrainings() {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Modalidad</label>
-              <Select
+              <NativeSelect
                 value={formData.modality}
-                onValueChange={(value) => setFormData({ ...formData, modality: value as any })}
+                onChange={(e) =>
+                  setFormData({ ...formData, modality: e.target.value as typeof formData.modality })
+                }
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona la modalidad" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Presencial">Presencial</SelectItem>
-                  <SelectItem value="Online">Online</SelectItem>
-                  <SelectItem value="Externa">Externa</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="">Selecciona la modalidad</option>
+                <option value="Presencial">Presencial</option>
+                <option value="Online">Online</option>
+                <option value="Externa">Externa</option>
+              </NativeSelect>
             </div>
 
             <div>
@@ -500,18 +494,16 @@ export default function ProcessTrainings() {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Capacitación Impartida</label>
-              <Select
+              <NativeSelect
                 value={formData.completed}
-                onValueChange={(value) => setFormData({ ...formData, completed: value as any })}
+                onChange={(e) =>
+                  setFormData({ ...formData, completed: e.target.value as typeof formData.completed })
+                }
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="¿Fue impartida?" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SI">Sí</SelectItem>
-                  <SelectItem value="NO">No</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="">¿Fue impartida?</option>
+                <option value="SI">Sí</option>
+                <option value="NO">No</option>
+              </NativeSelect>
             </div>
 
             <div>
