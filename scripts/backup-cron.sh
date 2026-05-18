@@ -27,10 +27,9 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
-set -a
-# shellcheck source=/dev/null
-source "$ENV_FILE"
-set +a
+# shellcheck source=scripts/load-env-file.sh
+. "${SCRIPT_DIR}/load-env-file.sh"
+load_env_file "$ENV_FILE"
 
 TIMESTAMP=$(date -u +%Y-%m-%dT%H%MZ)
 BACKUP_PREFIX="sige-backup-"
