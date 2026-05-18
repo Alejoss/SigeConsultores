@@ -41,6 +41,10 @@ coverage/
 tmp/
 temp/
 
+# Local task lists (not versioned)
+TODO.md
+todo.md
+
 # Environment variables
 .env
 .env.local
