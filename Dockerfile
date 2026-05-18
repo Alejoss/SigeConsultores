@@ -31,6 +31,7 @@ COPY docker/entrypoint.sh ./docker/entrypoint.sh
 COPY --from=builder /app/scripts/envForCli.mjs ./scripts/envForCli.mjs
 COPY --from=builder /app/scripts/create-superuser.mjs ./scripts/create-superuser.mjs
 COPY --from=builder /app/scripts/migrate-agrogana-from-backup.mjs ./scripts/migrate-agrogana-from-backup.mjs
+COPY --from=builder /app/scripts/pre-push-schema-compat.mjs ./scripts/pre-push-schema-compat.mjs
 
 # Windows checkouts suelen guardar .sh con CRLF; el shebang /bin/sh\r rompe el arranque ("no such file or directory").
 RUN sed -i 's/\r$//' ./docker/entrypoint.sh && chmod +x ./docker/entrypoint.sh
