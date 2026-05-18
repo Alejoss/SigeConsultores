@@ -2,9 +2,16 @@
 
 Guía para el droplet de staging (Ubuntu 22.04/24.04, usuario `deploy` con sudo, Docker instalado). **Abajo** está la configuración inicial (clone, claves, `.env`, Nginx).
 
-En los ejemplos de SSH, `STAGING_DROPLET_IP` es un marcador: sustitúyelo por la IP pública o el hostname de tu droplet.
+**Droplet staging (DigitalOcean):**
 
-**Ruta del proyecto en el servidor:** usa siempre la misma carpeta donde clonaste el repo (en esta guía aparece `/opt/sige-app-staging` o `~/sige-app-staging`; sustituye por la tuya).
+| Dato | Valor |
+|------|--------|
+| IP pública | `167.172.127.47` |
+| Hostname (panel DO) | `sige-ubuntu-droplet` |
+| Usuario SSH habitual | `deploy` (con sudo) |
+| Usuario si entras como admin | `root` |
+
+**Ruta del proyecto en el servidor:** `/opt/sige-app-staging`
 
 **Rama en GitHub:** `main`.
 
@@ -71,10 +78,16 @@ docker compose --env-file .env.staging -f docker-compose.staging.yml logs app --
 PowerShell o terminal **local** (no dentro del servidor):
 
 ```bash
-ssh deploy@STAGING_DROPLET_IP
+ssh deploy@167.172.127.47
 ```
 
-Sustituye la IP por la pública de tu droplet. La primera vez, confirma el fingerprint con `yes`.
+Si en tu droplet solo usas root (como en operaciones recientes):
+
+```bash
+ssh root@167.172.127.47
+```
+
+La primera vez, confirma el fingerprint con `yes`.
 
 ### 2. Ir al directorio del proyecto
 
@@ -120,7 +133,7 @@ docker build -t sige-staging:local .
 docker compose --env-file .env.staging -f docker-compose.staging.yml up -d
 ```
 
-URL de staging (ejemplo con IP): `http://STAGING_DROPLET_IP/` (sustituye por la IP o dominio real)
+URL de staging: `http://167.172.127.47/`
 
 ### 5. Ver estado y logs
 
@@ -276,7 +289,7 @@ Para herramientas en el host (`pnpm run admin:create`, etc.) puedes usar `MYSQL_
 
 ## Nginx sin dominio (solo IP, HTTP)
 
-URL de prueba: `http://TU_IP_PUBLICA/` (puerto 80).
+URL de prueba: `http://167.172.127.47/` (puerto 80).
 
 ```bash
 sudo apt update
@@ -304,7 +317,7 @@ sudo systemctl reload nginx
 En `.env.staging` (y si aplica `cp .env.staging .env`):
 
 ```env
-FRONTEND_URL=http://TU_IP_PUBLICA
+FRONTEND_URL=http://167.172.127.47
 ```
 
 Reinicia la app:
@@ -314,7 +327,7 @@ cd /opt/sige-app-staging
 docker compose --env-file .env.staging -f docker-compose.staging.yml up -d
 ```
 
-**OAuth:** en el proveedor debe existir la redirect `**http://TU_IP_PUBLICA/api/oauth/callback`**.
+**OAuth:** en el proveedor debe existir la redirect `http://167.172.127.47/api/oauth/callback`.
 
 ---
 
@@ -323,7 +336,7 @@ docker compose --env-file .env.staging -f docker-compose.staging.yml up -d
 Desde tu PC:
 
 ```bash
-ssh deploy@STAGING_DROPLET_IP
+ssh deploy@167.172.127.47
 cd /opt/sige-app-staging
 ```
 
