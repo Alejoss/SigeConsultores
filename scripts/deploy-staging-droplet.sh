@@ -3,10 +3,10 @@
 # - Syncs repo to origin/main (discards accidental local edits to tracked files)
 # - Runs DB migrate, rebuilds image, starts compose
 #
-# Usage (on server, from repo root):
-#   ./scripts/deploy-staging-droplet.sh
-#   SKIP_MIGRATE=1 ./scripts/deploy-staging-droplet.sh   # code-only deploy
-#   SKIP_BUILD=1 ./scripts/deploy-staging-droplet.sh     # restart without rebuild
+# Usage (on server, from repo root — no chmod needed):
+#   sh scripts/deploy-staging-droplet.sh
+#   SKIP_MIGRATE=1 sh scripts/deploy-staging-droplet.sh
+#   SKIP_BUILD=1 sh scripts/deploy-staging-droplet.sh
 #
 # Do NOT edit tracked files on the server. Only .env.staging (gitignored) is local config.
 set -eu
@@ -22,6 +22,9 @@ echo "[deploy] Syncing repository to origin/${BRANCH} (hard reset)..."
 git fetch origin "$BRANCH"
 git checkout "$BRANCH" 2>/dev/null || git checkout -B "$BRANCH" "origin/${BRANCH}"
 git reset --hard "origin/${BRANCH}"
+
+# Git may not apply the executable bit on checkout (e.g. core.filemode=false on the server).
+chmod +x scripts/*.sh 2>/dev/null || true
 
 echo "[deploy] Repository at $(git rev-parse --short HEAD) — $(git log -1 --oneline)"
 

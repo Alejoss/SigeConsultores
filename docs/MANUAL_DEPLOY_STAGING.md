@@ -23,8 +23,7 @@ cd /opt/sige-app-staging
 
 docker compose --env-file .env.staging -f docker-compose.staging.yml down
 
-chmod +x scripts/deploy-staging-droplet.sh
-./scripts/deploy-staging-droplet.sh
+sh scripts/deploy-staging-droplet.sh
 ```
 
 **No uses** `docker compose down` sin `-f docker-compose.staging.yml`: el `docker-compose.yml` por defecto del repo es otro stack (MySQL local) y no apaga `sige-app-staging-*`.
@@ -35,9 +34,10 @@ Si el `down` deja un contenedor colgado: `docker stop sige-app-staging-app-1 && 
 
 ```bash
 cd /opt/sige-app-staging
-chmod +x scripts/deploy-staging-droplet.sh
-./scripts/deploy-staging-droplet.sh
+sh scripts/deploy-staging-droplet.sh
 ```
+
+No hace falta `chmod +x`: invoca con `sh`. (Tras el `git reset` del script, los `.sh` quedan ejecutables por si prefieres `./scripts/...`.)
 
 Ese script hace todo el despliegue habitual:
 
@@ -49,8 +49,8 @@ Ese script hace todo el despliegue habitual:
 Opciones:
 
 ```bash
-SKIP_MIGRATE=1 ./scripts/deploy-staging-droplet.sh   # solo código, sin drizzle
-SKIP_BUILD=1 ./scripts/deploy-staging-droplet.sh     # reinicio sin rebuild de imagen
+SKIP_MIGRATE=1 sh scripts/deploy-staging-droplet.sh   # solo código, sin drizzle
+SKIP_BUILD=1 sh scripts/deploy-staging-droplet.sh   # reinicio sin rebuild de imagen
 ```
 
 Antes de migraciones arriesgadas, backup a S3: `bash scripts/backup-cron.sh` (ver [paso 3b](#3b-backup-de-mysql-a-s3-antes-de-migraciones-destructivas)).
@@ -84,7 +84,7 @@ cd /opt/sige-app-staging
 
 ### 3. Desplegar
 
-Usa el [comando de deploy](#comando-de-deploy-staging) de arriba: `./scripts/deploy-staging-droplet.sh`.
+Usa el [comando de deploy](#comando-de-deploy-staging) de arriba: `sh scripts/deploy-staging-droplet.sh`.
 
 En el servidor **no edites** archivos del repo (scripts, compose, etc.). Solo `.env.staging` (está en `.gitignore`).
 
@@ -108,7 +108,7 @@ Requisitos: `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY` en `.env.staging`; con
 
 ### 3c. Bajar el stack antes del build (poca RAM)
 
-Mismo comando que en [Comando de deploy → Droplets con poca RAM](#droplets-con-poca-ram-recomendado). Hazlo **antes** de `./scripts/deploy-staging-droplet.sh` si el build falla por memoria o el droplet se queda lento.
+Mismo comando que en [Comando de deploy → Droplets con poca RAM](#droplets-con-poca-ram-recomendado). Hazlo **antes** de `sh scripts/deploy-staging-droplet.sh` si el build falla por memoria o el droplet se queda lento.
 
 ### 4. Build y levantar (solo si no usaste `deploy-staging-droplet.sh`)
 
@@ -153,7 +153,7 @@ La app escucha en el droplet en **127.0.0.1:3001** (detrás suele ir Nginx en 80
 
 ### 6. Actualizar solo el código en disco
 
-Preferir siempre `./scripts/deploy-staging-droplet.sh`. Si solo necesitas sincronizar el repo:
+Preferir siempre `sh scripts/deploy-staging-droplet.sh`. Si solo necesitas sincronizar el repo:
 
 ```bash
 cd /opt/sige-app-staging
