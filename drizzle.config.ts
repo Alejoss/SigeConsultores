@@ -5,12 +5,8 @@ import { config as loadEnv } from "dotenv";
 import { defineConfig } from "drizzle-kit";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const envStagingPath = path.join(root, ".env.staging");
 const envPath = path.join(root, ".env");
 const envLocalPath = path.join(root, ".env.local");
-if (existsSync(envStagingPath)) {
-  loadEnv({ path: envStagingPath });
-}
 if (existsSync(envPath)) {
   loadEnv({ path: envPath, override: true });
 }

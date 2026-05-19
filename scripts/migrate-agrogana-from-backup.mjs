@@ -2,7 +2,7 @@
 /**
  * Migrate one company's data from a legacy SQL backup into the current database.
  *
- * Reads DATABASE_URL from .env / .env.local / .env.staging (same as the app).
+ * Reads DATABASE_URL from .env / .env.local (same as the app).
  * Parses the backup, filters rows for the given `companies.id`, remaps legacy
  * columns (userId → accountId), and inserts with INSERT IGNORE (idempotent).
  *
@@ -26,7 +26,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
 // ─── Load env (same priority chain as the app) ─────────────────────────────
-for (const f of [".env.staging", ".env", ".env.local"]) {
+for (const f of [".env", ".env.local"]) {
   const p = resolve(ROOT, f);
   if (existsSync(p)) loadEnv({ path: p, override: true });
 }

@@ -120,7 +120,7 @@ export default function LoginSelector() {
         localStorage.setItem("selectedCompanyId", data.companyId.toString());
         localStorage.setItem("managerEmail", data.managerEmail);
         localStorage.setItem("managerName", data.managerEmail);
-        setLocation("/manager-dashboard");
+        window.location.assign("/manager-dashboard");
         return;
       }
 
@@ -138,12 +138,13 @@ export default function LoginSelector() {
         };
         localStorage.setItem("processLeaderSession", JSON.stringify(sessionData));
         sessionStorage.removeItem("processLeaderSession");
-        window.dispatchEvent(new Event("processLeaderSessionUpdated"));
-        setLocation(`/process-leader-dashboard?processId=${data.processId}`);
+        window.location.assign(
+          `/process-leader-dashboard?processId=${data.processId}`
+        );
         return;
       }
 
-      setLocation("/dashboard");
+      window.location.assign("/dashboard");
     } catch {
       setError("Error de red al iniciar sesión");
     } finally {

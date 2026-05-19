@@ -50,8 +50,7 @@ todo.md
 .env.local
 .env.*.local
 .env.production.local
-# Staging/producción por entorno (secretos en servidor; no versionar).
-.env.staging
+# Producción en servidor (secretos; no versionar).
 .env.production
 
 # Secrets and credentials
@@ -59,10 +58,6 @@ todo.md
 *.pem
 *.key
 *.cert
-
-# GitHub PAT en servidor (solo clone/pull manual; nunca subir a remoto)
-.github_pat_staging
-github-pat-staging.txt
 
 # Backups
 backups/

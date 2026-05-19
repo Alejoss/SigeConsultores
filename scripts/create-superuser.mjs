@@ -18,7 +18,7 @@ function usage() {
       "",
       "Notas:",
       "  - Conexión: DATABASE_URL explícita, o MYSQL_USER + MYSQL_PASSWORD + MYSQL_DATABASE (+ MYSQL_HOST, MYSQL_PORT opcionales).",
-      "  - Carga: .env.staging → .env → .env.local (como herramientas Django/manage).",
+      "  - Carga: .env → .env.local (como herramientas Django/manage).",
       "  - Si la cuenta ya existe por email, actualiza passwordHash y garantiza rol platform_admin.",
     ].join("\n")
   );

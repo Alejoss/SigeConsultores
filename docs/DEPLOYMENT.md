@@ -8,15 +8,19 @@ Procedimiento de referencia para **DigitalOcean + Docker + GitHub Actions** (ima
 |-----------|-----|
 | `Dockerfile` | Imagen de la app (build Vite + bundle del servidor) |
 | `docker-compose.prod.yml` | Producción: `mysql` + `app` (app en `127.0.0.1:3000` → host) |
-| `docker-compose.staging.yml` | Staging: mismo patrón; app publicada típicamente en `127.0.0.1:3001` |
 | `scripts/deploy-prod.sh` | Pull de imagen y `compose up` en el servidor de producción |
-| `scripts/deploy-staging.sh` | Igual para staging |
 | `.github/workflows/ci.yml` | PR/push a `main`: typecheck, tests, build |
 | `.github/workflows/deploy-production.yml` | Push a `main`: build, push a GHCR, SSH y `deploy-prod.sh` |
-| `.github/workflows/deploy-staging.yml` | Push a `develop` (y entorno `staging`): build, push, SSH y `deploy-staging.sh` |
 | `deploy/nginx/sige.conf.example` | Ejemplo de reverse proxy + TLS hacia el puerto local de la app |
 
-Staging manual o troubleshooting: [MANUAL_DEPLOY_STAGING.md](./MANUAL_DEPLOY_STAGING.md).
+## Ramas y flujo de trabajo
+
+| Rama | Uso |
+|------|-----|
+| `main` | Única rama permanente: integración, CI y despliegue a producción |
+| `feature/*` | Ramas efímeras para cambios; se abren PR hacia `main` y se eliminan al mergear |
+
+No hay entorno staging ni rama `develop` en el repositorio.
 
 ## 1) Servidor (una vez)
 
@@ -37,34 +41,28 @@ Mínimo habitual: credenciales MySQL, `JWT_SECRET`, OAuth (`VITE_APP_ID`, `OAUTH
 
 ## 3) Secretos en GitHub (Actions)
 
-**Producción (ejemplos de nombres; deben coincidir con el workflow):**
+**Producción** (nombres deben coincidir con el workflow):
 
 - `DROPLET_HOST`, `DROPLET_USER`, `DROPLET_SSH_KEY`
 - `DEPLOY_PATH` (ej. `/opt/sige-app`)
 - `ENV_PRODUCTION`: contenido completo de `.env.production` (multilínea)
 - `GHCR_USERNAME`, `GHCR_TOKEN` (lectura de paquetes GHCR)
 
-**Staging** (workflow usa entorno `staging`):
-
-- `DROPLET_HOST_STAGING`, `DROPLET_USER_STAGING`, `DROPLET_SSH_KEY_STAGING`
-- `DEPLOY_PATH_STAGING`
-- `ENV_STAGING`
-- `GHCR_USERNAME_STAGING`, `GHCR_TOKEN_STAGING`
+Puedes eliminar del repositorio los secretos y el entorno `staging` de GitHub si ya no se usan.
 
 ## 4) Flujo automático
 
-- **Push a `main`:** build de imagen, tags `latest` y `<sha>`, copia de `docker-compose.prod.yml` + `scripts/deploy-prod.sh`, SSH y ejecución del script (pull + `up -d`).
-- **Push a `develop`:** análogo con imagen `staging-*` y `docker-compose.staging.yml` + `deploy-staging.sh`.
+**Push a `main`:** build de imagen, tags `latest` y `<sha>`, copia de `docker-compose.prod.yml` + `scripts/deploy-prod.sh`, SSH y ejecución del script (pull + `up -d`).
 
 ## 5) Nginx y HTTPS
 
-La app escucha solo en localhost del droplet. Nginx termina TLS y hace proxy a ese puerto. Ver `deploy/nginx/sige.conf.example` y la guía de staging para IP sin dominio.
+La app escucha solo en localhost del droplet (`127.0.0.1:3000`). Nginx termina TLS y hace proxy a ese puerto. Ver `deploy/nginx/sige.conf.example`.
 
 ## Checklist antes de desplegar
 
 - `pnpm test` y `pnpm build` pasan localmente (o en CI verde).
 - `pnpm check` sin errores.
-- Esquema de BD revisado; si aplica, probado `pnpm db:push` contra un entorno de prueba.
+- Esquema de BD revisado; si aplica, probado `pnpm db:push` en local.
 - Variables y secretos en GitHub / servidor actualizados.
 - Backup reciente si hay migración destructiva ([BACKUP_SYSTEM.md](./BACKUP_SYSTEM.md)).
 
@@ -81,9 +79,12 @@ Generación de migraciones SQL versionadas: si el equipo adopta `drizzle-kit gen
 
 ## Post-despliegue
 
-- `docker compose -f docker-compose.prod.yml ps`
-- `docker compose logs -f app --tail=200`
-- Probar login y una ruta crítica de negocio tras el proxy público.
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f app --tail=200
+```
+
+Probar login y una ruta crítica de negocio tras el proxy público.
 
 ## Dependencias y auditoría
 

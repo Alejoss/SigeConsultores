@@ -1,12 +1,11 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProcessLeaderAuthProvider } from "./contexts/ProcessLeaderAuthContext";
 import { useEffect } from "react";
-import * as React from "react";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import CompanyInfo from "./pages/CompanyInfo";
@@ -82,52 +81,55 @@ import InspectionControl from "./pages/InspectionControl";
 
 // Redirige la raíz: invitación gerente, jefe de proceso, gerente ya logueado, o /login
 function RootRedirect() {
-  const [isRedirecting, setIsRedirecting] = React.useState(false);
-  
+  const [, setLocation] = useLocation();
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      void (async () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const managerInvitation = urlParams.get("manager-invitation");
-        if (managerInvitation) {
-          localStorage.removeItem("managerEmail");
-          localStorage.removeItem("selectedCompanyId");
-          window.location.href = "/login";
+    let cancelled = false;
+
+    void (async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const managerInvitation = urlParams.get("manager-invitation");
+      if (managerInvitation) {
+        localStorage.removeItem("managerEmail");
+        localStorage.removeItem("selectedCompanyId");
+        if (!cancelled) setLocation("/login");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/auth/session/me", { credentials: "include" });
+        const data = (await res.json()) as
+          | { authenticated: true; kind: "process_leader"; processId: number }
+          | { authenticated: true; kind: "company_manager" }
+          | { authenticated: false };
+
+        if (cancelled) return;
+
+        if (data.authenticated && data.kind === "process_leader") {
+          setLocation(`/process-leader-dashboard?processId=${data.processId}`);
           return;
         }
-
-        try {
-          const res = await fetch("/api/auth/session/me", { credentials: "include" });
-          const data = (await res.json()) as
-            | { authenticated: true; kind: "process_leader"; processId: number }
-            | { authenticated: true; kind: "company_manager" }
-            | { authenticated: false };
-
-          if (data.authenticated && data.kind === "process_leader") {
-            window.location.href = `/process-leader-dashboard?processId=${data.processId}`;
-            return;
-          }
-          if (data.authenticated && data.kind === "company_manager") {
-            window.location.href = "/manager-dashboard";
-            return;
-          }
-        } catch {
-          /* fall through to login */
+        if (data.authenticated && data.kind === "company_manager") {
+          setLocation("/manager-dashboard");
+          return;
         }
+      } catch {
+        /* fall through to login */
+      }
 
-        setIsRedirecting(true);
-        window.location.href = "/login";
-      })();
-    }, 100);
+      if (!cancelled) setLocation("/login");
+    })();
 
-    return () => clearTimeout(timer);
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [setLocation]);
   
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-        <p className="text-muted-foreground">{isRedirecting ? "Redirigiendo a login..." : "Cargando..."}</p>
+        <p className="text-muted-foreground">Cargando...</p>
       </div>
     </div>
   );

@@ -10,16 +10,12 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
- * Orden: .env.staging (base staging) → .env → .env.local (gana el local).
+ * Orden: .env → .env.local (gana el local).
  */
 export function loadCliEnv() {
-  const envStagingPath = path.join(root, ".env.staging");
   const envPath = path.join(root, ".env");
   const envLocalPath = path.join(root, ".env.local");
 
-  if (existsSync(envStagingPath)) {
-    loadEnv({ path: envStagingPath });
-  }
   if (existsSync(envPath)) {
     loadEnv({ path: envPath, override: true });
   }
@@ -30,7 +26,7 @@ export function loadCliEnv() {
   ensureDatabaseUrl();
 }
 
-/** Si no hay DATABASE_URL pero sí MYSQL_*, construye la URL (común en staging). */
+/** Si no hay DATABASE_URL pero sí MYSQL_*, construye la URL. */
 export function ensureDatabaseUrl() {
   if (process.env.DATABASE_URL?.trim()) return;
 

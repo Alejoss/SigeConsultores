@@ -16,11 +16,13 @@ if [ ! -f ".env.production" ]; then
   exit 1
 fi
 
+COMPOSE="docker compose --env-file .env.production -f docker-compose.prod.yml"
+
 echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 
-docker compose -f docker-compose.prod.yml pull app
-docker compose -f docker-compose.prod.yml up -d mysql
-docker compose -f docker-compose.prod.yml up -d app
+$COMPOSE pull app
+$COMPOSE up -d mysql
+$COMPOSE up -d app
 docker image prune -f
 
 echo "Deployment finished"

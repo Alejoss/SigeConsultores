@@ -48,7 +48,6 @@ La app en desarrollo suele quedar en **http://localhost:3000** (Express sirve Vi
 Plantillas:
 
 - **Local:** [.env.example](.env.example) → copiar a `.env` o `.env.local`
-- **Staging (compose en servidor):** [.env.staging.example](.env.staging.example)
 - **Producción (compose en servidor):** [.env.production.example](.env.production.example)
 
 El servidor carga `.env` y luego `.env.local` con prioridad (ver `server/_core/loadEnv`). Para OAuth, al menos `VITE_APP_ID`, `OAUTH_SERVER_URL` y `JWT_SECRET` son necesarios para arrancar (`validateOAuthConfig`).
@@ -69,7 +68,7 @@ sige-app/
 ├── drizzle/                # Esquema y metadatos Drizzle
 ├── scripts/                # Utilidades (deploy, backup, admin, etc.)
 ├── deploy/nginx/           # Ejemplos de sitio Nginx
-├── docker-compose*.yml     # local / staging / producción
+├── docker-compose*.yml     # local (dev) / producción
 ├── Dockerfile
 └── docs/                   # Índice: docs/README.md
 ```
@@ -91,13 +90,13 @@ sige-app/
 
 Tests en un archivo: `pnpm test -- server/__tests__/archivo.test.ts`.
 
-## Producción y staging (Docker)
+## Producción (Docker)
 
 - **Build:** `Dockerfile` multi-stage (pnpm install, build, imagen mínima con `node dist/index.js`).
-- **Compose:** `docker-compose.prod.yml` y `docker-compose.staging.yml` levantan **MySQL** + **app**. La app recibe `DATABASE_URL` desde el compose; en el arranque del contenedor puede ejecutarse `drizzle-kit push` si `RUN_DB_PUSH_ON_STARTUP=true` (ver `docker/entrypoint.sh`).
-- **Despliegue automático:** GitHub Actions (`.github/workflows/deploy-production.yml`, `deploy-staging.yml`).
+- **Compose:** `docker-compose.prod.yml` levanta **MySQL** + **app**. La app recibe `DATABASE_URL` desde el compose; en el arranque del contenedor puede ejecutarse `drizzle-kit push` si `RUN_DB_PUSH_ON_STARTUP=true` (ver `docker/entrypoint.sh`).
+- **Despliegue automático:** push a `main` → GitHub Actions (`.github/workflows/deploy-production.yml`).
 
-Guías: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/MANUAL_DEPLOY_STAGING.md](docs/MANUAL_DEPLOY_STAGING.md), [docs/BACKUP_SYSTEM.md](docs/BACKUP_SYSTEM.md).
+Guías: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/BACKUP_SYSTEM.md](docs/BACKUP_SYSTEM.md).
 
 ## Documentación
 
@@ -109,7 +108,7 @@ Guías: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/MANUAL_DEPLOY_STAGING.md
 
 ## Contribución y licencia
 
-Ramas habituales: features desde `develop`; producción desde `main` según el flujo del equipo. MIT — ver [LICENSE](LICENSE).
+**Ramas:** `main` (permanente, CI y producción) y ramas `feature/*` efímeras vía PR. MIT — ver [LICENSE](LICENSE).
 
 ## Contacto
 

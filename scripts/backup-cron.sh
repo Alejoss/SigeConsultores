@@ -15,11 +15,8 @@ if [ -n "${SIGE_ENV_FILE:-}" ]; then
 elif [ -f "${PROJECT_DIR}/.env.production" ]; then
   ENV_FILE="${PROJECT_DIR}/.env.production"
   COMPOSE_FILE="${PROJECT_DIR}/docker-compose.prod.yml"
-elif [ -f "${PROJECT_DIR}/.env.staging" ]; then
-  ENV_FILE="${PROJECT_DIR}/.env.staging"
-  COMPOSE_FILE="${PROJECT_DIR}/docker-compose.staging.yml"
 else
-  echo "[ERROR] No .env.production or .env.staging in ${PROJECT_DIR}" >&2
+  echo "[ERROR] No .env.production in ${PROJECT_DIR}" >&2
   exit 1
 fi
 
@@ -34,9 +31,6 @@ load_env_file_keys "$ENV_FILE" \
 
 TIMESTAMP=$(date -u +%Y-%m-%dT%H%MZ)
 BACKUP_PREFIX="sige-backup-"
-if [[ "$COMPOSE_FILE" == *staging* ]]; then
-  BACKUP_PREFIX="sige-backup-staging-"
-fi
 FILENAME="${BACKUP_PREFIX}${TIMESTAMP}.sql.gz"
 BUCKET="${AWS_S3_BUCKET:-sige-backups}"
 REGION="${AWS_S3_REGION:-${AWS_REGION:-us-east-2}}"
@@ -68,9 +62,6 @@ fi
 "${COMPOSE_CMD[@]}" exec -T mysql sh -c \
   'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" \
     --single-transaction --quick --lock-tables=false --set-gtid-purged=OFF' \
-  | gzip -9 \
-  | aws s3 cp - "${S3_PATH}" \
-      --content-type "application/gzip" \
-      --region "${REGION}"
+  | gzip -9 | aws s3 cp - "$S3_PATH"
 
 echo "[$(date -u)] Backup complete: ${S3_PATH}"

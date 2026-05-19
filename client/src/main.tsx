@@ -30,7 +30,12 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  window.location.href = "/login";
+  // Defer navigation so React is not mid-commit when the document unloads.
+  queueMicrotask(() => {
+    if (window.location.pathname !== "/login") {
+      window.location.assign("/login");
+    }
+  });
 };
 
 queryClient.getQueryCache().subscribe(event => {

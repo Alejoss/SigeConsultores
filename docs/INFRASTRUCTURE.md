@@ -1,6 +1,6 @@
 # Infraestructura SIGE Platform
 
-Visión operativa del sistema tal como está definido en este repositorio (Docker en droplet, GitHub Actions, S3). Para despliegue paso a paso ver [DEPLOYMENT.md](./DEPLOYMENT.md) y [MANUAL_DEPLOY_STAGING.md](./MANUAL_DEPLOY_STAGING.md).
+Visión operativa del sistema tal como está definido en este repositorio (Docker en droplet, GitHub Actions, S3). Para despliegue paso a paso ver [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## Arquitectura lógica
 
@@ -30,8 +30,8 @@ Visión operativa del sistema tal como está definido en este repositorio (Docke
      └──────────────────┘
 ```
 
-- **Producción / staging:** la aplicación y MySQL corren en **Docker Compose** (`docker-compose.prod.yml` / `docker-compose.staging.yml`). La imagen `app` se construye con el `Dockerfile` del repo y se publica en **GHCR** desde GitHub Actions.
-- **Desarrollo local:** puedes usar `docker-compose.yml` (MySQL en el host en el puerto 3306; incluye Adminer en 8080 solo para desarrollo).
+- **Producción:** la aplicación y MySQL corren en **Docker Compose** (`docker-compose.prod.yml`). La imagen `app` se construye con el `Dockerfile` del repo y se publica en **GHCR** desde GitHub Actions al hacer push a `main`.
+- **Desarrollo local:** `docker-compose.yml` (MySQL en el host en el puerto 3306; incluye Adminer en 8080 solo para desarrollo).
 
 ## Tabla de servicios
 
@@ -39,17 +39,17 @@ Visión operativa del sistema tal como está definido en este repositorio (Docke
 |------------|-----|
 | Contenedor `app` | Express + tRPC; sirve estáticos del build Vite en producción |
 | Contenedor `mysql` | MySQL 8.0.x, datos de la plataforma |
-| Nginx (host) | TLS y reverse proxy hacia `127.0.0.1:3000` (prod) o `3001` (staging típico) |
-| GitHub Actions | CI (`ci.yml`), build/push de imagen y deploy por SSH |
+| Nginx (host) | TLS y reverse proxy hacia `127.0.0.1:3000` |
+| GitHub Actions | CI (`ci.yml`), build/push de imagen y deploy por SSH en `main` |
 | S3 | Respaldos automatizados y almacenamiento de archivos (mismo bucket configurable; ver [FILE_STORAGE.md](./FILE_STORAGE.md)) |
 | Proveedor OAuth | Login; URLs y claves en `VITE_APP_ID`, `OAUTH_SERVER_URL`, `VITE_OAUTH_PORTAL_URL` |
 | Brevo | Correo transaccional (`BREVO_API_KEY`, etc., según implementación) |
 
-No versionar credenciales: usar `.env.production` / `.env.staging` en el servidor y secretos de GitHub para CI.
+No versionar credenciales: usar `.env.production` en el servidor y secretos de GitHub para CI.
 
 ## Base de datos
 
-- En **Docker Compose** de prod/staging, `DATABASE_URL` se define en el YAML apuntando al servicio `mysql`.
+- En **Docker Compose** de producción, `DATABASE_URL` se define en el YAML apuntando al servicio `mysql`.
 - En **local**, `DATABASE_URL` en `.env.local` apunta a tu instancia (p. ej. `localhost:3306`).
 - Esquema gestionado con **Drizzle**; sincronización habitual con `pnpm db:push` o, en contenedor, según `RUN_DB_PUSH_ON_STARTUP` en `docker/entrypoint.sh`.
 
@@ -80,4 +80,4 @@ Procedimientos orientativos en [BACKUP_SYSTEM.md](./BACKUP_SYSTEM.md) (restaurar
 
 ---
 
-Última revisión de esta página: mayo 2026 (alineada con Docker + GitHub Actions del repo).
+Última revisión de esta página: mayo 2026 (producción única en `main`).

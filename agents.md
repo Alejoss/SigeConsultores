@@ -8,8 +8,8 @@ Este proyecto es **SIGE Platform**, un Sistema Integrado de Gestión Empresarial
 - **Backend:** Express + tRPC + Drizzle ORM
 - **Base de datos:** MySQL 8
 - **Repositorio:** https://github.com/Alejoss/SigeConsultores
-- **Rama principal de desarrollo:** `develop`
-- **Rama de producción:** `main`
+- **Rama principal:** `main` (integración, CI y despliegue a producción)
+- **Ramas de trabajo:** `feature/nombre-del-cambio` (efímeras, merge vía PR a `main`)
 
 ## Reglas obligatorias antes de cualquier cambio en el código
 
@@ -17,7 +17,7 @@ Este proyecto es **SIGE Platform**, un Sistema Integrado de Gestión Empresarial
 2. **Respetar las instrucciones al pie de la letra.** No interpretar ni ampliar el alcance de un cambio sin confirmación explícita del usuario. Si algo no está claro, preguntar antes de actuar.
 3. **No romper lo que funciona.** Nunca modificar archivos no relacionados con el cambio solicitado. El principio es: el menor cambio posible para lograr el objetivo.
 4. **Confirmar antes de cambios críticos.** Si el cambio afecta el esquema de base de datos, autenticación, rutas principales o lógica de negocio central, pedir confirmación explícita antes de proceder.
-5. **Trabajar en ramas.** Todo cambio debe hacerse en una rama nueva (`git checkout -b feature/nombre-del-cambio`) y nunca directamente en `main` o `develop` sin autorización.
+5. **Trabajar en ramas.** Todo cambio debe hacerse en una rama nueva (`git checkout -b feature/nombre-del-cambio`) y nunca directamente en `main` sin autorización.
 6. **Verificar después de cada cambio.** Confirmar que el servidor sigue corriendo (`pnpm dev` o `node dist/index.js`) y que la funcionalidad afectada sigue operativa antes de reportar el cambio como completado.
 7. **No eliminar ni reescribir lógica existente** a menos que el usuario lo solicite explícitamente. Preferir extensión sobre reemplazo.
 
@@ -26,7 +26,7 @@ Este proyecto es **SIGE Platform**, un Sistema Integrado de Gestión Empresarial
 | Componente | Detalle |
 |------------|---------|
 | Repositorio local | `/home/ubuntu/sige-app` |
-| MySQL | `127.0.0.1:3307`, usuario: `sige`, base: `sige_platform_staging` |
+| MySQL | `127.0.0.1:3306` (Docker `docker compose up -d mysql`), base `sige_platform` |
 | Servidor | `http://localhost:3000` |
 | Variables de entorno | `/home/ubuntu/sige-app/.env.local` y `/home/ubuntu/.env.local` |
 | Admin de la plataforma | `sige@admin.com` |

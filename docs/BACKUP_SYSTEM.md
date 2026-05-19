@@ -4,7 +4,7 @@
 
 ## Descripción General
 
-Respaldo diario automatizado de la base de datos MySQL (contenedor Docker en el droplet) hacia AWS S3. Funciona en **producción** (`/opt/sige-app`, `.env.production`) y **staging** (`/opt/sige-app-staging`, `.env.staging`).
+Respaldo diario automatizado de la base de datos MySQL (contenedor Docker en el droplet de producción) hacia AWS S3 (`/opt/sige-app`, `.env.production`).
 
 - Frecuencia: diaria a las 2:00 AM UTC (cron job en el droplet)
 - Destino: `s3://sige-backups/backups/`
@@ -52,16 +52,8 @@ Respaldo diario automatizado de la base de datos MySQL (contenedor Docker en el 
 
 ## Setup inicial (una sola vez en el droplet)
 
-Producción:
-
 ```bash
 sudo bash scripts/setup-backup-cron.sh /opt/sige-app
-```
-
-Staging:
-
-```bash
-sudo bash scripts/setup-backup-cron.sh /opt/sige-app-staging
 ```
 
 Esto:
@@ -71,7 +63,7 @@ Esto:
 
 ### Variables de entorno requeridas
 
-En `.env.production` o `.env.staging` (el mismo archivo que usa `docker compose --env-file`):
+En `.env.production` (el mismo archivo que usa `docker compose --env-file`):
 
 ```bash
 MYSQL_ROOT_PASSWORD=...   # usado por el contenedor mysql (compose env_file)
@@ -91,13 +83,13 @@ AWS_S3_BUCKET=sige-backups    # opcional, default: sige-backups
 **Primera vez en el droplet:** instala AWS CLI y (opcional) el cron:
 
 ```bash
-sudo bash scripts/setup-backup-cron.sh /opt/sige-app-staging
+sudo bash scripts/setup-backup-cron.sh /opt/sige-app
 ```
 
 Luego, desde la raíz del clone (MySQL debe estar arriba o el script lo levanta):
 
 ```bash
-cd /opt/sige-app-staging   # o /opt/sige-app
+cd /opt/sige-app
 bash scripts/backup-cron.sh
 ```
 
@@ -166,7 +158,7 @@ systemctl status cron
 tail -50 /var/log/sige-backup.log
 
 # Verificar que el contenedor MySQL está arriba
-docker compose -f /opt/sige-app/docker-compose.prod.yml ps mysql
+docker compose --env-file /opt/sige-app/.env.production -f /opt/sige-app/docker-compose.prod.yml ps mysql
 ```
 
 ### Error "aws: command not found"
@@ -183,7 +175,7 @@ Causa antigua: `source .env` en bash. Versión actual: solo lee `AWS_*` y el dum
 
 Verificar credenciales AWS en el `.env` del entorno:
 ```bash
-grep AWS_ /opt/sige-app-staging/.env.staging
+grep AWS_ /opt/sige-app/.env.production
 ```
 
 El usuario IAM (`sige-s3-backup`) debe tener permisos `s3:PutObject` y `s3:GetObject` sobre `arn:aws:s3:::sige-backups/*`.
