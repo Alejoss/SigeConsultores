@@ -5,7 +5,7 @@
  */
 
 import { z } from "zod";
-import { protectedProcedure, router } from "../_core/trpc";
+import { companyProcedure, router } from "../_core/trpc";
 import {
   queryAI,
   improveText,
@@ -22,7 +22,7 @@ export const aiRouter = router({
   /**
    * Check if AI service is available
    */
-  isAvailable: protectedProcedure.query(async () => {
+  isAvailable: companyProcedure.query(async () => {
     try {
       // AI service is always available via Manus Forge
       return { available: true };
@@ -36,7 +36,7 @@ export const aiRouter = router({
    * Query AI with context
    * General-purpose AI query for any module
    */
-  query: protectedProcedure
+  query: companyProcedure
     .input(
       z.object({
         companyId: z.number(),
@@ -86,7 +86,7 @@ export const aiRouter = router({
    * Improve text for professional use
    * Enhances writing quality and professionalism
    */
-  improveText: protectedProcedure
+  improveText: companyProcedure
     .input(
       z.object({
         companyId: z.number(),
@@ -126,7 +126,7 @@ export const aiRouter = router({
    * Explain a module
    * Helps users understand a module and how it integrates
    */
-  explainModule: protectedProcedure
+  explainModule: companyProcedure
     .input(
       z.object({
         companyId: z.number(),
@@ -172,7 +172,7 @@ export const aiRouter = router({
    * Get contextual advice
    * Provides specific advice based on module context
    */
-  getAdvice: protectedProcedure
+  getAdvice: companyProcedure
     .input(
       z.object({
         companyId: z.number(),

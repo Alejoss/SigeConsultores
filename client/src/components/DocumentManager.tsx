@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, Upload, Download, Trash2, FileText } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { getCompanyIdFromSession } from "@/lib/sessionScope";
 
 interface DocumentManagerProps {
   documentType: "Policy" | "Values" | "StrategicObjectives" | "Indicators" | "ProcessMap";
@@ -24,11 +25,13 @@ export default function DocumentManager({
   infoContent,
 }: DocumentManagerProps) {
   const [, setLocation] = useLocation();
-  const [companyId] = useState<number | null>(() => {
-    const stored = localStorage.getItem("selectedCompanyId");
-    return stored ? parseInt(stored) : null;
-  });
-  const [companyName] = useState(() => localStorage.getItem("selectedCompanyName") || "Empresa");
+  const [companyId] = useState<number | null>(() => getCompanyIdFromSession());
+  const [companyName] = useState(
+    () =>
+      localStorage.getItem("selectedCompanyName") ||
+      localStorage.getItem("managerCompanyName") ||
+      "Empresa"
+  );
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 

@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { protectedProcedure, router } from "../_core/trpc";
+import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { processFODA, processCompliances, processTrainings, criticalityMatrix, processTacticalObjectives } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export const consolidatedIndicatorsRouter = router({
-  getConsolidatedIndicators: protectedProcedure
+  getConsolidatedIndicators: companyProcedure
     .input(z.object({ processId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();

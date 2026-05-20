@@ -96,7 +96,7 @@ async function ensureProcessLeaderRole(
 }
 
 export const processLeaderInvitationsRouter = router({
-  createInvitation: protectedProcedure
+  createInvitation: companyProcedure
     .input(
       z.object({
         processId: z.number(),
@@ -392,7 +392,7 @@ export const processLeaderInvitationsRouter = router({
       return { success: true, message: "Process leader deactivated successfully" };
     }),
 
-  createInvitationByManager: publicProcedure
+  createInvitationByManager: companyProcedure
     .input(
       z.object({
         companyId: z.number(),

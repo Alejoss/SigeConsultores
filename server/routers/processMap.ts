@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
+import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { processes, accounts, accountRoles } from "../../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getRoleIdBySlug } from "../accountAuth";
 
 export const processMapRouter = router({
-  list: publicProcedure
+  list: companyProcedure
     .input(z.object({ companyId: z.number(), processLeaderEmail: z.string().optional(), filterProcessId: z.number().optional() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -59,7 +59,7 @@ export const processMapRouter = router({
       return result;
     }),
 
-  get: publicProcedure
+  get: companyProcedure
     .input(z.object({ processId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -71,7 +71,7 @@ export const processMapRouter = router({
       return result.length > 0 ? result[0] : null;
     }),
 
-  create: publicProcedure
+  create: companyProcedure
     .input(z.object({
       companyId: z.number(),
       name: z.string().min(1),
@@ -92,7 +92,7 @@ export const processMapRouter = router({
       return { success: true, message: "Proceso creado exitosamente" };
     }),
 
-  update: publicProcedure
+  update: companyProcedure
     .input(z.object({
       processId: z.number(),
       name: z.string().min(1),
@@ -115,7 +115,7 @@ export const processMapRouter = router({
       return { success: true, message: "Proceso actualizado exitosamente" };
     }),
 
-  delete: publicProcedure
+  delete: companyProcedure
     .input(z.object({ processId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();

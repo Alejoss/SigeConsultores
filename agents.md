@@ -62,6 +62,20 @@ pnpm test
 pnpm check
 ```
 
+## Autenticación en APIs tRPC (guardar / leer datos SIGE)
+
+| Procedimiento | Quién puede usarlo |
+|---------------|-------------------|
+| `companyProcedure` | Usuario OAuth, **gerente** o **jefe de proceso** (estándar para CRUD de módulos) |
+| `protectedProcedure` | Solo usuario OAuth de plataforma |
+| `adminProcedure` | Solo `role === admin` |
+| `publicProcedure` | Sin sesión (formularios públicos, tokens de invitación) |
+
+- **Regla:** todo endpoint que guarde o liste datos de empresa/proceso debe usar `companyProcedure`, no `protectedProcedure`.
+- **Cliente:** resolver contexto con `getCompanyIdFromSession()` / `getProcessIdFromSession()` desde `client/src/lib/sessionScope.ts`.
+- **Servidor:** validación opcional de alcance en `server/_core/sessionScope.ts` (`assertCompanyAccess`, `assertProcessAccess`).
+- El redirect a `/login` ocurre cuando la API devuelve el mensaje `Please login (10001)` (ver `client/src/main.tsx`).
+
 ## Estructura del proyecto
 
 ```

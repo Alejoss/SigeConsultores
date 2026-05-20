@@ -29,7 +29,9 @@ export default function OrganizationChart() {
     if (isManagerLogin && managerCompanyId) {
       return managerCompanyId;
     }
-    return companyIdFromUrl ? parseInt(companyIdFromUrl) : parseInt(localStorage.getItem("selectedCompanyId") || "0");
+    if (companyIdFromUrl) return parseInt(companyIdFromUrl);
+    const stored = localStorage.getItem("selectedCompanyId") || localStorage.getItem("managerCompanyId");
+    return stored ? parseInt(stored) : 0;
   }, [isManagerLogin, managerCompanyId, companyIdFromUrl]);
 
   const handleExportPDF = (type: "basic" | "extended") => {

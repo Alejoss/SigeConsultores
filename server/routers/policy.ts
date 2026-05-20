@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
+import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { policies } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export const policyRouter = router({
-  upsert: publicProcedure
+  upsert: companyProcedure
     .input(z.object({
       companyId: z.number(),
       versionNo: z.string(),
@@ -49,7 +49,7 @@ export const policyRouter = router({
       return { success: true };
     }),
 
-  get: publicProcedure
+  get: companyProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();

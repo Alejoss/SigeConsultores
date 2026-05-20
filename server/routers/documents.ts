@@ -1,4 +1,4 @@
-import { router, protectedProcedure } from "../_core/trpc";
+import { router, companyProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { getDocumentsByCompanyAndType, createCompanyDocument, deleteDocument, getDocumentById } from "../db";
@@ -7,7 +7,7 @@ import { randomUUID } from "crypto";
 
 export const documentsRouter = router({
   // Get documents by company and type
-  getByCompanyAndType: protectedProcedure
+  getByCompanyAndType: companyProcedure
     .input(z.object({
       companyId: z.number(),
       documentType: z.string(),
@@ -36,7 +36,7 @@ export const documentsRouter = router({
     }),
 
   // Upload policy document
-  uploadPolicyDocument: protectedProcedure
+  uploadPolicyDocument: companyProcedure
     .input(z.object({
       companyId: z.number(),
       fileName: z.string(),
@@ -94,7 +94,7 @@ export const documentsRouter = router({
     }),
 
   // Delete document (removes from S3 + DB)
-  delete: protectedProcedure
+  delete: companyProcedure
     .input(z.object({
       id: z.number(),
     }))

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { protectedProcedure, router, companyProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { processTacticalObjectives } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { updateProcessTacticalObjective } from "../db";
 
 export const processTacticalObjectivesRouter = router({
@@ -85,8 +85,21 @@ export const processTacticalObjectivesRouter = router({
           planningData: JSON.stringify(planningDataObj),
           completed: completedValue as any,
         });
-        console.log('[DEBUG CREATE] Success');
-        return { success: true, message: "Objetivo táctico creado exitosamente" };
+
+        const inserted = await db
+          .select({ id: processTacticalObjectives.id })
+          .from(processTacticalObjectives)
+          .where(eq(processTacticalObjectives.processId, input.processId))
+          .orderBy(desc(processTacticalObjectives.id))
+          .limit(1);
+
+        const newId = inserted[0]?.id;
+        if (!newId) {
+          throw new Error("No se pudo obtener el ID del objetivo creado");
+        }
+
+        console.log('[DEBUG CREATE] Success, id:', newId);
+        return { success: true, id: newId, message: "Objetivo táctico creado exitosamente" };
       } catch (err) {
         console.error('[ERROR CREATE]', err);
         throw err;
@@ -268,6 +281,12 @@ export const processTacticalObjectivesRouter = router({
       const result = await db.select().from(processTacticalObjectives)
         .where(eq(processTacticalObjectives.processId, input.processId));
 
+      const calcPorcentajeAlcanzado = (ci: number, m: number, ca: number): number => {
+        if (m === ci) return 0;
+        const pct = ((ca - ci) / (m - ci)) * 100;
+        return Math.max(-100, Math.min(100, pct));
+      };
+
       return result.map(obj => {
         try {
           const planningData = obj.planningData
@@ -287,6 +306,17 @@ export const processTacticalObjectivesRouter = router({
             porcentajeMetaAlcanzado = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
             porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
           }
+
+          const resultKeys = (planningData.resultKeys || []).map((rk: any) => {
+            const ci = Number(rk.condicionInicial) || 0;
+            const m = Number(rk.meta) || 0;
+            const ca = Number(rk.condicionActual) || 0;
+            const porcentajeAlcanzado =
+              rk.porcentajeAlcanzado !== undefined && rk.porcentajeAlcanzado !== null
+                ? Number(rk.porcentajeAlcanzado)
+                : calcPorcentajeAlcanzado(ci, m, ca);
+            return { ...rk, porcentajeAlcanzado };
+          });
           
           return {
             id: `planning_${obj.id}`,
@@ -297,7 +327,7 @@ export const processTacticalObjectivesRouter = router({
             objectiveResponsible: obj.responsible || '',
             category: planningData.category || '',
             goal: planningData.goal ? String(planningData.goal) : '',
-            resultKeys: planningData.resultKeys || [],
+            resultKeys,
             expanded: false,
             ponderacion,
             puntoPartida,

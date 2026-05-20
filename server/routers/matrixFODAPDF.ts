@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { protectedProcedure, router } from "../_core/trpc";
+import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { processFODA } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -32,7 +32,7 @@ interface MatrizFODARow {
 }
 
 export const matrixFODAPDFRouter = router({
-  generatePDF: protectedProcedure
+  generatePDF: companyProcedure
     .input(z.object({ processId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -71,7 +71,7 @@ export const matrixFODAPDFRouter = router({
     }),
 
   // Get matrix data for export
-  getMatrixData: protectedProcedure
+  getMatrixData: companyProcedure
     .input(z.object({ processId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();

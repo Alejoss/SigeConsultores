@@ -94,10 +94,12 @@ export default function TacticalPlanning() {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const savingRef = useRef(false);
   const hasLoadedRef = useRef(false);
+  const planningsRef = useRef<TacticalPlanning[]>([]);
 
   const savePlanningMutation = trpc.processTacticalObjectives.savePlanning.useMutation({
     onError: (error: any) => {
       console.error('Error saving to database:', error);
+      toast.error(error.message || "Error al guardar la planificación");
     },
   });
 
@@ -190,9 +192,13 @@ export default function TacticalPlanning() {
     }
   }, [tacticalObjectivesData, planningDataFromDB]);
 
-  // Auto-save to localStorage every 500ms (faster feedback)
   useEffect(() => {
-    if (plannings.length === 0) return;
+    planningsRef.current = plannings;
+  }, [plannings]);
+
+  // Auto-save with debounce (uses planningsRef to avoid stale closure)
+  useEffect(() => {
+    if (plannings.length === 0 || !processId) return;
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -200,37 +206,43 @@ export default function TacticalPlanning() {
 
     saveTimeoutRef.current = setTimeout(async () => {
       if (savingRef.current || !processId) return;
+
+      const snapshot = planningsRef.current;
+      if (snapshot.length === 0) return;
       
       try {
-        // Save to localStorage
-        localStorage.setItem(`tactical_planning_${processId}`, JSON.stringify(plannings));
+        localStorage.setItem(`tactical_planning_${processId}`, JSON.stringify(snapshot));
         
-        // Save to database
         savingRef.current = true;
         setSaving(true);
         
-        const savePromises = plannings.map(planning => 
-          savePlanningMutation.mutateAsync(
-            {
-              objectiveId: planning.objectiveId,
-              category: planning.category,
-              goal: typeof planning.goal === 'string' ? planning.goal : String(planning.goal || ''),
-              resultKeys: planning.resultKeys,
-              ponderacion: planning.ponderacion || 0,
-              puntoPartida: planning.puntoPartida || 0,
-              metaLlegada: planning.metaLlegada || 0,
-              unidadMedida: planning.unidadMedida || '',
-              avanceMeta: planning.avanceMeta || 0,
-              trackingType: planning.trackingType || 'puntual',
-              monthlyValues: planning.monthlyValues || [],
-            }
-          ).catch(error => ({ success: false, error }))
+        const savePromises = snapshot.map(planning => 
+          savePlanningMutation.mutateAsync({
+            objectiveId: planning.objectiveId,
+            category: planning.category,
+            goal: typeof planning.goal === 'string' ? planning.goal : String(planning.goal || ''),
+            resultKeys: planning.resultKeys,
+            ponderacion: planning.ponderacion || 0,
+            puntoPartida: planning.puntoPartida || 0,
+            metaLlegada: planning.metaLlegada || 0,
+            unidadMedida: planning.unidadMedida || '',
+            avanceMeta: planning.avanceMeta || 0,
+            trackingType: planning.trackingType || 'puntual',
+            monthlyValues: planning.monthlyValues || [],
+          })
         );
         
-        await Promise.allSettled(savePromises);
-        setLastSaveTime(new Date().toLocaleTimeString());
+        const results = await Promise.allSettled(savePromises);
+        const failures = results.filter(r => r.status === 'rejected');
+        if (failures.length > 0) {
+          console.error('[TacticalPlanning] Autosave failures:', failures);
+          toast.error(`Error al guardar ${failures.length} objetivo(s)`);
+        } else {
+          setLastSaveTime(new Date().toLocaleTimeString());
+        }
       } catch (error) {
         console.error('Error in autosave:', error);
+        toast.error("Error al guardar la planificación");
       } finally {
         savingRef.current = false;
         setSaving(false);
@@ -242,7 +254,7 @@ export default function TacticalPlanning() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [plannings, processId, savePlanningMutation]);
+  }, [plannings, processId]);
 
   const updatePlanning = (id: string, field: string, value: any) => {
     setPlannings(prev => prev.map(p => {
@@ -596,7 +608,10 @@ export default function TacticalPlanning() {
           <div>
             <h1 className="text-4xl font-bold text-green-900 mb-2">PLANIFICACIÓN DE OBJETIVOS TÁCTICOS</h1>
             <p className="text-gray-600">Proceso: <span className="font-semibold">{localStorage.getItem("selectedProcessName") || "Proceso"}</span></p>
-            <p className="text-sm text-green-600 mt-1">✓ Guardado automático cada 500ms {lastSaveTime && `(Último: ${lastSaveTime})`}</p>
+            <p className="text-sm text-green-600 mt-1">
+              {saving ? "Guardando..." : "✓ Guardado automático"}
+              {lastSaveTime && ` (Último: ${lastSaveTime})`}
+            </p>
           </div>
           <div className="flex items-center gap-4">
             {plannings.length > 0 && (
@@ -1159,7 +1174,7 @@ export default function TacticalPlanning() {
                                                   const completedMonths = newProgress.filter(m => m).length;
                                                   const newPercentage = Math.round((completedMonths / 12) * 100);
                                                   
-                                                  setPlannings(plannings.map(p => {
+                                                  setPlannings(prev => prev.map(p => {
                                                     if (p.id === planning.id) {
                                                       return {
                                                         ...p,

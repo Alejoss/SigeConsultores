@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
+import { publicProcedure, adminProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { companyAccessRequests, accessAuditLog } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -64,12 +64,7 @@ export const companyAccessRequestsRouter = router({
   /**
    * List all company access requests (ADMIN ONLY)
    */
-  list: protectedProcedure.query(async ({ ctx }) => {
-    // Only admin can list requests
-    if (ctx.user.role !== "admin") {
-      throw new Error("Unauthorized: Only admin can list requests");
-    }
-
+  list: adminProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
@@ -90,18 +85,13 @@ export const companyAccessRequestsRouter = router({
    * Approve a company access request (ADMIN ONLY)
    * Creates a company and sends approval email to contact
    */
-  approve: protectedProcedure
+  approve: adminProcedure
     .input(
       z.object({
         requestId: z.number(),
       })
     )
     .mutation(async ({ input, ctx }) => {
-      // Only admin can approve
-      if (ctx.user.role !== "admin") {
-        throw new Error("Unauthorized: Only admin can approve requests");
-      }
-
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -156,7 +146,7 @@ export const companyAccessRequestsRouter = router({
   /**
    * Reject a company access request (ADMIN ONLY)
    */
-  reject: protectedProcedure
+  reject: adminProcedure
     .input(
       z.object({
         requestId: z.number(),
@@ -164,11 +154,6 @@ export const companyAccessRequestsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      // Only admin can reject
-      if (ctx.user.role !== "admin") {
-        throw new Error("Unauthorized: Only admin can reject requests");
-      }
-
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { randomBytes } from "crypto";
-import { publicProcedure, protectedProcedure, adminProcedure, router } from "../_core/trpc";
+import { publicProcedure, companyProcedure, adminProcedure, router } from "../_core/trpc";
 import {
   createCompanyManager,
   getCompanyManager,
@@ -52,7 +52,7 @@ export const hierarchicalAccessRouter = router({
     /**
      * Get a specific company manager
      */
-    get: protectedProcedure
+    get: companyProcedure
       .input(
         z.object({
           companyId: z.number(),
@@ -66,7 +66,7 @@ export const hierarchicalAccessRouter = router({
     /**
      * Get all managers for a company
      */
-    listByCompany: protectedProcedure
+    listByCompany: companyProcedure
       .input(
         z.object({
           companyId: z.number(),
@@ -108,7 +108,7 @@ export const hierarchicalAccessRouter = router({
      * Create a new process owner invitation
      * Only company managers can create invitations for their company
      */
-    create: protectedProcedure
+    create: companyProcedure
       .input(
         z.object({
           companyId: z.number(),
@@ -144,7 +144,7 @@ export const hierarchicalAccessRouter = router({
     /**
      * Get all invitations for a company
      */
-    listByCompany: protectedProcedure
+    listByCompany: companyProcedure
       .input(z.object({ companyId: z.number() }))
       .query(async ({ input }) => {
         return getProcessOwnerInvitationsByCompany(input.companyId);
@@ -153,7 +153,7 @@ export const hierarchicalAccessRouter = router({
     /**
      * Get all invitations for a process
      */
-    listByProcess: protectedProcedure
+    listByProcess: companyProcedure
       .input(z.object({ processId: z.number() }))
       .query(async ({ input }) => {
         return getProcessOwnerInvitationsByProcess(input.processId);
@@ -195,7 +195,7 @@ export const hierarchicalAccessRouter = router({
     /**
      * Delete an invitation
      */
-    delete: protectedProcedure
+    delete: companyProcedure
       .input(z.object({ token: z.string() }))
       .mutation(async ({ input }) => {
         await deleteProcessOwnerInvitation(input.token);
@@ -212,7 +212,7 @@ export const hierarchicalAccessRouter = router({
      * Create a new process owner
      * Called after accepting an invitation
      */
-    create: protectedProcedure
+    create: companyProcedure
       .input(
         z.object({
           companyId: z.number(),
@@ -233,7 +233,7 @@ export const hierarchicalAccessRouter = router({
     /**
      * Get a specific process owner
      */
-    get: protectedProcedure
+    get: companyProcedure
       .input(
         z.object({
           processId: z.number(),
@@ -247,7 +247,7 @@ export const hierarchicalAccessRouter = router({
     /**
      * Get all owners for a process
      */
-    listByProcess: protectedProcedure
+    listByProcess: companyProcedure
       .input(z.object({ processId: z.number() }))
       .query(async ({ input }) => {
         return getProcessOwnersByProcess(input.processId);
@@ -256,7 +256,7 @@ export const hierarchicalAccessRouter = router({
     /**
      * Get all processes owned by a user
      */
-    listByUser: protectedProcedure
+    listByUser: companyProcedure
       .input(z.object({ userId: z.number() }))
       .query(async ({ input }) => {
         return getProcessOwnersByUser(input.userId);
@@ -265,7 +265,7 @@ export const hierarchicalAccessRouter = router({
     /**
      * Alias for listByUser for backward compatibility
      */
-    getByUser: protectedProcedure
+    getByUser: companyProcedure
       .input(z.object({ userId: z.number() }))
       .query(async ({ input }) => {
         return getProcessOwnersByUser(input.userId);
@@ -274,7 +274,7 @@ export const hierarchicalAccessRouter = router({
     /**
      * Get all process owners for a company
      */
-    listByCompany: protectedProcedure
+    listByCompany: companyProcedure
       .input(z.object({ companyId: z.number() }))
       .query(async ({ input }) => {
         return getProcessOwnersByCompany(input.companyId);
@@ -290,7 +290,7 @@ export const hierarchicalAccessRouter = router({
     /**
      * Delete a process owner
      */
-    delete: protectedProcedure
+    delete: companyProcedure
       .input(
         z.object({
           processId: z.number(),

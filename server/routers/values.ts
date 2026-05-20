@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
+import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { companyValues } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export const valuesRouter = router({
-  create: publicProcedure
+  create: companyProcedure
     .input(z.object({
       companyId: z.number(),
       name: z.string().min(1),
@@ -32,7 +32,7 @@ export const valuesRouter = router({
       return { success: true };
     }),
 
-  list: publicProcedure
+  list: companyProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -60,7 +60,7 @@ export const valuesRouter = router({
       });
     }),
 
-  update: publicProcedure
+  update: companyProcedure
     .input(z.object({
       id: z.number(),
       name: z.string().min(1),
@@ -79,7 +79,7 @@ export const valuesRouter = router({
       return { success: true };
     }),
 
-  delete: publicProcedure
+  delete: companyProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();

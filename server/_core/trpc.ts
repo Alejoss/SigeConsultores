@@ -62,7 +62,16 @@ const requireUserOrManagerOrProcessLeader = t.middleware(async opts => {
   });
 });
 
+/**
+ * Standard guard for SIGE business data (read/write).
+ * Accepts: platform OAuth user, company manager, or process leader.
+ * Use `protectedProcedure` only for OAuth-only platform flows.
+ * Use `adminProcedure` for platform administration.
+ */
 export const companyProcedure = t.procedure.use(requireUserOrManagerOrProcessLeader);
+
+/** Alias — same as companyProcedure; prefer companyProcedure in routers. */
+export const authenticatedProcedure = companyProcedure;
 
 // Legacy alias for backward compatibility
 const requireUserOrManager = requireUserOrManagerOrProcessLeader;

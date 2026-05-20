@@ -107,7 +107,7 @@ import { auditsInspectionsRouter } from "./routers/auditsInspections";
 
 // Module Customization Router
 const moduleCustomizationRouter = router({
-  getLabels: publicProcedure
+  getLabels: companyProcedure
     .input(z.object({
       companyId: z.number(),
     }))
@@ -125,7 +125,7 @@ const moduleCustomizationRouter = router({
       }
     }),
 
-  get: publicProcedure
+  get: companyProcedure
     .input(z.object({
       companyId: z.number(),
       moduleName: z.string(),
@@ -192,7 +192,7 @@ export const appRouter = router({
         return getUserCompanies(userId);
       }),
 
-    get: publicProcedure
+    get: companyProcedure
       .input(z.object({ companyId: z.number() }))
       .query(async ({ input }) => {
         return getCompanyById(input.companyId);
@@ -295,7 +295,7 @@ export const appRouter = router({
 
   // Processes (Mapa de Procesos)
   processes: router({
-    listAll: publicProcedure
+    listAll: adminProcedure
       .query(async () => {
         const db = await getDb();
         if (!db) return [];
@@ -332,7 +332,7 @@ export const appRouter = router({
         return { success: true, message: "Proceso actualizado exitosamente" };
       }),
 
-    list: publicProcedure
+    list: companyProcedure
       .input(z.object({ companyId: z.number() }))
       .query(async ({ input }) => {
         return getCompanyProcesses(input.companyId);

@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { protectedProcedure, router } from "../_core/trpc";
+import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { processCompliances } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export const processCompliancesRouter = router({
-  list: protectedProcedure
+  list: companyProcedure
     .input(z.object({ processId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -17,7 +17,7 @@ export const processCompliancesRouter = router({
       return result;
     }),
 
-  create: protectedProcedure
+  create: companyProcedure
     .input(z.object({
       processId: z.number(),
       requirement: z.string(),
@@ -46,7 +46,7 @@ export const processCompliancesRouter = router({
       return { success: true, message: "Obligación creada exitosamente" };
     }),
 
-  update: protectedProcedure
+  update: companyProcedure
     .input(z.object({
       id: z.number(),
       requirement: z.string(),
@@ -77,7 +77,7 @@ export const processCompliancesRouter = router({
       return { success: true, message: "Obligación actualizada exitosamente" };
     }),
 
-  delete: protectedProcedure
+  delete: companyProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();

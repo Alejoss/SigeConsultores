@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { exportTacticalObjectivesToPDF } from "@/lib/exportTacticalObjectivesToPDF";
 import { parseStrategicObjectiveDescription } from "@/lib/parseStrategicObjective";
 import { trpc } from "@/lib/trpc";
+import { getCompanyIdFromSession, getProcessIdFromSession } from "@/lib/sessionScope";
 
 interface TacticalObjectiveDefinition {
   id: string;
@@ -104,14 +105,10 @@ export default function TacticalDefinition() {
 
   // Load initial data
   useEffect(() => {
-    const stored = localStorage.getItem("selectedProcessId");
-    const company = localStorage.getItem("selectedCompanyId");
-    if (stored) {
-      setProcessId(parseInt(stored));
-    }
-    if (company) {
-      setCompanyId(parseInt(company));
-    }
+    const pid = getProcessIdFromSession();
+    const cid = getCompanyIdFromSession();
+    if (pid) setProcessId(pid);
+    if (cid) setCompanyId(cid);
   }, []);
 
   // Process subprocess map data
@@ -199,8 +196,26 @@ export default function TacticalDefinition() {
     }, 2000); // 2 second debounce to allow more time for typing
   };
 
+  const buildSavePayload = (obj: TacticalObjectiveDefinition) => ({
+    name: obj.enunciation || 'Sin enunciado',
+    description: obj.explanation || undefined,
+    target: obj.subprocess || undefined,
+    responsible: obj.responsible || undefined,
+    deadline: undefined,
+    subprocess: obj.subprocess || undefined,
+    strategicObjective: obj.strategicObjective || undefined,
+    strategicObjectiveDescription: obj.strategicObjectiveDescription || undefined,
+    ponderacion: obj.ponderacion || 0,
+    puntoPartida: obj.puntoPartida || 0,
+    metaLlegada: obj.metaLlegada || 0,
+    unidadMedida: obj.unidadMedida || '',
+    completed: "NO" as const,
+  });
+
   // Internal save logic
   const handleSaveInternal = async () => {
+    if (!processId) return;
+
     // Usar objectivesRef.current para evitar el stale closure del debounce
     const dirtyObjectives = objectivesRef.current.filter(obj => obj.isDirty);
     
@@ -214,49 +229,37 @@ export default function TacticalDefinition() {
 
     try {
       for (const obj of dirtyObjectives) {
-        if (obj.isNew && !obj.dbId) {
-          // Create new objective
-          await createMutation.mutateAsync({
-            processId: processId!,
-            name: obj.enunciation || 'Sin enunciado',
-            description: obj.explanation || undefined,
-            target: obj.subprocess || undefined,
-            responsible: obj.responsible || undefined,
-            deadline: undefined,
-            subprocess: obj.subprocess || undefined,
-            strategicObjective: obj.strategicObjective || undefined,
-            strategicObjectiveDescription: obj.strategicObjectiveDescription || undefined,
-            ponderacion: obj.ponderacion || 0,
-            puntoPartida: obj.puntoPartida || 0,
-            metaLlegada: obj.metaLlegada || 0,
-            unidadMedida: obj.unidadMedida || '',
-            completed: "NO",
+        const payload = buildSavePayload(obj);
+
+        if (!obj.dbId) {
+          // Create new objective (only once per row — dbId prevents duplicates)
+          const result = await createMutation.mutateAsync({
+            processId,
+            ...payload,
           });
-        } else if (!obj.isNew && obj.dbId) {
-          // Update existing objective
+          const newDbId = result.id;
+          if (!newDbId) {
+            throw new Error("El servidor no devolvió el ID del objetivo creado");
+          }
+          setObjectives(prevObjs =>
+            prevObjs.map(o =>
+              o.id === obj.id
+                ? { ...o, dbId: newDbId, isNew: false, isDirty: false, id: `db_${newDbId}` }
+                : o
+            )
+          );
+        } else {
           await updateMutation.mutateAsync({
             objectiveId: obj.dbId,
-            name: obj.enunciation || 'Sin enunciado',
-            description: obj.explanation || undefined,
-            target: obj.subprocess || undefined,
-            responsible: obj.responsible || undefined,
-            deadline: undefined,
-            subprocess: obj.subprocess || undefined,
-            strategicObjective: obj.strategicObjective || undefined,
-            strategicObjectiveDescription: obj.strategicObjectiveDescription || undefined,
-            ponderacion: obj.ponderacion || 0,
-            puntoPartida: obj.puntoPartida || 0,
-            metaLlegada: obj.metaLlegada || 0,
-            unidadMedida: obj.unidadMedida || '',
-            completed: "NO",
+            ...payload,
           });
+          setObjectives(prevObjs =>
+            prevObjs.map(o =>
+              o.id === obj.id ? { ...o, isDirty: false, isNew: false } : o
+            )
+          );
         }
       }
-
-      // Mark all as not dirty
-      setObjectives(prevObjs => 
-        prevObjs.map(obj => ({ ...obj, isDirty: false, isNew: false }))
-      );
 
       setSaving(false);
       const now = new Date();
@@ -297,7 +300,7 @@ export default function TacticalDefinition() {
       isDirty: true
     };
     setObjectives([...objectives, newObjective]);
-    autoSave();
+    // No auto-guardar filas vacías: evita duplicados en BD y pérdida de dbId
   };
 
   const deleteObjective = (id: string) => {

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { protectedProcedure, router } from "../_core/trpc";
+import { companyProcedure, router } from "../_core/trpc";
 import { storagePut, storageGet, storageDelete } from "../storage";
 import {
   createOrganizationChart,
@@ -51,7 +51,7 @@ export const organizationChartRouter = router({
   /**
    * Create a new organization chart for a company
    */
-  createChart: protectedProcedure
+  createChart: companyProcedure
     .input(CreateChartInput)
     .mutation(async ({ input, ctx }) => {
       try {
@@ -69,7 +69,7 @@ export const organizationChartRouter = router({
   /**
    * Get organization chart for a company
    */
-  getChart: protectedProcedure
+  getChart: companyProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       try {
@@ -83,7 +83,7 @@ export const organizationChartRouter = router({
   /**
    * Create a new node in the organization chart
    */
-  createNode: protectedProcedure
+  createNode: companyProcedure
     .input(CreateNodeInput)
     .mutation(async ({ input, ctx }) => {
       try {
@@ -114,7 +114,7 @@ export const organizationChartRouter = router({
   /**
    * Update a node in the organization chart
    */
-  updateNode: protectedProcedure
+  updateNode: companyProcedure
     .input(UpdateNodeInput)
     .mutation(async ({ input, ctx }) => {
       try {
@@ -138,7 +138,7 @@ export const organizationChartRouter = router({
   /**
    * Delete a node from the organization chart
    */
-  deleteNode: protectedProcedure
+  deleteNode: companyProcedure
     .input(z.object({ nodeId: z.number() }))
     .mutation(async ({ input, ctx }) => {
       try {
@@ -153,7 +153,7 @@ export const organizationChartRouter = router({
   /**
    * Get all nodes for an organization chart
    */
-  getNodes: protectedProcedure
+  getNodes: companyProcedure
     .input(z.object({ chartId: z.number() }))
     .query(async ({ input }) => {
       try {
@@ -167,7 +167,7 @@ export const organizationChartRouter = router({
   /**
    * Upload a PDF file for the organization chart
    */
-  uploadPDF: protectedProcedure
+  uploadPDF: companyProcedure
     .input(z.object({
       chartId: z.number(),
       fileName: z.string(),
@@ -222,7 +222,7 @@ export const organizationChartRouter = router({
   /**
    * Delete a PDF file from the organization chart
    */
-  deletePDF: protectedProcedure
+  deletePDF: companyProcedure
     .input(z.object({ fileId: z.number() }))
     .mutation(async ({ input }) => {
       console.log("[OrganizationChart] deletePDF fileId:", input.fileId);
@@ -244,7 +244,7 @@ export const organizationChartRouter = router({
   /**
    * Get all uploaded PDF files for an organization chart (with fresh presigned URLs)
    */
-  getFiles: protectedProcedure
+  getFiles: companyProcedure
     .input(z.object({ chartId: z.number() }))
     .query(async ({ input }) => {
       try {

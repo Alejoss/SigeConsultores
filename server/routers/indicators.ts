@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { publicProcedure, router } from "../_core/trpc";
+import { companyProcedure, router } from "../_core/trpc";
 import { getProcessIndicatorsList } from "../db";
 
 export const indicatorsRouter = router({
-  getConsolidatedIndicators: publicProcedure
+  getConsolidatedIndicators: companyProcedure
     .input(z.object({ processId: z.number() }))
     .query(async ({ input }) => {
       if (input.processId <= 0) {
