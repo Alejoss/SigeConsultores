@@ -1,28 +1,237 @@
 # Despliegue — SIGE Platform
 
-Procedimiento de referencia para **DigitalOcean + Docker + GitHub Actions** (imagen en GHCR, compose en el droplet).
+Procedimiento para **DigitalOcean + Docker**. La guía prioriza el **deploy manual en el servidor** (comandos en orden). También describe el flujo automático con GitHub Actions.
 
-## Qué incluye el repo
+**Ruta del proyecto en el servidor:** `/opt/sige-app-staging`  
+**Rama desplegada:** `main`
 
-| Artefacto | Uso |
-|-----------|-----|
-| `Dockerfile` | Imagen de la app (build Vite + bundle del servidor) |
-| `docker-compose.prod.yml` | Producción: `mysql` + `app` (app en `127.0.0.1:3000` → host) |
-| `scripts/deploy-prod.sh` | Pull de imagen y `compose up` en el servidor de producción |
-| `.github/workflows/ci.yml` | PR/push a `main`: typecheck, tests, build |
-| `.github/workflows/deploy-production.yml` | Push a `main`: build, push a GHCR, SSH y `deploy-prod.sh` |
-| `deploy/nginx/sige.conf.example` | Ejemplo de reverse proxy + TLS hacia el puerto local de la app |
+### Droplet (DigitalOcean)
 
-## Ramas y flujo de trabajo
+| Dato | Valor |
+|------|--------|
+| IP pública | `167.172.127.47` |
+| Hostname (panel DO) | `sige-ubuntu-droplet` |
+| Usuario SSH habitual | `deploy` (con sudo) |
+| Usuario si entras como admin | `root` |
 
-| Rama | Uso |
-|------|-----|
-| `main` | Única rama permanente: integración, CI y despliegue a producción |
-| `feature/*` | Ramas efímeras para cambios; se abren PR hacia `main` y se eliminan al mergear |
+Conexión: `ssh deploy@167.172.127.47` (o `ssh root@167.172.127.47`).
 
-No hay entorno staging ni rama `develop` en el repositorio.
+En este droplet **no existe** `/opt/sige-app`; el clone y los datos viven en `/opt/sige-app-staging` (nombre histórico de staging).
 
-## 1) Servidor (una vez)
+**Variables:** el compose de producción lee **`.env.production`**. Si en el servidor solo tienes `.env.staging`, créalo antes del deploy:
+
+```bash
+cd /opt/sige-app-staging
+cp .env.staging .env.production   # solo la primera vez; luego edita .env.production
+```
+
+**Imagen Docker (`APP_IMAGE`):** el servicio `app` en `docker-compose.prod.yml` usa `image: ${APP_IMAGE}`. Esa variable **no** viene en `.env.staging` / `.env.production` por defecto: debes exportarla en la shell **antes de cualquier** comando `docker compose` (`down`, `up`, `ps`, `logs`), o añadirla a `.env.production` (ver abajo). Si falta, verás:
+
+```text
+WARN[0000] The "APP_IMAGE" variable is not set. Defaulting to a blank string.
+service "app" has neither an image nor a build context specified: invalid compose project
+```
+
+Deploy local en el droplet (build en servidor):
+
+```bash
+export APP_IMAGE=sige-prod:local
+```
+
+Opcional (evita olvidar el `export` en cada sesión SSH), en `.env.production`:
+
+```bash
+echo 'APP_IMAGE=sige-prod:local' >> .env.production
+```
+
+Con GHCR, usa el tag del commit o `latest` (sección más abajo).
+
+**Nginx en este droplet:** la config antigua de staging hacía proxy a **`127.0.0.1:3001`**. `docker-compose.prod.yml` publica la app en **`127.0.0.1:3000`**. Tras pasar a prod compose, actualiza Nginx (`proxy_pass http://127.0.0.1:3000`) o verás 502.
+
+---
+
+## Deploy ahora (sin GHCR — build en el servidor)
+
+Construye la imagen en el droplet y usa la **secuencia manual** de la sección siguiente.
+
+En **`origin/main` hoy no está** `scripts/deploy-droplet-local.sh` (solo existe como archivo local sin commitear en algunos clones). Si en el servidor ves `cannot open scripts/deploy-droplet-local.sh`, es normal: **no uses ese script** hasta que esté en `main`; copia los comandos de «Comando de deploy en el servidor».
+
+Tras el deploy, si Nginx sigue apuntando al puerto **3001** (config antigua de staging), cámbialo a **3000** o verás 502:
+
+```bash
+sudo grep -r proxy_pass /etc/nginx/sites-enabled/
+# proxy_pass http://127.0.0.1:3000;
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+---
+
+## Comando de deploy en el servidor (secuencia manual)
+
+**Esta es la forma que funciona hoy** en `/opt/sige-app-staging` con lo que hay en `main`.
+
+### Droplets con poca RAM (recomendado antes del build)
+
+`docker build` consume mucha memoria. Baja el stack, despliega y al final el `up -d` lo vuelve a levantar:
+
+```bash
+ssh deploy@167.172.127.47
+cd /opt/sige-app-staging
+
+export APP_IMAGE=sige-prod:local
+docker compose --env-file .env.production -f docker-compose.prod.yml down
+
+git fetch origin main
+git reset --hard origin/main
+
+docker build -t sige-prod:local .
+
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d mysql
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d app
+
+docker image prune -f
+```
+
+No uses `docker compose down` sin `-f docker-compose.prod.yml`: el `docker-compose.yml` por defecto del repo es otro stack (desarrollo local).
+
+### Deploy sin bajar el stack (más rápido, más RAM)
+
+```bash
+ssh deploy@167.172.127.47
+cd /opt/sige-app-staging
+
+git fetch origin main
+git reset --hard origin/main
+
+docker build -t sige-prod:local .
+
+export APP_IMAGE=sige-prod:local
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+```
+
+**No edites** archivos del repo en el servidor (scripts, compose, etc.). Solo **`.env.production`** (está en `.gitignore`).
+
+### Ver estado y logs tras el deploy
+
+```bash
+cd /opt/sige-app-staging
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
+docker compose --env-file .env.production -f docker-compose.prod.yml logs app --tail 80
+docker compose --env-file .env.production -f docker-compose.prod.yml logs mysql --tail 50
+```
+
+La app escucha en **`127.0.0.1:3000`** (Nginx suele hacer proxy en 80/443). Ver `deploy/nginx/sige.conf.example`.
+
+Si ves **502 Bad Gateway**:
+
+```bash
+cd /opt/sige-app-staging
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
+docker compose --env-file .env.production -f docker-compose.prod.yml logs app --tail 200
+sudo tail -n 120 /var/log/nginx/error.log
+```
+
+---
+
+## Referencia rápida (paso a paso)
+
+| Paso | Qué hacer |
+|------|-----------|
+| 1 | SSH al droplet: `ssh deploy@167.172.127.47` (o `ssh root@167.172.127.47`) |
+| 2 | `cd /opt/sige-app-staging` |
+| 3 | Sincronizar código: `git fetch origin main` y `git reset --hard origin/main` |
+| 4 | Build imagen: `docker build -t sige-prod:local .` |
+| 5 | `export APP_IMAGE=sige-prod:local` (obligatorio también para `down` / `ps` / `logs`) |
+| 6 | Levantar: `docker compose --env-file .env.production -f docker-compose.prod.yml up -d` |
+| 7 | Revisar `ps` y `logs app` |
+
+### Solo actualizar código en disco (sin rebuild)
+
+```bash
+cd /opt/sige-app-staging
+git fetch origin main
+git reset --hard origin/main
+```
+
+Evita `git pull` si alguna vez se editaron scripts a mano en el servidor; usa `reset --hard`.
+
+### Backup antes de migraciones arriesgadas
+
+```bash
+cd /opt/sige-app-staging
+bash scripts/backup-cron.sh
+```
+
+Requisitos: `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY` en `.env.production`; MySQL en marcha. Detalle: [BACKUP_SYSTEM.md](./BACKUP_SYSTEM.md).
+
+### Crear usuario administrador de plataforma
+
+Con el contenedor `app` ya arriba (el compose inyecta la conexión a MySQL):
+
+```bash
+cd /opt/sige-app-staging
+docker compose --env-file .env.production -f docker-compose.prod.yml exec app node scripts/create-superuser.mjs -- --email admin@tu-dominio.com --password 'TuClaveSegura8+'
+```
+
+Antes, el rol `platform_admin` debe existir en la BD (en local: `pnpm run roles:seed`).
+
+---
+
+## Deploy con imagen GHCR (sin build en el servidor)
+
+Si la imagen ya se construyó en GitHub Actions y solo quieres **pull** en el droplet:
+
+```bash
+cd /opt/sige-app-staging
+
+export APP_IMAGE=ghcr.io/Alejoss/SigeConsultores:latest
+export GHCR_USERNAME=tu_usuario_github
+export GHCR_TOKEN=tu_token_lectura_ghcr
+
+chmod +x scripts/deploy-prod.sh
+./scripts/deploy-prod.sh
+```
+
+O manualmente:
+
+```bash
+cd /opt/sige-app-staging
+echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+export APP_IMAGE=ghcr.io/Alejoss/SigeConsultores:SHA_DEL_COMMIT
+docker compose --env-file .env.production -f docker-compose.prod.yml pull app
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+```
+
+Sustituye `SHA_DEL_COMMIT` por el hash del commit desplegado (el workflow etiqueta cada build con el SHA).
+
+---
+
+## Deploy automático (GitHub Actions)
+
+**Push a `main`** dispara `.github/workflows/deploy-production.yml`:
+
+1. Build de imagen Docker y push a GHCR (`latest` + `<sha>`)
+2. SSH al droplet: copia `docker-compose.prod.yml` y `scripts/deploy-prod.sh`
+3. Escribe `.env.production` desde el secreto `ENV_PRODUCTION`
+4. Ejecuta `deploy-prod.sh` (login GHCR, `pull`, `up -d`)
+
+Secretos necesarios en GitHub:
+
+| Secreto | Uso |
+|---------|-----|
+| `DROPLET_HOST` | IP del servidor (`167.172.127.47`) |
+| `DROPLET_USER` | Usuario SSH (ej. `deploy`) |
+| `DROPLET_SSH_KEY` | Clave privada SSH |
+| `DEPLOY_PATH` | Ruta en servidor (ej. `/opt/sige-app-staging`) |
+| `ENV_PRODUCTION` | Contenido completo de `.env.production` |
+| `GHCR_USERNAME` | Usuario con lectura de paquetes |
+| `GHCR_TOKEN` | Token PAT con `read:packages` |
+
+---
+
+## Configuración inicial (una vez)
+
+### Servidor
 
 ```bash
 sudo apt update
@@ -33,66 +242,106 @@ sudo usermod -aG docker "$USER"
 
 Cerrar sesión y volver a entrar para aplicar el grupo `docker`.
 
-## 2) Variables en el droplet
+### Clonar el repo en el servidor
 
-Usar [.env.production.example](../.env.production.example) como referencia y crear **`.env.production`** en `DEPLOY_PATH` (valores reales, no commitear).
+```bash
+sudo mkdir -p /opt/sige-app-staging
+sudo chown -R deploy:deploy /opt/sige-app-staging
+cd /opt/sige-app-staging
+git clone -b main git@github.com:Alejoss/SigeConsultores.git .
+```
 
-Mínimo habitual: credenciales MySQL, `JWT_SECRET`, OAuth (`VITE_APP_ID`, `OAUTH_SERVER_URL`, `VITE_OAUTH_PORTAL_URL` si aplica), `FRONTEND_URL`, claves AWS si usas S3. En compose de prod, `DATABASE_URL` la arma el YAML desde el servicio `mysql`; no hace falta duplicarla en el `.env` salvo que quieras sobreescribirla.
+(Deploy key en GitHub: **Settings → Deploy keys**, solo lectura.)
 
-## 3) Secretos en GitHub (Actions)
+### Variables de entorno
 
-**Producción** (nombres deben coincidir con el workflow):
+```bash
+cd /opt/sige-app-staging
+cp .env.production.example .env.production
+nano .env.production
+```
 
-- `DROPLET_HOST`, `DROPLET_USER`, `DROPLET_SSH_KEY`
-- `DEPLOY_PATH` (ej. `/opt/sige-app`)
-- `ENV_PRODUCTION`: contenido completo de `.env.production` (multilínea)
-- `GHCR_USERNAME`, `GHCR_TOKEN` (lectura de paquetes GHCR)
+Mínimo: `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `JWT_SECRET`, OAuth (`VITE_APP_ID`, `OAUTH_SERVER_URL`, `VITE_OAUTH_PORTAL_URL`), `FRONTEND_URL` (URL pública), AWS si usas S3.  
+`DATABASE_URL` la arma el compose desde el servicio `mysql`; no hace falta duplicarla salvo override.
 
-Puedes eliminar del repositorio los secretos y el entorno `staging` de GitHub si ya no se usan.
+### Nginx y HTTPS
 
-## 4) Flujo automático
+Plantilla: `deploy/nginx/sige.conf.example` (proxy a `http://127.0.0.1:3000`).  
+En `.env.production`, `FRONTEND_URL` debe coincidir con la URL pública (ej. `https://tu-dominio.com`).
 
-**Push a `main`:** build de imagen, tags `latest` y `<sha>`, copia de `docker-compose.prod.yml` + `scripts/deploy-prod.sh`, SSH y ejecución del script (pull + `up -d`).
+---
 
-## 5) Nginx y HTTPS
+## Qué incluye el repo
 
-La app escucha solo en localhost del droplet (`127.0.0.1:3000`). Nginx termina TLS y hace proxy a ese puerto. Ver `deploy/nginx/sige.conf.example`.
+| Artefacto | Uso |
+|-----------|-----|
+| `Dockerfile` | Imagen de la app (build Vite + servidor Node) |
+| `docker-compose.prod.yml` | Producción: `mysql` + `app` en `127.0.0.1:3000` |
+| `scripts/deploy-droplet-local.sh` | *(opcional, aún no en `main`)* Automatiza sync + build + `compose up` local |
+| `scripts/deploy-prod.sh` | Pull de imagen GHCR y `compose up` |
+| `.github/workflows/deploy-production.yml` | Deploy automático en push a `main` |
+| `scripts/backup-cron.sh` | Backup MySQL → S3 |
+
+## Ramas
+
+| Rama | Uso |
+|------|-----|
+| `main` | Integración, CI y despliegue |
+| `feature/*` | Cambios vía PR hacia `main` |
+
+No hay entorno staging ni rama `develop` en el repositorio actual.
+
+---
 
 ## Checklist antes de desplegar
 
-- `pnpm test` y `pnpm build` pasan localmente (o en CI verde).
-- `pnpm check` sin errores.
-- Esquema de BD revisado; si aplica, probado `pnpm db:push` en local.
-- Variables y secretos en GitHub / servidor actualizados.
-- Backup reciente si hay migración destructiva ([BACKUP_SYSTEM.md](./BACKUP_SYSTEM.md)).
+- `pnpm test` y `pnpm build` pasan (o CI en verde en `main`)
+- `pnpm check` sin errores
+- Esquema de BD revisado; migraciones probadas en local si aplica
+- `.env.production` y secretos de GitHub actualizados
+- Backup reciente si hay cambio destructivo de esquema
 
 ## Migraciones de base de datos
 
-El proyecto usa **Drizzle** con script `pnpm db:push` (drizzle-kit push). En el contenedor, el arranque puede ejecutar `db:push` según `RUN_DB_PUSH_ON_STARTUP` (ver `docker/entrypoint.sh`). Para producción estable, valorar desactivar el push en cada reinicio y aplicar cambios de esquema de forma controlada.
+Con `RUN_DB_PUSH_ON_STARTUP: "true"` (por defecto en `docker-compose.prod.yml`), al arrancar el contenedor `app` se ejecuta `drizzle-kit push` vía `docker/entrypoint.sh`.
 
-Generación de migraciones SQL versionadas: si el equipo adopta `drizzle-kit generate`, añadir script en `package.json` y documentar el flujo aquí.
+Para producción estable, puedes poner `RUN_DB_PUSH_ON_STARTUP=false` en el compose o en `.env.production` y aplicar esquema de forma controlada.
 
-## Rollback (orientativo)
+## Problemas frecuentes
 
-1. **Solo código / imagen:** desplegar un tag SHA anterior de la imagen en GHCR (cambiar `APP_IMAGE` en el deploy o revertir el commit que disparó el pipeline y volver a ejecutar el workflow).
-2. **Datos dañados:** restaurar desde S3 con `scripts/restore-db.mjs` (ver [BACKUP_SYSTEM.md](./BACKUP_SYSTEM.md)).
+### `APP_IMAGE` variable is not set` / `invalid compose project`
 
-## Post-despliegue
+Causa: se ejecutó `docker compose -f docker-compose.prod.yml` sin definir `APP_IMAGE`. El compose **no** tiene `build:` en el servicio `app`, solo `image: ${APP_IMAGE}`.
+
+Solución inmediata (deploy con build local en el droplet):
 
 ```bash
+cd /opt/sige-app-staging
+export APP_IMAGE=sige-prod:local
 docker compose --env-file .env.production -f docker-compose.prod.yml ps
-docker compose --env-file .env.production -f docker-compose.prod.yml logs -f app --tail=200
 ```
 
-Probar login y una ruta crítica de negocio tras el proxy público.
-
-## Dependencias y auditoría
+Si aún no existe la imagen, haz build o usa el script:
 
 ```bash
-pnpm audit
+export APP_IMAGE=sige-prod:local
+docker build -t sige-prod:local .
+# Secuencia manual completa en la sección «Comando de deploy en el servidor»
 ```
 
-Tras actualizar dependencias, ejecutar tests y build.
+### Falta `.env.production`
+
+```bash
+cp .env.staging .env.production
+# editar valores de producción si hace falta
+```
+
+Eso solo arregla las variables de la app/MySQL; **no** sustituye `export APP_IMAGE=...`.
+
+## Rollback
+
+1. **Imagen:** desplegar un tag SHA anterior en GHCR (`APP_IMAGE=ghcr.io/.../SigeConsultores:<sha-anterior>`) o revertir en `main` y volver a ejecutar el workflow / rebuild.
+2. **Datos:** restaurar desde S3 con `scripts/restore-db.mjs` ([BACKUP_SYSTEM.md](./BACKUP_SYSTEM.md)).
 
 ---
 
