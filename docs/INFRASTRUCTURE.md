@@ -39,7 +39,7 @@ Visión operativa del sistema tal como está definido en este repositorio (Docke
 |------------|-----|
 | Contenedor `app` | Express + tRPC; sirve estáticos del build Vite en producción |
 | Contenedor `mysql` | MySQL 8.0.x, datos de la plataforma |
-| Nginx (host) | TLS y reverse proxy hacia `127.0.0.1:3000` |
+| Nginx (host) | TLS y reverse proxy hacia `127.0.0.1:3001` (mapeo en `docker-compose.prod.yml`) |
 | GitHub Actions | CI (`ci.yml`), build/push de imagen y deploy por SSH en `main` |
 | S3 | Respaldos automatizados y almacenamiento de archivos (mismo bucket configurable; ver [FILE_STORAGE.md](./FILE_STORAGE.md)) |
 | Proveedor OAuth | Login; URLs y claves en `VITE_APP_ID`, `OAUTH_SERVER_URL`, `VITE_OAUTH_PORTAL_URL` |

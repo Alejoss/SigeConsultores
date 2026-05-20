@@ -46,7 +46,7 @@ echo 'APP_IMAGE=sige-prod:local' >> .env.production
 
 Con GHCR, usa el tag del commit o `latest` (sección más abajo).
 
-**Nginx en este droplet:** la config antigua de staging hacía proxy a **`127.0.0.1:3001`**. `docker-compose.prod.yml` publica la app en **`127.0.0.1:3000`**. Tras pasar a prod compose, actualiza Nginx (`proxy_pass http://127.0.0.1:3000`) o verás 502.
+**Puerto en el droplet:** Nginx en el servidor hace proxy a **`127.0.0.1:3001`** (config histórica de staging). `docker-compose.prod.yml` mapea **`127.0.0.1:3001:3000`** (host 3001 → contenedor 3000). **No cambies Nginx en el servidor** salvo que edites el compose en el repo y quieras otro puerto.
 
 ---
 
@@ -55,14 +55,6 @@ Con GHCR, usa el tag del commit o `latest` (sección más abajo).
 Construye la imagen en el droplet y usa la **secuencia manual** de la sección siguiente.
 
 En **`origin/main` hoy no está** `scripts/deploy-droplet-local.sh` (solo existe como archivo local sin commitear en algunos clones). Si en el servidor ves `cannot open scripts/deploy-droplet-local.sh`, es normal: **no uses ese script** hasta que esté en `main`; copia los comandos de «Comando de deploy en el servidor».
-
-Tras el deploy, si Nginx sigue apuntando al puerto **3001** (config antigua de staging), cámbialo a **3000** o verás 502:
-
-```bash
-sudo grep -r proxy_pass /etc/nginx/sites-enabled/
-# proxy_pass http://127.0.0.1:3000;
-sudo nginx -t && sudo systemctl reload nginx
-```
 
 ---
 
@@ -120,7 +112,7 @@ docker compose --env-file .env.production -f docker-compose.prod.yml logs app --
 docker compose --env-file .env.production -f docker-compose.prod.yml logs mysql --tail 50
 ```
 
-La app escucha en **`127.0.0.1:3000`** (Nginx suele hacer proxy en 80/443). Ver `deploy/nginx/sige.conf.example`.
+En el droplet, la app queda en **`127.0.0.1:3001`** (mapeo del compose). Nginx ya apunta ahí. Comprobar: `curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3001/`. Ver `deploy/nginx/sige.conf.example`.
 
 Si ves **502 Bad Gateway**:
 
@@ -266,7 +258,7 @@ Mínimo: `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `JWT_SECRET`, OAuth (`VITE_APP
 
 ### Nginx y HTTPS
 
-Plantilla: `deploy/nginx/sige.conf.example` (proxy a `http://127.0.0.1:3000`).  
+Plantilla: `deploy/nginx/sige.conf.example` (proxy a `http://127.0.0.1:3001` en el droplet).  
 En `.env.production`, `FRONTEND_URL` debe coincidir con la URL pública (ej. `https://tu-dominio.com`).
 
 ---
@@ -276,7 +268,7 @@ En `.env.production`, `FRONTEND_URL` debe coincidir con la URL pública (ej. `ht
 | Artefacto | Uso |
 |-----------|-----|
 | `Dockerfile` | Imagen de la app (build Vite + servidor Node) |
-| `docker-compose.prod.yml` | Producción: `mysql` + `app` en `127.0.0.1:3000` |
+| `docker-compose.prod.yml` | Producción: `mysql` + `app` publicada en `127.0.0.1:3001` |
 | `scripts/deploy-droplet-local.sh` | *(opcional, aún no en `main`)* Automatiza sync + build + `compose up` local |
 | `scripts/deploy-prod.sh` | Pull de imagen GHCR y `compose up` |
 | `.github/workflows/deploy-production.yml` | Deploy automático en push a `main` |
