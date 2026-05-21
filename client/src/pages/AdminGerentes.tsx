@@ -123,7 +123,7 @@ export default function AdminGerentes() {
                 </TableHeader>
                 <TableBody>
                   {filteredManagers.map((manager) => (
-                    <TableRow key={`${manager.companyId}-${manager.managerEmail}`}>
+                    <TableRow key={`${manager.companyId}-${manager.accountId}`}>
                       <TableCell className="font-medium">{manager.id}</TableCell>
                       <TableCell>{manager.companyId}</TableCell>
                       <TableCell>{manager.accountId}</TableCell>

@@ -9,7 +9,9 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
     volumes:
-      - mysql_data:/var/lib/mysql
+      # Mismo volumen que docker-compose.staging.yml (sige-app-staging_mysql_staging_data en el droplet).
+      # No usar mysql_data: se creó vacío el 2026-05-20 al migrar a prod compose.
+      - mysql_staging_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
@@ -34,4 +36,4 @@ services:
       - "127.0.0.1:3001:3000"
 
 volumes:
-  mysql_data:
+  mysql_staging_data:

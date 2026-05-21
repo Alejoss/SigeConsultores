@@ -179,8 +179,8 @@ export default function ProcessLeaderDashboard() {
                 onNavigate={setLocation}
                 getPath={(moduleName) =>
                   buildScopedModuleRoute(moduleName, {
-                    companyId: processLeaderSession.companyId,
-                    processId: processLeaderSession.processId,
+                    companyId: processLeaderSession.companyId!,
+                    processId: processLeaderSession.processId!,
                   })
                 }
               />

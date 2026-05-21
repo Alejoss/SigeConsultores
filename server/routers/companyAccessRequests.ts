@@ -122,7 +122,7 @@ export const companyAccessRequestsRouter = router({
         // Log the event
         await db.insert(accessAuditLog).values({
           eventType: "company_approved",
-          userId: ctx.user.id,
+          accountId: ctx.user.id,
           description: `Company ${req.companyName} approved`,
         });
 
@@ -185,7 +185,7 @@ export const companyAccessRequestsRouter = router({
         // Log the event
         await db.insert(accessAuditLog).values({
           eventType: "company_rejected",
-          userId: ctx.user.id,
+          accountId: ctx.user.id,
           description: `Company ${req.companyName} rejected: ${input.reason}`,
         });
 

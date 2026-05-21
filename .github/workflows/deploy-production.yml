@@ -4,9 +4,14 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  build-image:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -36,7 +41,25 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
 
-      - name: Deploy on droplet via SSH
+  deploy-droplet:
+    name: Deploy to droplet (requires secrets)
+    needs: build-image
+    runs-on: ubuntu-latest
+    if: >-
+      ${{ secrets.DROPLET_HOST != '' &&
+          secrets.DROPLET_USER != '' &&
+          secrets.DROPLET_SSH_KEY != '' &&
+          secrets.DEPLOY_PATH != '' &&
+          secrets.ENV_PRODUCTION != '' &&
+          secrets.GHCR_USERNAME != '' &&
+          secrets.GHCR_TOKEN != '' }}
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy compose and deploy script to droplet
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DROPLET_HOST }}
@@ -67,3 +90,20 @@ jobs:
             printf "%s" "$ENV_PRODUCTION" > .env.production
             chmod +x scripts/deploy-prod.sh
             ./scripts/deploy-prod.sh
+
+  deploy-skipped-hint:
+    name: Deploy skipped (configure secrets)
+    needs: build-image
+    runs-on: ubuntu-latest
+    if: >-
+      ${{ always() &&
+          needs.build-image.result == 'success' &&
+          (secrets.DROPLET_HOST == '' ||
+           secrets.DROPLET_SSH_KEY == '' ||
+           secrets.ENV_PRODUCTION == '' ||
+           secrets.GHCR_TOKEN == '') }}
+    steps:
+      - name: Note
+        run: |
+          echo "Image pushed to GHCR. Droplet deploy skipped — add GitHub Actions secrets (see docs/GITHUB_SETUP.md)."
+          echo "Manual deploy on server: git pull && docker build && compose up (see docs/DEPLOYMENT.md)."

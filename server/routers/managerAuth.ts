@@ -64,6 +64,9 @@ export const managerAuthRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Email o contraseña incorrectos" });
       }
 
+      if (!acc.passwordHash) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Email o contraseña incorrectos" });
+      }
       const ok = await bcrypt.compare(input.password, acc.passwordHash);
       if (!ok) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Email o contraseña incorrectos" });

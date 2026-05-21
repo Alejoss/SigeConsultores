@@ -6,8 +6,12 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test-and-build:
+  check-and-build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -23,7 +27,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
@@ -32,8 +36,8 @@ jobs:
       - name: Type check
         run: pnpm check
 
-      - name: Run tests
-        run: pnpm test
-
       - name: Build
         run: pnpm build
+
+      # Tests need MySQL locally; run with `pnpm test` before push when you touch server code.
+      # See docs/GITHUB_SETUP.md to enable tests in CI later.

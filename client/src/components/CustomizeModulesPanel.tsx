@@ -118,7 +118,7 @@ export default function CustomizeModulesPanel({
     setDraft((prev) => ({ ...prev, [moduleName]: value }));
   };
 
-  const groups = [...new Set(MODULE_LABEL_DEFINITIONS.map((d) => d.group))];
+  const groups = Array.from(new Set(MODULE_LABEL_DEFINITIONS.map((d) => d.group)));
 
   return (
     <Card>

@@ -48,6 +48,8 @@ Con GHCR, usa el tag del commit o `latest` (sección más abajo).
 
 **Puerto en el droplet:** Nginx en el servidor hace proxy a **`127.0.0.1:3001`** (config histórica de staging). `docker-compose.prod.yml` mapea **`127.0.0.1:3001:3000`** (host 3001 → contenedor 3000). **No cambies Nginx en el servidor** salvo que edites el compose en el repo y quieras otro puerto.
 
+**Volumen MySQL:** en el droplet los datos históricos están en `sige-app-staging_mysql_staging_data` (~480 MB). El compose de producción debe usar el volumen `mysql_staging_data`, **no** `mysql_data` (ese se creó vacío al primer `up` con `docker-compose.prod.yml`). Comprobar: `docker volume ls | grep mysql`.
+
 ---
 
 ## Deploy ahora (sin GHCR — build en el servidor)
@@ -199,6 +201,8 @@ Sustituye `SHA_DEL_COMMIT` por el hash del commit desplegado (el workflow etique
 ---
 
 ## Deploy automático (GitHub Actions)
+
+Configuración de secretos, emails de fallo y comportamiento actual: **[GITHUB_SETUP.md](./GITHUB_SETUP.md)**.
 
 **Push a `main`** dispara `.github/workflows/deploy-production.yml`:
 
