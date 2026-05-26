@@ -58,7 +58,7 @@ La clave pública SSH debe estar en `~/.ssh/authorized_keys` del usuario en el d
 
 El job SSH **no** hace `docker build`. Solo:
 
-1. `git fetch` + `git reset --hard` al commit desplegado (compose y scripts)
+1. Copia un bundle (`compose` + `deploy-prod.sh` + `load-env-file.sh`) y lo extrae en el droplet
 2. Escribe `.env.production` desde `ENV_PRODUCTION`
 3. Ejecuta `deploy-prod.sh` → login GHCR, `docker compose pull app`, `up -d`
 

@@ -75,7 +75,7 @@ docker pull ghcr.io/alejoss/sigeconsultores:latest
 | Paso | Dónde | Qué hace |
 |------|--------|----------|
 | 1 | GitHub Actions | `docker build` + push a GHCR |
-| 2 | SSH al droplet | `git reset --hard` al commit + escribe `.env.production` |
+| 2 | SSH al droplet | Copia bundle de compose/scripts + escribe `.env.production` |
 | 3 | Droplet | Escribe `.env.production` desde secreto `ENV_PRODUCTION` |
 | 4 | Droplet | `deploy-prod.sh`: login GHCR, `pull`, `up -d` |
 

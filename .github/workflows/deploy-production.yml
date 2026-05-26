@@ -79,6 +79,25 @@ jobs:
     timeout-minutes: 20
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package deploy files
+        run: |
+          tar czf deploy-bundle.tar.gz \
+            docker-compose.prod.yml \
+            scripts/deploy-prod.sh \
+            scripts/load-env-file.sh
+
+      - name: Copy deploy bundle to droplet
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          source: deploy-bundle.tar.gz
+          target: ${{ secrets.DEPLOY_PATH }}
+
       - name: Deploy on droplet
         uses: appleboy/ssh-action@v1.2.0
         env:
@@ -87,19 +106,18 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
-          DEPLOY_SHA: ${{ github.sha }}
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script_stop: true
-          envs: APP_IMAGE,GHCR_USERNAME,GHCR_TOKEN,DEPLOY_PATH,ENV_PRODUCTION,DEPLOY_SHA
+          envs: APP_IMAGE,GHCR_USERNAME,GHCR_TOKEN,DEPLOY_PATH,ENV_PRODUCTION
           script: |
             set -eu
             mkdir -p "$DEPLOY_PATH"
             cd "$DEPLOY_PATH"
-            git fetch origin main
-            git reset --hard "$DEPLOY_SHA"
+            tar xzf deploy-bundle.tar.gz
+            rm -f deploy-bundle.tar.gz
             printf "%s" "$ENV_PRODUCTION" > .env.production
             chmod +x scripts/deploy-prod.sh
             ./scripts/deploy-prod.sh
