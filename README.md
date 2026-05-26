@@ -90,13 +90,14 @@ sige-app/
 
 Tests en un archivo: `pnpm test -- server/__tests__/archivo.test.ts`.
 
-## Producción (Docker)
+## Producción (Docker + GHCR)
 
-- **Build:** `Dockerfile` multi-stage (pnpm install, build, imagen mínima con `node dist/index.js`).
-- **Compose:** `docker-compose.prod.yml` levanta **MySQL** + **app**. La app recibe `DATABASE_URL` desde el compose; en el arranque del contenedor puede ejecutarse `drizzle-kit push` si `RUN_DB_PUSH_ON_STARTUP=true` (ver `docker/entrypoint.sh`).
-- **Despliegue automático:** push a `main` → GitHub Actions (`.github/workflows/deploy-production.yml`).
+- **Imagen:** se construye en GitHub Actions y se publica en **GHCR** (`ghcr.io/alejoss/sigeconsultores`).
+- **Droplet:** `scripts/deploy-prod.sh` hace `docker pull` de esa imagen y `docker compose up` (sin `docker build` en el servidor en el flujo habitual).
+- **Compose:** `docker-compose.prod.yml` — MySQL + app en `127.0.0.1:3001`.
+- **Flujo:** cliente → `infra/staging-cicd` → PR → `main` → Deploy Production.
 
-Guías: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/BACKUP_SYSTEM.md](docs/BACKUP_SYSTEM.md).
+Guías: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md), [docs/BACKUP_SYSTEM.md](docs/BACKUP_SYSTEM.md).
 
 ## Documentación
 
@@ -108,7 +109,7 @@ Guías: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/BACKUP_SYSTEM.md](docs/B
 
 ## Contribución y licencia
 
-**Ramas:** `main` (permanente, CI y producción) y ramas `feature/*` efímeras vía PR. MIT — ver [LICENSE](LICENSE).
+**Ramas:** `infra/staging-cicd` (integración / cliente), `main` (producción), y `feature/*` efímeras vía PR. MIT — ver [LICENSE](LICENSE).
 
 ## Contacto
 

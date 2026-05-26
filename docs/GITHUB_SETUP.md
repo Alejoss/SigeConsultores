@@ -1,51 +1,100 @@
 # GitHub Actions — SIGE Platform
 
-Por qué recibías correos de fallo en cada push a `main`, y cómo dejarlo en verde.
+Configuración de CI/CD: integración en `infra/staging-cicd`, producción en `main`, imagen en **GHCR**.
 
-## Qué corre en cada push
+## Workflows
 
-| Workflow | Archivo | Qué hace |
-|----------|---------|----------|
-| **CI** | `.github/workflows/ci.yml` | `pnpm check` + `pnpm build` |
-| **Deploy Production** | `.github/workflows/deploy-production.yml` | Build imagen → GHCR; **deploy al droplet solo si hay secretos** |
+| Workflow | Cuándo corre | Qué hace |
+|----------|----------------|----------|
+| **CI** | Push/PR a `infra/staging-cicd` o `main` | `pnpm check` + `pnpm build` |
+| **Deploy Production** | Push a `main` (y manual *Run workflow*) | Build imagen → **GHCR**; deploy al droplet si hay secretos |
 
-Antes, **CI** fallaba en `pnpm check` (errores TypeScript) y en `pnpm test` (muchos tests piden MySQL). **Deploy** fallaba al hacer SSH o login GHCR porque los secretos del repositorio no estaban configurados.
+La imagen se publica en:
 
-## Estado actual (tras el arreglo)
+```text
+ghcr.io/alejoss/sigeconsultores:latest
+ghcr.io/alejoss/sigeconsultores:<commit-sha>
+```
 
-- **CI:** solo verificación de tipos y build (Node 22). Los tests siguen siendo locales (`pnpm test`) hasta montar MySQL en CI.
-- **Deploy:** siempre construye y sube la imagen a GHCR. El job **Deploy to droplet** solo corre si existen todos los secretos listados abajo. Si no, el workflow termina en verde y verás el job informativo *Deploy skipped*.
+Los nombres van en **minúsculas** (requisito de GHCR).
 
-Así dejas de recibir emails de fallo por deploy sin secretos, mientras sigues haciendo deploy manual en el servidor como ahora.
+## Flujo del equipo
 
-## Secretos para deploy automático (opcional)
+1. Cliente pushea a **`infra/staging-cicd`** → CI corre (no bloquea el push).
+2. PR **`infra/staging-cicd` → `main`** → revisión y merge (ruleset en `main`).
+3. Merge a **`main`** → **Deploy Production**:
+   - **build-image** — siempre (si el workflow pasa)
+   - **Deploy to droplet** — solo con secretos configurados
 
-En GitHub: **Settings → Secrets and variables → Actions → New repository secret**
+Sin secretos: el workflow termina en verde con *Deploy skipped*; la imagen **sí** queda en GHCR.
+
+## Secretos para deploy al droplet
+
+**Settings → Secrets and variables → Actions → New repository secret**
 
 | Secreto | Valor |
 |---------|--------|
 | `DROPLET_HOST` | `167.172.127.47` |
-| `DROPLET_USER` | `deploy` |
-| `GHCR_USERNAME` | Tu usuario de GitHub |
-| `GHCR_TOKEN` | PAT con `read:packages` (y `write:packages` si el servidor hace pull privado) |
-| `DROPLET_SSH_KEY` | Clave privada SSH (contenido completo del archivo, una línea con saltos) |
+| `DROPLET_USER` | `deploy` o `root` |
+| `DROPLET_SSH_KEY` | Clave privada SSH (archivo completo) |
 | `DEPLOY_PATH` | `/opt/sige-app-staging` |
-| `ENV_PRODUCTION` | Contenido completo de `.env.production` del servidor (incluye `APP_IMAGE` si quieres) |
+| `ENV_PRODUCTION` | Contenido completo de `.env.production` del servidor |
+| `GHCR_USERNAME` | `Alejoss` |
+| `GHCR_TOKEN` | PAT con `read:packages` (pull en el droplet) |
 
-La clave pública correspondiente debe estar en `~deploy/.ssh/authorized_keys` en el droplet.
+La clave pública SSH debe estar en `~/.ssh/authorized_keys` del usuario en el droplet.
 
-### Permisos del paquete GHCR
+`ENV_PRODUCTION` no necesita incluir `APP_IMAGE`: el workflow la define como `ghcr.io/alejoss/sigeconsultores:<sha>` al ejecutar `deploy-prod.sh`.
 
-En GitHub: **Packages → SigeConsultores → Package settings → Manage Actions access** → conceder acceso al repo.
+### Permisos GHCR
 
-## Deploy manual (lo que usas hoy)
+**Packages → sigeconsultores → Package settings → Manage Actions access** → conceder acceso al repositorio `SigeConsultores`.
 
-No necesitas los secretos si sigues con build en el droplet. Ver [DEPLOYMENT.md](./DEPLOYMENT.md).
+### Permisos del workflow
+
+**Settings → Actions → General → Workflow permissions** → **Read and write permissions** (para push a GHCR con `GITHUB_TOKEN`).
+
+## Qué hace el deploy en el droplet
+
+El job SSH **no** hace `git pull` ni `docker build`. Solo:
+
+1. Copia `docker-compose.prod.yml` y `scripts/deploy-prod.sh`
+2. Escribe `.env.production` desde `ENV_PRODUCTION`
+3. Ejecuta `deploy-prod.sh` → login GHCR, `docker compose pull app`, `up -d`
+
+Detalle: [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+## Deploy manual con la misma imagen
+
+En el droplet, sin esperar Actions:
+
+```bash
+export APP_IMAGE=ghcr.io/alejoss/sigeconsultores:latest
+export GHCR_USERNAME=Alejoss
+export GHCR_TOKEN=<PAT>
+./scripts/deploy-prod.sh
+```
+
+## Protección de ramas
+
+| Rama | Reglas típicas |
+|------|----------------|
+| `infra/staging-cicd` | Sin bloqueo de push; CI informativo |
+| `main` | PR + CI; **Repository admin** en bypass para push directo del owner |
+
+## CI: qué no incluye (aún)
+
+- **`pnpm test`** — requiere MySQL en el runner; ejecutar en local antes de merge si tocaste servidor.
+- Tests en CI: ver sección futura al final de este doc.
 
 ## Dejar de recibir emails de Actions
 
-**GitHub → Settings → Notifications → Actions** → desmarca “Send notifications for failed workflows” o deja solo los del repo que te interesen.
+**GitHub → Settings → Notifications → Actions** → ajustar notificaciones de fallos.
 
 ## Activar tests en CI (futuro)
 
-Requiere servicio MySQL en el workflow, `DATABASE_URL`, y `drizzle-kit push` antes de `pnpm test`. Hasta entonces, ejecuta `pnpm test` en local antes de push si tocaste lógica de servidor.
+Servicio MySQL en el workflow, `DATABASE_URL`, `drizzle-kit push` antes de `pnpm test`.
+
+---
+
+Última revisión: mayo 2026.

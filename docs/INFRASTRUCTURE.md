@@ -30,7 +30,7 @@ Visión operativa del sistema tal como está definido en este repositorio (Docke
      └──────────────────┘
 ```
 
-- **Producción:** la aplicación y MySQL corren en **Docker Compose** (`docker-compose.prod.yml`). La imagen `app` se construye con el `Dockerfile` del repo y se publica en **GHCR** desde GitHub Actions al hacer push a `main`.
+- **Producción:** MySQL y la app corren en **Docker Compose** (`docker-compose.prod.yml`). La imagen `app` se **construye en GitHub Actions**, se guarda en **GHCR** (`ghcr.io/alejoss/sigeconsultores`) y el droplet la **descarga** con `scripts/deploy-prod.sh` (no compila en el servidor en el flujo habitual).
 - **Desarrollo local:** `docker-compose.yml` (MySQL en el host en el puerto 3306; incluye Adminer en 8080 solo para desarrollo).
 
 ## Tabla de servicios
