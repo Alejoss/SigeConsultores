@@ -56,9 +56,9 @@ La clave pública SSH debe estar en `~/.ssh/authorized_keys` del usuario en el d
 
 ## Qué hace el deploy en el droplet
 
-El job SSH **no** hace `git pull` ni `docker build`. Solo:
+El job SSH **no** hace `docker build`. Solo:
 
-1. Copia `docker-compose.prod.yml` y `scripts/deploy-prod.sh`
+1. `git fetch` + `git reset --hard` al commit desplegado (compose y scripts)
 2. Escribe `.env.production` desde `ENV_PRODUCTION`
 3. Ejecuta `deploy-prod.sh` → login GHCR, `docker compose pull app`, `up -d`
 

@@ -79,20 +79,7 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Copy compose and deploy script to droplet
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: ${{ secrets.DROPLET_USER }}
-          key: ${{ secrets.DROPLET_SSH_KEY }}
-          source: docker-compose.prod.yml,scripts/deploy-prod.sh
-          target: ${{ secrets.DEPLOY_PATH }}
-          strip_components: 0
-
-      - name: Run deploy script on droplet
+      - name: Deploy on droplet
         uses: appleboy/ssh-action@v1.2.0
         env:
           APP_IMAGE: ${{ needs.build-image.outputs.image_name }}:${{ github.sha }}
@@ -100,16 +87,19 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
+          DEPLOY_SHA: ${{ github.sha }}
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script_stop: true
-          envs: APP_IMAGE,GHCR_USERNAME,GHCR_TOKEN,DEPLOY_PATH,ENV_PRODUCTION
+          envs: APP_IMAGE,GHCR_USERNAME,GHCR_TOKEN,DEPLOY_PATH,ENV_PRODUCTION,DEPLOY_SHA
           script: |
             set -eu
             mkdir -p "$DEPLOY_PATH"
             cd "$DEPLOY_PATH"
+            git fetch origin main
+            git reset --hard "$DEPLOY_SHA"
             printf "%s" "$ENV_PRODUCTION" > .env.production
             chmod +x scripts/deploy-prod.sh
             ./scripts/deploy-prod.sh
