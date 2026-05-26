@@ -4,7 +4,7 @@ import { companyProcedure, router } from "../_core/trpc";
 import { storagePut, storageGet, storageDelete } from "../storage";
 import {
   createOrganizationChart,
-  getOrganizationChart,
+  getCompanyOrganizationChart,
   getOrganizationChartNodes,
   createOrganizationChartNode,
   updateOrganizationChartNode,
@@ -73,7 +73,7 @@ export const organizationChartRouter = router({
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       try {
-        return await getOrganizationChart(input.companyId);
+        return await getCompanyOrganizationChart(input.companyId);
       } catch (error) {
         console.error("[OrganizationChart] Error getting chart:", error);
         return null;
@@ -174,8 +174,12 @@ export const organizationChartRouter = router({
       fileData: z.array(z.number()),
     }))
     .mutation(async ({ input, ctx }) => {
-      const userId = ctx.user!.id;
-      const userName = ctx.user!.name ?? "Usuario";
+      const userId = ctx.user?.id ?? ctx.processLeader?.processLeaderId ?? 0;
+      const userName =
+        ctx.user?.name ??
+        ctx.processLeader?.leaderName ??
+        ctx.manager?.managerEmail ??
+        "Usuario";
 
       console.log("[OrganizationChart] uploadPDF start", {
         chartId: input.chartId,
