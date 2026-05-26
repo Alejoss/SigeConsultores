@@ -10,6 +10,20 @@ export type SessionScope = {
   processName: string | null;
 };
 
+/** Returns the processLeaderSession object from storage, or null if not found. */
+function getProcessLeaderSessionFromStorage(): Record<string, unknown> | null {
+  try {
+    // ProcessLeaderAuthContext persists to localStorage; sessionStorage is a fallback
+    const raw =
+      localStorage.getItem("processLeaderSession") ||
+      sessionStorage.getItem("processLeaderSession");
+    if (raw) return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 export function getCompanyIdFromSession(): number | null {
   if (typeof window === "undefined") return null;
 
@@ -17,15 +31,8 @@ export function getCompanyIdFromSession(): number | null {
   const urlCompanyId = urlParams.get("companyId");
   if (urlCompanyId) return parseInt(urlCompanyId, 10);
 
-  try {
-    const sessionStr = sessionStorage.getItem("processLeaderSession");
-    if (sessionStr) {
-      const session = JSON.parse(sessionStr);
-      if (session.companyId) return Number(session.companyId);
-    }
-  } catch {
-    // ignore
-  }
+  const plSession = getProcessLeaderSessionFromStorage();
+  if (plSession?.companyId) return Number(plSession.companyId);
 
   const managerId = localStorage.getItem("managerCompanyId");
   if (managerId) return parseInt(managerId, 10);
@@ -41,15 +48,8 @@ export function getProcessIdFromSession(): number | null {
   const urlProcessId = urlParams.get("processId");
   if (urlProcessId) return parseInt(urlProcessId, 10);
 
-  try {
-    const sessionStr = sessionStorage.getItem("processLeaderSession");
-    if (sessionStr) {
-      const session = JSON.parse(sessionStr);
-      if (session.processId) return Number(session.processId);
-    }
-  } catch {
-    // ignore
-  }
+  const plSession = getProcessLeaderSessionFromStorage();
+  if (plSession?.processId) return Number(plSession.processId);
 
   const stored = localStorage.getItem("selectedProcessId");
   return stored ? parseInt(stored, 10) : null;

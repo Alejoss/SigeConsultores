@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,18 +70,19 @@ function FileModal({
 
 export default function ManagementSystems() {
   const [, setLocation] = useLocation();
-  const { session: processLeaderSession } = useProcessLeaderAuth();
-  const isProcessLeader = processLeaderSession !== null;
-  const isManagerAccess = localStorage.getItem("managerCompanyId") !== null;
+  const { session: processLeaderSession, isLoading: plLoading } = useProcessLeaderAuth();
+  const { isManagerLogin, managerCompanyId, isLoading: managerLoading } = useManagerAuth();
 
-  const [companyId] = useState<number | null>(() => {
-    if (isProcessLeader && processLeaderSession?.companyId) return processLeaderSession.companyId;
-    if (isManagerAccess) {
-      const id = localStorage.getItem("managerCompanyId");
-      return id ? parseInt(id) : null;
-    }
+  const isAuthLoading = managerLoading || plLoading;
+
+  // Resolve companyId reactively from auth state
+  const companyId = useMemo<number | null>(() => {
+    if (isManagerLogin && managerCompanyId) return managerCompanyId;
+    if (processLeaderSession?.companyId) return processLeaderSession.companyId;
+    const stored = localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId");
+    if (stored) return parseInt(stored, 10);
     return getCompanyIdFromLocationOrStorage();
-  });
+  }, [isManagerLogin, managerCompanyId, processLeaderSession]);
 
   const [rows, setRows] = useState<ManagementSystemRow[]>([]);
   const [modal, setModal] = useState<{
@@ -204,6 +205,17 @@ export default function ManagementSystems() {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
+
+  if (isAuthLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center gap-2 text-slate-600 py-16">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span>Cargando...</span>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!companyId) {
     return (

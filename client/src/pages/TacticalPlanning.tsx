@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Download } from 'lucid
 import { toast } from "sonner";
 import { exportTacticalObjectivesToPDF } from "@/lib/exportTacticalObjectivesToPDF";
 import { trpc } from "@/lib/trpc";
+import { getProcessIdFromSession } from "@/lib/sessionScope";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 
@@ -114,10 +115,8 @@ export default function TacticalPlanning() {
   );
 
   useEffect(() => {
-    const stored = localStorage.getItem("selectedProcessId");
-    if (stored) {
-      setProcessId(parseInt(stored));
-    }
+    const pid = getProcessIdFromSession();
+    if (pid) setProcessId(pid);
   }, []);
 
   useEffect(() => {
