@@ -41,18 +41,35 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
 
-  deploy-droplet:
-    name: Deploy to droplet (requires secrets)
+  check-deploy-secrets:
+    name: Check deploy secrets
     needs: build-image
     runs-on: ubuntu-latest
-    if: >-
-      ${{ secrets.DROPLET_HOST != '' &&
-          secrets.DROPLET_USER != '' &&
-          secrets.DROPLET_SSH_KEY != '' &&
-          secrets.DEPLOY_PATH != '' &&
-          secrets.ENV_PRODUCTION != '' &&
-          secrets.GHCR_USERNAME != '' &&
-          secrets.GHCR_TOKEN != '' }}
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+          DROPLET_USER: ${{ secrets.DROPLET_USER }}
+          DROPLET_SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: |
+          if [ -n "$DROPLET_HOST" ] && [ -n "$DROPLET_USER" ] && [ -n "$DROPLET_SSH_KEY" ] && \
+             [ -n "$DEPLOY_PATH" ] && [ -n "$ENV_PRODUCTION" ] && [ -n "$GHCR_USERNAME" ] && [ -n "$GHCR_TOKEN" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy-droplet:
+    name: Deploy to droplet
+    needs: check-deploy-secrets
+    runs-on: ubuntu-latest
+    if: needs.check-deploy-secrets.outputs.ready == 'true'
     timeout-minutes: 20
 
     steps:
@@ -93,17 +110,10 @@ jobs:
 
   deploy-skipped-hint:
     name: Deploy skipped (configure secrets)
-    needs: build-image
+    needs: check-deploy-secrets
     runs-on: ubuntu-latest
-    if: >-
-      ${{ always() &&
-          needs.build-image.result == 'success' &&
-          (secrets.DROPLET_HOST == '' ||
-           secrets.DROPLET_SSH_KEY == '' ||
-           secrets.ENV_PRODUCTION == '' ||
-           secrets.GHCR_TOKEN == '') }}
+    if: needs.check-deploy-secrets.outputs.ready != 'true'
     steps:
       - name: Note
         run: |
           echo "Image pushed to GHCR. Droplet deploy skipped — add GitHub Actions secrets (see docs/GITHUB_SETUP.md)."
-          echo "Manual deploy on server: git pull && docker build && compose up (see docs/DEPLOYMENT.md)."

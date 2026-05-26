@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/mysql2";
-import { sql, eq, and, or, desc, asc } from "drizzle-orm";
+import { sql, eq, and, or, desc, asc, inArray } from "drizzle-orm";
 import {
   InsertAccount,
   accounts,
@@ -1419,6 +1419,48 @@ export async function createCompanyDocument(companyId: number, documentName: str
   }
   
   return db.insert(documents).values({ processId, documentName, documentType, status, fileUrl, fileKey });
+}
+
+/** Fixed document name for the company-level process map image file. */
+export const PROCESS_MAP_IMAGE_DOC_NAME = "Mapa de Procesos - Imagen";
+
+export async function getProcessMapImageDocument(companyId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const companyProcesses = await db
+    .select({ id: processes.id })
+    .from(processes)
+    .where(eq(processes.companyId, companyId));
+
+  const processIds = companyProcesses.map((p) => p.id);
+  if (processIds.length === 0) return null;
+
+  const rows = await db
+    .select()
+    .from(documents)
+    .where(
+      and(
+        inArray(documents.processId, processIds),
+        eq(documents.documentName, PROCESS_MAP_IMAGE_DOC_NAME),
+        eq(documents.documentType, "Varios")
+      )
+    )
+    .orderBy(desc(documents.updatedAt))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+export async function deleteProcessMapImageDocument(companyId: number): Promise<{ id: number; fileKey: string | null } | null> {
+  const doc = await getProcessMapImageDocument(companyId);
+  if (!doc) return null;
+
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.delete(documents).where(eq(documents.id, doc.id));
+  return { id: doc.id, fileKey: doc.fileKey ?? null };
 }
 
 

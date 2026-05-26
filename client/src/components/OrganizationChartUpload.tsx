@@ -10,6 +10,11 @@ interface OrganizationChartUploadProps {
   onUploadSuccess?: () => void;
 }
 
+function isPdfFile(file: File): boolean {
+  if (file.type === "application/pdf") return true;
+  return file.name.toLowerCase().endsWith(".pdf");
+}
+
 export default function OrganizationChartUpload({
   chartId,
   onUploadSuccess,
@@ -53,10 +58,10 @@ export default function OrganizationChartUpload({
     const files = e.dataTransfer.files;
     if (files && files[0]) {
       const file = files[0];
-      if (file.type === "application/pdf") {
+      if (isPdfFile(file)) {
         setSelectedFile(file);
       } else {
-        toast.error("Por favor, selecciona un archivo PDF");
+        toast.error("Solo se permiten archivos PDF (.pdf). Convierte tu archivo a PDF e inténtalo de nuevo.");
       }
     }
   };
@@ -65,10 +70,10 @@ export default function OrganizationChartUpload({
     const files = e.target.files;
     if (files && files[0]) {
       const file = files[0];
-      if (file.type === "application/pdf") {
+      if (isPdfFile(file)) {
         setSelectedFile(file);
       } else {
-        toast.error("Por favor, selecciona un archivo PDF");
+        toast.error("Solo se permiten archivos PDF (.pdf). Convierte tu archivo a PDF e inténtalo de nuevo.");
       }
     }
   };
@@ -102,7 +107,7 @@ export default function OrganizationChartUpload({
         <CardHeader>
           <CardTitle>Subir Organigrama en PDF</CardTitle>
           <CardDescription>
-            Arrastra un archivo PDF aquí o haz clic para seleccionar
+            Solo se aceptan archivos en formato PDF (.pdf). Arrastra el archivo aquí o haz clic para seleccionarlo.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -130,7 +135,8 @@ export default function OrganizationChartUpload({
                 <p className="text-sm font-medium">
                   {selectedFile ? selectedFile.name : "Arrastra un PDF aquí"}
                 </p>
-                <p className="text-xs text-gray-500">o haz clic para seleccionar</p>
+                <p className="text-xs text-gray-500">Formato obligatorio: PDF (.pdf)</p>
+                <p className="text-xs text-gray-400">o haz clic para seleccionar</p>
               </div>
             </label>
           </div>

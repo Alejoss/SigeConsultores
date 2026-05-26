@@ -46,8 +46,8 @@ export default function ProcessMap() {
   const [newProcessName, setNewProcessName] = useState("");
   const [newProcessType, setNewProcessType] = useState<ProcessType>("misional");
   const [mapImage, setMapImage] = useState<string | null>(null);
+  const [mapImageFileName, setMapImageFileName] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [processMapImageId, setProcessMapImageId] = useState<number | null>(null);
 
   // Fetch user's companies (only if not manager login)
   const userCompaniesQuery = trpc.adminOperations.getUserCompanies.useQuery(
@@ -101,11 +101,6 @@ export default function ProcessMap() {
       if (hasAccess) {
         setCompanyId(companyIdNum);
         setCompanyName(storedName || "Empresa");
-        
-        const savedImage = localStorage.getItem(`processMapImage_${companyIdNum}`);
-        if (savedImage) {
-          setMapImage(savedImage);
-        }
       } else {
         // User doesn't have access to the stored company, use first company
         const userCompany = userCompaniesQuery.data[0];
@@ -113,11 +108,6 @@ export default function ProcessMap() {
         setCompanyName(userCompany.name);
         localStorage.setItem("selectedCompanyId", userCompany.id.toString());
         localStorage.setItem("selectedCompanyName", userCompany.name);
-        
-        const savedImage = localStorage.getItem(`processMapImage_${userCompany.id}`);
-        if (savedImage) {
-          setMapImage(savedImage);
-        }
       }
     } else {
       // Auto-select user's first company if not already selected
@@ -126,13 +116,52 @@ export default function ProcessMap() {
       setCompanyName(userCompany.name);
       localStorage.setItem("selectedCompanyId", userCompany.id.toString());
       localStorage.setItem("selectedCompanyName", userCompany.name);
-      
-      const savedImage = localStorage.getItem(`processMapImage_${userCompany.id}`);
-      if (savedImage) {
-        setMapImage(savedImage);
-      }
     }
-  }, [userCompaniesQuery.data, isManagerLogin, managerCompanyId, isProcessLeader, processLeaderSession]);
+  }, [userCompaniesQuery.data, isManagerLogin, managerCompanyId, isProcessLeader, processLeaderSession, managerCompanyQuery.data]);
+
+  const {
+    data: mapImageData,
+    refetch: refetchMapImage,
+    isLoading: isLoadingMapImage,
+  } = trpc.processMap.getMapImage.useQuery(
+    { companyId: companyId ?? 0 },
+    { enabled: companyId !== null }
+  );
+
+  useEffect(() => {
+    if (!companyId || isLoadingMapImage) return;
+    if (mapImageData?.fileUrl) {
+      setMapImage(mapImageData.fileUrl);
+      setMapImageFileName(mapImageData.fileName);
+    } else {
+      setMapImage(null);
+      setMapImageFileName(null);
+    }
+  }, [mapImageData, companyId, isLoadingMapImage]);
+
+  const uploadMapImageMutation = trpc.processMap.uploadMapImage.useMutation({
+    onSuccess: (result) => {
+      setMapImage(result.fileUrl);
+      setMapImageFileName(result.fileName);
+      refetchMapImage();
+      toast.success("Imagen del Mapa de Procesos cargada exitosamente");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Error al cargar la imagen");
+    },
+  });
+
+  const deleteMapImageMutation = trpc.processMap.deleteMapImage.useMutation({
+    onSuccess: () => {
+      setMapImage(null);
+      setMapImageFileName(null);
+      refetchMapImage();
+      toast.success("Imagen eliminada");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Error al eliminar la imagen");
+    },
+  });
 
   // Fetch processes from database
   // If processId is in URL (process leader access), only fetch that process
@@ -208,42 +237,50 @@ export default function ProcessMap() {
     }
   };
 
+  const isDisplayableImage = (fileName: string | null) => {
+    if (!fileName) return true;
+    return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fileName);
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !companyId) return;
 
     setIsUploadingImage(true);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      setMapImage(result);
-      if (companyId) {
-        localStorage.setItem(`processMapImage_${companyId}`, result);
-        localStorage.setItem(`processMapImageName_${companyId}`, file.name);
-      }
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      await uploadMapImageMutation.mutateAsync({
+        companyId,
+        fileName: file.name,
+        fileData: Array.from(uint8Array),
+        fileType: file.type || "application/octet-stream",
+      });
+    } catch {
+      // Error toast handled by mutation
+    } finally {
       setIsUploadingImage(false);
-      toast.success("Imagen del Mapa de Procesos cargada exitosamente");
-    };
-    reader.onerror = () => {
-      setIsUploadingImage(false);
-      toast.error("Error al cargar la imagen");
-    };
-    reader.readAsDataURL(file);
+      e.target.value = "";
+    }
   };
 
   const handleDownloadImage = () => {
     if (!mapImage) return;
-    
+
     const link = document.createElement("a");
     link.href = mapImage;
-    const fileName = companyId 
-      ? localStorage.getItem(`processMapImageName_${companyId}`) || "mapa-procesos"
-      : "mapa-procesos";
-    link.download = fileName;
+    link.download = mapImageFileName || "mapa-procesos";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     toast.success("Descargando archivo...");
+  };
+
+  const handleDeleteMapImage = async () => {
+    if (!companyId) return;
+    await deleteMapImageMutation.mutateAsync({ companyId });
   };
 
   const handleAccessProcess = (processId: number) => {
@@ -299,15 +336,30 @@ export default function ProcessMap() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mapImage ? (
+              {isLoadingMapImage ? (
+                <p className="text-center text-slate-600 py-4">Cargando mapa de procesos...</p>
+              ) : mapImage ? (
                 <div className="space-y-4">
-                  <div 
-                    onDoubleClick={handleDownloadImage}
-                    className="cursor-pointer hover:opacity-80 transition-opacity"
-                    title="Haz doble clic para descargar"
-                  >
-                    <img src={mapImage} alt="Mapa de Procesos" className="w-full max-h-96 object-contain border border-gray-300 rounded" />
-                  </div>
+                  {isDisplayableImage(mapImageFileName) ? (
+                    <div
+                      onDoubleClick={handleDownloadImage}
+                      className="cursor-pointer hover:opacity-80 transition-opacity"
+                      title="Haz doble clic para descargar"
+                    >
+                      <img
+                        src={mapImage}
+                        alt="Mapa de Procesos"
+                        className="w-full max-h-96 object-contain border border-gray-300 rounded"
+                      />
+                    </div>
+                  ) : (
+                    <div className="border border-gray-300 rounded-lg p-6 text-center bg-white">
+                      <p className="font-medium text-slate-800">{mapImageFileName}</p>
+                      <p className="text-sm text-slate-500 mt-2">
+                        Archivo guardado en el servidor. Usa descargar para abrirlo.
+                      </p>
+                    </div>
+                  )}
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -319,13 +371,8 @@ export default function ProcessMap() {
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => {
-                        setMapImage(null);
-                        if (companyId) {
-                          localStorage.removeItem(`processMapImage_${companyId}`);
-                          localStorage.removeItem(`processMapImageName_${companyId}`);
-                        }
-                      }}
+                      onClick={handleDeleteMapImage}
+                      disabled={deleteMapImageMutation.isPending}
                       className="flex-1"
                     >
                       Eliminar Imagen
@@ -347,7 +394,7 @@ export default function ProcessMap() {
                   <div className="space-y-2">
                     <Button
                       asChild
-                      disabled={isUploadingImage}
+                      disabled={isUploadingImage || uploadMapImageMutation.isPending}
                     >
                       <label htmlFor="map-image-input" className="cursor-pointer">
                         {isUploadingImage ? "Cargando..." : "Seleccionar Archivo"}
