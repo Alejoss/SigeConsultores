@@ -4,6 +4,7 @@
 
 | Documento | Contenido |
 |-----------|-----------|
+| [GUIA_MANUS.md](./GUIA_MANUS.md) | **Cliente / Manus:** Git, ramas, sync con `main`, push a staging |
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | GHCR, deploy automático y manual (`deploy-prod.sh`), fallback build local |
 | [GITHUB_SETUP.md](./GITHUB_SETUP.md) | Workflows, secretos de Actions, permisos GHCR |
 | [INFRASTRUCTURE.md](./INFRASTRUCTURE.md) | Arquitectura de servicios (droplet, contenedores, S3, correo, OAuth) |

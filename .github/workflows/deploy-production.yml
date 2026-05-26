@@ -79,25 +79,6 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Package deploy files
-        run: |
-          tar czf deploy-bundle.tar.gz \
-            docker-compose.prod.yml \
-            scripts/deploy-prod.sh \
-            scripts/load-env-file.sh
-
-      - name: Copy deploy bundle to droplet
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: ${{ secrets.DROPLET_USER }}
-          key: ${{ secrets.DROPLET_SSH_KEY }}
-          source: deploy-bundle.tar.gz
-          target: ${{ secrets.DEPLOY_PATH }}
-
       - name: Deploy on droplet
         uses: appleboy/ssh-action@v1.2.0
         env:
@@ -106,19 +87,30 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
+          DEPLOY_SHA: ${{ github.sha }}
+          REPO_SLUG: ${{ github.repository }}
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script_stop: true
-          envs: APP_IMAGE,GHCR_USERNAME,GHCR_TOKEN,DEPLOY_PATH,ENV_PRODUCTION
+          envs: APP_IMAGE,GHCR_USERNAME,GHCR_TOKEN,DEPLOY_PATH,ENV_PRODUCTION,DEPLOY_SHA,REPO_SLUG
           script: |
             set -eu
             mkdir -p "$DEPLOY_PATH"
             cd "$DEPLOY_PATH"
-            tar xzf deploy-bundle.tar.gz
-            rm -f deploy-bundle.tar.gz
-            printf "%s" "$ENV_PRODUCTION" > .env.production
+
+            if [ ! -d .git ]; then
+              echo "ERROR: $DEPLOY_PATH is not a git clone. Clone the repo there first." >&2
+              exit 1
+            fi
+
+            git remote set-url origin "https://${GHCR_USERNAME}:${GHCR_TOKEN}@github.com/${REPO_SLUG}.git"
+            git fetch origin main
+            git reset --hard "$DEPLOY_SHA"
+            git remote set-url origin "https://github.com/${REPO_SLUG}.git"
+
+            printf '%s\n' "$ENV_PRODUCTION" > .env.production
             chmod +x scripts/deploy-prod.sh
             ./scripts/deploy-prod.sh
 

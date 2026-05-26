@@ -15,7 +15,13 @@ fi
 
 # shellcheck source=scripts/load-env-file.sh
 . "${ROOT}/scripts/load-env-file.sh"
+
+# Workflow/CD may export APP_IMAGE (commit sha) before this script runs.
+_SAVED_APP_IMAGE="${APP_IMAGE:-}"
 load_env_file_keys "$ENV_FILE" APP_IMAGE GHCR_USERNAME GHCR_TOKEN
+if [ -n "$_SAVED_APP_IMAGE" ]; then
+  export APP_IMAGE="$_SAVED_APP_IMAGE"
+fi
 
 if [ -z "${APP_IMAGE:-}" ]; then
   echo "APP_IMAGE is required (set in .env.production or export before running)" >&2
