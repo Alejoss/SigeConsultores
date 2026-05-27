@@ -655,7 +655,6 @@ export default function TacticalPlanning() {
 
   const renderOTTrackingSection = (planning: TacticalPlanning) => {
     const type = planning.trackingType || 'puntual';
-    const { porcentajeMetaAlcanzado } = calcOTMetrics(planning);
 
     return (
       <div className="space-y-3">
@@ -723,7 +722,7 @@ export default function TacticalPlanning() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">% Meta alcanzada</label>
-                <p className="text-2xl font-bold text-blue-600">{porcentajeMetaAlcanzado.toFixed(0)}%</p>
+                <p className="text-2xl font-bold text-blue-600">{calcOTMetrics(planning).porcentajeMetaAlcanzado.toFixed(0)}%</p>
               </div>
             </div>
           </div>
@@ -761,7 +760,7 @@ export default function TacticalPlanning() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">% Meta alcanzada</label>
-                <p className="text-2xl font-bold text-blue-600">{porcentajeMetaAlcanzado.toFixed(0)}%</p>
+                <p className="text-2xl font-bold text-blue-600">{calcOTMetrics(planning).porcentajeMetaAlcanzado.toFixed(0)}%</p>
               </div>
             </div>
           </div>
@@ -799,7 +798,7 @@ export default function TacticalPlanning() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">% Meta alcanzada</label>
-                <p className="text-2xl font-bold text-blue-600">{porcentajeMetaAlcanzado.toFixed(0)}%</p>
+                <p className="text-2xl font-bold text-blue-600">{calcOTMetrics(planning).porcentajeMetaAlcanzado.toFixed(0)}%</p>
               </div>
             </div>
           </div>
@@ -810,7 +809,6 @@ export default function TacticalPlanning() {
 
   const renderOOTrackingSection = (planning: TacticalPlanning, resultKey: ResultKey) => {
     const type = resultKey.ooTrackingType || 'puntual';
-    const { condicionActual, porcentajeAlcanzado } = calcOOMetrics(resultKey);
 
     return (
       <div className="space-y-3">
@@ -863,7 +861,7 @@ export default function TacticalPlanning() {
             </div>
             <div className="p-2 bg-green-50 border border-green-300 rounded-lg text-center">
               <label className="block text-sm font-semibold text-gray-700 mb-1">Total acumulado (Condición Actual)</label>
-              <span className="text-xl font-bold text-green-700">{condicionActual.toFixed(2)}</span>
+              <span className="text-xl font-bold text-green-700">{calcOOMetrics(resultKey).condicionActual.toFixed(2)}</span>
             </div>
           </div>
         )}
@@ -889,7 +887,7 @@ export default function TacticalPlanning() {
             </div>
             <div className="p-2 bg-green-50 border border-green-300 rounded-lg text-center">
               <label className="block text-sm font-semibold text-gray-700 mb-1">Promedio (Condición Actual)</label>
-              <span className="text-xl font-bold text-green-700">{condicionActual.toFixed(2)}</span>
+              <span className="text-xl font-bold text-green-700">{calcOOMetrics(resultKey).condicionActual.toFixed(2)}</span>
             </div>
           </div>
         )}
@@ -918,7 +916,7 @@ export default function TacticalPlanning() {
             </div>
             <div className="p-2 bg-green-50 border border-green-300 rounded-lg text-center">
               <span className="text-sm font-semibold text-gray-600">Meses cumplidos: </span>
-              <span className="text-xl font-bold text-green-700">{condicionActual} / 12</span>
+              <span className="text-xl font-bold text-green-700">{calcOOMetrics(resultKey).condicionActual} / 12</span>
             </div>
           </div>
         )}
@@ -927,7 +925,7 @@ export default function TacticalPlanning() {
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">% Alcanzado</label>
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
-            <span className="text-2xl font-bold text-blue-600">{porcentajeAlcanzado.toFixed(2)}%</span>
+            <span className="text-2xl font-bold text-blue-600">{calcOOMetrics(resultKey).porcentajeAlcanzado.toFixed(2)}%</span>
           </div>
         </div>
       </div>
