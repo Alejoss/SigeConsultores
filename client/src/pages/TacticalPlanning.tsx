@@ -8,6 +8,7 @@ import { exportTacticalObjectivesToPDF } from "@/lib/exportTacticalObjectivesToP
 import { trpc } from "@/lib/trpc";
 import { getProcessIdFromSession } from "@/lib/sessionScope";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 // ─── Tipos de seguimiento disponibles ────────────────────────────────────────
 // 'puntual'            → un valor directo; % = (condicionActual - ci) / (meta - ci) * 100
@@ -74,8 +75,8 @@ const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov
 
 /**
  * Input numérico que mantiene el valor como string localmente.
- * Actualiza el estado padre en onBlur (al salir del campo) para evitar
- * que el campo "salte" a 0 mientras el usuario escribe.
+ * Actualiza el estado padre en onChange cuando el valor es un número válido,
+ * y en onBlur para normalizar el valor (ej: "" → 0).
  */
 function NumericInput({ value, onChange, className, placeholder }: {
   value: number;
@@ -97,7 +98,16 @@ function NumericInput({ value, onChange, className, placeholder }: {
       value={local}
       placeholder={placeholder}
       className={className}
-      onChange={(e) => setLocal(e.target.value)}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setLocal(raw);
+        // Actualizar el padre inmediatamente si el valor es un número válido y completo
+        // (no vacío, no solo "-", no terminado en ".")
+        if (raw !== '' && raw !== '-' && !raw.endsWith('.')) {
+          const parsed = parseFloat(raw);
+          if (!isNaN(parsed)) onChange(parsed);
+        }
+      }}
       onBlur={() => {
         const parsed = parseFloat(local);
         const num = isNaN(parsed) ? 0 : parsed;
@@ -208,6 +218,7 @@ function calcOTMetrics(p: TacticalPlanning): { avanceMeta: number; porcentajeMet
 
 export default function TacticalPlanning() {
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [processId, setProcessId] = useState<number | null>(null);
   const [plannings, setPlannings] = useState<TacticalPlanning[]>([]);
   const [saving, setSaving] = useState(false);
@@ -217,6 +228,9 @@ export default function TacticalPlanning() {
   const savingRef = useRef(false);
   const hasLoadedRef = useRef(false);
   const planningsRef = useRef<TacticalPlanning[]>([]);
+  const processIdRef = useRef<number | null>(null);
+  const pendingSaveRef = useRef(false); // indica si hay cambios pendientes de guardar
+  const initialLoadDoneRef = useRef(false); // indica si la carga inicial ya terminó
 
   const savePlanningMutation = trpc.processTacticalObjectives.savePlanning.useMutation({
     onError: (error: any) => {
@@ -232,7 +246,7 @@ export default function TacticalPlanning() {
 
   const { data: planningDataFromDB } = trpc.processTacticalObjectives.loadPlanningData.useQuery(
     { processId: processId || 0 },
-    { enabled: processId !== null }
+    { enabled: processId !== null, staleTime: 0, gcTime: 0 }
   );
 
   useEffect(() => {
@@ -241,9 +255,24 @@ export default function TacticalPlanning() {
   }, []);
 
   useEffect(() => {
-    if (hasLoadedRef.current) return;
     if (!tacticalObjectivesData || tacticalObjectivesData.length === 0) return;
     if (planningDataFromDB === undefined) return;
+
+    // Si ya cargamos y hay datos de BD, actualizar siempre (para capturar refetches en background)
+    if (hasLoadedRef.current) {
+      if (planningDataFromDB && planningDataFromDB.length > 0) {
+        // Solo actualizar si los datos son diferentes (evitar loops)
+        setPlannings(prev => {
+          const prevStr = JSON.stringify(prev.map(p => ({ id: p.id, monthlyValues: p.monthlyValues, checklistValues: p.checklistValues })));
+          const newStr = JSON.stringify(planningDataFromDB.map((p: any) => ({ id: p.id, monthlyValues: p.monthlyValues, checklistValues: p.checklistValues })));
+          if (prevStr === newStr) return prev;
+          // Resetear pendingSaveRef para que el refetch no dispare un guardado innecesario
+          setTimeout(() => { pendingSaveRef.current = false; }, 0);
+          return planningDataFromDB;
+        });
+      }
+      return;
+    }
 
     hasLoadedRef.current = true;
 
@@ -281,20 +310,31 @@ export default function TacticalPlanning() {
       });
       setPlannings(newPlannings);
     }
+    // Marcar que la carga inicial terminó (en el siguiente tick para que el useEffect de plannings se ejecute primero)
+    setTimeout(() => { initialLoadDoneRef.current = true; pendingSaveRef.current = false; }, 50);
   }, [tacticalObjectivesData, planningDataFromDB]);
 
   useEffect(() => {
     planningsRef.current = plannings;
+    // Solo marcar como pendiente si la carga inicial ya terminó (cambios del usuario, no carga inicial)
+    if (plannings.length > 0 && initialLoadDoneRef.current) pendingSaveRef.current = true;
   }, [plannings]);
+
+  useEffect(() => {
+    processIdRef.current = processId;
+  }, [processId]);
 
   // Auto-save con debounce
   useEffect(() => {
     if (plannings.length === 0 || !processId) return;
+    // No guardar durante la carga inicial (evita guardado innecesario al montar el componente)
+    if (!initialLoadDoneRef.current) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     // Capturar el estado actual en el closure para que el timeout use siempre los datos más recientes
     const currentPlannings = plannings;
     const currentProcessId = processId;
     saveTimeoutRef.current = setTimeout(async () => {
+      pendingSaveRef.current = false;
       if (savingRef.current || !currentProcessId) return;
       if (currentPlannings.length === 0) return;
       try {
@@ -335,9 +375,31 @@ export default function TacticalPlanning() {
         savingRef.current = false;
         setSaving(false);
       }
-    }, 2000);
+    }, 800);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [plannings, processId]);
+
+  // Guardar al desmontar el componente si hay cambios pendientes
+  useEffect(() => {
+    return () => {
+      if (!pendingSaveRef.current) return;
+      const currentPlannings = planningsRef.current;
+      const currentProcessId = processIdRef.current;
+      if (!currentProcessId || currentPlannings.length === 0) return;
+      // Cancelar el timeout pendiente
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      // Guardar en localStorage de forma síncrona (fetch async no garantizado al desmontar)
+      try {
+        const planningsToSave = currentPlannings.map(p => {
+          const metrics = calcOTMetrics(p);
+          return { ...p, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado };
+        });
+        localStorage.setItem(`tactical_planning_${currentProcessId}`, JSON.stringify(planningsToSave));
+      } catch (e) {
+        // ignore
+      }
+    };
+  }, []);
 
   // ─── Mutaciones de estado ───────────────────────────────────────────────────
 
@@ -520,7 +582,49 @@ export default function TacticalPlanning() {
     return { metaAlcanzada, alcanzadoPorOO, alcanzadoPorTareas, isEfficient: alcanzadoPorOO < metaAlcanzada };
   }, [plannings]);
 
-  const handleBack = () => setLocation('/process-tactical-objectives');
+  const handleBack = async () => {
+    // Forzar blur en el campo activo para que NumericInput actualice el estado padre
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+      // Esperar un tick para que el estado React se actualice
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    // Guardar antes de navegar si hay cambios pendientes
+    // Usar planningsRef.current para obtener el estado más reciente (incluyendo el valor del blur)
+    const latestPlannings = planningsRef.current;
+    if (pendingSaveRef.current && latestPlannings.length > 0 && processId) {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      pendingSaveRef.current = false;
+      try {
+        const planningsToSave = latestPlannings.map(p => {
+          const metrics = calcOTMetrics(p);
+          return { ...p, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado };
+        });
+        localStorage.setItem(`tactical_planning_${processId}`, JSON.stringify(planningsToSave));
+        await Promise.allSettled(planningsToSave.map(planning =>
+          savePlanningMutation.mutateAsync({
+            objectiveId: planning.objectiveId,
+            category: planning.category,
+            goal: typeof planning.goal === 'string' ? planning.goal : String(planning.goal || ''),
+            resultKeys: planning.resultKeys,
+            ponderacion: planning.ponderacion || 0,
+            puntoPartida: planning.puntoPartida || 0,
+            metaLlegada: planning.metaLlegada || 0,
+            unidadMedida: planning.unidadMedida || '',
+            avanceMeta: planning.avanceMeta || 0,
+            trackingType: (planning.trackingType || 'puntual') as any,
+            monthlyValues: Array(12).fill(0).map((_, i) => Number((planning.monthlyValues || [])[i] || 0)),
+            checklistValues: Array(12).fill(false).map((_, i) => Boolean((planning.checklistValues || [])[i] || false)),
+          })
+        ));
+        // Eliminar el caché de tRPC para que al remontar el componente se carguen los datos frescos desde la BD
+        queryClient.removeQueries();
+      } catch (e) {
+        // ignore errors on exit
+      }
+    }
+    setLocation('/process-tactical-objectives');
+  };
 
   const handleSaveNow = async () => {
     if (savingRef.current) return;
