@@ -72,6 +72,42 @@ interface TacticalPlanning {
 const CATEGORIES = ['Finanzas', 'Cliente', 'Procesos Internos', 'Aprendizaje', 'Crecimiento'];
 const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
+/**
+ * Input numérico que mantiene el valor como string localmente.
+ * Actualiza el estado padre en onBlur (al salir del campo) para evitar
+ * que el campo "salte" a 0 mientras el usuario escribe.
+ */
+function NumericInput({ value, onChange, className, placeholder }: {
+  value: number;
+  onChange: (val: number) => void;
+  className?: string;
+  placeholder?: string;
+}) {
+  const [local, setLocal] = useState(String(value));
+
+  // Sincronizar si el valor externo cambia (ej: al cargar datos)
+  useEffect(() => {
+    setLocal(String(value));
+  }, [value]);
+
+  return (
+    <Input
+      type="number"
+      step="0.01"
+      value={local}
+      placeholder={placeholder}
+      className={className}
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={() => {
+        const parsed = parseFloat(local);
+        const num = isNaN(parsed) ? 0 : parsed;
+        setLocal(String(num));
+        onChange(num);
+      }}
+    />
+  );
+}
+
 const AutoExpandingTextarea = ({ value, onChange, placeholder, className = "" }: any) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -542,8 +578,8 @@ export default function TacticalPlanning() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Avance de la Meta</label>
-              <Input type="number" step="0.01" value={planning.avanceMeta || 0}
-                onChange={(e) => updatePlanning(planning.id, 'avanceMeta', parseFloat(e.target.value) || 0)}
+              <NumericInput value={planning.avanceMeta || 0}
+                onChange={(val) => updatePlanning(planning.id, 'avanceMeta', val)}
                 placeholder="Avance actual" className="border-gray-300" />
             </div>
             <div>
@@ -561,10 +597,10 @@ export default function TacticalPlanning() {
                 return (
                   <div key={`otms_${idx}`} className="flex flex-col items-center gap-1">
                     <label className="text-xs font-semibold text-gray-600">{mes}</label>
-                    <Input type="number" step="0.01" value={vals[idx] || 0}
-                      onChange={(e) => {
+                    <NumericInput value={vals[idx] || 0}
+                      onChange={(val) => {
                         const newVals = [...(planning.monthlyValues || Array(12).fill(0))];
-                        newVals[idx] = parseFloat(e.target.value) || 0;
+                        newVals[idx] = val;
                         updatePlanning(planning.id, 'monthlyValues', newVals);
                       }}
                       className="border-gray-300 text-xs px-1 py-1 text-center" />
@@ -599,10 +635,10 @@ export default function TacticalPlanning() {
                 return (
                   <div key={`otmp_${idx}`} className="flex flex-col items-center gap-1">
                     <label className="text-xs font-semibold text-gray-600">{mes}</label>
-                    <Input type="number" step="0.01" value={vals[idx] || 0}
-                      onChange={(e) => {
+                    <NumericInput value={vals[idx] || 0}
+                      onChange={(val) => {
                         const newVals = [...(planning.monthlyValues || Array(12).fill(0))];
-                        newVals[idx] = parseFloat(e.target.value) || 0;
+                        newVals[idx] = val;
                         updatePlanning(planning.id, 'monthlyValues', newVals);
                       }}
                       className="border-gray-300 text-xs px-1 py-1 text-center" />
@@ -696,8 +732,8 @@ export default function TacticalPlanning() {
         {type === 'puntual' && (
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Condición Actual</label>
-            <Input type="number" step="0.01" value={resultKey.condicionActual || 0}
-              onChange={(e) => updateResultKey(planning.id, resultKey.id, 'condicionActual', parseFloat(e.target.value) || 0)}
+            <NumericInput value={resultKey.condicionActual || 0}
+              onChange={(val) => updateResultKey(planning.id, resultKey.id, 'condicionActual', val)}
               placeholder="Condición actual" className="border-gray-300" />
           </div>
         )}
@@ -710,10 +746,10 @@ export default function TacticalPlanning() {
                 return (
                   <div key={`ooms_${idx}`} className="flex flex-col items-center gap-1">
                     <label className="text-xs font-semibold text-gray-600">{mes}</label>
-                    <Input type="number" step="0.01" value={vals[idx] || 0}
-                      onChange={(e) => {
+                    <NumericInput value={vals[idx] || 0}
+                      onChange={(val) => {
                         const newVals = [...(resultKey.ooMonthlyValues || Array(12).fill(0))];
-                        newVals[idx] = parseFloat(e.target.value) || 0;
+                        newVals[idx] = val;
                         updateResultKey(planning.id, resultKey.id, 'ooMonthlyValues', newVals);
                       }}
                       className="border-gray-300 text-xs px-1 py-1 text-center" />
@@ -736,10 +772,10 @@ export default function TacticalPlanning() {
                 return (
                   <div key={`oomp_${idx}`} className="flex flex-col items-center gap-1">
                     <label className="text-xs font-semibold text-gray-600">{mes}</label>
-                    <Input type="number" step="0.01" value={vals[idx] || 0}
-                      onChange={(e) => {
+                    <NumericInput value={vals[idx] || 0}
+                      onChange={(val) => {
                         const newVals = [...(resultKey.ooMonthlyValues || Array(12).fill(0))];
-                        newVals[idx] = parseFloat(e.target.value) || 0;
+                        newVals[idx] = val;
                         updateResultKey(planning.id, resultKey.id, 'ooMonthlyValues', newVals);
                       }}
                       className="border-gray-300 text-xs px-1 py-1 text-center" />
