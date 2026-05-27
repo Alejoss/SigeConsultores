@@ -289,6 +289,7 @@ Con `RUN_DB_PUSH_ON_STARTUP: "true"` (por defecto en compose), el contenedor `ap
 | BD vacía tras deploy | Volumen `mysql_data` en lugar de `mysql_staging_data` | Ver `docker-compose.prod.yml` y `docker volume ls` |
 | 502 en Nginx | App no en 3001 o contenedor caído | `logs app`, `curl http://127.0.0.1:3001/` |
 | Deploy skipped en Actions | Faltan secretos | Configurar secretos y Re-run workflow |
+| `is not a git clone` / fallo en `git fetch` | `DEPLOY_PATH` incorrecto o PAT sin scope `repo` | Verificar secreto = `/opt/sige-app-staging`; PAT classic con `repo` + `read:packages` |
 | `unauthorized` en pull | PAT sin `read:packages` o paquete privado | `GHCR_TOKEN` y permisos del paquete |
 
 ---

@@ -56,12 +56,12 @@ jobs:
     steps:
       - id: check
         env:
-          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
-          DROPLET_USER: ${{ secrets.DROPLET_USER }}
+          DROPLET_HOST: ${{ vars.DROPLET_HOST || secrets.DROPLET_HOST }}
+          DROPLET_USER: ${{ vars.DROPLET_USER || secrets.DROPLET_USER }}
           DROPLET_SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
           ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
-          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_USERNAME: ${{ vars.GHCR_USERNAME || secrets.GHCR_USERNAME }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         run: |
           if [ -n "$DROPLET_HOST" ] && [ -n "$DROPLET_USER" ] && [ -n "$DROPLET_SSH_KEY" ] && \
@@ -83,32 +83,41 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         env:
           APP_IMAGE: ${{ needs.build-image.outputs.image_name }}:${{ github.sha }}
-          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_USERNAME: ${{ vars.GHCR_USERNAME || secrets.GHCR_USERNAME }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
           ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
           DEPLOY_SHA: ${{ github.sha }}
           REPO_SLUG: ${{ github.repository }}
         with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: ${{ secrets.DROPLET_USER }}
+          host: ${{ vars.DROPLET_HOST || secrets.DROPLET_HOST }}
+          username: ${{ vars.DROPLET_USER || secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script_stop: true
           envs: APP_IMAGE,GHCR_USERNAME,GHCR_TOKEN,DEPLOY_PATH,ENV_PRODUCTION,DEPLOY_SHA,REPO_SLUG
           script: |
             set -eu
+            DEPLOY_PATH="${DEPLOY_PATH%/}"
             mkdir -p "$DEPLOY_PATH"
             cd "$DEPLOY_PATH"
 
+            ORIGIN_AUTH="https://${GHCR_USERNAME}:${GHCR_TOKEN}@github.com/${REPO_SLUG}.git"
+            ORIGIN_PUBLIC="https://github.com/${REPO_SLUG}.git"
+
             if [ ! -d .git ]; then
-              echo "ERROR: $DEPLOY_PATH is not a git clone. Clone the repo there first." >&2
-              exit 1
+              echo "No .git at ${DEPLOY_PATH}; bootstrapping repository..."
+              if [ -z "$(ls -A 2>/dev/null || true)" ]; then
+                git clone -b main "$ORIGIN_AUTH" .
+              else
+                git init
+                git remote add origin "$ORIGIN_AUTH"
+              fi
             fi
 
-            git remote set-url origin "https://${GHCR_USERNAME}:${GHCR_TOKEN}@github.com/${REPO_SLUG}.git"
+            git remote set-url origin "$ORIGIN_AUTH"
             git fetch origin main
             git reset --hard "$DEPLOY_SHA"
-            git remote set-url origin "https://github.com/${REPO_SLUG}.git"
+            git remote set-url origin "$ORIGIN_PUBLIC"
 
             printf '%s\n' "$ENV_PRODUCTION" > .env.production
             chmod +x scripts/deploy-prod.sh
