@@ -10,11 +10,11 @@ import { getProcessIdFromSession } from "@/lib/sessionScope";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 // ─── Tipos de seguimiento disponibles ────────────────────────────────────────
-// 'puntual'           → un valor directo; % = (condicionActual - ci) / (meta - ci) * 100
-// 'puntual_sumatoria' → varios valores que se suman; % = (suma - ci) / (meta - ci) * 100
-// 'mensual_promedio'  → 12 celdas mensuales; condicionActual = promedio de valores ingresados
-// 'mensual_checklist' → 12 celdas con ✓/vacío; condicionActual = meses cumplidos; % = cumplidos/12*100
-type TrackingType = 'puntual' | 'puntual_sumatoria' | 'mensual_promedio' | 'mensual_checklist';
+// 'puntual'            → un valor directo; % = (condicionActual - ci) / (meta - ci) * 100
+// 'mensual_sumatoria'  → 12 celdas mensuales; condicionActual = suma de valores; % = (suma - ci) / (meta - ci) * 100
+// 'mensual_promedio'   → 12 celdas mensuales; condicionActual = promedio de valores ingresados
+// 'mensual_checklist'  → 12 celdas con ✓/vacío; condicionActual = meses cumplidos; % = cumplidos/12*100
+type TrackingType = 'puntual' | 'mensual_sumatoria' | 'mensual_promedio' | 'mensual_checklist';
 
 interface Task {
   id: string;
@@ -43,9 +43,8 @@ interface ResultKey {
   condicionActual?: number;
   porcentajeAlcanzado?: number;
   ooTrackingType?: TrackingType;
-  ooMonthlyValues?: number[];      // 12 valores numéricos (mensual_promedio / puntual_sumatoria)
+  ooMonthlyValues?: number[];      // 12 valores numéricos (mensual_sumatoria / mensual_promedio)
   ooChecklistValues?: boolean[];   // 12 booleanos (mensual_checklist)
-  ooPuntualSumValues?: number[];   // valores adicionales para puntual_sumatoria
 }
 
 interface TacticalPlanning {
@@ -68,7 +67,6 @@ interface TacticalPlanning {
   trackingType?: TrackingType;
   monthlyValues?: number[];
   checklistValues?: boolean[];
-  puntualSumValues?: number[];
 }
 
 const CATEGORIES = ['Finanzas', 'Cliente', 'Procesos Internos', 'Aprendizaje', 'Crecimiento'];
@@ -113,8 +111,8 @@ function calcOOMetrics(rk: ResultKey): { condicionActual: number; porcentajeAlca
     return { condicionActual: ca, porcentajeAlcanzado: calcPct(ci, meta, ca) };
   }
 
-  if (type === 'puntual_sumatoria') {
-    const vals = rk.ooPuntualSumValues || [];
+  if (type === 'mensual_sumatoria') {
+    const vals = rk.ooMonthlyValues || Array(12).fill(0);
     const suma = vals.reduce((s, v) => s + (v || 0), 0);
     return { condicionActual: suma, porcentajeAlcanzado: calcPct(ci, meta, suma) };
   }
@@ -147,8 +145,8 @@ function calcOTMetrics(p: TacticalPlanning): { avanceMeta: number; porcentajeMet
     return { avanceMeta: am, porcentajeMetaAlcanzado: calcPct(pp, meta, am) };
   }
 
-  if (type === 'puntual_sumatoria') {
-    const vals = p.puntualSumValues || [];
+  if (type === 'mensual_sumatoria') {
+    const vals = p.monthlyValues || Array(12).fill(0);
     const suma = vals.reduce((s, v) => s + (v || 0), 0);
     return { avanceMeta: suma, porcentajeMetaAlcanzado: calcPct(pp, meta, suma) };
   }
@@ -278,6 +276,7 @@ export default function TacticalPlanning() {
             avanceMeta: planning.avanceMeta || 0,
             trackingType: (planning.trackingType || 'puntual') as any,
             monthlyValues: planning.monthlyValues || [],
+            checklistValues: planning.checklistValues || [],
           })
         );
         const results = await Promise.allSettled(savePromises);
@@ -304,7 +303,7 @@ export default function TacticalPlanning() {
       if (p.id !== id) return p;
       const updated: TacticalPlanning = { ...p, [field]: value };
       // Recalcular métricas del OT cuando cambia cualquier campo relevante
-      const recalcFields = ['avanceMeta','puntoPartida','metaLlegada','trackingType','monthlyValues','checklistValues','puntualSumValues'];
+      const recalcFields = ['avanceMeta','puntoPartida','metaLlegada','trackingType','monthlyValues','checklistValues'];
       if (recalcFields.includes(field)) {
         const metrics = calcOTMetrics(updated);
         updated.avanceMeta = metrics.avanceMeta;
@@ -339,7 +338,7 @@ export default function TacticalPlanning() {
           if (rk.id !== resultKeyId) return rk;
           const updated: ResultKey = { ...rk, [field]: value };
           // Recalcular métricas del OO cuando cambia cualquier campo relevante
-          const recalcFields = ['condicionActual','condicionInicial','meta','ooTrackingType','ooMonthlyValues','ooChecklistValues','ooPuntualSumValues'];
+          const recalcFields = ['condicionActual','condicionInicial','meta','ooTrackingType','ooMonthlyValues','ooChecklistValues'];
           if (recalcFields.includes(field)) {
             const metrics = calcOOMetrics(updated);
             updated.condicionActual = metrics.condicionActual;
@@ -499,6 +498,7 @@ export default function TacticalPlanning() {
           avanceMeta: planning.avanceMeta || 0,
           trackingType: (planning.trackingType || 'puntual') as any,
           monthlyValues: planning.monthlyValues || [],
+          checklistValues: planning.checklistValues || [],
         }).catch(error => ({ success: false, error }))
       );
       const results = await Promise.allSettled(savePromises);
@@ -526,14 +526,13 @@ export default function TacticalPlanning() {
             onChange={(e) => {
               const newType = e.target.value as TrackingType;
               updatePlanning(planning.id, 'trackingType', newType);
-              if (newType === 'mensual_promedio' && !planning.monthlyValues) updatePlanning(planning.id, 'monthlyValues', Array(12).fill(0));
+              if ((newType === 'mensual_sumatoria' || newType === 'mensual_promedio') && !planning.monthlyValues) updatePlanning(planning.id, 'monthlyValues', Array(12).fill(0));
               if (newType === 'mensual_checklist' && !planning.checklistValues) updatePlanning(planning.id, 'checklistValues', Array(12).fill(false));
-              if (newType === 'puntual_sumatoria' && !planning.puntualSumValues) updatePlanning(planning.id, 'puntualSumValues', [0]);
             }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
           >
             <option value="puntual">Puntual (valor directo)</option>
-            <option value="puntual_sumatoria">Puntual Sumatoria</option>
+            <option value="mensual_sumatoria">Mensual Sumatoria (12 meses)</option>
             <option value="mensual_promedio">Mensual Promedio (12 meses)</option>
             <option value="mensual_checklist">Mensual Check List</option>
           </select>
@@ -554,37 +553,31 @@ export default function TacticalPlanning() {
           </div>
         )}
 
-        {type === 'puntual_sumatoria' && (
+        {type === 'mensual_sumatoria' && (
           <div className="space-y-3">
-            <div className="space-y-2">
-              {(planning.puntualSumValues || [0]).map((val, idx) => (
-                <div key={`otsum_${idx}`} className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500 w-6">{idx + 1}.</span>
-                  <Input type="number" step="0.01" value={val}
-                    onChange={(e) => {
-                      const newVals = [...(planning.puntualSumValues || [0])];
-                      newVals[idx] = parseFloat(e.target.value) || 0;
-                      updatePlanning(planning.id, 'puntualSumValues', newVals);
-                    }}
-                    className="border-gray-300 flex-1" />
-                  {idx > 0 && (
-                    <Button size="sm" variant="destructive" onClick={() => {
-                      const newVals = (planning.puntualSumValues || [0]).filter((_, i) => i !== idx);
-                      updatePlanning(planning.id, 'puntualSumValues', newVals);
-                    }}>✕</Button>
-                  )}
-                </div>
-              ))}
-              <Button size="sm" variant="outline" onClick={() => updatePlanning(planning.id, 'puntualSumValues', [...(planning.puntualSumValues || [0]), 0])}>
-                <Plus size={14} className="mr-1" /> Agregar valor
-              </Button>
+            <div className="grid grid-cols-6 gap-2">
+              {MONTHS.map((mes, idx) => {
+                const vals = planning.monthlyValues || Array(12).fill(0);
+                return (
+                  <div key={`otms_${idx}`} className="flex flex-col items-center gap-1">
+                    <label className="text-xs font-semibold text-gray-600">{mes}</label>
+                    <Input type="number" step="0.01" value={vals[idx] || 0}
+                      onChange={(e) => {
+                        const newVals = [...(planning.monthlyValues || Array(12).fill(0))];
+                        newVals[idx] = parseFloat(e.target.value) || 0;
+                        updatePlanning(planning.id, 'monthlyValues', newVals);
+                      }}
+                      className="border-gray-300 text-xs px-1 py-1 text-center" />
+                  </div>
+                );
+              })}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Total acumulado</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Total acumulado (Condición Actual)</label>
                 <div className="p-2 bg-green-50 border border-green-300 rounded-lg text-center">
                   <span className="text-xl font-bold text-green-700">
-                    {((planning.puntualSumValues || [0]).reduce((s, v) => s + (v || 0), 0)).toFixed(2)}{planning.unidadMedida ? ` ${planning.unidadMedida}` : ''}
+                    {((planning.monthlyValues || Array(12).fill(0)).reduce((s: number, v: number) => s + (v || 0), 0)).toFixed(2)}{planning.unidadMedida ? ` ${planning.unidadMedida}` : ''}
                   </span>
                 </div>
               </div>
@@ -595,6 +588,8 @@ export default function TacticalPlanning() {
             </div>
           </div>
         )}
+
+
 
         {type === 'mensual_promedio' && (
           <div className="space-y-3">
@@ -686,14 +681,13 @@ export default function TacticalPlanning() {
             onChange={(e) => {
               const newType = e.target.value as TrackingType;
               updateResultKey(planning.id, resultKey.id, 'ooTrackingType', newType);
-              if (newType === 'mensual_promedio' && !resultKey.ooMonthlyValues) updateResultKey(planning.id, resultKey.id, 'ooMonthlyValues', Array(12).fill(0));
+              if ((newType === 'mensual_sumatoria' || newType === 'mensual_promedio') && !resultKey.ooMonthlyValues) updateResultKey(planning.id, resultKey.id, 'ooMonthlyValues', Array(12).fill(0));
               if (newType === 'mensual_checklist' && !resultKey.ooChecklistValues) updateResultKey(planning.id, resultKey.id, 'ooChecklistValues', Array(12).fill(false));
-              if (newType === 'puntual_sumatoria' && !resultKey.ooPuntualSumValues) updateResultKey(planning.id, resultKey.id, 'ooPuntualSumValues', [0]);
             }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
           >
             <option value="puntual">Puntual (valor directo)</option>
-            <option value="puntual_sumatoria">Puntual Sumatoria</option>
+            <option value="mensual_sumatoria">Mensual Sumatoria (12 meses)</option>
             <option value="mensual_promedio">Mensual Promedio (12 meses)</option>
             <option value="mensual_checklist">Mensual Check List</option>
           </select>
@@ -708,31 +702,27 @@ export default function TacticalPlanning() {
           </div>
         )}
 
-        {type === 'puntual_sumatoria' && (
-          <div className="space-y-2">
-            {(resultKey.ooPuntualSumValues || [0]).map((val, idx) => (
-              <div key={`oosum_${idx}`} className="flex items-center gap-2">
-                <span className="text-sm text-gray-500 w-6">{idx + 1}.</span>
-                <Input type="number" step="0.01" value={val}
-                  onChange={(e) => {
-                    const newVals = [...(resultKey.ooPuntualSumValues || [0])];
-                    newVals[idx] = parseFloat(e.target.value) || 0;
-                    updateResultKey(planning.id, resultKey.id, 'ooPuntualSumValues', newVals);
-                  }}
-                  className="border-gray-300 flex-1" />
-                {idx > 0 && (
-                  <Button size="sm" variant="destructive" onClick={() => {
-                    const newVals = (resultKey.ooPuntualSumValues || [0]).filter((_, i) => i !== idx);
-                    updateResultKey(planning.id, resultKey.id, 'ooPuntualSumValues', newVals);
-                  }}>✕</Button>
-                )}
-              </div>
-            ))}
-            <Button size="sm" variant="outline" onClick={() => updateResultKey(planning.id, resultKey.id, 'ooPuntualSumValues', [...(resultKey.ooPuntualSumValues || [0]), 0])}>
-              <Plus size={14} className="mr-1" /> Agregar valor
-            </Button>
-            <div className="p-2 bg-green-50 border border-green-300 rounded-lg text-center mt-2">
-              <span className="text-sm font-semibold text-gray-600">Total: </span>
+        {type === 'mensual_sumatoria' && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-6 gap-2">
+              {MONTHS.map((mes, idx) => {
+                const vals = resultKey.ooMonthlyValues || Array(12).fill(0);
+                return (
+                  <div key={`ooms_${idx}`} className="flex flex-col items-center gap-1">
+                    <label className="text-xs font-semibold text-gray-600">{mes}</label>
+                    <Input type="number" step="0.01" value={vals[idx] || 0}
+                      onChange={(e) => {
+                        const newVals = [...(resultKey.ooMonthlyValues || Array(12).fill(0))];
+                        newVals[idx] = parseFloat(e.target.value) || 0;
+                        updateResultKey(planning.id, resultKey.id, 'ooMonthlyValues', newVals);
+                      }}
+                      className="border-gray-300 text-xs px-1 py-1 text-center" />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="p-2 bg-green-50 border border-green-300 rounded-lg text-center">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Total acumulado (Condición Actual)</label>
               <span className="text-xl font-bold text-green-700">{condicionActual.toFixed(2)}</span>
             </div>
           </div>

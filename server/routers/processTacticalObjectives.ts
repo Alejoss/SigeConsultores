@@ -190,8 +190,10 @@ export const processTacticalObjectivesRouter = router({
       metaLlegada: z.number().optional(),
       unidadMedida: z.string().optional(),
       avanceMeta: z.number().optional(),
-      trackingType: z.enum(['puntual', 'mensual']).optional(),
+      trackingType: z.enum(['puntual', 'mensual_sumatoria', 'mensual_promedio', 'mensual_checklist']).optional(),
       monthlyValues: z.array(z.number()).optional(),
+      checklistValues: z.array(z.boolean()).optional(),
+      puntualSumValues: z.array(z.number()).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -249,6 +251,8 @@ export const processTacticalObjectivesRouter = router({
           avanceMeta: input.avanceMeta !== undefined ? input.avanceMeta : (existingPlanningData.avanceMeta || 0),
           trackingType: input.trackingType !== undefined ? input.trackingType : (existingPlanningData.trackingType || 'puntual'),
           monthlyValues: input.monthlyValues !== undefined ? input.monthlyValues : (existingPlanningData.monthlyValues || []),
+          checklistValues: input.checklistValues !== undefined ? input.checklistValues : (existingPlanningData.checklistValues || []),
+          puntualSumValues: input.puntualSumValues !== undefined ? input.puntualSumValues : (existingPlanningData.puntualSumValues || []),
         };
 
         // Validate JSON can be stringified
@@ -337,6 +341,8 @@ export const processTacticalObjectivesRouter = router({
             porcentajeMetaAlcanzado,
             trackingType: planningData.trackingType || 'puntual',
             monthlyValues: planningData.monthlyValues || [],
+            checklistValues: planningData.checklistValues || [],
+            puntualSumValues: planningData.puntualSumValues || [],
           };
         } catch (e) {
           console.error('[loadPlanningData] Error parsing planning data:', e);
