@@ -74,9 +74,8 @@ const CATEGORIES = ['Finanzas', 'Cliente', 'Procesos Internos', 'Aprendizaje', '
 const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 /**
- * Input numérico que mantiene el valor como string localmente.
- * Actualiza el estado padre en onChange cuando el valor es un número válido,
- * y en onBlur para normalizar el valor (ej: "" → 0).
+ * Input numérico sin estado local — usa ref para el DOM.
+ * Actualiza el padre en onChange (tiempo real) y en onBlur (normalización).
  */
 function NumericInput({ value, onChange, className, placeholder }: {
   value: number;
@@ -84,34 +83,38 @@ function NumericInput({ value, onChange, className, placeholder }: {
   className?: string;
   placeholder?: string;
 }) {
-  const [local, setLocal] = useState(String(value));
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isFocused = useRef(false);
 
-  // Sincronizar si el valor externo cambia (ej: al cargar datos)
+  // Sincronizar el valor del DOM cuando cambia externamente (solo si no está en foco)
   useEffect(() => {
-    setLocal(String(value));
+    if (inputRef.current && !isFocused.current) {
+      inputRef.current.value = String(value);
+    }
   }, [value]);
 
   return (
-    <Input
+    <input
+      ref={inputRef}
       type="number"
       step="0.01"
-      value={local}
+      defaultValue={value}
       placeholder={placeholder}
-      className={className}
+      className={`flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${className || ''}`}
+      onFocus={() => { isFocused.current = true; }}
       onChange={(e) => {
         const raw = e.target.value;
-        setLocal(raw);
-        // Actualizar el padre inmediatamente si el valor es un número válido y completo
-        // (no vacío, no solo "-", no terminado en ".")
         if (raw !== '' && raw !== '-' && !raw.endsWith('.')) {
           const parsed = parseFloat(raw);
           if (!isNaN(parsed)) onChange(parsed);
         }
       }}
       onBlur={() => {
-        const parsed = parseFloat(local);
+        isFocused.current = false;
+        const raw = inputRef.current?.value || '';
+        const parsed = parseFloat(raw);
         const num = isNaN(parsed) ? 0 : parsed;
-        setLocal(String(num));
+        if (inputRef.current) inputRef.current.value = String(num);
         onChange(num);
       }}
     />
