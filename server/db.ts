@@ -1418,7 +1418,7 @@ export async function createCompanyDocument(companyId: number, documentName: str
     processId = result[0].id;
   }
   
-  return db.insert(documents).values({ processId, documentName, documentType, status, fileUrl, fileKey });
+  return await db.insert(documents).values({ processId, documentName, documentType, status, fileUrl, fileKey });
 }
 
 /** Fixed document name for the company-level process map image file. */
