@@ -258,21 +258,9 @@ export default function TacticalPlanning() {
     if (!tacticalObjectivesData || tacticalObjectivesData.length === 0) return;
     if (planningDataFromDB === undefined) return;
 
-    // Si ya cargamos y hay datos de BD, actualizar siempre (para capturar refetches en background)
-    if (hasLoadedRef.current) {
-      if (planningDataFromDB && planningDataFromDB.length > 0) {
-        // Solo actualizar si los datos son diferentes (evitar loops)
-        setPlannings(prev => {
-          const prevStr = JSON.stringify(prev.map(p => ({ id: p.id, monthlyValues: p.monthlyValues, checklistValues: p.checklistValues })));
-          const newStr = JSON.stringify(planningDataFromDB.map((p: any) => ({ id: p.id, monthlyValues: p.monthlyValues, checklistValues: p.checklistValues })));
-          if (prevStr === newStr) return prev;
-          // Resetear pendingSaveRef para que el refetch no dispare un guardado innecesario
-          setTimeout(() => { pendingSaveRef.current = false; }, 0);
-          return planningDataFromDB;
-        });
-      }
-      return;
-    }
+    // Si ya cargamos, no sobrescribir el estado local con refetches en background
+    // (evita que el refetch deshaga los cambios del usuario mientras edita)
+    if (hasLoadedRef.current) return;
 
     hasLoadedRef.current = true;
 
