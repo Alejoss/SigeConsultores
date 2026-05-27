@@ -301,12 +301,27 @@ export const processTacticalObjectivesRouter = router({
           const ponderacion = planningData.ponderacion || 0;
           const puntoPartida = planningData.puntoPartida || 0;
           const metaLlegada = planningData.metaLlegada || 0;
-          const avanceMeta = planningData.avanceMeta || 0;
           const unidadMedida = planningData.unidadMedida || '';
+          const trackingType = planningData.trackingType || 'puntual';
+          const monthlyValues: number[] = planningData.monthlyValues || [];
+          const checklistValues: boolean[] = planningData.checklistValues || [];
+
+          // Recalcular avanceMeta desde los valores fuente para garantizar consistencia
+          let avanceMeta = planningData.avanceMeta || 0;
+          if (trackingType === 'mensual_sumatoria') {
+            avanceMeta = monthlyValues.reduce((s: number, v: number) => s + (v || 0), 0);
+          } else if (trackingType === 'mensual_promedio') {
+            const nonZero = monthlyValues.filter((v: number) => v !== 0);
+            avanceMeta = nonZero.length > 0 ? nonZero.reduce((s: number, v: number) => s + v, 0) / nonZero.length : 0;
+          } else if (trackingType === 'mensual_checklist') {
+            avanceMeta = checklistValues.filter(Boolean).length;
+          }
           
           // Calculate porcentajeMetaAlcanzado correctly
           let porcentajeMetaAlcanzado = 0;
-          if (metaLlegada !== puntoPartida) {
+          if (trackingType === 'mensual_checklist') {
+            porcentajeMetaAlcanzado = Math.round((avanceMeta / 12) * 100);
+          } else if (metaLlegada !== puntoPartida) {
             porcentajeMetaAlcanzado = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
             porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
           }
@@ -339,9 +354,9 @@ export const processTacticalObjectivesRouter = router({
             unidadMedida,
             avanceMeta,
             porcentajeMetaAlcanzado,
-            trackingType: planningData.trackingType || 'puntual',
-            monthlyValues: planningData.monthlyValues || [],
-            checklistValues: planningData.checklistValues || [],
+            trackingType,
+            monthlyValues,
+            checklistValues,
             puntualSumValues: planningData.puntualSumValues || [],
           };
         } catch (e) {

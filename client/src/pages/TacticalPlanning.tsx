@@ -291,15 +291,22 @@ export default function TacticalPlanning() {
   useEffect(() => {
     if (plannings.length === 0 || !processId) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    // Capturar el estado actual en el closure para que el timeout use siempre los datos más recientes
+    const currentPlannings = plannings;
+    const currentProcessId = processId;
     saveTimeoutRef.current = setTimeout(async () => {
-      if (savingRef.current || !processId) return;
-      const snapshot = planningsRef.current;
-      if (snapshot.length === 0) return;
+      if (savingRef.current || !currentProcessId) return;
+      if (currentPlannings.length === 0) return;
       try {
-        localStorage.setItem(`tactical_planning_${processId}`, JSON.stringify(snapshot));
+        // Recalcular avanceMeta antes de guardar para asegurar que sea correcto
+        const planningsToSave = currentPlannings.map(p => {
+          const metrics = calcOTMetrics(p);
+          return { ...p, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado };
+        });
+        localStorage.setItem(`tactical_planning_${currentProcessId}`, JSON.stringify(planningsToSave));
         savingRef.current = true;
         setSaving(true);
-        const savePromises = snapshot.map(planning =>
+        const savePromises = planningsToSave.map(planning =>
           savePlanningMutation.mutateAsync({
             objectiveId: planning.objectiveId,
             category: planning.category,
@@ -520,8 +527,13 @@ export default function TacticalPlanning() {
     savingRef.current = true;
     setManualSaving(true);
     const savePromise = (async () => {
-      localStorage.setItem(`tactical_planning_${processId}`, JSON.stringify(plannings));
-      const savePromises = plannings.map(planning =>
+      // Recalcular avanceMeta antes de guardar para asegurar que sea correcto
+      const planningsToSave = plannings.map(p => {
+        const metrics = calcOTMetrics(p);
+        return { ...p, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado };
+      });
+      localStorage.setItem(`tactical_planning_${processId}`, JSON.stringify(planningsToSave));
+      const savePromises = planningsToSave.map(planning =>
         savePlanningMutation.mutateAsync({
           objectiveId: planning.objectiveId,
           category: planning.category,
