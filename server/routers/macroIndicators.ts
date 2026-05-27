@@ -76,32 +76,27 @@ export const macroIndicatorsRouter = router({
 
             let objetivosTacticosAlcanzado = 0;
             if (tacticalObjectives.length > 0) {
-              let totalProgress = 0;
+              let totalPonderado = 0;
               tacticalObjectives.forEach((obj: any) => {
                 if (obj.planningData) {
                   try {
                     const planData = JSON.parse(obj.planningData);
-                    if (planData.resultKeys && Array.isArray(planData.resultKeys)) {
-                      let objectiveProgress = 0;
-                      let totalWeighting = 0;
-                      planData.resultKeys.forEach((key: any) => {
-                        if (key.tasks && Array.isArray(key.tasks)) {
-                          key.tasks.forEach((task: any) => {
-                            objectiveProgress += (task.percentageCompleted || 0) * (task.weighting || 1);
-                            totalWeighting += (task.weighting || 1);
-                          });
-                        }
-                      });
-                      if (totalWeighting > 0) {
-                        totalProgress += Math.round(objectiveProgress / totalWeighting);
-                      }
+                    const ponderacion = parseFloat(planData.ponderacion) || 0;
+                    const puntoPartida = parseFloat(planData.puntoPartida) || 0;
+                    const metaLlegada = parseFloat(planData.metaLlegada) || 0;
+                    const avanceMeta = parseFloat(planData.avanceMeta) || 0;
+                    let porcentajeMetaAlcanzado = 0;
+                    if (metaLlegada !== puntoPartida) {
+                      porcentajeMetaAlcanzado = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
+                      porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
                     }
+                    totalPonderado += porcentajeMetaAlcanzado * (ponderacion / 100);
                   } catch (e) {
                     console.error("Error parsing planning data:", e);
                   }
                 }
               });
-              objetivosTacticosAlcanzado = tacticalObjectives.length > 0 ? Math.round(totalProgress / tacticalObjectives.length) : 0;
+              objetivosTacticosAlcanzado = Math.round(totalPonderado);
             }
 
             // 4. Cumplimientos
@@ -212,26 +207,21 @@ export const macroIndicatorsRouter = router({
           .from(processTacticalObjectives)
           .where(eq(processTacticalObjectives.processId, input.processId));
 
-        let totalObjectivesProgress = 0;
+        let totalPonderadoOT = 0;
         tacticalObjectives.forEach((obj: any) => {
           if (obj.planningData) {
             try {
               const planData = JSON.parse(obj.planningData);
-              if (planData.resultKeys && Array.isArray(planData.resultKeys)) {
-                let objectiveProgress = 0;
-                let totalWeighting = 0;
-                planData.resultKeys.forEach((key: any) => {
-                  if (key.tasks && Array.isArray(key.tasks)) {
-                    key.tasks.forEach((task: any) => {
-                      objectiveProgress += (task.percentageCompleted || 0) * (task.weighting || 1);
-                      totalWeighting += (task.weighting || 1);
-                    });
-                  }
-                });
-                if (totalWeighting > 0) {
-                  totalObjectivesProgress += Math.round(objectiveProgress / totalWeighting);
-                }
+              const ponderacion = parseFloat(planData.ponderacion) || 0;
+              const puntoPartida = parseFloat(planData.puntoPartida) || 0;
+              const metaLlegada = parseFloat(planData.metaLlegada) || 0;
+              const avanceMeta = parseFloat(planData.avanceMeta) || 0;
+              let porcentajeMetaAlcanzado = 0;
+              if (metaLlegada !== puntoPartida) {
+                porcentajeMetaAlcanzado = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
+                porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
               }
+              totalPonderadoOT += porcentajeMetaAlcanzado * (ponderacion / 100);
             } catch (e) {
               console.error("Error parsing planning data:", e);
             }
@@ -239,7 +229,7 @@ export const macroIndicatorsRouter = router({
         });
         const objectivesPercentage =
           tacticalObjectives.length > 0
-            ? Math.round(totalObjectivesProgress / tacticalObjectives.length)
+            ? Math.round(totalPonderadoOT)
             : 0;
 
         // 4. Cumplimientos
