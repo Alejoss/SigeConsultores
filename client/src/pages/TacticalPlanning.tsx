@@ -690,7 +690,7 @@ export default function TacticalPlanning() {
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">% Meta alcanzada</label>
-              <p className="text-2xl font-bold text-blue-600">{porcentajeMetaAlcanzado.toFixed(0)}%</p>
+              <p className="text-2xl font-bold text-blue-600">{calcOTMetrics(planning).porcentajeMetaAlcanzado.toFixed(0)}%</p>
             </div>
           </div>
         )}
