@@ -318,8 +318,8 @@ export default function TacticalPlanning() {
             unidadMedida: planning.unidadMedida || '',
             avanceMeta: planning.avanceMeta || 0,
             trackingType: (planning.trackingType || 'puntual') as any,
-            monthlyValues: planning.monthlyValues || [],
-            checklistValues: planning.checklistValues || [],
+            monthlyValues: Array(12).fill(0).map((_, i) => Number((planning.monthlyValues || [])[i] || 0)),
+            checklistValues: Array(12).fill(false).map((_, i) => Boolean((planning.checklistValues || [])[i] || false)),
           })
         );
         const results = await Promise.allSettled(savePromises);
@@ -545,8 +545,8 @@ export default function TacticalPlanning() {
           unidadMedida: planning.unidadMedida || '',
           avanceMeta: planning.avanceMeta || 0,
           trackingType: (planning.trackingType || 'puntual') as any,
-          monthlyValues: planning.monthlyValues || [],
-          checklistValues: planning.checklistValues || [],
+          monthlyValues: Array(12).fill(0).map((_, i) => Number((planning.monthlyValues || [])[i] || 0)),
+          checklistValues: Array(12).fill(false).map((_, i) => Boolean((planning.checklistValues || [])[i] || false)),
         }).catch(error => ({ success: false, error }))
       );
       const results = await Promise.allSettled(savePromises);
