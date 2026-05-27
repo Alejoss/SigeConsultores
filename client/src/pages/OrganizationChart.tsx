@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
+import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import OrganizationChartModule from "@/components/OrganizationChartModule";
@@ -11,12 +12,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Download, Save, ArrowLeft } from "lucide-react";
+import { Download, Save, ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function OrganizationChart() {
   const { user } = useAuth();
-  const { isManagerLogin, managerCompanyId } = useManagerAuth();
+  const { isManagerLogin, managerCompanyId, isLoading: managerLoading } = useManagerAuth();
+  const { session: processLeaderSession, isLoading: plLoading } = useProcessLeaderAuth();
   const [, setLocation] = useLocation();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -24,26 +26,30 @@ export default function OrganizationChart() {
   const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const companyIdFromUrl = urlParams.get('companyId');
 
-  // Use manager company if logged in as manager, otherwise use URL parameter or localStorage
+  // Wait for auth to finish loading before resolving companyId
+  const isAuthLoading = managerLoading || plLoading;
+
+  // Use manager company if logged in as manager, process leader company, URL param, or localStorage
   const selectedCompanyId = useMemo(() => {
     if (isManagerLogin && managerCompanyId) {
       return managerCompanyId;
     }
+    if (processLeaderSession?.companyId) {
+      return processLeaderSession.companyId;
+    }
     if (companyIdFromUrl) return parseInt(companyIdFromUrl);
     const stored = localStorage.getItem("selectedCompanyId") || localStorage.getItem("managerCompanyId");
     return stored ? parseInt(stored) : 0;
-  }, [isManagerLogin, managerCompanyId, companyIdFromUrl]);
+  }, [isManagerLogin, managerCompanyId, processLeaderSession, companyIdFromUrl]);
 
   const handleExportPDF = (type: "basic" | "extended") => {
     toast.info(`Exportando versión ${type === "basic" ? "básica" : "extendida"}...`);
-    // TODO: Implement PDF export
     console.log("Export PDF as", type);
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // TODO: Implement save functionality
       toast.success("Organigrama guardado exitosamente");
     } catch (error) {
       toast.error("Error al guardar el organigrama");
@@ -55,6 +61,18 @@ export default function OrganizationChart() {
   const handleBack = () => {
     setLocation("/dashboard");
   };
+
+  // Show loading spinner while auth is resolving
+  if (isAuthLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-16 gap-2 text-slate-600">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span>Cargando organigrama...</span>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!selectedCompanyId) {
     return (

@@ -190,8 +190,10 @@ export const processTacticalObjectivesRouter = router({
       metaLlegada: z.number().optional(),
       unidadMedida: z.string().optional(),
       avanceMeta: z.number().optional(),
-      trackingType: z.enum(['puntual', 'mensual']).optional(),
+      trackingType: z.enum(['puntual', 'mensual_sumatoria', 'mensual_promedio', 'mensual_checklist']).optional(),
       monthlyValues: z.array(z.number()).optional(),
+      checklistValues: z.array(z.boolean()).optional(),
+      puntualSumValues: z.array(z.number()).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -249,6 +251,8 @@ export const processTacticalObjectivesRouter = router({
           avanceMeta: input.avanceMeta !== undefined ? input.avanceMeta : (existingPlanningData.avanceMeta || 0),
           trackingType: input.trackingType !== undefined ? input.trackingType : (existingPlanningData.trackingType || 'puntual'),
           monthlyValues: input.monthlyValues !== undefined ? input.monthlyValues : (existingPlanningData.monthlyValues || []),
+          checklistValues: input.checklistValues !== undefined ? input.checklistValues : (existingPlanningData.checklistValues || []),
+          puntualSumValues: input.puntualSumValues !== undefined ? input.puntualSumValues : (existingPlanningData.puntualSumValues || []),
         };
 
         // Validate JSON can be stringified
@@ -297,12 +301,30 @@ export const processTacticalObjectivesRouter = router({
           const ponderacion = planningData.ponderacion || 0;
           const puntoPartida = planningData.puntoPartida || 0;
           const metaLlegada = planningData.metaLlegada || 0;
-          const avanceMeta = planningData.avanceMeta || 0;
           const unidadMedida = planningData.unidadMedida || '';
+          const trackingType = planningData.trackingType || 'puntual';
+          // Normalizar siempre a 12 elementos para evitar arrays sparse
+          const rawMonthly: number[] = planningData.monthlyValues || [];
+          const monthlyValues: number[] = Array(12).fill(0).map((_, i) => Number(rawMonthly[i] || 0));
+          const rawChecklist: boolean[] = planningData.checklistValues || [];
+          const checklistValues: boolean[] = Array(12).fill(false).map((_, i) => Boolean(rawChecklist[i] || false));
+
+          // Recalcular avanceMeta desde los valores fuente para garantizar consistencia
+          let avanceMeta = planningData.avanceMeta || 0;
+          if (trackingType === 'mensual_sumatoria') {
+            avanceMeta = monthlyValues.reduce((s: number, v: number) => s + (v || 0), 0);
+          } else if (trackingType === 'mensual_promedio') {
+            const nonZero = monthlyValues.filter((v: number) => v !== 0);
+            avanceMeta = nonZero.length > 0 ? nonZero.reduce((s: number, v: number) => s + v, 0) / nonZero.length : 0;
+          } else if (trackingType === 'mensual_checklist') {
+            avanceMeta = checklistValues.filter(Boolean).length;
+          }
           
           // Calculate porcentajeMetaAlcanzado correctly
           let porcentajeMetaAlcanzado = 0;
-          if (metaLlegada !== puntoPartida) {
+          if (trackingType === 'mensual_checklist') {
+            porcentajeMetaAlcanzado = Math.round((avanceMeta / 12) * 100);
+          } else if (metaLlegada !== puntoPartida) {
             porcentajeMetaAlcanzado = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
             porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
           }
@@ -315,7 +337,12 @@ export const processTacticalObjectivesRouter = router({
               rk.porcentajeAlcanzado !== undefined && rk.porcentajeAlcanzado !== null
                 ? Number(rk.porcentajeAlcanzado)
                 : calcPorcentajeAlcanzado(ci, m, ca);
-            return { ...rk, porcentajeAlcanzado };
+            // Normalizar ooMonthlyValues y ooChecklistValues a 12 elementos
+            const rawOoMonthly: number[] = rk.ooMonthlyValues || [];
+            const ooMonthlyValues: number[] = Array(12).fill(0).map((_, i) => Number(rawOoMonthly[i] || 0));
+            const rawOoChecklist: boolean[] = rk.ooChecklistValues || [];
+            const ooChecklistValues: boolean[] = Array(12).fill(false).map((_, i) => Boolean(rawOoChecklist[i] || false));
+            return { ...rk, porcentajeAlcanzado, ooMonthlyValues, ooChecklistValues };
           });
           
           return {
@@ -335,8 +362,10 @@ export const processTacticalObjectivesRouter = router({
             unidadMedida,
             avanceMeta,
             porcentajeMetaAlcanzado,
-            trackingType: planningData.trackingType || 'puntual',
-            monthlyValues: planningData.monthlyValues || [],
+            trackingType,
+            monthlyValues,
+            checklistValues,
+            puntualSumValues: planningData.puntualSumValues || [],
           };
         } catch (e) {
           console.error('[loadPlanningData] Error parsing planning data:', e);

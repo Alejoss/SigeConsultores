@@ -2,10 +2,11 @@ import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Upload, Download, Trash2, FileText } from "lucide-react";
+import { AlertCircle, Upload, Download, Trash2, FileText, Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { getCompanyIdFromSession } from "@/lib/sessionScope";
+import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
+import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 
 interface DocumentManagerProps {
   documentType: "Policy" | "Values" | "StrategicObjectives" | "Indicators" | "ProcessMap";
@@ -25,20 +26,32 @@ export default function DocumentManager({
   infoContent,
 }: DocumentManagerProps) {
   const [, setLocation] = useLocation();
-  const [companyId] = useState<number | null>(() => getCompanyIdFromSession());
-  const [companyName] = useState(
-    () =>
-      localStorage.getItem("selectedCompanyName") ||
-      localStorage.getItem("managerCompanyName") ||
-      "Empresa"
-  );
+  const { isManagerLogin, managerCompanyId, managerCompanyName, isLoading: managerLoading } = useManagerAuth();
+  const { session: processLeaderSession, isLoading: plLoading } = useProcessLeaderAuth();
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Resolve companyId reactively from auth state
+  const companyId: number | null = (() => {
+    if (isManagerLogin && managerCompanyId) return managerCompanyId;
+    if (processLeaderSession?.companyId) return processLeaderSession.companyId;
+    const stored = localStorage.getItem("selectedCompanyId") || localStorage.getItem("managerCompanyId");
+    return stored ? parseInt(stored, 10) : null;
+  })();
+
+  const companyName =
+    processLeaderSession?.companyName ||
+    managerCompanyName ||
+    localStorage.getItem("selectedCompanyName") ||
+    localStorage.getItem("managerCompanyName") ||
+    "Empresa";
+
+  const isAuthLoading = managerLoading || plLoading;
 
   // Fetch documents for this company and type
   const { data: documents, isLoading, refetch } = trpc.documents.getByCompanyAndType.useQuery(
     { companyId: companyId || 0, documentType },
-    { enabled: companyId !== null }
+    { enabled: !!companyId }
   );
 
   // Upload mutation
@@ -110,7 +123,6 @@ export default function DocumentManager({
   };
 
   const handleDownload = (fileUrl: string, fileName: string) => {
-    // Para PDFs, abrir en nueva ventana. Para otros formatos, descargar.
     if (fileName.toLowerCase().endsWith('.pdf')) {
       window.open(fileUrl, '_blank');
     } else {
@@ -122,6 +134,20 @@ export default function DocumentManager({
       document.body.removeChild(link);
     }
   };
+
+  // Show loading spinner while auth is resolving
+  if (isAuthLoading) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-center gap-2 text-slate-600 py-8">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span>Cargando...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!companyId) {
     return (
