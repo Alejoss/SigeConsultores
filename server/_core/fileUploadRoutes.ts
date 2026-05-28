@@ -34,7 +34,6 @@ export function registerFileUploadRoutes(app: Express) {
 
         const userId =
           auth.user?.id ??
-          auth.manager?.managerId ??
           auth.processLeader?.processLeaderId ??
           0;
 
