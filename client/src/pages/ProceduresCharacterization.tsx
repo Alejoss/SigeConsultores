@@ -85,10 +85,19 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
     createdDate: new Date().toISOString().split("T")[0],
     records: [],
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editProcedureFile, setEditProcedureFile] = useState<File | null>(null);
+  const [editFlowchartFile, setEditFlowchartFile] = useState<File | null>(null);
+  const [editRecordFile, setEditRecordFile] = useState<File | null>(null);
+  const [newRecordFile, setNewRecordFile] = useState<File | null>(null);
 
   const procedureInputRef = useRef<HTMLInputElement>(null);
   const flowchartInputRef = useRef<HTMLInputElement>(null);
   const recordFileInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
+  const editProcedureFileRef = useRef<HTMLInputElement>(null);
+  const editFlowchartFileRef = useRef<HTMLInputElement>(null);
+  const editRecordFileRef = useRef<HTMLInputElement>(null);
+  const newRecordFileRef = useRef<HTMLInputElement>(null);
 
   const uploadFileMutation = trpc.procedures.uploadFile.useMutation();
   const createMutation = trpc.procedures.create.useMutation();
@@ -146,7 +155,17 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
       return;
     }
 
+    setIsSubmitting(true);
     try {
+      let fileUrl = editingRecord.fileUrl || undefined;
+      let fileKey = editingRecord.fileKey || undefined;
+
+      if (editRecordFile) {
+        const result = await uploadFile(editRecordFile);
+        fileUrl = result.url;
+        fileKey = result.key;
+      }
+
       await updateRecordMutation.mutateAsync({
         id: editingRecord.id,
         name: editingRecord.name,
@@ -155,13 +174,14 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
         date: typeof editingRecord.date === 'string'
           ? editingRecord.date
           : new Date().toISOString().split('T')[0],
-        fileUrl: editingRecord.fileUrl || undefined,
-        fileKey: editingRecord.fileKey || undefined,
+        fileUrl,
+        fileKey,
       });
 
       toast.success("Registro actualizado correctamente");
       setEditingRecordId(null);
       setEditingRecord(null);
+      setEditRecordFile(null);
       
       // Recargar los registros del procedimiento
       if (expandedId) {
@@ -170,6 +190,8 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
     } catch (error) {
       toast.error("Error al actualizar el registro");
       console.error(error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -179,18 +201,31 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
       return;
     }
 
+    setIsSubmitting(true);
     try {
+      let fileUrl = "";
+      let fileKey = "";
+
+      if (newRecordFile) {
+        const result = await uploadFile(newRecordFile);
+        fileUrl = result.url;
+        fileKey = result.key;
+      }
+
       await addRecordMutation.mutateAsync({
         procedureId,
         name: newRecordData.name,
         code: newRecordData.code,
         version: newRecordData.version,
         date: typeof newRecordData.date === 'string' ? newRecordData.date : new Date().toISOString().split('T')[0],
+        fileUrl: fileUrl || undefined,
+        fileKey: fileKey || undefined,
       });
 
       toast.success("Registro agregado correctamente");
       setAddingRecordToProcedureId(null);
       setNewRecordData({ name: "", code: "", version: "", date: new Date().toISOString().split("T")[0] });
+      setNewRecordFile(null);
       
       getByProcessQuery.refetch();
       if (expandedId === procedureId) {
@@ -199,6 +234,8 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
     } catch (error) {
       toast.error("Error al agregar el registro");
       console.error(error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -208,6 +245,7 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
       return;
     }
 
+    setIsSubmitting(true);
     try {
       let procedureFileUrl = "";
       let procedureFileKey = "";
@@ -307,6 +345,8 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
       console.error("Error:", error);
       const errorMsg = error instanceof Error ? error.message : "Error desconocido";
       toast.error("Error al subir procedimiento: " + errorMsg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -325,7 +365,25 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
   const handleEditSave = async () => {
     if (!editData || !editData.id) return;
 
+    setIsSubmitting(true);
     try {
+      let procedureFileUrl: string | undefined = undefined;
+      let procedureFileKey: string | undefined = undefined;
+      let flowchartFileUrl: string | undefined = undefined;
+      let flowchartFileKey: string | undefined = undefined;
+
+      if (editProcedureFile) {
+        const result = await uploadFile(editProcedureFile);
+        procedureFileUrl = result.url;
+        procedureFileKey = result.key;
+      }
+
+      if (editFlowchartFile) {
+        const result = await uploadFile(editFlowchartFile);
+        flowchartFileUrl = result.url;
+        flowchartFileKey = result.key;
+      }
+
       await updateMutation.mutateAsync({
         id: editData.id,
         name: editData.name || undefined,
@@ -333,21 +391,31 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
         code: editData.code || undefined,
         version: editData.version || undefined,
         createdDate: editData.createdDate ? new Date(editData.createdDate).toISOString().split("T")[0] : undefined,
+        procedureFileUrl,
+        procedureFileKey,
+        flowchartFileUrl,
+        flowchartFileKey,
       });
 
       toast.success("Procedimiento actualizado correctamente");
       setEditingId(null);
       setEditData(null);
+      setEditProcedureFile(null);
+      setEditFlowchartFile(null);
       getByProcessQuery.refetch();
     } catch (error) {
       console.error("Error:", error);
       toast.error("Error al actualizar procedimiento");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleEditCancel = () => {
     setEditingId(null);
     setEditData(null);
+    setEditProcedureFile(null);
+    setEditFlowchartFile(null);
   };
 
   const handleDeleteRecord = async (recordId: number) => {
@@ -701,8 +769,8 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
             ))}
           </div>
 
-          <Button onClick={handleSubmit} className="w-full bg-green-600 hover:bg-green-700">
-            Subir Procedimiento
+          <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full bg-green-600 hover:bg-green-700">
+            {isSubmitting ? "Subiendo procedimiento..." : "Subir Procedimiento"}
           </Button>
         </Card>
       )}
@@ -809,11 +877,28 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
                       />
                     </div>
 
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-sm font-medium">Reemplazar Archivo de Procedimiento</label>
+                        <input type="file" ref={editProcedureFileRef} onChange={(e) => setEditProcedureFile(e.target.files?.[0] || null)} accept=".pdf,.doc,.docx" style={{ display: "none" }} />
+                        <Button onClick={() => editProcedureFileRef.current?.click()} variant="outline" className="w-full mt-1">
+                          {editProcedureFile ? `✓ ${editProcedureFile.name}` : procedure.procedureFileUrl ? "📄 Reemplazar archivo" : "📄 Subir archivo"}
+                        </Button>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Reemplazar Flujograma</label>
+                        <input type="file" ref={editFlowchartFileRef} onChange={(e) => setEditFlowchartFile(e.target.files?.[0] || null)} accept=".pdf" style={{ display: "none" }} />
+                        <Button onClick={() => editFlowchartFileRef.current?.click()} variant="outline" className="w-full mt-1">
+                          {editFlowchartFile ? `✓ ${editFlowchartFile.name}` : procedure.flowchartFileUrl ? "📊 Reemplazar flujograma" : "📊 Subir flujograma"}
+                        </Button>
+                      </div>
+                    </div>
+
                     <div className="flex gap-2">
-                      <Button onClick={handleEditSave} className="flex-1 bg-green-600 hover:bg-green-700">
-                        Guardar
+                      <Button onClick={handleEditSave} disabled={isSubmitting} className="flex-1 bg-green-600 hover:bg-green-700">
+                        {isSubmitting ? "Guardando..." : "Guardar"}
                       </Button>
-                      <Button onClick={handleEditCancel} variant="outline" className="flex-1">
+                      <Button onClick={handleEditCancel} variant="outline" className="flex-1" disabled={isSubmitting}>
                         Cancelar
                       </Button>
                     </div>
@@ -921,17 +1006,26 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
                         onChange={(e) => setEditingRecord({ ...editingRecord, date: e.target.value })}
                       />
                     </div>
+                    <div>
+                      <label className="text-sm font-medium">{editingRecord.fileUrl ? "Reemplazar archivo del registro" : "Subir archivo del registro"}</label>
+                      <input type="file" ref={editRecordFileRef} onChange={(e) => setEditRecordFile(e.target.files?.[0] || null)} accept=".pdf,.doc,.docx,.xls,.xlsx" style={{ display: "none" }} />
+                      <Button onClick={() => editRecordFileRef.current?.click()} variant="outline" className="w-full mt-1">
+                        {editRecordFile ? `✓ ${editRecordFile.name}` : editingRecord.fileUrl ? "📄 Reemplazar archivo" : "📄 Subir archivo"}
+                      </Button>
+                    </div>
                     <div className="flex gap-2">
-                      <Button onClick={handleSaveEditRecord} className="flex-1 bg-green-600 hover:bg-green-700">
-                        💾 Guardar Cambios
+                      <Button onClick={handleSaveEditRecord} disabled={isSubmitting} className="flex-1 bg-green-600 hover:bg-green-700">
+                        {isSubmitting ? "Guardando..." : "💾 Guardar Cambios"}
                       </Button>
                       <Button
                         onClick={() => {
                           setEditingRecordId(null);
                           setEditingRecord(null);
+                          setEditRecordFile(null);
                         }}
                         variant="outline"
                         className="flex-1"
+                        disabled={isSubmitting}
                       >
                         ✕ Cancelar
                       </Button>
@@ -964,17 +1058,26 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
                         onChange={(e) => setNewRecordData({ ...newRecordData, date: e.target.value })}
                       />
                     </div>
+                    <div>
+                      <label className="text-sm font-medium">Archivo del Registro (opcional)</label>
+                      <input type="file" ref={newRecordFileRef} onChange={(e) => setNewRecordFile(e.target.files?.[0] || null)} accept=".pdf,.doc,.docx,.xls,.xlsx" style={{ display: "none" }} />
+                      <Button onClick={() => newRecordFileRef.current?.click()} variant="outline" className="w-full mt-1">
+                        {newRecordFile ? `✓ ${newRecordFile.name}` : "📄 Subir archivo (opcional)"}
+                      </Button>
+                    </div>
                     <div className="flex gap-2">
-                      <Button onClick={() => handleAddNewRecord(procedure.id)} className="flex-1 bg-green-600 hover:bg-green-700">
-                        ✅ Agregar Registro
+                      <Button onClick={() => handleAddNewRecord(procedure.id)} disabled={isSubmitting} className="flex-1 bg-green-600 hover:bg-green-700">
+                        {isSubmitting ? "Guardando..." : "✅ Agregar Registro"}
                       </Button>
                       <Button
                         onClick={() => {
                           setAddingRecordToProcedureId(null);
                           setNewRecordData({ name: "", code: "", version: "", date: new Date().toISOString().split("T")[0] });
+                          setNewRecordFile(null);
                         }}
                         variant="outline"
                         className="flex-1"
+                        disabled={isSubmitting}
                       >
                         ✕ Cancelar
                       </Button>
