@@ -56,12 +56,12 @@ jobs:
     steps:
       - id: check
         env:
-          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
-          DROPLET_USER: ${{ secrets.DROPLET_USER }}
+          DROPLET_HOST: ${{ vars.DROPLET_HOST || secrets.DROPLET_HOST }}
+          DROPLET_USER: ${{ vars.DROPLET_USER || secrets.DROPLET_USER }}
           DROPLET_SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
           ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
-          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_USERNAME: ${{ vars.GHCR_USERNAME || secrets.GHCR_USERNAME }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         run: |
           if [ -n "$DROPLET_HOST" ] && [ -n "$DROPLET_USER" ] && [ -n "$DROPLET_SSH_KEY" ] && \
@@ -79,46 +79,47 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Package deploy files
-        run: |
-          tar czf deploy-bundle.tar.gz \
-            docker-compose.prod.yml \
-            scripts/deploy-prod.sh \
-            scripts/load-env-file.sh
-
-      - name: Copy deploy bundle to droplet
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: ${{ secrets.DROPLET_USER }}
-          key: ${{ secrets.DROPLET_SSH_KEY }}
-          source: deploy-bundle.tar.gz
-          target: ${{ secrets.DEPLOY_PATH }}
-
       - name: Deploy on droplet
         uses: appleboy/ssh-action@v1.2.0
         env:
           APP_IMAGE: ${{ needs.build-image.outputs.image_name }}:${{ github.sha }}
-          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_USERNAME: ${{ vars.GHCR_USERNAME || secrets.GHCR_USERNAME }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
           ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
+          DEPLOY_SHA: ${{ github.sha }}
+          REPO_SLUG: ${{ github.repository }}
         with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: ${{ secrets.DROPLET_USER }}
+          host: ${{ vars.DROPLET_HOST || secrets.DROPLET_HOST }}
+          username: ${{ vars.DROPLET_USER || secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script_stop: true
-          envs: APP_IMAGE,GHCR_USERNAME,GHCR_TOKEN,DEPLOY_PATH,ENV_PRODUCTION
+          envs: APP_IMAGE,GHCR_USERNAME,GHCR_TOKEN,DEPLOY_PATH,ENV_PRODUCTION,DEPLOY_SHA,REPO_SLUG
           script: |
             set -eu
+            DEPLOY_PATH="${DEPLOY_PATH%/}"
             mkdir -p "$DEPLOY_PATH"
             cd "$DEPLOY_PATH"
-            tar xzf deploy-bundle.tar.gz
-            rm -f deploy-bundle.tar.gz
-            printf "%s" "$ENV_PRODUCTION" > .env.production
+
+            ORIGIN_AUTH="https://${GHCR_USERNAME}:${GHCR_TOKEN}@github.com/${REPO_SLUG}.git"
+            ORIGIN_PUBLIC="https://github.com/${REPO_SLUG}.git"
+
+            if [ ! -d .git ]; then
+              echo "No .git at ${DEPLOY_PATH}; bootstrapping repository..."
+              if [ -z "$(ls -A 2>/dev/null || true)" ]; then
+                git clone -b main "$ORIGIN_AUTH" .
+              else
+                git init
+                git remote add origin "$ORIGIN_AUTH"
+              fi
+            fi
+
+            git remote set-url origin "$ORIGIN_AUTH"
+            git fetch origin main
+            git reset --hard "$DEPLOY_SHA"
+            git remote set-url origin "$ORIGIN_PUBLIC"
+
+            printf '%s\n' "$ENV_PRODUCTION" > .env.production
             chmod +x scripts/deploy-prod.sh
             ./scripts/deploy-prod.sh
 

@@ -75,7 +75,7 @@ docker pull ghcr.io/alejoss/sigeconsultores:latest
 | Paso | Dónde | Qué hace |
 |------|--------|----------|
 | 1 | GitHub Actions | `docker build` + push a GHCR |
-| 2 | SSH al droplet | Copia bundle de compose/scripts + escribe `.env.production` |
+| 2 | SSH al droplet | `git reset --hard` al commit + escribe `.env.production` + `deploy-prod.sh` |
 | 3 | Droplet | Escribe `.env.production` desde secreto `ENV_PRODUCTION` |
 | 4 | Droplet | `deploy-prod.sh`: login GHCR, `pull`, `up -d` |
 
@@ -289,6 +289,7 @@ Con `RUN_DB_PUSH_ON_STARTUP: "true"` (por defecto en compose), el contenedor `ap
 | BD vacía tras deploy | Volumen `mysql_data` en lugar de `mysql_staging_data` | Ver `docker-compose.prod.yml` y `docker volume ls` |
 | 502 en Nginx | App no en 3001 o contenedor caído | `logs app`, `curl http://127.0.0.1:3001/` |
 | Deploy skipped en Actions | Faltan secretos | Configurar secretos y Re-run workflow |
+| `is not a git clone` / fallo en `git fetch` | `DEPLOY_PATH` incorrecto o PAT sin scope `repo` | Verificar secreto = `/opt/sige-app-staging`; PAT classic con `repo` + `read:packages` |
 | `unauthorized` en pull | PAT sin `read:packages` o paquete privado | `GHCR_TOKEN` y permisos del paquete |
 
 ---

@@ -28,23 +28,36 @@ Los nombres van en **minúsculas** (requisito de GHCR).
 
 Sin secretos: el workflow termina en verde con *Deploy skipped*; la imagen **sí** queda en GHCR.
 
-## Secretos para deploy al droplet
+## Secretos y variables para deploy al droplet
 
-**Settings → Secrets and variables → Actions → New repository secret**
+### Variables (visibles, editables — no sensibles)
+
+**Settings → Secrets and variables → Actions → Variables → New repository variable**
+
+| Variable | Valor |
+|----------|--------|
+| `DROPLET_HOST` | `167.172.127.47` |
+| `DROPLET_USER` | `root` |
+| `DEPLOY_PATH` | `/opt/sige-app-staging` |
+| `GHCR_USERNAME` | `Alejoss` |
+
+Las **variables** se pueden ver y editar después de crearlas (a diferencia de los secretos). Úsalas para paths, IPs y usuarios.
+
+### Secretos (no visibles después de guardar)
+
+**Settings → Secrets and variables → Actions → Secrets → New repository secret**
 
 | Secreto | Valor |
 |---------|--------|
-| `DROPLET_HOST` | `167.172.127.47` |
-| `DROPLET_USER` | `deploy` o `root` |
-| `DROPLET_SSH_KEY` | Clave privada SSH (archivo completo) |
-| `DEPLOY_PATH` | `/opt/sige-app-staging` |
+| `DROPLET_SSH_KEY` | Clave privada SSH (archivo completo, con `BEGIN`/`END`) |
 | `ENV_PRODUCTION` | Contenido completo de `.env.production` del servidor |
-| `GHCR_USERNAME` | `Alejoss` |
-| `GHCR_TOKEN` | PAT con `read:packages` (pull en el droplet) |
+| `GHCR_TOKEN` | PAT classic con `read:packages` y **`repo`** (pull GHCR + `git fetch` en repo privado) |
+
+Si ya tenías `DROPLET_HOST`, `DROPLET_USER`, `DEPLOY_PATH` o `GHCR_USERNAME` como secretos, créalos como **variables** y borra los secretos duplicados cuando migres. El workflow acepta variable o secreto (prioriza variable).
 
 La clave pública SSH debe estar en `~/.ssh/authorized_keys` del usuario en el droplet.
 
-`ENV_PRODUCTION` no necesita incluir `APP_IMAGE`: el workflow la define como `ghcr.io/alejoss/sigeconsultores:<sha>` al ejecutar `deploy-prod.sh`.
+`ENV_PRODUCTION` no debe incluir `APP_IMAGE`: el workflow la pasa como `ghcr.io/alejoss/sigeconsultores:<sha>` al ejecutar `deploy-prod.sh`.
 
 ### Permisos GHCR
 
@@ -58,9 +71,9 @@ La clave pública SSH debe estar en `~/.ssh/authorized_keys` del usuario en el d
 
 El job SSH **no** hace `docker build`. Solo:
 
-1. Copia un bundle (`compose` + `deploy-prod.sh` + `load-env-file.sh`) y lo extrae en el droplet
+1. `git fetch` + `git reset --hard` al commit desplegado (usa `GHCR_USERNAME` + `GHCR_TOKEN` con scope `repo` para repos privados)
 2. Escribe `.env.production` desde `ENV_PRODUCTION`
-3. Ejecuta `deploy-prod.sh` → login GHCR, `docker compose pull app`, `up -d`
+3. Ejecuta `deploy-prod.sh` con `APP_IMAGE=ghcr.io/alejoss/sigeconsultores:<sha>` (el script prioriza esa variable sobre la del archivo)
 
 Detalle: [DEPLOYMENT.md](./DEPLOYMENT.md).
 
