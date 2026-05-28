@@ -196,7 +196,7 @@ export default function AuditControl() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-full px-4 py-8">
+      <div className="max-w-full px-4 py-8" translate="no">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <Button variant="outline" size="sm" onClick={() => setLocation(`/audits-inspections?companyId=${companyId}`)}>
