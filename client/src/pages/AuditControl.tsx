@@ -19,15 +19,19 @@ type AuditRow = {
   findingsObservations: number;
   findingsMajorNC: number;
   findingsMinorNC: number;
+  findingsOM: number;
   closuresObservations: number;
   closuresMajorNC: number;
   closuresMinorNC: number;
+  closuresOM: number;
   orderIndex: number;
 };
 
 function calcPercent(row: AuditRow): string {
-  const totalFindings = row.findingsObservations + row.findingsMajorNC + row.findingsMinorNC;
-  const totalClosures = row.closuresObservations + row.closuresMajorNC + row.closuresMinorNC;
+  const totalFindings =
+    row.findingsMajorNC + row.findingsMinorNC + row.findingsObservations + row.findingsOM;
+  const totalClosures =
+    row.closuresMajorNC + row.closuresMinorNC + row.closuresObservations + row.closuresOM;
   if (totalFindings === 0) return "—";
   return `${Math.round((totalClosures / totalFindings) * 100)}%`;
 }
@@ -151,7 +155,14 @@ export default function AuditControl() {
   });
 
   useEffect(() => {
-    if (data) setRows(data as AuditRow[]);
+    if (data) {
+      // Ensure new OM fields default to 0 for existing rows that don't have them yet
+      setRows((data as AuditRow[]).map((r) => ({
+        ...r,
+        findingsOM: r.findingsOM ?? 0,
+        closuresOM: r.closuresOM ?? 0,
+      })));
+    }
   }, [data]);
 
   const handleChange = useCallback(
@@ -205,10 +216,10 @@ export default function AuditControl() {
                     <th className="text-left p-2 min-w-[130px]">Sistema de Gestión</th>
                     <th className="text-left p-2 min-w-[110px]">Fecha</th>
                     <th className="text-left p-2 min-w-[110px]">Interna / Externa</th>
-                    <th colSpan={3} className="text-center p-2 border-l border-blue-100">
+                    <th colSpan={4} className="text-center p-2 border-l border-blue-100">
                       # Hallazgos
                     </th>
-                    <th colSpan={3} className="text-center p-2 border-l border-blue-100">
+                    <th colSpan={4} className="text-center p-2 border-l border-blue-100">
                       # Cierres
                     </th>
                     <th className="text-center p-2 border-l border-blue-100 min-w-[50px]">%</th>
@@ -217,12 +228,14 @@ export default function AuditControl() {
                   </tr>
                   <tr className="text-blue-600 text-xs">
                     <th></th><th></th><th></th>
-                    <th className="text-center p-1 border-l border-blue-100">Obs.</th>
-                    <th className="text-center p-1">NC Mayor</th>
+                    <th className="text-center p-1 border-l border-blue-100">NC Mayor</th>
                     <th className="text-center p-1">NC Menor</th>
-                    <th className="text-center p-1 border-l border-blue-100">Obs.</th>
-                    <th className="text-center p-1">NC Mayor</th>
+                    <th className="text-center p-1">Obs.</th>
+                    <th className="text-center p-1">OM</th>
+                    <th className="text-center p-1 border-l border-blue-100">NC Mayor</th>
                     <th className="text-center p-1">NC Menor</th>
+                    <th className="text-center p-1">Obs.</th>
+                    <th className="text-center p-1">OM</th>
                     <th></th><th></th><th></th>
                   </tr>
                 </thead>
@@ -255,12 +268,16 @@ export default function AuditControl() {
                           <option value="Externa">Externa</option>
                         </select>
                       </td>
-                      <td className="p-2 border-l border-blue-50">{numInput(row.id, "findingsObservations", row.findingsObservations)}</td>
-                      <td className="p-2">{numInput(row.id, "findingsMajorNC", row.findingsMajorNC)}</td>
+                      {/* Hallazgos: NC Mayor, NC Menor, Obs., OM */}
+                      <td className="p-2 border-l border-blue-50">{numInput(row.id, "findingsMajorNC", row.findingsMajorNC)}</td>
                       <td className="p-2">{numInput(row.id, "findingsMinorNC", row.findingsMinorNC)}</td>
-                      <td className="p-2 border-l border-blue-50">{numInput(row.id, "closuresObservations", row.closuresObservations)}</td>
-                      <td className="p-2">{numInput(row.id, "closuresMajorNC", row.closuresMajorNC)}</td>
+                      <td className="p-2">{numInput(row.id, "findingsObservations", row.findingsObservations)}</td>
+                      <td className="p-2">{numInput(row.id, "findingsOM", row.findingsOM)}</td>
+                      {/* Cierres: NC Mayor, NC Menor, Obs., OM */}
+                      <td className="p-2 border-l border-blue-50">{numInput(row.id, "closuresMajorNC", row.closuresMajorNC)}</td>
                       <td className="p-2">{numInput(row.id, "closuresMinorNC", row.closuresMinorNC)}</td>
+                      <td className="p-2">{numInput(row.id, "closuresObservations", row.closuresObservations)}</td>
+                      <td className="p-2">{numInput(row.id, "closuresOM", row.closuresOM)}</td>
                       <td className="p-2 text-center font-semibold text-blue-700 border-l border-blue-50">
                         {calcPercent(row)}
                       </td>

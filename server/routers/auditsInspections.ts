@@ -214,9 +214,11 @@ export const auditsInspectionsRouter = router({
         findingsObservations: 0,
         findingsMajorNC: 0,
         findingsMinorNC: 0,
+        findingsOM: 0,
         closuresObservations: 0,
         closuresMajorNC: 0,
         closuresMinorNC: 0,
+        closuresOM: 0,
         orderIndex: existing.length,
       });
       const all = await db
@@ -238,9 +240,11 @@ export const auditsInspectionsRouter = router({
       findingsObservations: z.number().optional(),
       findingsMajorNC: z.number().optional(),
       findingsMinorNC: z.number().optional(),
+      findingsOM: z.number().optional(),
       closuresObservations: z.number().optional(),
       closuresMajorNC: z.number().optional(),
       closuresMinorNC: z.number().optional(),
+      closuresOM: z.number().optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
