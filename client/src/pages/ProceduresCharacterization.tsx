@@ -99,7 +99,6 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
   const editRecordFileRef = useRef<HTMLInputElement>(null);
   const newRecordFileRef = useRef<HTMLInputElement>(null);
 
-  const uploadFileMutation = trpc.procedures.uploadFile.useMutation();
   const createMutation = trpc.procedures.create.useMutation();
   const deleteMutation = trpc.procedures.delete.useMutation();
   const updateMutation = trpc.procedures.update.useMutation();
@@ -134,14 +133,19 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
   }, [expandedId]);
 
   const uploadFile = async (file: File): Promise<{ url: string; key: string }> => {
-    const arrayBuffer = await file.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    const result = await uploadFileMutation.mutateAsync({
-      fileName: file.name,
-      fileData: Array.from(uint8Array),
-      fileType: file.type,
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    const response = await fetch("/api/upload/procedure-file", {
+      method: "POST",
+      body: formData,
+      credentials: "include",
     });
-    return result;
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: "Error desconocido" }));
+      throw new Error(err.error || "Error al subir el archivo");
+    }
+    const result = await response.json();
+    return { url: result.url, key: result.key };
   };
 
   const handleEditRecord = (record: ProcedureRecord) => {
