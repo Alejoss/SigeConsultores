@@ -61,12 +61,34 @@ export default function ProcessRiskMatrix() {
       try {
         let newRows: MatrizFODARow[] = [];
 
+        // Build a lookup map from FODA source data: elemento (statement) -> policyObjective
+        const fodaLookup: Record<string, string> = {};
+        try {
+          const allFodaItems = [
+            ...JSON.parse(fodaData.strengths || '[]'),
+            ...JSON.parse(fodaData.opportunities || '[]'),
+            ...JSON.parse(fodaData.weaknesses || '[]'),
+            ...JSON.parse(fodaData.threats || '[]'),
+          ];
+          allFodaItems.forEach((item: any) => {
+            if (item.statement && item.policyObjective) {
+              fodaLookup[item.statement] = item.policyObjective;
+            }
+          });
+        } catch (e) {
+          console.error('Error building FODA lookup:', e);
+        }
+
         // Try to load from matrixData first
         if (fodaData.matrixData) {
           try {
             const parsedMatrix = JSON.parse(fodaData.matrixData);
             if (Array.isArray(parsedMatrix) && parsedMatrix.length > 0) {
-              newRows = parsedMatrix;
+              // Enrich rows that are missing objetivoPolitica using the FODA lookup
+              newRows = parsedMatrix.map((row: any) => ({
+                ...row,
+                objetivoPolitica: row.objetivoPolitica || fodaLookup[row.elemento] || '',
+              }));
               console.log('Loaded matrixData with', parsedMatrix.length, 'rows');
             }
           } catch (e) {
