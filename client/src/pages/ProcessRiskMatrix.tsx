@@ -496,7 +496,7 @@ export default function ProcessRiskMatrix() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-slate-600">Objetivo del FODA</label>
+                        <label className="text-xs font-semibold text-slate-600">Objetivo de la Política</label>
                         <input
                           type="text"
                           value={row.objetivoPolitica || ''}
