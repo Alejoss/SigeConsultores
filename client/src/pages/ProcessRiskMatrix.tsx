@@ -88,6 +88,7 @@ export default function ProcessRiskMatrix() {
               newRows.push({
                 id,
                 subproceso: item.subprocess || '',
+                objetivoPolitica: item.policyObjective || '',
                 elemento: item.statement || '',
                 foda: type,
                 factor: 'Humano',
@@ -473,6 +474,18 @@ export default function ProcessRiskMatrix() {
                         />
                       </div>
                       <div>
+                        <label className="text-xs font-semibold text-slate-600">Objetivo del FODA</label>
+                        <input
+                          type="text"
+                          value={row.objetivoPolitica || ''}
+                          readOnly
+                          className="w-full border rounded p-2 text-sm bg-slate-50 text-slate-700"
+                          placeholder="—"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 mt-4">
+                      <div>
                         <label className="text-xs font-semibold text-slate-600">Elemento</label>
                         <input
                           type="text"
@@ -481,6 +494,8 @@ export default function ProcessRiskMatrix() {
                           className="w-full border rounded p-2 text-sm"
                         />
                       </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                       <div>
                         <label className="text-xs font-semibold text-slate-600">FODA</label>
                         <select

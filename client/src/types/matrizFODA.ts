@@ -13,6 +13,7 @@ export interface MatrizFODARow {
   
   // Identificación
   subproceso: string;
+  objetivoPolitica?: string;
   elemento: string;
   foda: FODAType;
   factor: FactorType;
