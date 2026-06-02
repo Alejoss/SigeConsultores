@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,15 +8,84 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { ChevronUp } from "lucide-react";
 
+const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"] as const;
+
+// Helpers para serializar/deserializar los meses seleccionados como string CSV "1,3,5"
+function parseMonths(value: string | null | undefined): number[] {
+  if (!value) return [];
+  return value.split(",").map(Number).filter((n) => n >= 1 && n <= 12);
+}
+
+function serializeMonths(months: number[]): string {
+  return months.sort((a, b) => a - b).join(",");
+}
+
+function calcPercentage(planned: number[], completed: number[]): number {
+  if (planned.length === 0) return 0;
+  const fulfilled = completed.filter((m) => planned.includes(m)).length;
+  return Math.round((fulfilled / planned.length) * 100);
+}
+
+// Componente de cuadritos de meses
+function MonthGrid({
+  label,
+  selected,
+  onChange,
+  colorClass,
+}: {
+  label: string;
+  selected: number[];
+  onChange: (months: number[]) => void;
+  colorClass: string;
+}) {
+  const toggle = (month: number) => {
+    if (selected.includes(month)) {
+      onChange(selected.filter((m) => m !== month));
+    } else {
+      onChange([...selected, month]);
+    }
+  };
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-gray-600 mb-1">{label}</p>
+      <div className="flex flex-wrap gap-1">
+        {MONTHS.map((name, i) => {
+          const month = i + 1;
+          const isSelected = selected.includes(month);
+          return (
+            <button
+              key={month}
+              type="button"
+              onClick={() => toggle(month)}
+              translate="no"
+              className={`w-9 h-9 rounded text-xs font-semibold border transition-colors
+                ${isSelected
+                  ? `${colorClass} text-white border-transparent`
+                  : "bg-white text-gray-600 border-gray-300 hover:border-gray-400"
+                }`}
+            >
+              {name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 interface Compliance {
   id: number;
   processId: number;
   requirement: string;
+  description: string | null;
   obligationType: "Legal" | "Reglamentaria" | "Concesion" | "Sistema de Gestion" | "Otros";
   otherObligationType: string | null;
   dueDate: Date | null;
   responsible: string | null;
   completed: "SI" | "NO";
+  plannedMonths: string | null;
+  completedMonths: string | null;
   observations: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -24,11 +93,12 @@ interface Compliance {
 
 interface FormData {
   requirement: string;
+  description: string;
   obligationType: "Legal" | "Reglamentaria" | "Concesion" | "Sistema de Gestion" | "Otros" | "";
   otherObligationType: string;
-  dueDate: string;
   responsible: string;
-  completed: "SI" | "NO";
+  plannedMonths: number[];
+  completedMonths: number[];
   observations: string;
 }
 
@@ -36,16 +106,17 @@ export default function ProcessCompliances() {
   const [, navigate] = useLocation();
   const selectedProcessId = localStorage.getItem("selectedProcessId");
   const processId = selectedProcessId ? parseInt(selectedProcessId) : 0;
-  
+
   const [compliances, setCompliances] = useState<Compliance[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [formData, setFormData] = useState<FormData>({
     requirement: "",
+    description: "",
     obligationType: "",
     otherObligationType: "",
-    dueDate: "",
     responsible: "",
-    completed: "NO",
+    plannedMonths: [],
+    completedMonths: [],
     observations: "",
   });
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -77,15 +148,17 @@ export default function ProcessCompliances() {
     return () => clearTimeout(timer);
   }, [formData, editingId]);
 
-
-  const calculateDaysRemaining = (dueDate: string): { days: number; isOverdue: boolean } => {
-    if (!dueDate) return { days: 0, isOverdue: false };
-    const today = new Date();
-    const due = new Date(dueDate);
-    const diffTime = due.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return { days: Math.abs(diffDays), isOverdue: diffDays < 0 };
-  };
+  // Estadísticas globales
+  const { totalCompliances, averageCompliance } = useMemo(() => {
+    const total = compliances.length;
+    if (total === 0) return { totalCompliances: 0, averageCompliance: 0 };
+    const sum = compliances.reduce((acc, c) => {
+      const planned = parseMonths(c.plannedMonths);
+      const completed = parseMonths(c.completedMonths);
+      return acc + calcPercentage(planned, completed);
+    }, 0);
+    return { totalCompliances: total, averageCompliance: Math.round(sum / total) };
+  }, [compliances]);
 
   const handleAddCompliance = async () => {
     if (!formData.requirement || !formData.obligationType) {
@@ -97,45 +170,70 @@ export default function ProcessCompliances() {
       await createMutation.mutateAsync({
         processId,
         requirement: formData.requirement,
+        description: formData.description || undefined,
         obligationType: formData.obligationType as any,
         otherObligationType: formData.otherObligationType || undefined,
-        dueDate: formData.dueDate || undefined,
         responsible: formData.responsible || undefined,
-        completed: formData.completed,
+        completed: "NO",
+        plannedMonths: serializeMonths(formData.plannedMonths) || undefined,
+        completedMonths: serializeMonths(formData.completedMonths) || undefined,
         observations: formData.observations || undefined,
       });
 
       toast.success("Obligación creada exitosamente");
       resetForm();
       await utils.processCompliances.list.invalidate({ processId });
-    } catch (error) {
+    } catch {
       toast.error("Error al crear la obligación");
     }
   };
 
   const handleUpdateCompliance = async (id: number) => {
-    if (!formData.requirement || !formData.obligationType) {
-      toast.error("Por favor completa los campos requeridos");
-      return;
-    }
+    if (!formData.requirement || !formData.obligationType) return;
 
     try {
       await updateMutation.mutateAsync({
         id,
         requirement: formData.requirement,
+        description: formData.description || undefined,
         obligationType: formData.obligationType as any,
         otherObligationType: formData.otherObligationType || undefined,
-        dueDate: formData.dueDate || undefined,
         responsible: formData.responsible || undefined,
-        completed: formData.completed,
+        completed: "NO",
+        plannedMonths: serializeMonths(formData.plannedMonths) || undefined,
+        completedMonths: serializeMonths(formData.completedMonths) || undefined,
         observations: formData.observations || undefined,
       });
 
+      await utils.processCompliances.list.invalidate({ processId });
+    } catch {
+      // silencioso en autosave
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !formData.requirement || !formData.obligationType) {
+      toast.error("Por favor completa los campos requeridos");
+      return;
+    }
+    try {
+      await updateMutation.mutateAsync({
+        id: editingId,
+        requirement: formData.requirement,
+        description: formData.description || undefined,
+        obligationType: formData.obligationType as any,
+        otherObligationType: formData.otherObligationType || undefined,
+        responsible: formData.responsible || undefined,
+        completed: "NO",
+        plannedMonths: serializeMonths(formData.plannedMonths) || undefined,
+        completedMonths: serializeMonths(formData.completedMonths) || undefined,
+        observations: formData.observations || undefined,
+      });
       toast.success("Obligación actualizada exitosamente");
       resetForm();
       setEditingId(null);
       await utils.processCompliances.list.invalidate({ processId });
-    } catch (error) {
+    } catch {
       toast.error("Error al actualizar la obligación");
     }
   };
@@ -147,7 +245,7 @@ export default function ProcessCompliances() {
       await deleteMutation.mutateAsync({ id });
       toast.success("Obligación eliminada exitosamente");
       await utils.processCompliances.list.invalidate({ processId });
-    } catch (error) {
+    } catch {
       toast.error("Error al eliminar la obligación");
     }
   };
@@ -155,11 +253,12 @@ export default function ProcessCompliances() {
   const handleEditCompliance = (compliance: Compliance) => {
     setFormData({
       requirement: compliance.requirement,
+      description: compliance.description || "",
       obligationType: compliance.obligationType,
       otherObligationType: compliance.otherObligationType || "",
-      dueDate: compliance.dueDate ? (typeof compliance.dueDate === 'string' ? compliance.dueDate : new Date(compliance.dueDate).toISOString().split("T")[0]) : "",
       responsible: compliance.responsible || "",
-      completed: compliance.completed,
+      plannedMonths: parseMonths(compliance.plannedMonths),
+      completedMonths: parseMonths(compliance.completedMonths),
       observations: compliance.observations || "",
     });
     setEditingId(compliance.id);
@@ -169,22 +268,15 @@ export default function ProcessCompliances() {
   const resetForm = () => {
     setFormData({
       requirement: "",
+      description: "",
       obligationType: "",
       otherObligationType: "",
-      dueDate: "",
       responsible: "",
-      completed: "NO",
+      plannedMonths: [],
+      completedMonths: [],
       observations: "",
     });
   };
-
-  const totalCompliances = compliances.length;
-  const completedCompliances = compliances.filter(c => c.completed === "SI").length;
-  const averageCompliance = totalCompliances > 0 ? Math.round((completedCompliances / totalCompliances) * 100) : 0;
-
-  const { days: daysRemaining, isOverdue } = formData.dueDate
-    ? calculateDaysRemaining(formData.dueDate)
-    : { days: 0, isOverdue: false };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6">
@@ -192,7 +284,7 @@ export default function ProcessCompliances() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-4xl font-bold text-gray-900">Cumplimientos del Proceso</h1>
-            <Button 
+            <Button
               variant="outline"
               onClick={() => navigate("/process-characterization")}
             >
@@ -216,7 +308,7 @@ export default function ProcessCompliances() {
           </div>
         </div>
 
-        {/* OBLIGACIONES REGISTRADAS - ARRIBA */}
+        {/* OBLIGACIONES REGISTRADAS */}
         <div className="space-y-4 mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Obligaciones Registradas</h2>
           {isLoading ? (
@@ -229,10 +321,10 @@ export default function ProcessCompliances() {
             </Card>
           ) : (
             compliances.map((compliance) => {
-              const { days, isOverdue: overdue } = calculateDaysRemaining(
-                compliance.dueDate ? new Date(compliance.dueDate).toISOString().split("T")[0] : ""
-              );
-              
+              const planned = parseMonths(compliance.plannedMonths);
+              const completed = parseMonths(compliance.completedMonths);
+              const pct = calcPercentage(planned, completed);
+
               return (
                 <Card key={compliance.id} className="bg-white">
                   <div
@@ -241,15 +333,24 @@ export default function ProcessCompliances() {
                   >
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 mb-2">{compliance.requirement}</h3>
-                      <div className="flex gap-4 text-sm text-gray-600">
+                      <div className="flex flex-wrap gap-3 text-sm text-gray-600 items-center">
                         <span className="px-2 py-1 bg-gray-100 rounded">{compliance.obligationType}</span>
-                        <span className={`px-2 py-1 rounded font-semibold ${
-                          compliance.completed === "SI"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}>
-                          {compliance.completed === "SI" ? "Cumplido" : "No Cumplido"}
-                        </span>
+                        {/* Barra de progreso compacta */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-28 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-yellow-400" : "bg-red-400"
+                              }`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className={`font-semibold ${
+                            pct >= 80 ? "text-green-700" : pct >= 50 ? "text-yellow-600" : "text-red-600"
+                          }`}>
+                            {pct}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <ChevronUp
@@ -262,13 +363,20 @@ export default function ProcessCompliances() {
                   {expandedId === compliance.id && (
                     <CardContent className="pt-0 pb-6 border-t">
                       <div className="space-y-4 mt-4">
+                        {compliance.description && (
+                          <div>
+                            <label className="text-sm font-semibold text-gray-700">Descripción</label>
+                            <p className="text-gray-600 whitespace-pre-wrap">{compliance.description}</p>
+                          </div>
+                        )}
+
                         {compliance.obligationType === "Otros" && compliance.otherObligationType && (
                           <div>
                             <label className="text-sm font-semibold text-gray-700">Tipo Específico</label>
                             <p className="text-gray-600">{compliance.otherObligationType}</p>
                           </div>
                         )}
-                        
+
                         {compliance.responsible && (
                           <div>
                             <label className="text-sm font-semibold text-gray-700">Responsable</label>
@@ -276,38 +384,75 @@ export default function ProcessCompliances() {
                           </div>
                         )}
 
-                        <div>
-                          <label className="text-sm font-semibold text-gray-700">Cumplido</label>
-                          <div className={`px-3 py-2 rounded font-semibold text-sm text-center border ${
-                            compliance.completed === "SI"
-                              ? "bg-green-100 text-green-700 border-green-300"
-                              : "bg-red-100 text-red-700 border-red-300"
-                          }`}>
-                            {compliance.completed === "SI" ? "SI" : "NO"}
+                        {/* Cuadritos de meses - solo lectura en vista */}
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-xs font-semibold text-gray-600 mb-1">Planificado</p>
+                            <div className="flex flex-wrap gap-1">
+                              {MONTHS.map((name, i) => {
+                                const month = i + 1;
+                                const isPlanned = planned.includes(month);
+                                return (
+                                  <div
+                                    key={month}
+                                    className={`w-9 h-9 rounded text-xs font-semibold border flex items-center justify-center
+                                      ${isPlanned ? "bg-blue-500 text-white border-transparent" : "bg-gray-50 text-gray-400 border-gray-200"}`}
+                                  >
+                                    {name}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-gray-600 mb-1">Cumplimiento</p>
+                            <div className="flex flex-wrap gap-1">
+                              {MONTHS.map((name, i) => {
+                                const month = i + 1;
+                                const isDone = completed.includes(month);
+                                const wasPlanned = planned.includes(month);
+                                return (
+                                  <div
+                                    key={month}
+                                    className={`w-9 h-9 rounded text-xs font-semibold border flex items-center justify-center
+                                      ${isDone && wasPlanned
+                                        ? "bg-green-500 text-white border-transparent"
+                                        : isDone && !wasPlanned
+                                        ? "bg-yellow-400 text-white border-transparent"
+                                        : "bg-gray-50 text-gray-400 border-gray-200"}`}
+                                  >
+                                    {name}
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         </div>
 
-                        {compliance.dueDate && (
-                          <div>
-                            <label className="text-sm font-semibold text-gray-700">Plazo</label>
-                            <div className={`px-3 py-2 rounded font-semibold text-sm text-center border ${
-                              overdue
-                                ? "bg-red-100 text-red-700 border-red-300"
-                                : "bg-green-100 text-green-700 border-green-300"
-                            }`}>
-                              {overdue ? `Te pasaste ${days} días` : `Faltan ${days} días`}
+                        {/* % Cumplimiento */}
+                        <div>
+                          <label className="text-sm font-semibold text-gray-700">% Cumplimiento</label>
+                          <div className="flex items-center gap-3 mt-1">
+                            <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-yellow-400" : "bg-red-400"
+                                }`}
+                                style={{ width: `${pct}%` }}
+                              />
                             </div>
+                            <span className={`text-lg font-bold min-w-[3rem] text-right ${
+                              pct >= 80 ? "text-green-700" : pct >= 50 ? "text-yellow-600" : "text-red-600"
+                            }`}>
+                              {pct}%
+                            </span>
                           </div>
-                        )}
-
-                        {compliance.dueDate && (
-                          <div>
-                            <label className="text-sm font-semibold text-gray-700">Fecha Límite</label>
-                            <p className="text-gray-600">
-                              {typeof compliance.dueDate === 'string' ? new Date(compliance.dueDate).toLocaleDateString("es-ES") : compliance.dueDate.toLocaleDateString("es-ES")}
+                          {planned.length > 0 && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {completed.filter((m) => planned.includes(m)).length} de {planned.length} meses planificados cumplidos
                             </p>
-                          </div>
-                        )}
+                          )}
+                        </div>
 
                         {compliance.observations && (
                           <div>
@@ -341,22 +486,36 @@ export default function ProcessCompliances() {
           )}
         </div>
 
-        {/* NUEVA OBLIGACIÓN - EN EL MEDIO */}
+        {/* FORMULARIO NUEVA / EDITAR OBLIGACIÓN */}
         <Card className="mb-8 bg-white">
           <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50 border-b">
             <CardTitle>{editingId ? "Editar Obligación" : "Nueva Obligación"}</CardTitle>
           </CardHeader>
-          <CardContent className="pt-6 space-y-4">
+          <CardContent className="pt-6 space-y-5">
+
+            {/* Obligación */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Obligación *</label>
               <Textarea
                 value={formData.requirement}
                 onChange={(e) => setFormData({ ...formData, requirement: e.target.value })}
-                placeholder="Describe la obligación que deseas llevar control"
-                className="min-h-[100px]"
+                placeholder="Nombre o título de la obligación"
+                className="min-h-[80px]"
               />
             </div>
 
+            {/* Descripción de la obligación */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Descripción de la obligación</label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Describe a qué se refiere esta obligación"
+                className="min-h-[80px]"
+              />
+            </div>
+
+            {/* Tipo de Obligación */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Obligación *</label>
               <select
@@ -384,6 +543,7 @@ export default function ProcessCompliances() {
               </div>
             )}
 
+            {/* Responsable */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Responsable</label>
               <Input
@@ -393,64 +553,71 @@ export default function ProcessCompliances() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Fecha Límite del Cumplimiento</label>
-              <Input
-                type="date"
-                value={formData.dueDate}
-                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+            {/* Planificado - cuadritos de meses */}
+            <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50">
+              <MonthGrid
+                label="Planificado — marca los meses en que planificas cumplir"
+                selected={formData.plannedMonths}
+                onChange={(months) => setFormData({ ...formData, plannedMonths: months })}
+                colorClass="bg-blue-500"
               />
-            </div>
+              <MonthGrid
+                label="Cumplimiento — marca los meses en que efectivamente cumpliste"
+                selected={formData.completedMonths}
+                onChange={(months) => setFormData({ ...formData, completedMonths: months })}
+                colorClass="bg-green-500"
+              />
 
-            {formData.dueDate && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Plazo</label>
-                <div className={`px-4 py-3 rounded-lg font-semibold text-center ${
-                  isOverdue 
-                    ? "bg-red-100 text-red-700 border border-red-300" 
-                    : "bg-green-100 text-green-700 border border-green-300"
-                }`}>
-                  {isOverdue 
-                    ? `Te pasaste ${daysRemaining} días` 
-                    : `Te faltan ${daysRemaining} días`}
+              {/* % Cumplimiento calculado */}
+              {formData.plannedMonths.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 mb-1">% Cumplimiento</p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          calcPercentage(formData.plannedMonths, formData.completedMonths) >= 80
+                            ? "bg-green-500"
+                            : calcPercentage(formData.plannedMonths, formData.completedMonths) >= 50
+                            ? "bg-yellow-400"
+                            : "bg-red-400"
+                        }`}
+                        style={{ width: `${calcPercentage(formData.plannedMonths, formData.completedMonths)}%` }}
+                      />
+                    </div>
+                    <span className={`text-lg font-bold min-w-[3rem] text-right ${
+                      calcPercentage(formData.plannedMonths, formData.completedMonths) >= 80
+                        ? "text-green-700"
+                        : calcPercentage(formData.plannedMonths, formData.completedMonths) >= 50
+                        ? "text-yellow-600"
+                        : "text-red-600"
+                    }`}>
+                      {calcPercentage(formData.plannedMonths, formData.completedMonths)}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formData.completedMonths.filter((m) => formData.plannedMonths.includes(m)).length} de {formData.plannedMonths.length} meses planificados cumplidos
+                  </p>
                 </div>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Cumplido</label>
-              <div className={`px-4 py-3 rounded-lg font-semibold text-center border ${
-                formData.completed === "SI"
-                  ? "bg-green-100 text-green-700 border-green-300"
-                  : "bg-red-100 text-red-700 border-red-300"
-              }`}>
-                {formData.completed}
-              </div>
-              <select
-                value={formData.completed}
-                onChange={(e) => setFormData({ ...formData, completed: e.target.value as "SI" | "NO" })}
-                className="mt-2 w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="SI">SI</option>
-                <option value="NO">NO</option>
-              </select>
+              )}
             </div>
 
+            {/* Observaciones */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Observaciones</label>
               <Textarea
                 value={formData.observations}
                 onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
                 placeholder="Agrega observaciones si lo requieres"
-                className="min-h-[100px]"
+                className="min-h-[80px]"
               />
             </div>
 
-            <div className="flex gap-2 pt-4">
+            <div className="flex gap-2 pt-2">
               {editingId ? (
                 <>
                   <Button
-                    onClick={() => handleUpdateCompliance(editingId)}
+                    onClick={handleSaveEdit}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     Actualizar

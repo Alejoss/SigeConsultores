@@ -21,11 +21,14 @@ export const processCompliancesRouter = router({
     .input(z.object({
       processId: z.number(),
       requirement: z.string(),
+      description: z.string().optional(),
       obligationType: z.enum(["Legal", "Reglamentaria", "Concesion", "Sistema de Gestion", "Otros"]),
       otherObligationType: z.string().optional(),
       dueDate: z.string().optional(),
       responsible: z.string().optional(),
       completed: z.enum(["SI", "NO"]).default("NO"),
+      plannedMonths: z.string().optional(),
+      completedMonths: z.string().optional(),
       observations: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
@@ -35,11 +38,14 @@ export const processCompliancesRouter = router({
       await db.insert(processCompliances).values({
         processId: input.processId,
         requirement: input.requirement,
+        description: input.description || null,
         obligationType: input.obligationType as any,
         otherObligationType: input.otherObligationType || null,
         dueDate: input.dueDate ? new Date(input.dueDate) : null,
         responsible: input.responsible || null,
         completed: input.completed as any,
+        plannedMonths: input.plannedMonths || null,
+        completedMonths: input.completedMonths || null,
         observations: input.observations || null,
       });
 
@@ -50,11 +56,14 @@ export const processCompliancesRouter = router({
     .input(z.object({
       id: z.number(),
       requirement: z.string(),
+      description: z.string().optional(),
       obligationType: z.enum(["Legal", "Reglamentaria", "Concesion", "Sistema de Gestion", "Otros"]),
       otherObligationType: z.string().optional(),
       dueDate: z.string().optional(),
       responsible: z.string().optional(),
       completed: z.enum(["SI", "NO"]),
+      plannedMonths: z.string().optional(),
+      completedMonths: z.string().optional(),
       observations: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
@@ -64,11 +73,14 @@ export const processCompliancesRouter = router({
       await db.update(processCompliances)
         .set({
           requirement: input.requirement,
+          description: input.description || null,
           obligationType: input.obligationType,
           otherObligationType: input.otherObligationType || null,
           dueDate: input.dueDate ? new Date(input.dueDate) : null,
           responsible: input.responsible || null,
           completed: input.completed,
+          plannedMonths: input.plannedMonths || null,
+          completedMonths: input.completedMonths || null,
           observations: input.observations || null,
           updatedAt: new Date(),
         })

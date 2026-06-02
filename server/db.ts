@@ -818,6 +818,7 @@ export async function updateProcessTacticalObjective(objectiveId: number, data: 
 export async function createProcessCompliance(processId: number, data: {
   tacticalObjectiveId?: number;
   requirement: string;
+  description?: string | null;
   obligationType: "Legal" | "Reglamentaria" | "Concesion" | "Sistema de Gestion" | "Otros";
   otherObligationType?: string | null;
   regulation?: string;
@@ -825,6 +826,8 @@ export async function createProcessCompliance(processId: number, data: {
   dueDate?: Date;
   responsible?: string;
   completed?: "SI" | "NO";
+  plannedMonths?: string | null;
+  completedMonths?: string | null;
   observations?: string | null;
   evidence?: string;
   completionPercentage?: number;
@@ -849,6 +852,7 @@ export async function deleteProcessCompliance(complianceId: number) {
 export async function updateProcessCompliance(complianceId: number, data: {
   tacticalObjectiveId?: number;
   requirement?: string;
+  description?: string | null;
   obligationType?: "Legal" | "Reglamentaria" | "Concesion" | "Sistema de Gestion" | "Otros";
   otherObligationType?: string | null;
   regulation?: string;
@@ -856,6 +860,8 @@ export async function updateProcessCompliance(complianceId: number, data: {
   dueDate?: Date;
   responsible?: string;
   completed?: "SI" | "NO";
+  plannedMonths?: string | null;
+  completedMonths?: string | null;
   observations?: string | null;
   evidence?: string;
   completionPercentage?: number;

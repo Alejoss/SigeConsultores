@@ -60,43 +60,57 @@ export default function ProcessResources() {
   }, [participantsList]);
 
   // Fetch resources from database
-  const { data: resources = [], isLoading, refetch } = trpc.processResources.list.useQuery(
+  const { data: resources = [], isLoading } = trpc.processResources.list.useQuery(
     { processCharacterizationId: processId || 0 },
     { enabled: processId !== null }
   );
 
-  // Create resource mutation
+  // Local copy of resources for optimistic updates — avoids refetch() which triggers
+  // a full DashboardLayout re-render causing Radix portal removeChild/insertBefore errors
+  const [localResources, setLocalResources] = useState<any[]>([]);
+
+  useEffect(() => {
+    setLocalResources(resources);
+  }, [resources]);
+
+  // Create resource mutation — optimistic update: no refetch, update local state directly
   const createMutation = trpc.processResources.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success("Recurso agregado exitosamente");
+      if (data.resource) {
+        setLocalResources((prev) => [...prev, data.resource]);
+      }
       setFormData({ resourceName: "", resourceElements: "" });
       setEditingParticipantId(null);
-      refetch();
     },
     onError: (error: any) => {
       toast.error(error.message || "Error al agregar el recurso");
     },
   });
 
-  // Update resource mutation
+  // Update resource mutation — optimistic update: no refetch, update local state directly
   const updateMutation = trpc.processResources.update.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success("Recurso actualizado exitosamente");
+      if (data.resource) {
+        setLocalResources((prev) =>
+          prev.map((r) => (r.id === data.resource!.id ? data.resource! : r))
+        );
+      }
       setFormData({ resourceName: "", resourceElements: "" });
       setEditingId(null);
       setEditingParticipantId(null);
-      refetch();
     },
     onError: (error: any) => {
       toast.error(error.message || "Error al actualizar el recurso");
     },
   });
 
-  // Delete resource mutation
+  // Delete resource mutation — optimistic update: no refetch, remove from local state directly
   const deleteMutation = trpc.processResources.delete.useMutation({
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast.success("Recurso eliminado");
-      refetch();
+      setLocalResources((prev) => prev.filter((r) => r.id !== variables.id));
     },
     onError: (error: any) => {
       toast.error(error.message || "Error al eliminar el recurso");
@@ -129,7 +143,7 @@ export default function ProcessResources() {
         participantId: participantId,
         resourceName: formData.resourceName,
         resourceElements: formData.resourceElements,
-        orderIndex: resources.length + 1,
+        orderIndex: localResources.length + 1,
       });
     }
   };
@@ -166,7 +180,7 @@ export default function ProcessResources() {
   };
 
   const getResourcesForParticipant = (participantId: number) => {
-    return resources.filter((r: any) => r.participantId === participantId);
+    return localResources.filter((r: any) => r.participantId === participantId);
   };
 
   if (!processId) {

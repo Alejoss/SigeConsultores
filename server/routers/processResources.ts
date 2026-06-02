@@ -60,7 +60,7 @@ export const processResourcesRouter = router({
       const resourceType = input.resourceName || input.resourceType || "Recurso";
       const description = input.resourceElements || input.description || null;
 
-      await db.insert(processResources).values({
+      const result = await db.insert(processResources).values({
         processCharacterizationId: input.processCharacterizationId,
         participantId: input.participantId || null,
         participant: input.participant || null,
@@ -71,7 +71,24 @@ export const processResourcesRouter = router({
         orderIndex: input.orderIndex,
       });
 
-      return { success: true };
+      const newId = Number((result as any)[0]?.insertId || (result as any).insertId || 0);
+
+      return {
+        success: true,
+        resource: {
+          id: newId,
+          processCharacterizationId: input.processCharacterizationId,
+          participantId: input.participantId || null,
+          participant: input.participant || null,
+          resourceType: resourceType,
+          description: description,
+          resourceName: input.resourceName || null,
+          resourceElements: input.resourceElements || null,
+          orderIndex: input.orderIndex,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      };
     }),
 
   update: companyProcedure
@@ -110,7 +127,10 @@ export const processResourcesRouter = router({
         .set(updateData)
         .where(eq(processResources.id, input.id));
 
-      return { success: true };
+      // Fetch updated record to return to client for optimistic update
+      const updated = await db.select().from(processResources).where(eq(processResources.id, input.id));
+
+      return { success: true, resource: updated[0] || null };
     }),
 
   delete: companyProcedure

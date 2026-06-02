@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,19 +25,7 @@ export default function ProcessRiskMatrix() {
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
-  const [indicadores, setIndicadores] = useState<MatrizFODAIndicadores>({
-    totalPlanificado: 0,
-    totalAlcanzado: 0,
-    porcentajeComunicado: 0,
-    alcancePorSistema: {
-      Calidad: { alcanzados: 0, total: 0, porcentaje: 0 },
-      Ambiente: { alcanzados: 0, total: 0, porcentaje: 0 },
-      SSO: { alcanzados: 0, total: 0, porcentaje: 0 },
-      'Seguridad Física': { alcanzados: 0, total: 0, porcentaje: 0 },
-      'Responsabilidad Social': { alcanzados: 0, total: 0, porcentaje: 0 },
-      Otro: { alcanzados: 0, total: 0, porcentaje: 0 },
-    },
-  });
+
 
   // Load process ID and name from localStorage
   useEffect(() => {
@@ -147,10 +135,11 @@ export default function ProcessRiskMatrix() {
     }
   }, [fodaData]);
 
-  // Calculate indicators whenever rows change
-  useEffect(() => {
+  // Calculate indicators directly from rows (useMemo ensures always in sync)
+  const indicadores = useMemo<MatrizFODAIndicadores>(() => {
     const totalPlanificado = rows.length;
-    const totalAlcanzado = rows.filter((r) => r.objetivoLogrado === 'SI').length;
+    const totalAlcanzadoCount = rows.filter((r) => r.objetivoLogrado === 'SI').length;
+    const totalAlcanzado = totalPlanificado > 0 ? Math.round((totalAlcanzadoCount / totalPlanificado) * 100) : 0;
     const porcentajeComunicado = totalPlanificado > 0 ? Math.round((rows.filter((r) => r.comunicado === 'SI').length / totalPlanificado) * 100) : 0;
 
     // Calculate by Sistema de Gestión
@@ -181,12 +170,12 @@ export default function ProcessRiskMatrix() {
       }
     });
 
-    setIndicadores({
+    return {
       totalPlanificado,
       totalAlcanzado,
       porcentajeComunicado,
       alcancePorSistema,
-    });
+    };
   }, [rows]);
 
   // Auto-save data whenever rows change
@@ -374,13 +363,13 @@ export default function ProcessRiskMatrix() {
         <Card>
           <CardContent className="pt-4">
             <p className="text-sm text-slate-600">% Previsto</p>
-            <p className="text-2xl font-bold text-blue-600">{indicadores.totalPlanificado}</p>
+            <p className="text-2xl font-bold text-blue-600">{indicadores.totalPlanificado > 0 ? '100%' : '0%'}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
             <p className="text-sm text-slate-600">% Alcanzado</p>
-            <p className="text-2xl font-bold text-green-600">{indicadores.totalAlcanzado}</p>
+            <p className="text-2xl font-bold text-green-600">{indicadores.totalAlcanzado}%</p>
           </CardContent>
         </Card>
         <Card>
