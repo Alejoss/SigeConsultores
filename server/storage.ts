@@ -101,7 +101,7 @@ export async function storageDelete(relKey: string): Promise<void> {
   );
 }
 
-const PRESIGNED_URL_EXPIRY = 3600; // 1 hour
+const PRESIGNED_URL_EXPIRY = 604800; // 7 days
 
 async function getDownloadUrl(
   client: S3Client,

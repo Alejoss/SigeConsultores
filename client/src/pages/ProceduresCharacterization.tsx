@@ -58,6 +58,33 @@ interface Props {
   onVolver?: () => void;
 }
 
+/**
+ * Botón que genera una URL pre-firmada fresca desde el servidor al hacer clic,
+ * evitando el error de URL expirada de S3.
+ */
+function DownloadButton({ fileKey, label, size }: { fileKey: string; label: string; size?: "sm" | "default" }) {
+  const [loading, setLoading] = React.useState(false);
+  const utils = trpc.useUtils();
+
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      const result = await utils.procedures.getDownloadUrl.fetch({ fileKey });
+      window.open(result.url, "_blank");
+    } catch {
+      toast.error("No se pudo generar el enlace de descarga. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button onClick={handleClick} disabled={loading} variant="outline" size={size} className={size !== "sm" ? "w-full" : ""}>
+      {loading ? "Generando enlace..." : label}
+    </Button>
+  );
+}
+
 export default function ProceduresCharacterization({ processId: propProcessId, processName: propProcessName, onVolver }: Props) {
   const [, setLocation] = useLocation();
   const [procedures, setProcedures] = useState<Procedure[]>([]);
@@ -922,16 +949,12 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
                   </>
                 )}
 
-                {procedure.procedureFileUrl && (
-                  <Button onClick={() => procedure.procedureFileUrl && window.open(procedure.procedureFileUrl, "_blank")} variant="outline" className="w-full">
-                    📄 Descargar Procedimiento
-                  </Button>
+                {procedure.procedureFileKey && (
+                  <DownloadButton fileKey={procedure.procedureFileKey} label="📄 Descargar Procedimiento" />
                 )}
 
-                {procedure.flowchartFileUrl && (
-                  <Button onClick={() => procedure.flowchartFileUrl && window.open(procedure.flowchartFileUrl, "_blank")} variant="outline" className="w-full">
-                    📊 Descargar Flujograma
-                  </Button>
+                {procedure.flowchartFileKey && (
+                  <DownloadButton fileKey={procedure.flowchartFileKey} label="📊 Descargar Flujograma" />
                 )}
 
                 {procedureRecords[procedure.id] && procedureRecords[procedure.id].length > 0 && (
@@ -950,14 +973,8 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
                               )}
                             </div>
                             <div className="flex gap-2">
-                              {record.fileUrl && (
-                                <Button
-                                  onClick={() => record.fileUrl && window.open(record.fileUrl, "_blank")}
-                                  variant="outline"
-                                  size="sm"
-                                >
-                                  📥 Descargar
-                                </Button>
+                              {record.fileKey && (
+                                <DownloadButton fileKey={record.fileKey} label="📥 Descargar" size="sm" />
                               )}
                               {record.id && (
                                 <>

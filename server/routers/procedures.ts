@@ -282,6 +282,25 @@ export const proceduresRouter = router({
     }),
 
   /**
+   * Get a fresh pre-signed download URL for a file key
+   */
+  getDownloadUrl: companyProcedure
+    .input(
+      z.object({
+        fileKey: z.string(),
+      })
+    )
+    .query(async ({ input }) => {
+      try {
+        const { url } = await storageGet(input.fileKey);
+        return { url };
+      } catch (error) {
+        console.error("Error generating download URL:", error);
+        throw new Error("No se pudo generar la URL de descarga");
+      }
+    }),
+
+  /**
    * Upload a file to S3
    */
   uploadFile: companyProcedure
