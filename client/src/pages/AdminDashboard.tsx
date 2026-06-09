@@ -106,6 +106,14 @@ export default function AdminDashboard() {
               <p className="text-slate-600">Gestiona empresas, usuarios y accesos</p>
             </div>
           </div>
+          <Button
+            variant="outline"
+            onClick={() => setLocation("/admin-storage")}
+            className="flex items-center gap-2"
+          >
+            <BarChart3 className="h-4 w-4" />
+            Almacenamiento
+          </Button>
         </div>
 
         {/* Customize Modules Section */}

@@ -60,6 +60,7 @@ import ModuleCustomizationPanel from "./pages/ModuleCustomizationPanel";
 import AdminGerentes from "./pages/AdminGerentes";
 import ManagerCompanyAdmin from "./pages/ManagerCompanyAdmin";
 import AdminJefes from "./pages/AdminJefes";
+import AdminStorage from "./pages/AdminStorage";
 import ProcessOwnerInvitationAccept from "./pages/ProcessOwnerInvitationAccept";
 import PolicyDocuments from "./pages/PolicyDocuments";
 import ValuesDocuments from "./pages/ValuesDocuments";
@@ -193,6 +194,7 @@ function Router() {
       <Route path={"/admin-gerentes"} component={AdminGerentes} />
       <Route path={"/manager-company-admin"} component={ManagerCompanyAdmin} />
       <Route path={"/admin-jefes"} component={AdminJefes} />
+      <Route path={"/admin-storage"} component={AdminStorage} />
       <Route path={"/process-owner-invitation"} component={ProcessOwnerInvitationAccept} />
       <Route path={"/policy-documents"} component={PolicyDocuments} />
       <Route path={"/values-documents"} component={ValuesDocuments} />

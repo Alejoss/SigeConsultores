@@ -118,6 +118,7 @@ export const companies = mysqlTable("companies", {
   ownerAccountId: int("ownerAccountId").notNull(),
   status: mysqlEnum("status", ["En Proceso", "Activa", "Desactivada"]).default("En Proceso").notNull(),
   cancelledAt: timestamp("cancelledAt"),
+  storageLimitMb: int("storageLimitMb").notNull().default(500),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -441,6 +442,7 @@ export const documents = mysqlTable("documents", {
   status: mysqlEnum("status", ["Obsoleto", "Vigente", "Registro"]).notNull(),
   fileUrl: text("fileUrl"),
   fileKey: text("fileKey"),
+  fileSizeBytes: int("fileSizeBytes").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -793,8 +795,10 @@ export const procedures = mysqlTable("procedures", {
   lastVersion: varchar("lastVersion", { length: 20 }),
   procedureFileUrl: text("procedureFileUrl"),
   procedureFileKey: text("procedureFileKey"),
+  procedureFileSizeBytes: int("procedureFileSizeBytes").default(0),
   flowchartFileUrl: text("flowchartFileUrl"),
   flowchartFileKey: text("flowchartFileKey"),
+  flowchartFileSizeBytes: int("flowchartFileSizeBytes").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -814,6 +818,7 @@ export const procedureRecords = mysqlTable("procedureRecords", {
   date: varchar("date", { length: 10 }),
   fileUrl: text("fileUrl"),
   fileKey: text("fileKey"),
+  fileSizeBytes: int("fileSizeBytes").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1264,6 +1269,7 @@ export const managementSystemFiles = mysqlTable("managementSystemFiles", {
   fileName: varchar("fileName", { length: 255 }).notNull(),
   fileUrl: varchar("fileUrl", { length: 1024 }).notNull(),
   fileKey: varchar("fileKey", { length: 1024 }).notNull(),
+  fileSizeBytes: int("fileSizeBytes").default(0),
   uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
 });
 export type ManagementSystemFile = typeof managementSystemFiles.$inferSelect;
@@ -1303,6 +1309,7 @@ export const auditFiles = mysqlTable("auditFiles", {
   fileName: varchar("fileName", { length: 255 }).notNull(),
   fileUrl: varchar("fileUrl", { length: 1024 }).notNull(),
   fileKey: varchar("fileKey", { length: 1024 }).notNull(),
+  fileSizeBytes: int("fileSizeBytes").default(0),
   uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
 });
 export type AuditFile = typeof auditFiles.$inferSelect;
@@ -1336,6 +1343,7 @@ export const inspectionFiles = mysqlTable("inspectionFiles", {
   fileName: varchar("fileName", { length: 255 }).notNull(),
   fileUrl: varchar("fileUrl", { length: 1024 }).notNull(),
   fileKey: varchar("fileKey", { length: 1024 }).notNull(),
+  fileSizeBytes: int("fileSizeBytes").default(0),
   uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
 });
 export type InspectionFile = typeof inspectionFiles.$inferSelect;
@@ -1349,6 +1357,7 @@ export const processStakeholderMatrixFiles = mysqlTable("processStakeholderMatri
   processId: int("processId").notNull(),
   fileName: varchar("fileName", { length: 255 }).notNull(),
   fileKey: text("fileKey").notNull(),
+  fileSizeBytes: int("fileSizeBytes").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

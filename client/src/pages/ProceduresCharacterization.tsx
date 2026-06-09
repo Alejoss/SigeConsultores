@@ -159,7 +159,7 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
     }
   }, [expandedId]);
 
-  const uploadFile = async (file: File): Promise<{ url: string; key: string }> => {
+  const uploadFile = async (file: File): Promise<{ url: string; key: string; fileSizeBytes: number }> => {
     const formData = new FormData();
     formData.append("file", file, file.name);
     const response = await fetch("/api/upload/procedure-file", {
@@ -172,7 +172,7 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
       throw new Error(err.error || "Error al subir el archivo");
     }
     const result = await response.json();
-    return { url: result.url, key: result.key };
+    return { url: result.url, key: result.key, fileSizeBytes: result.fileSizeBytes || file.size };
   };
 
   const handleEditRecord = (record: ProcedureRecord) => {
@@ -191,10 +191,12 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
       let fileUrl = editingRecord.fileUrl || undefined;
       let fileKey = editingRecord.fileKey || undefined;
 
+      let fileSizeBytes: number | undefined = undefined;
       if (editRecordFile) {
         const result = await uploadFile(editRecordFile);
         fileUrl = result.url;
         fileKey = result.key;
+        fileSizeBytes = result.fileSizeBytes;
       }
 
       await updateRecordMutation.mutateAsync({
@@ -207,6 +209,7 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
           : new Date().toISOString().split('T')[0],
         fileUrl,
         fileKey,
+        fileSizeBytes,
       });
 
       toast.success("Registro actualizado correctamente");
@@ -237,10 +240,12 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
       let fileUrl = "";
       let fileKey = "";
 
+      let newRecordFileSizeBytes: number | undefined = undefined;
       if (newRecordFile) {
         const result = await uploadFile(newRecordFile);
         fileUrl = result.url;
         fileKey = result.key;
+        newRecordFileSizeBytes = result.fileSizeBytes;
       }
 
       await addRecordMutation.mutateAsync({
@@ -251,6 +256,7 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
         date: typeof newRecordData.date === 'string' ? newRecordData.date : new Date().toISOString().split('T')[0],
         fileUrl: fileUrl || undefined,
         fileKey: fileKey || undefined,
+        fileSizeBytes: newRecordFileSizeBytes,
       });
 
       toast.success("Registro agregado correctamente");
@@ -283,16 +289,20 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
       let flowchartFileUrl = "";
       let flowchartFileKey = "";
 
+      let procedureFileSizeBytes = 0;
+      let flowchartFileSizeBytes = 0;
       if (formData.procedureFile) {
         const result = await uploadFile(formData.procedureFile);
         procedureFileUrl = result.url;
         procedureFileKey = result.key;
+        procedureFileSizeBytes = result.fileSizeBytes;
       }
 
       if (formData.flowchartFile) {
         const result = await uploadFile(formData.flowchartFile);
         flowchartFileUrl = result.url;
         flowchartFileKey = result.key;
+        flowchartFileSizeBytes = result.fileSizeBytes;
       }
 
       const createResult = await createMutation.mutateAsync({
@@ -304,8 +314,10 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
         createdDate: formData.createdDate,
         procedureFileUrl,
         procedureFileKey,
+        procedureFileSizeBytes,
         flowchartFileUrl,
         flowchartFileKey,
+        flowchartFileSizeBytes,
       });
 
       const procedureId = (createResult as any).id;
@@ -325,10 +337,12 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
             let recordFileUrl = "";
             let recordFileKey = "";
 
+            let recordFileSizeBytes = 0;
             if (record.file) {
               const fileResult = await uploadFile(record.file);
               recordFileUrl = fileResult.url;
               recordFileKey = fileResult.key;
+              recordFileSizeBytes = fileResult.fileSizeBytes;
             }
 
             console.log("Saving record:", record.name, "for procedure:", procedureId);
@@ -340,6 +354,7 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
               date: record.date ? (typeof record.date === 'string' ? record.date : new Date(record.date).toISOString().split('T')[0]) : undefined,
               fileUrl: recordFileUrl,
               fileKey: recordFileKey,
+              fileSizeBytes: recordFileSizeBytes,
             });
 
             recordsSaved++;
@@ -403,16 +418,20 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
       let flowchartFileUrl: string | undefined = undefined;
       let flowchartFileKey: string | undefined = undefined;
 
+      let editProcedureFileSizeBytes: number | undefined = undefined;
+      let editFlowchartFileSizeBytes: number | undefined = undefined;
       if (editProcedureFile) {
         const result = await uploadFile(editProcedureFile);
         procedureFileUrl = result.url;
         procedureFileKey = result.key;
+        editProcedureFileSizeBytes = result.fileSizeBytes;
       }
 
       if (editFlowchartFile) {
         const result = await uploadFile(editFlowchartFile);
         flowchartFileUrl = result.url;
         flowchartFileKey = result.key;
+        editFlowchartFileSizeBytes = result.fileSizeBytes;
       }
 
       await updateMutation.mutateAsync({
@@ -424,8 +443,10 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
         createdDate: editData.createdDate ? new Date(editData.createdDate).toISOString().split("T")[0] : undefined,
         procedureFileUrl,
         procedureFileKey,
+        procedureFileSizeBytes: editProcedureFileSizeBytes,
         flowchartFileUrl,
         flowchartFileKey,
+        flowchartFileSizeBytes: editFlowchartFileSizeBytes,
       });
 
       toast.success("Procedimiento actualizado correctamente");

@@ -21,8 +21,10 @@ export const proceduresRouter = router({
         lastVersion: z.string().optional(),
         procedureFileUrl: z.string().optional(),
         procedureFileKey: z.string().optional(),
+        procedureFileSizeBytes: z.number().optional(),
         flowchartFileUrl: z.string().optional(),
         flowchartFileKey: z.string().optional(),
+        flowchartFileSizeBytes: z.number().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -40,8 +42,10 @@ export const proceduresRouter = router({
         lastVersion: input.lastVersion,
         procedureFileUrl: input.procedureFileUrl,
         procedureFileKey: input.procedureFileKey,
+        procedureFileSizeBytes: input.procedureFileSizeBytes || 0,
         flowchartFileUrl: input.flowchartFileUrl,
         flowchartFileKey: input.flowchartFileKey,
+        flowchartFileSizeBytes: input.flowchartFileSizeBytes || 0,
       });
 
       // Query the created procedure to get its ID
@@ -136,8 +140,10 @@ export const proceduresRouter = router({
         lastVersion: z.string().optional(),
         procedureFileUrl: z.string().optional(),
         procedureFileKey: z.string().optional(),
+        procedureFileSizeBytes: z.number().optional(),
         flowchartFileUrl: z.string().optional(),
         flowchartFileKey: z.string().optional(),
+        flowchartFileSizeBytes: z.number().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -204,6 +210,7 @@ export const proceduresRouter = router({
         date: z.string().optional(),
         fileUrl: z.string().optional(),
         fileKey: z.string().optional(),
+        fileSizeBytes: z.number().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -218,6 +225,7 @@ export const proceduresRouter = router({
         date: input.date || null,
         fileUrl: input.fileUrl,
         fileKey: input.fileKey,
+        fileSizeBytes: input.fileSizeBytes || 0,
       });
 
       return result;
@@ -236,6 +244,7 @@ export const proceduresRouter = router({
         date: z.string().optional(),
         fileUrl: z.string().optional(),
         fileKey: z.string().optional(),
+        fileSizeBytes: z.number().optional(),
       })
     )
     .mutation(async ({ input }) => {

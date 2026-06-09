@@ -8,6 +8,7 @@ import { useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import DashboardModulesGrid from "@/components/DashboardModulesGrid";
 import { DASHBOARD_MODULES } from "@shared/dashboardModules";
+import { HardDrive } from "lucide-react";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -33,6 +34,11 @@ export default function Dashboard() {
   const { data: managerCompany } = trpc.adminOperations.getCompanyById.useQuery(
     { companyId: companyIdNum },
     { enabled: isManagerLogin && companyIdNum > 0 }
+  );
+
+  const storageQuery = trpc.adminOperations.getMyStorageUsage.useQuery(
+    { companyId: companyIdNum },
+    { enabled: companyIdNum > 0, refetchOnWindowFocus: false }
   );
 
   useEffect(() => {
@@ -106,6 +112,62 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Indicador de almacenamiento — discreto, solo cuando hay empresa seleccionada */}
+        {selectedCompany && companyIdNum > 0 && storageQuery.data && (
+          <div className="flex items-center gap-3 bg-white border rounded-lg px-4 py-3 shadow-sm">
+            <HardDrive
+              className={`h-5 w-5 flex-shrink-0 ${
+                storageQuery.data.percentUsed >= 100
+                  ? "text-red-500"
+                  : storageQuery.data.percentUsed >= 80
+                  ? "text-yellow-500"
+                  : "text-blue-400"
+              }`}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between text-sm mb-1">
+                <span className="text-slate-500 font-medium">Almacenamiento</span>
+                <span
+                  className={`font-semibold text-xs ${
+                    storageQuery.data.percentUsed >= 100
+                      ? "text-red-600"
+                      : storageQuery.data.percentUsed >= 80
+                      ? "text-yellow-600"
+                      : "text-slate-600"
+                  }`}
+                >
+                  {storageQuery.data.usedMb < 1
+                    ? `${Math.round(storageQuery.data.usedBytes / 1024)} KB`
+                    : `${storageQuery.data.usedMb.toFixed(1)} MB`}{" "}
+                  / {storageQuery.data.limitMb} MB &mdash; {storageQuery.data.percentUsed}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-1.5">
+                <div
+                  className={`h-1.5 rounded-full transition-all ${
+                    storageQuery.data.percentUsed >= 100
+                      ? "bg-red-500"
+                      : storageQuery.data.percentUsed >= 80
+                      ? "bg-yellow-500"
+                      : "bg-blue-400"
+                  }`}
+                  style={{ width: `${Math.min(storageQuery.data.percentUsed, 100)}%` }}
+                />
+              </div>
+              {storageQuery.data.percentUsed >= 80 && storageQuery.data.percentUsed < 100 && (
+                <p className="text-xs text-yellow-600 mt-1">
+                  Atención: estás usando más del 80% de tu espacio. Contacta al administrador para ampliar tu plan.
+                </p>
+              )}
+              {storageQuery.data.percentUsed >= 100 && (
+                <p className="text-xs text-red-600 mt-1">
+                  Has alcanzado el límite de almacenamiento. No podrás subir nuevos archivos. Contacta al administrador.
+                </p>
+              )}
             </div>
           </div>
         )}

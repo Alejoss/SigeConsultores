@@ -9,11 +9,17 @@ import {
   accounts,
   accountRoles,
   authInvitations,
+  procedures,
+  procedureRecords,
+  documents,
+  managementSystemFiles,
+  auditFiles,
+  inspectionFiles,
 } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
+import { protectedProcedure, companyProcedure, publicProcedure, router } from "../_core/trpc";
 import { randomBytes } from "crypto";
 import { getDb } from "../db";
 import { getRoleIdBySlug } from "../accountAuth";
@@ -297,4 +303,123 @@ export const adminOperationsRouter = router({
 
     return company.length > 0 ? company[0] : null;
   }),
+
+  /**
+   * Calcula el uso de almacenamiento de una empresa sumando todos los archivos
+   */
+  getStorageUsage: adminProcedure
+    .input(z.object({ companyId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      return calcStorageUsage(db, input.companyId);
+    }),
+
+  /**
+   * Uso de almacenamiento de todas las empresas (panel admin)
+   */
+  getAllStorageUsage: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+
+    const allCompanies = await db
+      .select({ id: companies.id, name: companies.name, storageLimitMb: companies.storageLimitMb, status: companies.status })
+      .from(companies)
+      .orderBy(companies.name);
+
+    const results = [];
+    for (const company of allCompanies) {
+      const usage = await calcStorageUsage(db, company.id);
+      results.push({ id: company.id, name: company.name, status: company.status, ...usage });
+    }
+    return results;
+  }),
+
+  /**
+   * Actualiza el límite de almacenamiento de una empresa (solo admin)
+   */
+  setStorageLimit: adminProcedure
+    .input(z.object({ companyId: z.number(), limitMb: z.number().min(50).max(100000) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      await db
+        .update(companies)
+        .set({ storageLimitMb: input.limitMb })
+        .where(eq(companies.id, input.companyId));
+      return { ok: true };
+    }),
+
+  /**
+   * Uso de almacenamiento del cliente autenticado (para el dashboard del cliente)
+   */
+  getMyStorageUsage: companyProcedure
+    .input(z.object({ companyId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      return calcStorageUsage(db, input.companyId);
+    }),
 });
+
+/**
+ * Función auxiliar: suma todos los bytes de archivos de una empresa
+ */
+async function calcStorageUsage(db: Awaited<ReturnType<typeof getDb>>, companyId: number) {
+  if (!db) throw new Error("Database not available");
+
+  const companyProcesses = await db
+    .select({ id: processes.id })
+    .from(processes)
+    .where(eq(processes.companyId, companyId));
+  const processIds = companyProcesses.map((p) => p.id);
+
+  let totalBytes = 0;
+
+  for (const pid of processIds) {
+    // Procedimientos (archivo principal + flujograma)
+    const procs = await db
+      .select({ procedureFileSizeBytes: procedures.procedureFileSizeBytes, flowchartFileSizeBytes: procedures.flowchartFileSizeBytes })
+      .from(procedures)
+      .where(eq(procedures.processId, pid));
+    for (const p of procs) totalBytes += (p.procedureFileSizeBytes || 0) + (p.flowchartFileSizeBytes || 0);
+
+    // Registros de procedimientos
+    const procIds = (await db.select({ id: procedures.id }).from(procedures).where(eq(procedures.processId, pid))).map((x) => x.id);
+    for (const procId of procIds) {
+      const recs = await db.select({ fileSizeBytes: procedureRecords.fileSizeBytes }).from(procedureRecords).where(eq(procedureRecords.procedureId, procId));
+      for (const r of recs) totalBytes += r.fileSizeBytes || 0;
+    }
+
+    // Documentos
+    const docs = await db.select({ fileSizeBytes: documents.fileSizeBytes }).from(documents).where(eq(documents.processId, pid));
+    for (const d of docs) totalBytes += d.fileSizeBytes || 0;
+  }
+
+  // Archivos de sistemas de gestión
+  const mgmtFiles = await db.select({ fileSizeBytes: managementSystemFiles.fileSizeBytes }).from(managementSystemFiles).where(eq(managementSystemFiles.companyId, companyId));
+  for (const f of mgmtFiles) totalBytes += f.fileSizeBytes || 0;
+
+  // Archivos de auditorías
+  const auditFileRows = await db.select({ fileSizeBytes: auditFiles.fileSizeBytes }).from(auditFiles).where(eq(auditFiles.companyId, companyId));
+  for (const f of auditFileRows) totalBytes += f.fileSizeBytes || 0;
+
+  // Archivos de inspecciones
+  const inspFileRows = await db.select({ fileSizeBytes: inspectionFiles.fileSizeBytes }).from(inspectionFiles).where(eq(inspectionFiles.companyId, companyId));
+  for (const f of inspFileRows) totalBytes += f.fileSizeBytes || 0;
+
+  // Límite de la empresa
+  const companyRow = await db
+    .select({ storageLimitMb: companies.storageLimitMb })
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .limit(1);
+  const storageLimitMb = companyRow[0]?.storageLimitMb ?? 500;
+
+  return {
+    usedBytes: totalBytes,
+    usedMb: Math.round((totalBytes / (1024 * 1024)) * 100) / 100,
+    limitMb: storageLimitMb,
+    percentUsed: storageLimitMb > 0 ? Math.round((totalBytes / (storageLimitMb * 1024 * 1024)) * 100) : 0,
+  };
+}

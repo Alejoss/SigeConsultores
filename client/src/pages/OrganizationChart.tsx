@@ -59,7 +59,12 @@ export default function OrganizationChart() {
   };
 
   const handleBack = () => {
-    setLocation("/dashboard");
+    // Preserve companyId so Dashboard shows modules correctly after returning
+    if (selectedCompanyId) {
+      setLocation(`/dashboard?companyId=${selectedCompanyId}`);
+    } else {
+      setLocation("/dashboard");
+    }
   };
 
   // Show loading spinner while auth is resolving

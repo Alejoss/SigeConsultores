@@ -41,8 +41,9 @@ export function registerFileUploadRoutes(app: Express) {
         const fileKey = `procedures/${userId}/${Date.now()}-${safeFileName}`;
 
         const result = await storagePut(fileKey, req.file.buffer, req.file.mimetype);
+        const fileSizeBytes = req.file.size;
 
-        return res.json({ ok: true, url: result.url, key: result.key });
+        return res.json({ ok: true, url: result.url, key: result.key, fileSizeBytes });
       } catch (error) {
         console.error("[fileUpload] Error:", error);
         return res.status(500).json({ ok: false, error: "Error al subir el archivo" });
