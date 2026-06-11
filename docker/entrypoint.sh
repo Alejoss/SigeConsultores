@@ -8,5 +8,8 @@ if [ "${RUN_DB_PUSH_ON_STARTUP:-true}" = "true" ]; then
   pnpm exec drizzle-kit push --force
 fi
 
+echo "[entrypoint] Backfilling file sizes from S3..."
+node scripts/backfill-file-sizes.mjs || echo "[entrypoint] Backfill warning (non-fatal): check logs"
+
 echo "[entrypoint] Starting SIGE server..."
 exec node dist/index.js
