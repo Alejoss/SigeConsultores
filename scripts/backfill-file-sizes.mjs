@@ -131,10 +131,9 @@ async function main() {
       const size = await getS3FileSize(row.fileKey);
       if (size !== null) {
         if (!DRY_RUN) {
-          // organizationChartFiles no tiene fileSizeBytes aún, se puede agregar si se desea
-          // Por ahora solo reportamos
+          await db.query("UPDATE organizationChartFiles SET fileSizeBytes = ? WHERE id = ?", [size, row.id]);
         }
-        console.log(`  ℹ id=${row.id} size=${size} B (sin columna fileSizeBytes, solo informativo)`);
+        console.log(`  ✓ id=${row.id} size=${size} B`);
         totalUpdated++;
       } else {
         totalSkipped++;

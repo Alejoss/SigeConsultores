@@ -1395,7 +1395,7 @@ export async function getDocumentsByCompanyAndType(companyId: number, documentTy
     );
 }
 
-export async function createCompanyDocument(companyId: number, documentName: string, documentType: "Politica" | "Programa" | "Procedimiento" | "Varios", status: "Obsoleto" | "Vigente" | "Registro", fileUrl?: string, fileKey?: string) {
+export async function createCompanyDocument(companyId: number, documentName: string, documentType: "Politica" | "Programa" | "Procedimiento" | "Varios", status: "Obsoleto" | "Vigente" | "Registro", fileUrl?: string, fileKey?: string, fileSizeBytes?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
@@ -1424,7 +1424,7 @@ export async function createCompanyDocument(companyId: number, documentName: str
     processId = result[0].id;
   }
   
-  return await db.insert(documents).values({ processId, documentName, documentType, status, fileUrl, fileKey });
+  return await db.insert(documents).values({ processId, documentName, documentType, status, fileUrl, fileKey, fileSizeBytes: fileSizeBytes ?? 0 });
 }
 
 /** Fixed document name for the company-level process map image file. */
@@ -1762,7 +1762,8 @@ export async function uploadOrganizationChartFile(
   fileUrl: string,
   fileKey: string,
   uploadedByUserId: number,
-  uploadedByName: string
+  uploadedByName: string,
+  fileSizeBytes?: number
 ): Promise<any> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1775,6 +1776,7 @@ export async function uploadOrganizationChartFile(
       fileKey,
       uploadedByUserId,
       uploadedByName,
+      fileSizeBytes: fileSizeBytes ?? 0,
     });
 
     // Get the inserted file

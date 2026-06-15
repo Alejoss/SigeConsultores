@@ -1233,6 +1233,7 @@ export const organizationChartFiles = mysqlTable("organizationChartFiles", {
   uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
   uploadedByUserId: int("uploadedByUserId").notNull(),
   uploadedByName: varchar("uploadedByName", { length: 255 }).notNull(),
+  fileSizeBytes: int("fileSizeBytes").default(0),
 });
 
 export type OrganizationChartFile = typeof organizationChartFiles.$inferSelect;

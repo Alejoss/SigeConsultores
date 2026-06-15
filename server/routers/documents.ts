@@ -79,7 +79,8 @@ export const documentsRouter = router({
           dbDocumentType,
           "Vigente",
           url,
-          fileKey
+          fileKey,
+          fileBuffer.length
         );
 
         return { success: true, url };

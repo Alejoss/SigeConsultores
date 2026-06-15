@@ -213,6 +213,7 @@ export const organizationChartRouter = router({
           key,
           userId,
           userName,
+          fileBuffer.length,
         );
 
         console.log("[OrganizationChart] uploadPDF complete, fileId:", file.id);
