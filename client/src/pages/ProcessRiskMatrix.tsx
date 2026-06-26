@@ -47,7 +47,7 @@ function AccionOTGRow({
   };
 
   return (
-    <div className="border rounded-lg p-4 bg-white space-y-4 relative">
+    <div className="border rounded-lg p-4 bg-sky-100 border-sky-300 space-y-4 relative">
       <button
         onClick={onDelete}
         className="absolute top-2 right-2 text-red-400 hover:text-red-600 p-1"
@@ -936,9 +936,9 @@ export default function ProcessRiskMatrix() {
                     </div>
                   )}
 
-                  {/* B. PLANIFICACIÓN DE ACCIÓN A TOMAR - MEJORA b) */}
+                  {/* B. OBJETIVOS TÁCTICOS DE GESTIÓN (OTG) */}
                   <div>
-                    <h3 className="font-semibold text-blue-900 mb-4">B. PLANIFICACIÓN DE ACCIÓN A TOMAR</h3>
+                    <h3 className="font-semibold text-blue-900 mb-4">B. OBJETIVOS TÁCTICOS DE GESTIÓN (OTG)</h3>
                     <div className="space-y-4">
                       {(row.foda === 'Debilidad' || row.foda === 'Amenaza') ? (
                         <div>
@@ -951,7 +951,7 @@ export default function ProcessRiskMatrix() {
                         </div>
                       ) : (
                         <div>
-                          <label className="text-xs font-semibold text-slate-600">Acción de Aprovechamiento</label>
+                          <label className="text-xs font-semibold text-slate-600">Objetivo Táctico de Gestión</label>
                           <Textarea
                             value={row.accionATomar}
                             onChange={(e) => updateRow(row.id, 'accionATomar', e.target.value)}
@@ -1160,9 +1160,9 @@ export default function ProcessRiskMatrix() {
                       )}
                     </div>
                   </div>
-                  {/* E. OBJETIVOS TÁCTICOS DE GESTIÓN (OTG) */}
+                  {/* E. ACCIONES OTG */}
                   <div>
-                    <h3 className="font-semibold text-blue-900 mb-4">E. OBJETIVOS TÁCTICOS DE GESTIÓN (OTG)</h3>
+                    <h3 className="font-semibold text-blue-900 mb-4">E. ACCIONES OTG</h3>
                     <div className="space-y-3">
                       {(row.acciones || []).map((accion) => (
                         <AccionOTGRow
