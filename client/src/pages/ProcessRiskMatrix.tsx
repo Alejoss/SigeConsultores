@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -6,12 +6,232 @@ import { useLocation } from 'wouter';
 import { ArrowLeft, Plus, Trash2, Save, AlertCircle, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
-import { MatrizFODARow, MatrizFODAIndicadores, FODAType, FactorType, SistemaGestionType, ProbabilidadType, ImpactoType, calcularNivelRiesgo } from '@/types/matrizFODA';
+import {
+  MatrizFODARow, MatrizFODAIndicadores, FODAType, FactorType, SistemaGestionType,
+  ProbabilidadType, ImpactoType, calcularNivelRiesgo,
+  AccionOTG, TrackingOTGType, MONTHS_SHORT, calcularPorcentajeAccion, calcularPorcentajeOTG,
+} from '@/types/matrizFODA';
 import { useManagerAuth } from '@/_core/hooks/useManagerAuth';
 import { useProcessLeaderAuth } from '@/contexts/ProcessLeaderAuthContext';
 import { exportRiskMatrixToPDF } from '@/lib/exportRiskMatrixToPDF';
 import { exportMatrizFODAToPDF } from '@/lib/exportMatrizFODAToPDF';
 
+// ─── AccionOTGRow ────────────────────────────────────────────────────────────────
+function AccionOTGRow({
+  accion,
+  onChange,
+  onDelete,
+}: {
+  accion: AccionOTG;
+  onChange: (updated: AccionOTG) => void;
+  onDelete: () => void;
+}) {
+  const ponderacionRef = useRef<HTMLInputElement>(null);
+  const partidaRef = useRef<HTMLInputElement>(null);
+  const llegadaRef = useRef<HTMLInputElement>(null);
+
+  const update = (field: keyof AccionOTG, value: any) => {
+    onChange({ ...accion, [field]: value });
+  };
+
+  const updateMonthly = (idx: number, val: number) => {
+    const vals = [...(accion.monthlyValues || Array(12).fill(0))];
+    vals[idx] = val;
+    update('monthlyValues', vals);
+  };
+
+  const updateChecklist = (idx: number, val: boolean) => {
+    const vals = [...(accion.checklistValues || Array(12).fill(false))];
+    vals[idx] = val;
+    update('checklistValues', vals);
+  };
+
+  return (
+    <div className="border rounded-lg p-4 bg-white space-y-4 relative">
+      <button
+        onClick={onDelete}
+        className="absolute top-2 right-2 text-red-400 hover:text-red-600 p-1"
+        title="Eliminar acción"
+      >
+        <Trash2 size={16} />
+      </button>
+
+      {/* Fila 1: OTG + Responsable + Fecha */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="md:col-span-1">
+          <label className="text-xs font-semibold text-slate-600">Objetivo Táctico de Gestión</label>
+          <textarea
+            defaultValue={accion.accion}
+            onBlur={(e) => update('accion', e.target.value)}
+            rows={2}
+            className="w-full border rounded p-2 text-sm resize-y"
+            placeholder="Describe el objetivo..."
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-slate-600">Responsable</label>
+          <input
+            type="text"
+            defaultValue={accion.responsable}
+            onBlur={(e) => update('responsable', e.target.value)}
+            className="w-full border rounded p-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-slate-600">Fecha de Implementación</label>
+          <input
+            type="date"
+            defaultValue={accion.fechaImplementacion}
+            onBlur={(e) => update('fechaImplementacion', e.target.value)}
+            className="w-full border rounded p-2 text-sm"
+          />
+        </div>
+      </div>
+
+      {/* Fila 2: Ponderación + Tipo de Seguimiento */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-semibold text-slate-600">Ponderación (%)</label>
+          <input
+            ref={ponderacionRef}
+            type="number"
+            step="1"
+            min={0}
+            max={100}
+            defaultValue={accion.ponderacion ?? 0}
+            onBlur={(e) => {
+              const val = parseFloat(e.target.value) || 0;
+              if (ponderacionRef.current) ponderacionRef.current.value = String(val);
+              update('ponderacion', val);
+            }}
+            className="w-full border rounded p-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-slate-600">Tipo de Seguimiento</label>
+          <select
+            value={accion.tipoSeguimiento}
+            onChange={(e) => update('tipoSeguimiento', e.target.value as TrackingOTGType)}
+            className="w-full border rounded p-2 text-sm"
+          >
+            <option value="puntual">Puntual (% de avance)</option>
+            <option value="mensual_sumatoria">Mensual — Sumatoria</option>
+            <option value="mensual_promedio">Mensual — Promedio</option>
+            <option value="mensual_checklist">Mensual — Checklist</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Campos según tipo */}
+      {accion.tipoSeguimiento === 'puntual' && (
+        <div>
+          <label className="text-xs font-semibold text-slate-600">% de Avance</label>
+          <input
+            type="number"
+            step="1"
+            min={0}
+            max={100}
+            defaultValue={accion.valorPuntual ?? 0}
+            onBlur={(e) => update('valorPuntual', parseFloat(e.target.value) || 0)}
+            className="w-full border rounded p-2 text-sm"
+          />
+        </div>
+      )}
+      {(accion.tipoSeguimiento === 'mensual_sumatoria' || accion.tipoSeguimiento === 'mensual_promedio') && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 bg-blue-50 border border-blue-200 rounded">
+            <div>
+              <label className="text-xs font-semibold text-slate-600">Punto de Partida</label>
+              <input
+                ref={partidaRef}
+                type="number"
+                step="any"
+                defaultValue={accion.puntoPartidaAccion ?? 0}
+                onBlur={(e) => {
+                  const val = parseFloat(e.target.value) || 0;
+                  if (partidaRef.current) partidaRef.current.value = String(val);
+                  update('puntoPartidaAccion', val);
+                }}
+                className="w-full border rounded p-2 text-sm"
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600">Punto de Llegada (Meta)</label>
+              <input
+                ref={llegadaRef}
+                type="number"
+                step="any"
+                defaultValue={accion.puntoLlegadaAccion ?? 0}
+                onBlur={(e) => {
+                  const val = parseFloat(e.target.value) || 0;
+                  if (llegadaRef.current) llegadaRef.current.value = String(val);
+                  update('puntoLlegadaAccion', val);
+                }}
+                className="w-full border rounded p-2 text-sm"
+                placeholder="100"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600">Unidad de Medida</label>
+              <input
+                type="text"
+                defaultValue={accion.unidadMedidaAccion || ''}
+                onBlur={(e) => update('unidadMedidaAccion', e.target.value)}
+                className="w-full border rounded p-2 text-sm"
+                placeholder="ej: kg, %, unidades..."
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-600 mb-2 block">
+              Valores Mensuales ({accion.tipoSeguimiento === 'mensual_sumatoria' ? 'Sumatoria' : 'Promedio'})
+            </label>
+            <div className="grid grid-cols-6 md:grid-cols-12 gap-1">
+              {MONTHS_SHORT.map((mes, idx) => (
+                <div key={idx} className="text-center">
+                  <div className="text-xs text-slate-500 mb-1">{mes}</div>
+                  <input
+                    type="number"
+                    step="any"
+                    defaultValue={(accion.monthlyValues || Array(12).fill(0))[idx]}
+                    onBlur={(e) => updateMonthly(idx, parseFloat(e.target.value) || 0)}
+                    className="w-full border rounded p-1 text-xs text-center"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {accion.tipoSeguimiento === 'mensual_checklist' && (
+        <div>
+          <label className="text-xs font-semibold text-slate-600 mb-2 block">Checklist Mensual</label>
+          <div className="grid grid-cols-6 md:grid-cols-12 gap-1">
+            {MONTHS_SHORT.map((mes, idx) => (
+              <div key={idx} className="text-center">
+                <div className="text-xs text-slate-500 mb-1">{mes}</div>
+                <input
+                  type="checkbox"
+                  checked={(accion.checklistValues || Array(12).fill(false))[idx]}
+                  onChange={(e) => updateChecklist(idx, e.target.checked)}
+                  className="w-5 h-5 cursor-pointer"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* % Completado calculado */}
+      <div className="text-right text-xs text-slate-500">
+        % Completado: <span className="font-bold text-blue-700">{calcularPorcentajeAccion(accion)}%</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Componente principal ────────────────────────────────────────────────────────────────
 export default function ProcessRiskMatrix() {
   const [, setLocation] = useLocation();
   const { isManagerLogin } = useManagerAuth();
@@ -25,7 +245,8 @@ export default function ProcessRiskMatrix() {
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
-
+  const initialLoadDoneRef = useRef(false);
+  const savingRef = useRef(false);
 
   // Load process ID and name from localStorage
   useEffect(() => {
@@ -43,9 +264,9 @@ export default function ProcessRiskMatrix() {
     { enabled: processId !== null }
   );
 
-  // Initialize rows from FODA data (first from matrixData, then from old structure)
+  // Initialize rows from FODA data — only on first load, never on refetch
   useEffect(() => {
-    if (fodaData) {
+    if (fodaData && !initialLoadDoneRef.current) {
       try {
         let newRows: MatrizFODARow[] = [];
 
@@ -129,6 +350,7 @@ export default function ProcessRiskMatrix() {
         }
 
         setRows(newRows);
+        setTimeout(() => { initialLoadDoneRef.current = true; }, 200);
       } catch (error) {
         console.error('Error loading FODA data:', error);
       }
@@ -178,12 +400,14 @@ export default function ProcessRiskMatrix() {
     };
   }, [rows]);
 
-  // Auto-save data whenever rows change
+  // Auto-save data whenever rows change — protected against initial load and concurrent saves
   const saveMatrixMutation = trpc.processFODA.saveMatrixData.useMutation();
 
   useEffect(() => {
+    if (!initialLoadDoneRef.current) return;
     const saveTimeout = setTimeout(async () => {
-      if (rows.length > 0 && processId) {
+      if (rows.length > 0 && processId && !savingRef.current) {
+        savingRef.current = true;
         setIsAutoSaving(true);
         const matrixDataJson = JSON.stringify(rows);
         try {
@@ -197,9 +421,11 @@ export default function ProcessRiskMatrix() {
           setIsAutoSaving(false);
           console.error('Error auto-saving matrix:', error);
           toast.error('Error guardando matriz: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+        } finally {
+          savingRef.current = false;
         }
       }
-    }, 1000);
+    }, 1500);
 
     return () => clearTimeout(saveTimeout);
   }, [rows, processId, saveMatrixMutation]);
@@ -275,6 +501,30 @@ export default function ProcessRiskMatrix() {
 
   const deleteRow = (id: number) => {
     setRows(rows.filter((r) => r.id !== id));
+  };
+
+  const updateAcciones = (rowId: number, acciones: AccionOTG[]) => {
+    setRows(rows.map((row) => {
+      if (row.id !== rowId) return row;
+      const porcentajeCumplimiento = calcularPorcentajeOTG(acciones);
+      return { ...row, acciones, porcentajeCumplimiento };
+    }));
+  };
+
+  const addAccion = (rowId: number) => {
+    const row = rows.find((r) => r.id === rowId);
+    if (!row) return;
+    const newAccion: AccionOTG = {
+      id: crypto.randomUUID(),
+      accion: '',
+      ponderacion: 0,
+      responsable: '',
+      fechaImplementacion: '',
+      tipoSeguimiento: 'puntual',
+      valorPuntual: 0,
+      porcentajeCompletado: 0,
+    };
+    updateAcciones(rowId, [...(row.acciones || []), newAccion]);
   };
 
   const toggleRowExpanded = (id: number) => {
@@ -845,6 +1095,40 @@ export default function ProcessRiskMatrix() {
                               </div>
                             </div>
                           </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {/* E. OBJETIVOS TÁCTICOS DE GESTIÓN (OTG) */}
+                  <div>
+                    <h3 className="font-semibold text-blue-900 mb-4">E. OBJETIVOS TÁCTICOS DE GESTIÓN (OTG)</h3>
+                    <div className="space-y-3">
+                      {(row.acciones || []).map((accion) => (
+                        <AccionOTGRow
+                          key={accion.id}
+                          accion={accion}
+                          onChange={(updated) => {
+                            const newAcciones = (row.acciones || []).map((a) => a.id === updated.id ? updated : a);
+                            updateAcciones(row.id, newAcciones);
+                          }}
+                          onDelete={() => {
+                            const newAcciones = (row.acciones || []).filter((a) => a.id !== accion.id);
+                            updateAcciones(row.id, newAcciones);
+                          }}
+                        />
+                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addAccion(row.id)}
+                        className="gap-2 w-full border-dashed"
+                      >
+                        <Plus size={14} />
+                        Agregar Acción OTG
+                      </Button>
+                      {(row.acciones || []).length > 0 && (
+                        <div className="text-right text-sm font-semibold text-blue-700">
+                          % Cumplimiento OTG: {calcularPorcentajeOTG(row.acciones || [])}%
                         </div>
                       )}
                     </div>

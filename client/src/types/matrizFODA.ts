@@ -8,6 +8,68 @@ export type ProbabilidadType = 'A' | 'B' | 'C' | 'D' | 'E';
 export type ImpactoType = 1 | 2 | 3 | 4 | 5;
 export type EstimacionType = 'Crítico' | 'Alto' | 'Medio' | 'Bajo';
 
+// ─── Tipos OTG ────────────────────────────────────────────────────────────────
+export type TrackingOTGType = 'puntual' | 'mensual_sumatoria' | 'mensual_promedio' | 'mensual_checklist';
+export const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+export interface AccionOTG {
+  id: string;
+  accion: string;
+  ponderacion: number;
+  responsable: string;
+  fechaImplementacion: string;
+  tipoSeguimiento: TrackingOTGType;
+  valorPuntual?: number;
+  puntoPartidaAccion?: number;
+  puntoLlegadaAccion?: number;
+  unidadMedidaAccion?: string;
+  monthlyValues?: number[];
+  checklistValues?: boolean[];
+  porcentajeCompletado: number;
+}
+export function calcularPorcentajeAccion(accion: AccionOTG): number {
+  switch (accion.tipoSeguimiento) {
+    case 'puntual':
+      return Math.min(100, Math.max(0, Math.round(accion.valorPuntual ?? 0)));
+    case 'mensual_sumatoria': {
+      const vals = accion.monthlyValues || Array(12).fill(0);
+      const suma = vals.reduce((s: number, v: number) => s + (v || 0), 0);
+      const partida = accion.puntoPartidaAccion ?? 0;
+      const llegada = accion.puntoLlegadaAccion ?? 0;
+      if (llegada === partida) return 0;
+      return Math.min(100, Math.max(0, Math.round(((suma - partida) / (llegada - partida)) * 100)));
+    }
+    case 'mensual_promedio': {
+      const vals = accion.monthlyValues || Array(12).fill(0);
+      const nonZero = vals.filter((v: number) => v > 0);
+      const promedio = nonZero.length > 0 ? nonZero.reduce((s: number, v: number) => s + v, 0) / nonZero.length : 0;
+      const partida = accion.puntoPartidaAccion ?? 0;
+      const llegada = accion.puntoLlegadaAccion ?? 0;
+      if (llegada === partida) return 0;
+      return Math.min(100, Math.max(0, Math.round(((promedio - partida) / (llegada - partida)) * 100)));
+    }
+    case 'mensual_checklist': {
+      const vals = accion.checklistValues || Array(12).fill(false);
+      const cumplidos = vals.filter((v: boolean) => v).length;
+      return Math.round((cumplidos / 12) * 100);
+    }
+    default:
+      return 0;
+  }
+}
+export function calcularPorcentajeOTG(acciones: AccionOTG[]): number {
+  if (!acciones || acciones.length === 0) return 0;
+  const totalPonderacion = acciones.reduce((s, a) => s + (a.ponderacion || 0), 0);
+  if (totalPonderacion === 0) {
+    const suma = acciones.reduce((s, a) => s + calcularPorcentajeAccion(a), 0);
+    return Math.round(suma / acciones.length);
+  }
+  const ponderado = acciones.reduce((s, a) => {
+    const pct = calcularPorcentajeAccion(a);
+    return s + pct * (a.ponderacion / totalPonderacion);
+  }, 0);
+  return Math.round(ponderado);
+}
+
 export interface MatrizFODARow {
   id: number;
   
@@ -41,6 +103,10 @@ export interface MatrizFODARow {
   partesInteresadas: string;
   evidencia: string;
   
+  // OTG
+  acciones?: AccionOTG[];
+  porcentajeCumplimiento?: number;
+
   // Seguimiento y reevaluación
   mejoraImplementada: MejoraImplementadaType;
   observacion: string;
