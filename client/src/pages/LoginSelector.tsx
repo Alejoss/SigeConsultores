@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,12 @@ import { PasswordInput } from "@/components/PasswordInput";
 /**
  * Login unificado: correo + contraseña.
  * El backend detecta tipo de usuario y devuelve `kind` para redirección.
+ *
+ * NOTA: El mensaje de error se renderiza FUERA del <form> para evitar el crash
+ * "NotFoundError: insertBefore on Node" causado por gestores de contraseñas
+ * (Chrome, LastPass, Bitwarden) que inyectan nodos extra dentro del formulario.
+ * Al estar fuera del form, React no necesita tocar el árbol del formulario
+ * cuando aparece/desaparece el mensaje de error.
  */
 export default function LoginSelector() {
   const [, setLocation] = useLocation();
@@ -18,6 +24,14 @@ export default function LoginSelector() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  // Hacer scroll al error cuando aparece
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [error]);
 
   type LoginResponse =
     | {
@@ -85,7 +99,6 @@ export default function LoginSelector() {
       return;
     }
 
-    // Keeps UX clear before hitting backend validation.
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setError("Ingresa un correo válido, por ejemplo: nombre@dominio.com.");
       return;
@@ -162,21 +175,29 @@ export default function LoginSelector() {
           <p className="text-gray-600 mt-2">Sistema Integrado de Gestión Empresarial</p>
         </div>
 
-        {/* Card de Selección */}
+        {/* Card de Login */}
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Iniciar Sesión</CardTitle>
             <CardDescription>Ingresa tu correo y contraseña</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <span>{error}</span>
-                </div>
-              )}
+            {/*
+              IMPORTANTE: El mensaje de error está FUERA del <form> para evitar
+              el crash "insertBefore on Node" causado por gestores de contraseñas
+              del navegador que inyectan nodos DOM dentro del formulario.
+            */}
+            {error && (
+              <div
+                ref={errorRef}
+                className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 mb-4"
+              >
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
 
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Correo</Label>
                 <Input
