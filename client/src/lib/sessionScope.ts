@@ -55,6 +55,18 @@ export function getProcessIdFromSession(): number | null {
   return stored ? parseInt(stored, 10) : null;
 }
 
+/**
+ * Returns the correct back path based on the axis origin stored in localStorage.
+ * If axisOrigin is set, returns the axis page path; otherwise falls back to the dashboard.
+ */
+export function getAxisBackPath(fallback: string = "/manager-dashboard"): string {
+  const axis = localStorage.getItem("axisOrigin");
+  if (axis === "estrategia") return "/axis-estrategia";
+  if (axis === "gestion") return "/axis-gestion";
+  if (axis === "desempeno") return "/axis-desempeno";
+  return fallback;
+}
+
 export function getSessionScope(): SessionScope {
   return {
     companyId: getCompanyIdFromSession(),

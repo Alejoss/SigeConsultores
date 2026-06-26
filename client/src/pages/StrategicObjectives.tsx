@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
+import { getAxisBackPath } from "@/lib/sessionScope";
 import { exportStrategicObjectivesToPDF } from "@/lib/exportStrategicObjectivesToPDF";
 
 const MAX_OBJECTIVES = 20;
@@ -84,7 +85,7 @@ export default function StrategicObjectives() {
   
   // Back button handler
   const handleBack = () => {
-    setLocation(isProcessLeader ? "/process-leader-dashboard" : (isManagerAccess ? "/manager-dashboard" : "/dashboard"));
+    setLocation(isProcessLeader ? "/process-leader-dashboard" : (isManagerAccess ? getAxisBackPath("/manager-dashboard") : "/dashboard"));
   };
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);

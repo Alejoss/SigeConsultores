@@ -77,6 +77,9 @@ import ManagerEditProfile from "./pages/ManagerEditProfile";
 import OrganizationChart from "./pages/OrganizationChart";
 import AuditsInspections from "./pages/AuditsInspections";
 import Performance from "./pages/Performance";
+import AxisEstrategia from "./pages/AxisEstrategia";
+import AxisGestion from "./pages/AxisGestion";
+import AxisDesempeno from "./pages/AxisDesempeno";
 import ManagementSystems from "./pages/ManagementSystems";
 import ManagementPrograms from "./pages/ManagementPrograms";
 import AuditControl from "./pages/AuditControl";
@@ -211,6 +214,9 @@ function Router() {
       <Route path={"/manager-edit-profile"} component={ManagerEditProfile} />
       <Route path={"/organization-chart"} component={OrganizationChart} />
       <Route path={"/performance"} component={Performance} />
+      <Route path={"/axis-estrategia"} component={AxisEstrategia} />
+      <Route path={"/axis-gestion"} component={AxisGestion} />
+      <Route path={"/axis-desempeno"} component={AxisDesempeno} />
       <Route path={"/audits-inspections"} component={AuditsInspections} />
       <Route path={"/audits-inspections/management-systems"} component={ManagementSystems} />
       <Route path={"/audits-inspections/programs"} component={ManagementPrograms} />

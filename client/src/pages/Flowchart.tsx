@@ -7,6 +7,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { AIChatPanel } from "@/components/AIChatPanel";
 import { trpc } from "@/lib/trpc";
 import { useQueryClient } from "@tanstack/react-query";
+import { getAxisBackPath } from "@/lib/sessionScope";
 
 export default function Flowchart() {
   const [, setLocation] = useLocation();
@@ -57,7 +58,7 @@ export default function Flowchart() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setLocation(isManagerAccess ? "/manager-dashboard" : "/dashboard")}
+              onClick={() => setLocation(isManagerAccess ? getAxisBackPath("/manager-dashboard") : "/dashboard")}
             >
               ← Volver
             </Button>

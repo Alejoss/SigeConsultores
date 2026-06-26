@@ -11,6 +11,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { useSearch } from "wouter";
+import { getAxisBackPath } from "@/lib/sessionScope";
 
 type ProcessType = "estrategico" | "misional" | "soporte";
 
@@ -35,7 +36,7 @@ export default function ProcessMap() {
     if (isProcessLeader) {
       setLocation('/process-leader-dashboard');
     } else if (isManagerLogin || isManagerAccess) {
-      setLocation('/manager-dashboard');
+      setLocation(getAxisBackPath('/manager-dashboard'));
     } else {
       setLocation('/dashboard');
     }

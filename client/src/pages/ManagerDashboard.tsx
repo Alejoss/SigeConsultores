@@ -6,8 +6,19 @@ import { LogOut, Building2, Settings, Users, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { APP_TITLE } from "@/const";
 import { toast } from "sonner";
-import DashboardModulesGrid from "@/components/DashboardModulesGrid";
-import { buildScopedModuleRoute } from "@shared/dashboardModules";
+import { MODULE_GROUPS } from "@shared/dashboardModules";
+
+const AXIS_STYLES: Record<string, { card: string; btn: string; icon_bg: string }> = {
+  estrategia: { card: "bg-sky-50 border-sky-200 hover:border-sky-400 hover:shadow-sky-100", btn: "border-sky-300 text-sky-700 hover:bg-sky-100", icon_bg: "bg-sky-100" },
+  gestion:    { card: "bg-emerald-50 border-emerald-200 hover:border-emerald-400 hover:shadow-emerald-100", btn: "border-emerald-300 text-emerald-700 hover:bg-emerald-100", icon_bg: "bg-emerald-100" },
+  desempeno:  { card: "bg-violet-50 border-violet-200 hover:border-violet-400 hover:shadow-violet-100", btn: "border-violet-300 text-violet-700 hover:bg-violet-100", icon_bg: "bg-violet-100" },
+};
+
+const AXIS_ROUTES: Record<string, string> = {
+  estrategia: "/axis-estrategia",
+  gestion:    "/axis-gestion",
+  desempeno:  "/axis-desempeno",
+};
 
 // Welcome Card Component
 function WelcomeCard({ companyId, companyName }: { companyId: number | null; companyName: string | null }) {
@@ -329,17 +340,34 @@ export default function ManagerDashboard() {
           </Card>
         </div>
 
-        {/* Modules Section */}
+        {/* Axis Cards */}
         <div>
-          {companyId ? (
-            <DashboardModulesGrid
-              companyId={companyId}
-              onNavigate={setLocation}
-              getPath={(moduleName) =>
-                buildScopedModuleRoute(moduleName, { companyId, isManager: true })
-              }
-            />
-          ) : null}
+          <h2 className="text-xl font-bold text-gray-900 mb-5">Módulos del Sistema</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {MODULE_GROUPS.map((group) => {
+              const style = AXIS_STYLES[group.id];
+              return (
+                <Card
+                  key={group.id}
+                  className={`cursor-pointer transition-all hover:shadow-lg ${style.card}`}
+                  onClick={() => setLocation(AXIS_ROUTES[group.id])}
+                >
+                  <CardHeader className="pb-3">
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-3xl mb-3 ${style.icon_bg}`}>
+                      {group.icon}
+                    </div>
+                    <CardTitle className="text-xl">{group.label}</CardTitle>
+                    <CardDescription className="text-sm">{group.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button variant="outline" className={`w-full ${style.btn}`}>
+                      Ver módulos
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
       </main>
 

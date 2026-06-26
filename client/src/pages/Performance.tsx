@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
+import { getAxisBackPath } from "@/lib/sessionScope";
 
 type SubModule = "strategic" | "management" | "systems" | null;
 
@@ -239,7 +240,7 @@ export default function Performance() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => activeModule ? setActiveModule(null) : setLocation("/manager-dashboard")}
+            onClick={() => activeModule ? setActiveModule(null) : setLocation(getAxisBackPath("/manager-dashboard"))}
             className="flex items-center gap-2"
           >
             ← {activeModule ? "Volver" : "Volver"}
