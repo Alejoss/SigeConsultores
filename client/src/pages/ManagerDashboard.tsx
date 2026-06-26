@@ -331,18 +331,15 @@ export default function ManagerDashboard() {
 
         {/* Modules Section */}
         <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Módulos Disponibles</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {companyId ? (
-              <DashboardModulesGrid
-                companyId={companyId}
-                onNavigate={setLocation}
-                getPath={(moduleName) =>
-                  buildScopedModuleRoute(moduleName, { companyId, isManager: true })
-                }
-              />
-            ) : null}
-          </div>
+          {companyId ? (
+            <DashboardModulesGrid
+              companyId={companyId}
+              onNavigate={setLocation}
+              getPath={(moduleName) =>
+                buildScopedModuleRoute(moduleName, { companyId, isManager: true })
+              }
+            />
+          ) : null}
         </div>
       </main>
 

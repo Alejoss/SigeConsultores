@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
-import { Loader2, ClipboardList, Search, Settings } from "lucide-react";
+import { Loader2, ClipboardList, Search, Settings, BookOpen, CheckSquare } from "lucide-react";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
@@ -56,6 +56,20 @@ export default function AuditsInspections() {
       path: `/audits-inspections/management-systems?companyId=${companyId}`,
     },
     {
+      key: "programs",
+      icon: <BookOpen size={40} className="text-blue-500" />,
+      title: "Programas",
+      description: "Registra y controla los programas de cada sistema de gestión, sus acciones planificadas y realizadas.",
+      path: `/audits-inspections/programs?companyId=${companyId}`,
+    },
+    {
+      key: "compliances",
+      icon: <CheckSquare size={40} className="text-blue-500" />,
+      title: "Cumplimientos",
+      description: "Registra y controla los requisitos legales y normativos aplicables a la empresa.",
+      path: `/compliances?companyId=${companyId}`,
+    },
+    {
       key: "audits",
       icon: <ClipboardList size={40} className="text-blue-500" />,
       title: "Auditorías",
@@ -65,7 +79,7 @@ export default function AuditsInspections() {
     {
       key: "inspections",
       icon: <Search size={40} className="text-blue-500" />,
-      title: "Inspecciones",
+      title: "Inspecciones y Simulacros",
       description: "Registra y controla las inspecciones realizadas por área, hallazgos y cierres.",
       path: `/audits-inspections/inspections?companyId=${companyId}`,
     },
@@ -86,9 +100,9 @@ export default function AuditsInspections() {
               ← Volver
             </Button>
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">Auditorías e Inspecciones</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Sistemas de Gestión</h1>
           <p className="text-slate-500 mt-1">
-            Con ellas se busca garantizar conformidad, mitigar riesgos y mejorar continuamente.
+            Con ellos se busca garantizar conformidad, mitigar riesgos y mejorar continuamente.
           </p>
         </div>
 

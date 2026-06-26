@@ -6,7 +6,7 @@ import { ArrowLeft, Plus, Trash2, ChevronDown, Download } from 'lucide-react';
 import { toast } from "sonner";
 import { exportTacticalObjectivesToPDF } from "@/lib/exportTacticalObjectivesToPDF";
 import { trpc } from "@/lib/trpc";
-import { getProcessIdFromSession } from "@/lib/sessionScope";
+import { getProcessIdFromSession, getSessionScope } from "@/lib/sessionScope";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -942,8 +942,8 @@ export default function TacticalPlanning() {
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-4xl font-bold text-green-900 mb-2">PLANIFICACIÓN DE OBJETIVOS TÁCTICOS</h1>
-            <p className="text-gray-600">Proceso: <span className="font-semibold">{localStorage.getItem("selectedProcessName") || "Proceso"}</span></p>
+            <h1 className="text-4xl font-bold text-green-900 mb-2">OTE - PLANIFICACIÓN DE OBJETIVOS TÁCTICOS ESTRATÉGICOS</h1>
+            <p className="text-gray-600">Proceso: <span className="font-semibold">{getSessionScope().processName || ""}</span></p>
             <p className="text-sm text-green-600 mt-1">
               {saving ? "Guardando..." : "✓ Guardado automático"}
               {lastSaveTime && ` (Último: ${lastSaveTime})`}
@@ -951,7 +951,7 @@ export default function TacticalPlanning() {
           </div>
           <div className="flex items-center gap-4">
             {plannings.length > 0 && (
-              <Button onClick={() => { exportTacticalObjectivesToPDF(plannings, localStorage.getItem('selectedProcessName') || 'Proceso'); toast.success('PDF exportado correctamente'); }}
+              <Button onClick={() => { exportTacticalObjectivesToPDF(plannings, getSessionScope().processName || 'Proceso'); toast.success('PDF exportado correctamente'); }}
                 className="bg-green-600 hover:bg-green-700 flex items-center gap-2">
                 <Download size={20} /> Exportar a PDF
               </Button>
@@ -967,7 +967,7 @@ export default function TacticalPlanning() {
 
         <Card className="mb-6 bg-gradient-to-r from-blue-50 to-green-50 border-2 border-green-600">
           <CardHeader>
-            <CardTitle className="text-green-900">Indicador General de Objetivos Tácticos</CardTitle>
+            <CardTitle className="text-green-900">Indicador General de OTE</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-6">
@@ -1064,7 +1064,7 @@ export default function TacticalPlanning() {
                     </div>
 
                     {planning.resultKeys.map((resultKey, rkIdx) => (
-                      <Card key={`rk_${resultKey.id || rkIdx}`} className="bg-gray-50">
+                      <Card key={`rk_${resultKey.id || rkIdx}`} className="bg-sky-100 border-sky-300">
                         <CardContent className="pt-4 space-y-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">

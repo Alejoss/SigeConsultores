@@ -76,7 +76,9 @@ import ProcessLeaderInvitationLink from "./pages/ProcessLeaderInvitationLink";
 import ManagerEditProfile from "./pages/ManagerEditProfile";
 import OrganizationChart from "./pages/OrganizationChart";
 import AuditsInspections from "./pages/AuditsInspections";
+import Performance from "./pages/Performance";
 import ManagementSystems from "./pages/ManagementSystems";
+import ManagementPrograms from "./pages/ManagementPrograms";
 import AuditControl from "./pages/AuditControl";
 import InspectionControl from "./pages/InspectionControl";
 
@@ -208,8 +210,10 @@ function Router() {
       <Route path={"/process-leader-invitation-link"} component={ProcessLeaderInvitationLink} />
       <Route path={"/manager-edit-profile"} component={ManagerEditProfile} />
       <Route path={"/organization-chart"} component={OrganizationChart} />
+      <Route path={"/performance"} component={Performance} />
       <Route path={"/audits-inspections"} component={AuditsInspections} />
       <Route path={"/audits-inspections/management-systems"} component={ManagementSystems} />
+      <Route path={"/audits-inspections/programs"} component={ManagementPrograms} />
       <Route path={"/audits-inspections/audits"} component={AuditControl} />
       <Route path={"/audits-inspections/inspections"} component={InspectionControl} />
 

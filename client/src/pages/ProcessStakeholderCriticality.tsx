@@ -731,7 +731,7 @@ export default function ProcessStakeholderCriticality() {
   const exportToPDF = () => {
     try {
       // Crear tabla HTML para exportar
-      let htmlContent = '<h1>MATRIZ DE PARTES INTERESADAS</h1>';
+      let htmlContent = '<h1>GESTIÓN CON PARTES INTERESADAS</h1>';
       htmlContent += '<p>Fecha: ' + new Date().toLocaleDateString('es-ES') + '</p>';
       htmlContent += '<table border="1" cellpadding="8" cellspacing="0" style="width:100%; border-collapse:collapse;">';
       htmlContent += '<thead><tr style="background-color:#0066cc; color:white;">';
@@ -793,7 +793,7 @@ export default function ProcessStakeholderCriticality() {
     <div className="space-y-6 p-6 bg-white min-h-screen" translate="no">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-blue-900">MATRIZ DE PARTES INTERESADAS</h1>
+          <h1 className="text-3xl font-bold text-blue-900">GESTIÓN CON PARTES INTERESADAS</h1>
           <p className="text-sm text-slate-600 mt-1">
             {saveStatus === 'saving' && '💾 Guardando cambios...'}
             {saveStatus === 'saved' && '✓ Cambios guardados'}
@@ -1117,7 +1117,7 @@ export default function ProcessStakeholderCriticality() {
               <thead>
                 <tr className="bg-green-500 text-white">
                   <th className="border border-slate-300 p-2 text-left">ASOCIADO</th>
-                  <th className="border border-slate-300 p-2 text-left">DEFENSAS EXISTENTES</th>
+                  <th className="border border-slate-300 p-2 text-left">NECESIDADES Y EXPECTATIVAS</th>
                   <th className="border border-slate-300 p-2 text-left">ACCIÓN A TOMAR</th>
                   <th className="border border-slate-300 p-2 text-left">OBSERVACIONES</th>
                   <th className="border border-slate-300 p-2 text-left">FECHA INICIO</th>
@@ -1133,7 +1133,7 @@ export default function ProcessStakeholderCriticality() {
                       <Textarea
                         value={stakeholder.existingDefenses}
                         onChange={(e) => updateStakeholder(stakeholder.id, "existingDefenses", e.target.value)}
-                        placeholder="Defensas"
+                        placeholder="Necesidades y Expectativas"
                         className="text-xs min-h-12 resize-none"
                       />
                     </td>

@@ -28,11 +28,19 @@ export function PasswordInput({
     }
   };
 
+  // Use two separate inputs (one password, one text) toggled via CSS
+  // to avoid the insertBefore DOM crash caused by changing input type at runtime
   return (
     <div className="relative">
       <Input
-        type={visible ? "text" : "password"}
-        className={cn("pr-10", className)}
+        type="password"
+        className={cn("pr-10", className, visible ? "hidden" : "")}
+        disabled={disabled}
+        {...props}
+      />
+      <Input
+        type="text"
+        className={cn("pr-10", className, visible ? "" : "hidden")}
         disabled={disabled}
         {...props}
       />

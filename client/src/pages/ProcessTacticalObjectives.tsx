@@ -39,7 +39,7 @@ export default function ProcessTacticalObjectives() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-blue-900 mb-2">OBJETIVOS TÁCTICOS</h1>
+            <h1 className="text-4xl font-bold text-blue-900 mb-2">OTE - OBJETIVOS TÁCTICOS ESTRATÉGICOS</h1>
             <p className="text-gray-600">Proceso: <span className="font-semibold">{localStorage.getItem("selectedProcessName") || "Proceso"}</span></p>
           </div>
           <Button
@@ -60,7 +60,7 @@ export default function ProcessTacticalObjectives() {
             onClick={handleDefinition}
           >
             <CardHeader className="bg-blue-50">
-              <CardTitle className="text-blue-900">Definición de Objetivos Tácticos</CardTitle>
+              <CardTitle className="text-blue-900">Definición de OTE</CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <p className="text-gray-700 mb-4">
@@ -82,7 +82,7 @@ export default function ProcessTacticalObjectives() {
             onClick={handlePlanning}
           >
             <CardHeader className="bg-green-50">
-              <CardTitle className="text-green-900">Planificación de Objetivos Tácticos</CardTitle>
+              <CardTitle className="text-green-900">Planificación de OTE</CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <p className="text-gray-700 mb-4">

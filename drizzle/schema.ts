@@ -1365,3 +1365,22 @@ export const processStakeholderMatrixFiles = mysqlTable("processStakeholderMatri
 
 export type ProcessStakeholderMatrixFile = typeof processStakeholderMatrixFiles.$inferSelect;
 export type InsertProcessStakeholderMatrixFile = typeof processStakeholderMatrixFiles.$inferInsert;
+
+/**
+ * Management Programs - Stores programs for each company's management systems
+ */
+export const managementPrograms = mysqlTable("managementPrograms", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  programName: varchar("programName", { length: 500 }).notNull(),
+  managementSystem: varchar("managementSystem", { length: 100 }).notNull().default("Calidad"),
+  plannedActions: int("plannedActions").default(0),
+  completedActions: int("completedActions").default(0),
+  planFileKey: text("planFileKey"),
+  planFileName: varchar("planFileName", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ManagementProgram = typeof managementPrograms.$inferSelect;
+export type InsertManagementProgram = typeof managementPrograms.$inferInsert;

@@ -264,6 +264,57 @@ export default function ProcessRiskMatrix() {
     { enabled: processId !== null }
   );
 
+  // Sync FODA elements with OTG rows after initial load
+  // When FODA adds/removes elements, OTG must reflect those changes
+  useEffect(() => {
+    if (!fodaData || !initialLoadDoneRef.current) return;
+    try {
+      const allFodaItems: Array<{ statement: string; type: FODAType; subprocess: string; policyObjective: string }> = [
+        ...JSON.parse(fodaData.strengths || '[]').map((i: any) => ({ ...i, type: 'Fortaleza' as FODAType })),
+        ...JSON.parse(fodaData.opportunities || '[]').map((i: any) => ({ ...i, type: 'Oportunidad' as FODAType })),
+        ...JSON.parse(fodaData.weaknesses || '[]').map((i: any) => ({ ...i, type: 'Debilidad' as FODAType })),
+        ...JSON.parse(fodaData.threats || '[]').map((i: any) => ({ ...i, type: 'Amenaza' as FODAType })),
+      ];
+      const fodaStatements = new Set(allFodaItems.map(i => i.statement).filter(Boolean));
+
+      setRows(prev => {
+        const existingStatements = new Set(prev.map(r => r.elemento).filter(Boolean));
+        // Add rows for new FODA elements not yet in OTG
+        const toAdd: MatrizFODARow[] = allFodaItems
+          .filter(i => i.statement && !existingStatements.has(i.statement))
+          .map((item, idx) => ({
+            id: Date.now() + idx,
+            subproceso: item.subprocess || '',
+            objetivoPolitica: item.policyObjective || '',
+            elemento: item.statement || '',
+            foda: item.type,
+            factor: 'Humano' as FactorType,
+            consecuencia: '',
+            sistemaGestion: 'Calidad' as SistemaGestionType,
+            probabilidad: (item.type === 'Debilidad' || item.type === 'Amenaza') ? 'A' as ProbabilidadType : undefined,
+            impacto: (item.type === 'Debilidad' || item.type === 'Amenaza') ? 1 as ImpactoType : undefined,
+            accionATomar: '',
+            planContingencia: '',
+            planContinuidad: '',
+            simulacro: '',
+            comunicado: 'NO' as 'SI' | 'NO',
+            partesInteresadas: '',
+            evidencia: '',
+            mejoraImplementada: 'NO' as 'SI' | 'NO',
+            observacion: '',
+            medioVerificacion: '',
+            objetivoLogrado: 'NO' as 'SI' | 'NO',
+          }));
+        // Remove rows whose FODA element was deleted (only if elemento exists and is no longer in FODA)
+        const filtered = prev.filter(r => !r.elemento || fodaStatements.has(r.elemento));
+        if (toAdd.length === 0 && filtered.length === prev.length) return prev; // no change
+        return [...filtered, ...toAdd];
+      });
+    } catch (e) {
+      console.error('Error syncing FODA to OTG:', e);
+    }
+  }, [fodaData]);
+
   // Initialize rows from FODA data — only on first load, never on refetch
   useEffect(() => {
     if (fodaData && !initialLoadDoneRef.current) {
@@ -559,7 +610,7 @@ export default function ProcessRiskMatrix() {
     <div className="space-y-6 p-6 bg-white min-h-screen">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-blue-900">MATRIZ DEL FODA</h1>
+          <h1 className="text-3xl font-bold text-blue-900">OTG - OBJETIVOS TÁCTICOS DE GESTIÓN</h1>
           <p className="text-slate-600 mt-2">
             Proceso: <strong>{processName}</strong>
           </p>
@@ -681,39 +732,49 @@ export default function ProcessRiskMatrix() {
 
           return (
             <Card key={row.id} className="border-l-4 border-l-blue-500">
-              {/* Header colapsable - MEJORA a) */}
-              <CardHeader
-                className="cursor-pointer hover:bg-slate-50 transition-colors"
-                onClick={() => toggleRowExpanded(row.id)}
-              >
-                <div className="flex justify-between items-center">
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                    <div className="font-semibold text-slate-900 truncate">
-                      {row.elemento || `Elemento #${row.id}`}
+              {/* Header colapsable */}
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start gap-2">
+                  {/* Basura a la izquierda, separada del toggle */}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteRow(row.id);
+                    }}
+                    className="text-red-600 hover:bg-red-50 shrink-0 mt-0.5"
+                    title="Eliminar fila"
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                  {/* Contenido colapsable */}
+                  <div
+                    className="flex-1 cursor-pointer hover:bg-slate-50 rounded p-2 transition-colors"
+                    onClick={() => toggleRowExpanded(row.id)}
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-sm items-center">
+                      <div className="md:col-span-2 font-semibold text-slate-900 truncate">
+                        {row.elemento || `Elemento #${row.id}`}
+                      </div>
+                      <div className="text-slate-600">
+                        <span className="font-semibold">{row.foda}</span>
+                      </div>
+                      <div className="text-slate-600">
+                        <span className="font-semibold">{row.sistemaGestion}</span>
+                      </div>
+                      <div className="flex items-center gap-3 justify-end">
+                        <span className={`font-semibold text-xs ${row.objetivoLogrado === 'SI' ? 'text-green-600' : 'text-red-600'}`}>
+                          {implementacionStatus}
+                        </span>
+                        {(row.acciones || []).length > 0 && (
+                          <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                            {calcularPorcentajeOTG(row.acciones || [])}%
+                          </span>
+                        )}
+                        {isExpanded ? <ChevronUp size={18} className="text-slate-500" /> : <ChevronDown size={18} className="text-slate-500" />}
+                      </div>
                     </div>
-                    <div className="text-slate-600">
-                      <span className="font-semibold">{row.foda}</span>
-                    </div>
-                    <div className="text-slate-600">
-                      <span className="font-semibold">{row.sistemaGestion}</span>
-                    </div>
-                    <div className={`font-semibold ${row.objetivoLogrado === 'SI' ? 'text-green-600' : 'text-red-600'}`}>
-                      {implementacionStatus}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteRow(row.id);
-                      }}
-                      className="text-red-600"
-                    >
-                      <Trash2 size={14} />
-                    </Button>
-                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                   </div>
                 </div>
               </CardHeader>
