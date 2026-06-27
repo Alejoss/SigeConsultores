@@ -436,26 +436,24 @@ export default function ProcessMap() {
                         key={process.id}
                         className="flex items-center justify-between p-3 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
                       >
-                        <div className="flex-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteProcess(process.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                        <div className="flex-1 px-2">
                           <p className="font-medium text-blue-900">{process.name}</p>
                           <p className="text-xs text-blue-700">Estratégico</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteProcess(process.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAccessProcess(process.id)}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleAccessProcess(process.id)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -476,26 +474,24 @@ export default function ProcessMap() {
                         key={process.id}
                         className="flex items-center justify-between p-3 border border-green-200 bg-green-50 rounded-lg hover:bg-green-100 transition"
                       >
-                        <div className="flex-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteProcess(process.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                        <div className="flex-1 px-2">
                           <p className="font-medium text-green-900">{process.name}</p>
                           <p className="text-xs text-green-700">Misional</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteProcess(process.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAccessProcess(process.id)}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleAccessProcess(process.id)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -516,26 +512,24 @@ export default function ProcessMap() {
                         key={process.id}
                         className="flex items-center justify-between p-3 border border-orange-200 bg-orange-50 rounded-lg hover:bg-orange-100 transition"
                       >
-                        <div className="flex-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteProcess(process.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                        <div className="flex-1 px-2">
                           <p className="font-medium text-orange-900">{process.name}</p>
                           <p className="text-xs text-orange-700">Soporte</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteProcess(process.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAccessProcess(process.id)}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleAccessProcess(process.id)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
                     ))}
                   </div>
