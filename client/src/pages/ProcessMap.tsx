@@ -440,20 +440,20 @@ export default function ProcessMap() {
                           <p className="font-medium text-blue-900">{process.name}</p>
                           <p className="text-xs text-blue-700">Estratégico</p>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAccessProcess(process.id)}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
+                        <div className="flex items-center gap-2">
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => handleDeleteProcess(process.id)}
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAccessProcess(process.id)}
+                          >
+                            <ChevronRight className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
@@ -463,7 +463,7 @@ export default function ProcessMap() {
               </Card>
             )}
 
-            {/* Procesos Misionales */}
+            {/* Procesos Misionales */
             {misionalProcesses.length > 0 && (
               <Card>
                 <CardHeader>
@@ -480,20 +480,20 @@ export default function ProcessMap() {
                           <p className="font-medium text-green-900">{process.name}</p>
                           <p className="text-xs text-green-700">Misional</p>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAccessProcess(process.id)}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
+                        <div className="flex items-center gap-2">
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => handleDeleteProcess(process.id)}
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAccessProcess(process.id)}
+                          >
+                            <ChevronRight className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
@@ -503,7 +503,7 @@ export default function ProcessMap() {
               </Card>
             )}
 
-            {/* Procesos de Soporte */}
+            {/* Procesos de Soporte */
             {supportProcesses.length > 0 && (
               <Card>
                 <CardHeader>
@@ -520,20 +520,20 @@ export default function ProcessMap() {
                           <p className="font-medium text-orange-900">{process.name}</p>
                           <p className="text-xs text-orange-700">Soporte</p>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAccessProcess(process.id)}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
+                        <div className="flex items-center gap-2">
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => handleDeleteProcess(process.id)}
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAccessProcess(process.id)}
+                          >
+                            <ChevronRight className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
