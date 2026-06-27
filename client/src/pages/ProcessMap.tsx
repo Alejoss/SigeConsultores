@@ -463,7 +463,7 @@ export default function ProcessMap() {
               </Card>
             )}
 
-            {/* Procesos Misionales */
+            {/* Procesos Misionales */}
             {misionalProcesses.length > 0 && (
               <Card>
                 <CardHeader>
@@ -503,7 +503,7 @@ export default function ProcessMap() {
               </Card>
             )}
 
-            {/* Procesos de Soporte */
+            {/* Procesos de Soporte */}
             {supportProcesses.length > 0 && (
               <Card>
                 <CardHeader>
