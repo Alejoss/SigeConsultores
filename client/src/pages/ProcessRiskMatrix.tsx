@@ -422,7 +422,7 @@ export default function ProcessRiskMatrix() {
         const finalDate = new Date(updated.fechaFinalPrevista);
         updated.diasRestantes = Math.ceil((finalDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       }
-      // Recalcular objetivoLogrado automáticamente cuando cambia alcanzado/puntoLlegada/puntoPartida
+      // Recalcular mejoraImplementada automáticamente cuando cambia alcanzado/puntoLlegada/puntoPartida
       if (field === 'alcanzado' || field === 'puntoLlegada' || field === 'puntoPartida') {
         const pct = calcularPorcentajeAlcanzado(
           field === 'alcanzado' ? value : (updated as any).alcanzado,
@@ -430,7 +430,7 @@ export default function ProcessRiskMatrix() {
           field === 'puntoLlegada' ? value : (updated as any).puntoLlegada,
         );
         (updated as any).porcentajeAlcanzadoOTG = pct;
-        if (pct >= 100) updated.objetivoLogrado = 'SI';
+        if (pct >= 100) updated.mejoraImplementada = 'SI';
         // No resetear a NO automáticamente si ya era SI (el usuario puede haberlo puesto manualmente)
       }
       return updated;
@@ -806,40 +806,8 @@ export default function ProcessRiskMatrix() {
                   {/* ─── DEBILIDADES Y AMENAZAS ─── */}
                   {isDA && (
                     <>
-                      {/* B. VALORACIÓN */}
+                      {/* (sin título) OTG — fechas y acciones */}
                       <div>
-                        <h3 className="font-semibold text-blue-900 mb-4">B. VALORACIÓN DE DEBILIDADES Y AMENAZAS</h3>
-                        <div className="grid grid-cols-3 gap-4">
-                          <div>
-                            <label className="text-xs font-semibold text-slate-600">Probabilidad (A-E)</label>
-                            <select value={row.probabilidad || 'A'} onChange={(e) => updateRow(row.id, 'probabilidad', e.target.value as ProbabilidadType)} className="w-full border rounded p-2 text-sm mt-1" translate="no">
-                              <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="text-xs font-semibold text-slate-600">Impacto (1-5)</label>
-                            <select value={row.impacto || 1} onChange={(e) => updateRow(row.id, 'impacto', parseInt(e.target.value) as ImpactoType)} className="w-full border rounded p-2 text-sm mt-1">
-                              <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="text-xs font-semibold text-slate-600">Nivel de Riesgo</label>
-                            <div className={`w-full border rounded p-2 text-sm font-semibold text-center text-white mt-1 ${
-                              row.nivelRiesgo
-                                ? row.estimacion === 'Crítico' ? 'bg-red-600'
-                                  : row.estimacion === 'Alto' ? 'bg-yellow-500'
-                                  : row.estimacion === 'Medio' ? 'bg-yellow-300 text-slate-700'
-                                  : 'bg-green-500'
-                                : 'bg-slate-200 text-slate-600'
-                            }`}>{row.nivelRiesgo || '-'}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* C. OBJETIVOS TÁCTICOS DE GESTIÓN (OTG) — con fechas y acciones */}
-                      <div>
-                        <h3 className="font-semibold text-blue-900 mb-4">C. OBJETIVOS TÁCTICOS DE GESTIÓN (OTG)</h3>
-
                         {/* Fechas planificación */}
                         <div className="grid grid-cols-2 gap-4 mb-4">
                           <div>
@@ -887,9 +855,39 @@ export default function ProcessRiskMatrix() {
                         </div>
                       </div>
 
-                      {/* D. PLANES Y SIMULACROS */}
+                      {/* B. VALORACIÓN DE DEBILIDADES Y AMENAZAS */}
                       <div>
-                        <h3 className="font-semibold text-blue-900 mb-4">D. PLANES Y SIMULACROS</h3>
+                        <h3 className="font-semibold text-blue-900 mb-4">B. VALORACIÓN DE DEBILIDADES Y AMENAZAS</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className="text-xs font-semibold text-slate-600">Probabilidad (A-E)</label>
+                            <select value={row.probabilidad || 'A'} onChange={(e) => updateRow(row.id, 'probabilidad', e.target.value as ProbabilidadType)} className="w-full border rounded p-2 text-sm mt-1" translate="no">
+                              <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-slate-600">Impacto (1-5)</label>
+                            <select value={row.impacto || 1} onChange={(e) => updateRow(row.id, 'impacto', parseInt(e.target.value) as ImpactoType)} className="w-full border rounded p-2 text-sm mt-1">
+                              <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-slate-600">Nivel de Riesgo</label>
+                            <div className={`w-full border rounded p-2 text-sm font-semibold text-center text-white mt-1 ${
+                              row.nivelRiesgo
+                                ? row.estimacion === 'Crítico' ? 'bg-red-600'
+                                  : row.estimacion === 'Alto' ? 'bg-yellow-500'
+                                  : row.estimacion === 'Medio' ? 'bg-yellow-300 text-slate-700'
+                                  : 'bg-green-500'
+                                : 'bg-slate-200 text-slate-600'
+                            }`}>{row.nivelRiesgo || '-'}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* C. PLANES Y SIMULACROS */}
+                      <div>
+                        <h3 className="font-semibold text-blue-900 mb-4">C. PLANES Y SIMULACROS</h3>
                         <div className="space-y-4">
                           <div>
                             <label className="text-xs font-semibold text-slate-600">Plan de Contingencia</label>
@@ -906,9 +904,9 @@ export default function ProcessRiskMatrix() {
                         </div>
                       </div>
 
-                      {/* E. COMUNICACIÓN */}
+                      {/* D. COMUNICACIÓN */}
                       <div>
-                        <h3 className="font-semibold text-blue-900 mb-4">E. COMUNICACIÓN DE ELEMENTOS DEL FODA</h3>
+                        <h3 className="font-semibold text-blue-900 mb-4">D. COMUNICACIÓN DE ELEMENTOS DEL FODA</h3>
                         <div className="space-y-4">
                           <div>
                             <label className="text-xs font-semibold text-slate-600">Comunicado</label>
@@ -927,9 +925,9 @@ export default function ProcessRiskMatrix() {
                         </div>
                       </div>
 
-                      {/* F. SEGUIMIENTO Y REEVALUACIÓN */}
+                      {/* E. SEGUIMIENTO Y REEVALUACIÓN */}
                       <div>
-                        <h3 className="font-semibold text-blue-900 mb-4">F. SEGUIMIENTO Y REEVALUACIÓN</h3>
+                        <h3 className="font-semibold text-blue-900 mb-4">E. SEGUIMIENTO Y REEVALUACIÓN</h3>
                         <div className="space-y-4">
                           <div>
                             <label className="text-xs font-semibold text-slate-600">Implantada la Mejora</label>
@@ -1012,9 +1010,9 @@ export default function ProcessRiskMatrix() {
                         </div>
                       </div>
 
-                      {/* C. SEGUIMIENTO */}
+                      {/* B. SEGUIMIENTO */}
                       <div>
-                        <h3 className="font-semibold text-blue-900 mb-4">C. SEGUIMIENTO Y REEVALUACIÓN</h3>
+                        <h3 className="font-semibold text-blue-900 mb-4">B. SEGUIMIENTO Y REEVALUACIÓN</h3>
                         <div className="space-y-4">
                           <div>
                             <label className="text-xs font-semibold text-slate-600">Implantada la Mejora</label>
