@@ -1018,9 +1018,9 @@ export default function ProcessRiskMatrix() {
                         </div>
                       </div>
 
-                      {/* B. SEGUIMIENTO */}
+                      {/* C. SEGUIMIENTO */}
                       <div>
-                        <h3 className="font-semibold text-blue-900 mb-4">B. SEGUIMIENTO Y REEVALUACIÓN</h3>
+                        <h3 className="font-semibold text-blue-900 mb-4">C. SEGUIMIENTO Y REEVALUACIÓN</h3>
                         <div className="space-y-4">
                           <div>
                             <label className="text-xs font-semibold text-slate-600">Implantada la Mejora</label>
