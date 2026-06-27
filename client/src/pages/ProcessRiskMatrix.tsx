@@ -352,9 +352,17 @@ export default function ProcessRiskMatrix() {
   // Indicadores
   const indicadores = useMemo<MatrizFODAIndicadores>(() => {
     const totalPlanificado = rows.length;
-    const totalAlcanzadoCount = rows.filter((r) => r.objetivoLogrado === 'SI').length;
-    const totalAlcanzado = totalPlanificado > 0 ? Math.round((totalAlcanzadoCount / totalPlanificado) * 100) : 0;
+    // % Alcanzado OTG: promedio del porcentajeAlcanzadoOTG de cada fila
+    const pctAlcanzadoOTG = totalPlanificado > 0
+      ? Math.round(rows.reduce((sum, r) => sum + ((r as any).porcentajeAlcanzadoOTG ?? 0), 0) / totalPlanificado)
+      : 0;
+    // % Alcanzado en Tareas: promedio del porcentajeCumplimiento (acciones ponderadas) de cada fila
+    const pctAlcanzadoTareas = totalPlanificado > 0
+      ? Math.round(rows.reduce((sum, r) => sum + (calcularPorcentajeOTG(r.acciones || [])), 0) / totalPlanificado)
+      : 0;
+    const totalAlcanzado = pctAlcanzadoOTG;
     const porcentajeComunicado = totalPlanificado > 0 ? Math.round((rows.filter((r) => r.comunicado === 'SI').length / totalPlanificado) * 100) : 0;
+    const totalAlcanzadoCount = rows.filter((r) => r.mejoraImplementada === 'SI').length;
     const alcancePorSistema = {
       Calidad: { alcanzados: 0, total: 0, porcentaje: 0 },
       Ambiente: { alcanzados: 0, total: 0, porcentaje: 0 },
@@ -374,7 +382,7 @@ export default function ProcessRiskMatrix() {
       const k = s as keyof typeof alcancePorSistema;
       if (alcancePorSistema[k].total > 0) alcancePorSistema[k].porcentaje = Math.round((alcancePorSistema[k].alcanzados / alcancePorSistema[k].total) * 100);
     });
-    return { totalPlanificado, totalAlcanzado, porcentajeComunicado, alcancePorSistema };
+    return { totalPlanificado, totalAlcanzado, pctAlcanzadoOTG, pctAlcanzadoTareas, porcentajeComunicado, alcancePorSistema };
   }, [rows]);
 
   // Mutation — definida UNA vez, sin incluirla en deps del autosave
@@ -430,7 +438,7 @@ export default function ProcessRiskMatrix() {
           field === 'puntoLlegada' ? value : (updated as any).puntoLlegada,
         );
         (updated as any).porcentajeAlcanzadoOTG = pct;
-        if (pct >= 100) updated.mejoraImplementada = 'SI';
+          if (pct >= 100) updated.mejoraImplementada = 'SI';
         // No resetear a NO automáticamente si ya era SI (el usuario puede haberlo puesto manualmente)
       }
       return updated;
@@ -518,8 +526,8 @@ export default function ProcessRiskMatrix() {
 
       {/* Indicadores */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card><CardContent className="pt-4"><p className="text-sm text-slate-600">% Previsto</p><p className="text-2xl font-bold text-blue-600">{indicadores.totalPlanificado > 0 ? '100%' : '0%'}</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-sm text-slate-600">% Alcanzado</p><p className="text-2xl font-bold text-green-600">{indicadores.totalAlcanzado}%</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-slate-600">% Alcanzado OTG</p><p className="text-2xl font-bold text-blue-600">{(indicadores as any).pctAlcanzadoOTG ?? 0}%</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-slate-600">% Alcanzado en Tareas</p><p className="text-2xl font-bold text-green-600">{(indicadores as any).pctAlcanzadoTareas ?? 0}%</p></CardContent></Card>
         <Card><CardContent className="pt-4"><p className="text-sm text-slate-600">% Comunicado</p><p className="text-2xl font-bold text-purple-600">{indicadores.porcentajeComunicado}%</p></CardContent></Card>
       </div>
 
