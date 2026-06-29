@@ -438,8 +438,8 @@ export default function ProcessRiskMatrix() {
           field === 'puntoLlegada' ? value : (updated as any).puntoLlegada,
         );
         (updated as any).porcentajeAlcanzadoOTG = pct;
-          if (pct >= 100) updated.mejoraImplementada = 'SI';
-        // No resetear a NO automáticamente si ya era SI (el usuario puede haberlo puesto manualmente)
+          if (pct >= 100) { updated.mejoraImplementada = 'SI'; } else { updated.mejoraImplementada = 'NO'; }
+        // mejoraImplementada es 100% automático según el % alcanzado
       }
       return updated;
     }));
@@ -601,8 +601,8 @@ export default function ProcessRiskMatrix() {
                       </div>
                       <div className="text-slate-600 text-xs font-semibold">{row.sistemaGestion}</div>
                       <div className="flex items-center gap-2 justify-end">
-                        <span className={`font-semibold text-xs ${row.objetivoLogrado === 'SI' ? 'text-green-600' : 'text-red-600'}`}>
-                          {row.objetivoLogrado === 'SI' ? '✓ SI' : '✗ NO'}
+                        <span className={`font-semibold text-xs ${row.mejoraImplementada === 'SI' ? 'text-green-600' : 'text-red-600'}`}>
+                          {row.mejoraImplementada === 'SI' ? '✓ SI' : '✗ NO'}
                         </span>
                         <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">{pctOTG}%</span>
                         {isExpanded ? <ChevronUp size={18} className="text-slate-500" /> : <ChevronDown size={18} className="text-slate-500" />}
