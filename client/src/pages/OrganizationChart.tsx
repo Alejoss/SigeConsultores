@@ -59,8 +59,10 @@ export default function OrganizationChart() {
   };
 
   const handleBack = () => {
-    // Preserve companyId so Dashboard shows modules correctly after returning
-    if (selectedCompanyId) {
+    // Si es acceso de gerente, volver al manager-dashboard
+    if (isManagerLogin) {
+      setLocation("/manager-dashboard");
+    } else if (selectedCompanyId) {
       setLocation(`/dashboard?companyId=${selectedCompanyId}`);
     } else {
       setLocation("/dashboard");
