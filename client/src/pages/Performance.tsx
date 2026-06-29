@@ -24,6 +24,19 @@ function PercentBadge({ value }: { value: number }) {
   );
 }
 
+function IndicatorMini({ label, value }: { label: string; value: number }) {
+  const color =
+    value >= 80 ? "text-green-700"
+    : value >= 50 ? "text-yellow-600"
+    : "text-red-600";
+  return (
+    <div className="bg-slate-50 rounded p-2">
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className={`font-bold text-base ${color}`}>{value}%</p>
+    </div>
+  );
+}
+
 function StrategicObjectivesModule({ companyId }: { companyId: number }) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const { data: macroIndicators = [], isLoading } = trpc.macroIndicators.getMacroIndicators.useQuery(
@@ -96,7 +109,7 @@ function ManagementByAreaModule({ companyId }: { companyId: number }) {
     { enabled: companyId > 0 }
   );
 
-  const avgOTG = useMemo(() => {
+  const avgGeneral = useMemo(() => {
     if (!macroIndicators.length) return 0;
     const total = macroIndicators.reduce((sum: number, p: any) => sum + (p.compliancePercentage || 0), 0);
     return Math.round(total / macroIndicators.length);
@@ -110,8 +123,8 @@ function ManagementByAreaModule({ companyId }: { companyId: number }) {
         <h3 className="text-lg font-bold text-slate-700">Gestión por Área</h3>
         <div className="text-center bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
           <p className="text-xs text-blue-600 font-semibold">% Promedio General</p>
-          <p className={`text-2xl font-bold ${avgOTG >= 80 ? "text-green-600" : avgOTG >= 50 ? "text-yellow-600" : "text-red-600"}`}>
-            {avgOTG}%
+          <p className={`text-2xl font-bold ${avgGeneral >= 80 ? "text-green-600" : avgGeneral >= 50 ? "text-yellow-600" : "text-red-600"}`}>
+            {avgGeneral}%
           </p>
         </div>
       </div>
@@ -134,15 +147,13 @@ function ManagementByAreaModule({ companyId }: { companyId: number }) {
                 </div>
               </div>
               {expandedId === process.processId && (
-                <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-sm">
-                  <div className="bg-slate-50 rounded p-2">
-                    <p className="text-xs text-slate-400">% OTG</p>
-                    <p className="font-bold text-slate-700">{process.objectivesPerformance || 0}%</p>
-                  </div>
-                  <div className="bg-slate-50 rounded p-2">
-                    <p className="text-xs text-slate-400">% Cumplimiento General</p>
-                    <p className="font-bold text-slate-700">{process.compliancePercentage || 0}%</p>
-                  </div>
+                <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                  <IndicatorMini label="% OTG (FODA)" value={process.fodaPercentage || 0} />
+                  <IndicatorMini label="% OTE" value={process.objectivesPerformance || 0} />
+                  <IndicatorMini label="% Partes Interesadas" value={process.stakeholderPercentage || 0} />
+                  <IndicatorMini label="% Cumplimientos" value={process.compliancesPercentage || 0} />
+                  <IndicatorMini label="% Capacitaciones" value={process.trainingsPercentage || 0} />
+                  <IndicatorMini label="% Promedio General" value={process.compliancePercentage || 0} />
                 </div>
               )}
             </CardContent>
@@ -157,6 +168,11 @@ function ManagementByAreaModule({ companyId }: { companyId: number }) {
 }
 
 function ManagementSystemsModule({ companyId }: { companyId: number }) {
+  const { data: macroIndicators = [], isLoading: indicatorsLoading } = trpc.macroIndicators.getMacroIndicators.useQuery(
+    { companyId },
+    { enabled: companyId > 0 }
+  );
+
   const { data: programs = [], isLoading: programsLoading } = trpc.managementPrograms.list.useQuery(
     { companyId },
     { enabled: companyId > 0 }
@@ -170,11 +186,25 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
     return Math.round(total / programs.length);
   }, [programs]);
 
+  const avgCompliances = useMemo(() => {
+    if (!macroIndicators.length) return 0;
+    const total = macroIndicators.reduce((sum: number, p: any) => sum + (p.compliancesPercentage || 0), 0);
+    return Math.round(total / macroIndicators.length);
+  }, [macroIndicators]);
+
+  const avgTrainings = useMemo(() => {
+    if (!macroIndicators.length) return 0;
+    const total = macroIndicators.reduce((sum: number, p: any) => sum + (p.trainingsPercentage || 0), 0);
+    return Math.round(total / macroIndicators.length);
+  }, [macroIndicators]);
+
   const metrics = [
     { label: "Programas", value: programsCompliance, icon: "📋" },
+    { label: "Cumplimientos", value: avgCompliances, icon: "✅" },
+    { label: "Capacitaciones", value: avgTrainings, icon: "🎓" },
   ];
 
-  if (programsLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin w-6 h-6 text-blue-500" /></div>;
+  if (programsLoading || indicatorsLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin w-6 h-6 text-blue-500" /></div>;
 
   return (
     <div>
@@ -192,8 +222,8 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
           </Card>
         ))}
       </div>
-      {programs.length === 0 && (
-        <p className="text-center text-slate-400 py-4 mt-4">No hay programas registrados aún.</p>
+      {programs.length === 0 && macroIndicators.length === 0 && (
+        <p className="text-center text-slate-400 py-4 mt-4">No hay datos registrados aún.</p>
       )}
     </div>
   );
@@ -222,13 +252,13 @@ export default function Performance() {
       key: "management" as SubModule,
       icon: <BarChart2 size={40} className="text-blue-500" />,
       title: "Gestión por Área",
-      description: "% OTG y % de gestión con partes interesadas por área.",
+      description: "% OTG, % OTE y % de gestión con partes interesadas por área.",
     },
     {
       key: "systems" as SubModule,
       icon: <Settings size={40} className="text-blue-500" />,
       title: "Sistemas de Gestión",
-      description: "% cumplimiento de Programas, Auditorías, Inspecciones, Capacitaciones y Cumplimientos.",
+      description: "% cumplimiento de Programas, Capacitaciones y Cumplimientos.",
     },
   ];
 
