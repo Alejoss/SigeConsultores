@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { useMemo, useState } from "react";
+import { getAxisBackPath } from "@/lib/sessionScope";
 import DashboardLayout from "@/components/DashboardLayout";
 import OrganizationChartModule from "@/components/OrganizationChartModule";
 import { useLocation } from "wouter";
@@ -59,9 +60,9 @@ export default function OrganizationChart() {
   };
 
   const handleBack = () => {
-    // Si es acceso de gerente, volver al manager-dashboard
-    if (isManagerLogin) {
-      setLocation("/manager-dashboard");
+    const isManagerAccess = localStorage.getItem('managerCompanyId') !== null;
+    if (isManagerAccess || isManagerLogin) {
+      setLocation(getAxisBackPath("/manager-dashboard"));
     } else if (selectedCompanyId) {
       setLocation(`/dashboard?companyId=${selectedCompanyId}`);
     } else {
