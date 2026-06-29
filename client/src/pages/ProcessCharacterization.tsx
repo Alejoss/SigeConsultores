@@ -117,7 +117,7 @@ export default function ProcessCharacterization() {
             if (isProcessLeader) {
               setLocation("/process-leader-dashboard");
             } else {
-              setLocation(isManagerAccess ? "/manager-dashboard" : "/process-map");
+              setLocation(isManagerAccess ? "/axis-gestion" : "/process-map");
             }
             return;
           }
@@ -272,7 +272,7 @@ export default function ProcessCharacterization() {
             </p>
             <Button
               className="w-full mt-4"
-                onClick={() => setLocation(isProcessLeader ? "/process-map" : (isManagerAccess ? "/manager-dashboard" : "/process-map"))}
+                onClick={() => setLocation(isProcessLeader ? "/process-map" : (isManagerAccess ? "/axis-gestion" : "/process-map"))}
              >
                 Volver al Mapa de Procesos
             </Button>
@@ -310,7 +310,7 @@ export default function ProcessCharacterization() {
                     : "/process-map";
                   setLocation(url);
                 } else if (isManagerAccess) {
-                  setLocation("/manager-dashboard");
+                  setLocation("/axis-gestion");
                 } else {
                   const url = companyId && selectedProcessId 
                     ? `/process-map?companyId=${companyId}&processId=${selectedProcessId}`
