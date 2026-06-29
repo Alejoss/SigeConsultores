@@ -110,7 +110,12 @@ function ManagementByAreaModule({ companyId }: { companyId: number }) {
 
   const avgGeneral = useMemo(() => {
     if (!macroIndicators.length) return 0;
-    const total = macroIndicators.reduce((sum: number, p: any) => sum + (p.compliancePercentage || 0), 0);
+    const total = macroIndicators.reduce((sum: number, p: any) => {
+      const otg = p.fodaPercentage || 0;
+      const ote = p.objectivesPerformance || 0;
+      const pi = p.stakeholderPercentage || 0;
+      return sum + Math.round((otg + ote + pi) / 3);
+    }, 0);
     return Math.round(total / macroIndicators.length);
   }, [macroIndicators]);
 
@@ -146,13 +151,10 @@ function ManagementByAreaModule({ companyId }: { companyId: number }) {
                 </div>
               </div>
               {expandedId === process.processId && (
-                <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2 text-sm">
                   <IndicatorMini label="% OTG (FODA)" value={process.fodaPercentage || 0} />
                   <IndicatorMini label="% OTE" value={process.objectivesPerformance || 0} />
                   <IndicatorMini label="% Partes Interesadas" value={process.stakeholderPercentage || 0} />
-                  <IndicatorMini label="% Cumplimientos" value={process.compliancesPercentage || 0} />
-                  <IndicatorMini label="% Capacitaciones" value={process.trainingsPercentage || 0} />
-                  <IndicatorMini label="% Promedio General" value={process.compliancePercentage || 0} />
                 </div>
               )}
             </CardContent>
