@@ -320,8 +320,15 @@ export default function ProcessRiskMatrix() {
                   (row as any).puntoPartida,
                   (row as any).puntoLlegada,
                 );
+                // Recalcular porcentajeCompletado de cada acción al cargar
+                const accionesRecalculadas = (row.acciones || []).map((a: any) => ({
+                  ...a,
+                  porcentajeCompletado: calcularPorcentajeAccion(a as AccionOTG),
+                }));
                 return {
                   ...row,
+                  acciones: accionesRecalculadas,
+                  porcentajeCumplimiento: calcularPorcentajeOTG(accionesRecalculadas),
                   objetivoPolitica: row.objetivoPolitica || fodaLookup[row.elemento] || '',
                   porcentajeAlcanzadoOTG: pct,
                   mejoraImplementada: pct >= 100 ? 'SI' : 'NO',
