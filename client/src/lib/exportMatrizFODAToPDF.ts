@@ -1,226 +1,258 @@
 import jsPDF from 'jspdf';
+import { MatrizFODARow } from '../types/matrizFODA';
 
-interface MatrizFODARow {
-  id?: number;
-  elemento: string;
-  foda: 'Fortaleza' | 'Oportunidad' | 'Debilidad' | 'Amenaza';
-  factor: string;
-  consecuencia?: string;
-  sistemaGestion: string;
-  probabilidad?: string;
-  impacto?: number;
-  nivelRiesgo?: string;
-  accionATomar?: string;
-  accionDeAprovechamiento?: string;
-  planContingencia?: string;
-  planContinuidad?: string;
-  simulacro?: string;
-  fechaPlanificacionMejora?: string;
-  fechaFinalPrevista?: string;
-  comunicado?: string;
-  partesInteresadas?: string;
-  evidencia?: string;
-  mejoraImplementada?: string;
-  observacion?: string;
-  medioVerificacion?: string;
-  fechaImplementacion?: string;
-  objetivoLogrado?: string;
+function calcularPorcentajeAlcanzado(
+  alcanzado: number | undefined,
+  puntoPartida: number | undefined,
+  puntoLlegada: number | undefined,
+): number {
+  const pa = puntoPartida ?? 0;
+  const pl = puntoLlegada ?? 0;
+  const al = alcanzado ?? 0;
+  if (pl === pa) return 0;
+  const pct = ((al - pa) / (pl - pa)) * 100;
+  return Math.min(100, Math.max(0, Math.round(pct)));
+}
+
+function calcularPorcentajeTareas(acciones: any[]): number {
+  if (!acciones || acciones.length === 0) return 0;
+  const totalPonderacion = acciones.reduce((s, a) => s + (Number(a.ponderacion) || 0), 0);
+  if (totalPonderacion === 0) return 0;
+  const cumplimiento = acciones.reduce((s, a) => {
+    const pond = Number(a.ponderacion) || 0;
+    const avance = Number(a.porcentajeCompletado) || 0;
+    return s + (pond * avance) / 100;
+  }, 0);
+  return Math.round((cumplimiento / totalPonderacion) * 100);
 }
 
 export const exportMatrizFODAToPDF = (matrixRows: MatrizFODARow[], processName: string) => {
   try {
-    const doc = new jsPDF();
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    let yPosition = 15;
-    const margin = 10;
-    const maxWidth = pageWidth - 2 * margin;
+    let y = 15;
+    const ml = 10; // margin left
+    const mr = 10; // margin right
+    const maxW = pageWidth - ml - mr;
 
-    // Helper functions
-    const addNewPage = () => {
-      doc.addPage();
-      yPosition = 15;
+    const checkPage = (needed = 20) => {
+      if (y > pageHeight - needed) { doc.addPage(); y = 15; }
     };
 
     const addTitle = (text: string) => {
-      if (yPosition > pageHeight - 40) addNewPage();
-      doc.setFontSize(18);
+      checkPage(30);
+      doc.setFontSize(16);
       doc.setTextColor(30, 58, 138);
-      doc.text(text, margin, yPosition);
-      yPosition += 10;
+      doc.setFont('helvetica', 'bold');
+      doc.text(text, ml, y);
+      y += 8;
     };
 
-    const addSectionTitle = (title: string, color: [number, number, number]) => {
-      if (yPosition > pageHeight - 35) addNewPage();
-      doc.setFontSize(13);
-      doc.setTextColor(color[0], color[1], color[2]);
-      doc.text(title, margin, yPosition);
-      yPosition += 8;
+    const addSectionHeader = (text: string, rgb: [number, number, number]) => {
+      checkPage(20);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+      doc.text(text, ml, y);
+      y += 6;
+      doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
+      doc.line(ml, y, pageWidth - mr, y);
+      y += 4;
     };
 
-    const addElementHeader = (number: number, elemento: string, color: [number, number, number]) => {
-      if (yPosition > pageHeight - 30) addNewPage();
-      doc.setFontSize(10);
-      doc.setTextColor(color[0], color[1], color[2]);
-      const lines = doc.splitTextToSize(`${number}. ${elemento}`, maxWidth - 2);
-      doc.text(lines as string[], margin + 2, yPosition);
-      yPosition += lines.length * 4 + 2;
+    const addSubHeader = (text: string) => {
+      checkPage(15);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 138);
+      doc.text(text, ml, y);
+      y += 5;
     };
 
-    const addFieldTable = (fields: Array<[string, string]>) => {
-      if (yPosition > pageHeight - 25) addNewPage();
-      
+    const addField = (label: string, value: string, indent = 0) => {
+      checkPage(10);
       doc.setFontSize(8);
-      doc.setTextColor(60, 60, 60);
-      
-      const colWidth = (maxWidth - 4) / 2;
-      const rowHeight = 5;
-      
-      fields.forEach((field) => {
-        if (yPosition > pageHeight - 10) addNewPage();
-        
-        const [label, value] = field;
-        const labelText = `${label}:`;
-        
-        // Draw label
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(80, 80, 80);
+      doc.text(`${label}:`, ml + indent, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(40, 40, 40);
+      const lines = doc.splitTextToSize(value || '-', maxW - 45 - indent);
+      doc.text(lines as string[], ml + indent + 45, y);
+      y += Math.max(5, (lines as string[]).length * 4);
+    };
+
+    const addFieldInline = (pairs: Array<[string, string]>) => {
+      checkPage(10);
+      const colW = maxW / pairs.length;
+      pairs.forEach(([label, value], i) => {
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
         doc.setTextColor(80, 80, 80);
-        doc.text(labelText, margin + 2, yPosition);
-        
-        // Draw value
-        doc.setTextColor(50, 50, 50);
-        const valueLines = doc.splitTextToSize(value || '-', colWidth - 10);
-        doc.text(valueLines as string[], margin + 50, yPosition);
-        
-        yPosition += Math.max(rowHeight, valueLines.length * 3.5) + 1;
+        doc.text(`${label}:`, ml + i * colW, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(40, 40, 40);
+        const lines = doc.splitTextToSize(value || '-', colW - 25);
+        doc.text(lines as string[], ml + i * colW + 25, y);
       });
+      y += 6;
     };
 
-    const addSeparator = () => {
-      if (yPosition > pageHeight - 15) return;
-      doc.setDrawColor(200, 200, 200);
-      doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 4;
+    const addSeparator = (light = false) => {
+      checkPage(5);
+      doc.setDrawColor(light ? 220 : 180, light ? 220 : 180, light ? 220 : 180);
+      doc.line(ml, y, pageWidth - mr, y);
+      y += 3;
     };
 
-    // Title and header
-    addTitle('MATRIZ DEL FODA');
-    
+    const addBadge = (text: string, rgb: [number, number, number]) => {
+      checkPage(10);
+      doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+      doc.roundedRect(ml, y - 4, 30, 6, 1, 1, 'F');
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      doc.text(text, ml + 2, y);
+      y += 5;
+    };
+
+    // ── PORTADA ──────────────────────────────────────────────────────────────
+    addTitle('OTG - OBJETIVOS TÁCTICOS DE GESTIÓN');
     doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 100, 100);
-    doc.text(`Proceso: ${processName}`, margin, yPosition);
-    yPosition += 4;
-    doc.text(`Fecha de Generación: ${new Date().toLocaleDateString('es-ES')}`, margin, yPosition);
-    yPosition += 8;
+    doc.text(`Proceso: ${processName}`, ml, y); y += 4;
+    doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-ES')}`, ml, y); y += 4;
 
-    // Separate rows by type
-    const fortalezas = matrixRows.filter(r => r.foda === 'Fortaleza');
-    const oportunidades = matrixRows.filter(r => r.foda === 'Oportunidad');
-    const debilidades = matrixRows.filter(r => r.foda === 'Debilidad');
-    const amenazas = matrixRows.filter(r => r.foda === 'Amenaza');
+    // Indicadores globales
+    const totalRows = matrixRows.length;
+    const pctOTG = totalRows > 0
+      ? Math.round(matrixRows.reduce((s, r) => s + calcularPorcentajeAlcanzado((r as any).alcanzado, (r as any).puntoPartida, (r as any).puntoLlegada), 0) / totalRows)
+      : 0;
+    const pctTareas = totalRows > 0
+      ? Math.round(matrixRows.reduce((s, r) => s + calcularPorcentajeTareas(r.acciones || []), 0) / totalRows)
+      : 0;
+    const pctComunicado = totalRows > 0
+      ? Math.round((matrixRows.filter(r => r.comunicado === 'SI').length / totalRows) * 100)
+      : 0;
 
-    // FORTALEZAS
-    if (fortalezas.length > 0) {
-      addSectionTitle('1. FORTALEZAS', [34, 197, 94]);
-      addSeparator();
-      
-      fortalezas.forEach((item, idx) => {
-        addElementHeader(idx + 1, item.elemento, [34, 197, 94]);
-        
-        const fields: Array<[string, string]> = [
-          ['Sistema de Gestión', item.sistemaGestion || ''],
-          ['Factor', item.factor || ''],
-          ['Acción de Aprovechamiento', item.accionATomar || item.accionDeAprovechamiento || ''],
-          ['Fecha Final Prevista', item.fechaFinalPrevista || ''],
-        ];
-        
-        addFieldTable(fields);
+    y += 3;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 58, 138);
+    doc.text(`% Alcanzado OTG: ${pctOTG}%   |   % Alcanzado en Tareas: ${pctTareas}%   |   % Comunicado: ${pctComunicado}%`, ml, y);
+    y += 8;
+    addSeparator();
+
+    // ── TIPOS ────────────────────────────────────────────────────────────────
+    const tipos: Array<{ tipo: string; color: [number, number, number]; label: string }> = [
+      { tipo: 'Fortaleza', color: [34, 197, 94], label: 'FORTALEZAS' },
+      { tipo: 'Oportunidad', color: [59, 130, 246], label: 'OPORTUNIDADES' },
+      { tipo: 'Debilidad', color: [249, 115, 22], label: 'DEBILIDADES' },
+      { tipo: 'Amenaza', color: [239, 68, 68], label: 'AMENAZAS' },
+    ];
+
+    tipos.forEach(({ tipo, color, label }) => {
+      const items = matrixRows.filter(r => r.foda === tipo);
+      if (items.length === 0) return;
+
+      addSectionHeader(label, color);
+
+      items.forEach((row, idx) => {
+        const isDA = tipo === 'Debilidad' || tipo === 'Amenaza';
+        const pctAlcanzado = calcularPorcentajeAlcanzado((row as any).alcanzado, (row as any).puntoPartida, (row as any).puntoLlegada);
+        const pctTareasRow = calcularPorcentajeTareas(row.acciones || []);
+
+        // Encabezado del elemento
+        checkPage(25);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(color[0], color[1], color[2]);
+        const elementoLines = doc.splitTextToSize(`${idx + 1}. ${row.elemento || `OTG #${row.id}`}`, maxW - 40);
+        doc.text(elementoLines as string[], ml, y);
+        // Badges de % en la misma línea
+        doc.setFontSize(7);
+        doc.setTextColor(30, 58, 138);
+        doc.text(`OTG: ${pctAlcanzado}%  |  Tareas: ${pctTareasRow}%`, pageWidth - mr - 40, y);
+        y += (elementoLines as string[]).length * 4 + 2;
+
+        // A. IDENTIFICACIÓN
+        addSubHeader('A. IDENTIFICACIÓN');
+        addField('Subproceso', row.subproceso || '');
+        addField('Objetivo de la Política', row.objetivoPolitica || '');
+        addField('Elemento (FODA)', row.elemento || '');
+        addFieldInline([['FODA', row.foda], ['Factor', row.factor || ''], ['Sistema de Gestión', row.sistemaGestion || '']]);
+        addField('Objetivo Táctico de Gestión', (row as any).objetivoTactico || '');
+        addFieldInline([['Punto de Partida', String((row as any).puntoPartida ?? '')], ['Punto de Llegada', String((row as any).puntoLlegada ?? '')], ['Unidad de Medida', (row as any).unidadMedida || ''], ['Responsable', (row as any).responsableOTG || '']]);
+        addFieldInline([['Alcanzado', String((row as any).alcanzado ?? '')], ['% Alcanzado', `${pctAlcanzado}%`]]);
+        addFieldInline([['Fecha Planificación', row.fechaPlanificacionMejora || ''], ['Fecha Final Prevista', row.fechaFinalPrevista || '']]);
+
+        if (isDA) {
+          addField('Consecuencia', row.consecuencia || '');
+          addFieldInline([['Probabilidad', row.probabilidad || ''], ['Impacto', String(row.impacto ?? '')], ['Nivel de Riesgo', row.nivelRiesgo || '']]);
+        }
+
+        // Tareas
+        if (row.acciones && row.acciones.length > 0) {
+          addSubHeader(`TAREAS (${row.acciones.length})`);
+          row.acciones.forEach((accion: any, ai: number) => {
+            checkPage(15);
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(60, 60, 60);
+            const descLines = doc.splitTextToSize(`${ai + 1}. ${accion.accion || ''}`, maxW - 10);
+            doc.text(descLines as string[], ml + 3, y);
+            y += (descLines as string[]).length * 4 + 1;
+            addFieldInline([
+              ['Ponderación', `${accion.ponderacion ?? 0}%`],
+              ['Responsable', accion.responsable || ''],
+              ['Fecha', accion.fechaImplementacion || ''],
+              ['% Avance', `${accion.porcentajeCompletado ?? 0}%`],
+            ]);
+          });
+        }
+
+        // Comunicación
+        addSubHeader(isDA ? 'D. COMUNICACIÓN' : 'B. COMUNICACIÓN');
+        addFieldInline([['Comunicado', row.comunicado || 'NO'], ['Partes Interesadas', row.partesInteresadas || '']]);
+        addField('Evidencia', row.evidencia || '');
+
+        // Planes y simulacros (solo D/A)
+        if (isDA) {
+          addSubHeader('C. PLANES Y SIMULACROS');
+          addField('Plan de Contingencia', row.planContingencia || '');
+          addField('Plan de Continuidad del Negocio', row.planContinuidad || '');
+          addField('Simulacro', row.simulacro || '');
+        }
+
+        // Seguimiento y reevaluación
+        addSubHeader(isDA ? 'E. SEGUIMIENTO Y REEVALUACIÓN' : 'C. SEGUIMIENTO Y REEVALUACIÓN');
+        addFieldInline([
+          ['Implantada la Mejora', row.mejoraImplementada || 'NO'],
+          ['Implementación Cumplió su Objetivo', row.objetivoLogrado || 'NO'],
+        ]);
+        addField('Observación', row.observacion || '');
+        addField('Medio de Verificación', row.medioVerificacion || '');
+        addField('Fecha de Implementación', row.fechaImplementacion || '');
+
+        if (isDA) {
+          addSubHeader('Reevaluación de Riesgo');
+          addFieldInline([
+            ['Probabilidad Nueva', (row as any).probabilidadNueva || ''],
+            ['Nivel de Riesgo Nuevo', (row as any).nivelRiesgoNuevo || ''],
+            ['Estimación Nueva', (row as any).estimacionNueva || ''],
+          ]);
+        }
+
         addSeparator();
-        yPosition += 2;
+        y += 3;
       });
-      yPosition += 4;
-    }
 
-    // OPORTUNIDADES
-    if (oportunidades.length > 0) {
-      addSectionTitle('2. OPORTUNIDADES', [59, 130, 246]);
-      addSeparator();
-      
-      oportunidades.forEach((item, idx) => {
-        addElementHeader(idx + 1, item.elemento, [59, 130, 246]);
-        
-        const fields: Array<[string, string]> = [
-          ['Sistema de Gestión', item.sistemaGestion || ''],
-          ['Factor', item.factor || ''],
-          ['Acción de Aprovechamiento', item.accionATomar || item.accionDeAprovechamiento || ''],
-          ['Fecha Final Prevista', item.fechaFinalPrevista || ''],
-        ];
-        
-        addFieldTable(fields);
-        addSeparator();
-        yPosition += 2;
-      });
-      yPosition += 4;
-    }
+      y += 4;
+    });
 
-    // DEBILIDADES
-    if (debilidades.length > 0) {
-      addSectionTitle('3. DEBILIDADES', [249, 115, 22]);
-      addSeparator();
-      
-      debilidades.forEach((item, idx) => {
-        addElementHeader(idx + 1, item.elemento, [249, 115, 22]);
-        
-        const fields: Array<[string, string]> = [
-          ['Sistema de Gestión', item.sistemaGestion || ''],
-          ['Factor', item.factor || ''],
-          ['Consecuencias', item.consecuencia || ''],
-          ['Probabilidad', item.probabilidad || ''],
-          ['Impacto', item.impacto ? item.impacto.toString() : ''],
-          ['Nivel de Riesgo', item.nivelRiesgo || ''],
-          ['Acción a Tomar', item.accionATomar || ''],
-          ['Plan de Contingencia', item.planContingencia || ''],
-          ['Plan de Continuidad del Negocio', item.planContinuidad || ''],
-          ['Simulacro', item.simulacro || ''],
-          ['Fecha Final Prevista', item.fechaFinalPrevista || ''],
-        ];
-        
-        addFieldTable(fields);
-        addSeparator();
-        yPosition += 2;
-      });
-      yPosition += 4;
-    }
-
-    // AMENAZAS
-    if (amenazas.length > 0) {
-      addSectionTitle('4. AMENAZAS', [239, 68, 68]);
-      addSeparator();
-      
-      amenazas.forEach((item, idx) => {
-        addElementHeader(idx + 1, item.elemento, [239, 68, 68]);
-        
-        const fields: Array<[string, string]> = [
-          ['Sistema de Gestión', item.sistemaGestion || ''],
-          ['Factor', item.factor || ''],
-          ['Consecuencias', item.consecuencia || ''],
-          ['Probabilidad', item.probabilidad || ''],
-          ['Impacto', item.impacto ? item.impacto.toString() : ''],
-          ['Nivel de Riesgo', item.nivelRiesgo || ''],
-          ['Acción a Tomar', item.accionATomar || ''],
-          ['Plan de Contingencia', item.planContingencia || ''],
-          ['Plan de Continuidad del Negocio', item.planContinuidad || ''],
-          ['Simulacro', item.simulacro || ''],
-          ['Fecha Final Prevista', item.fechaFinalPrevista || ''],
-        ];
-        
-        addFieldTable(fields);
-        addSeparator();
-        yPosition += 2;
-      });
-    }
-
-    // Save PDF
-    const fileName = `MatrizFODA_${processName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `OTG_${processName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
     return true;
   } catch (error) {
