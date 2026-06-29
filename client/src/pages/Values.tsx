@@ -77,7 +77,7 @@ export default function Values() {
   
   // Back button handler
   const handleBack = () => {
-    setLocation(isProcessLeader ? "/process-leader-dashboard" : (isManagerAccess ? getAxisBackPath("/manager-dashboard") : "/dashboard"));
+    setLocation(isProcessLeader ? "/process-leader-dashboard" : ((isManagerAccess || isManagerLogin) ? getAxisBackPath("/manager-dashboard") : "/dashboard"));
   };
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);

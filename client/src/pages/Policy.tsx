@@ -118,7 +118,7 @@ export default function Policy() {
   
   // Back button handler
   const handleBack = () => {
-    setLocation(isProcessLeader ? "/process-leader-dashboard" : (isManagerAccess ? getAxisBackPath("/manager-dashboard") : "/dashboard"));
+    setLocation(isProcessLeader ? "/process-leader-dashboard" : ((isManagerAccess || isManagerLogin) ? getAxisBackPath("/manager-dashboard") : "/dashboard"));
   };
   const [policy, setPolicy] = useState("");
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);

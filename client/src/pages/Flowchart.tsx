@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MessageCircle } from 'lucide-react';
 import DashboardLayout from "@/components/DashboardLayout";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { AIChatPanel } from "@/components/AIChatPanel";
 import { trpc } from "@/lib/trpc";
 import { useQueryClient } from "@tanstack/react-query";
@@ -13,6 +14,7 @@ export default function Flowchart() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const [showAIChat, setShowAIChat] = useState(false);
+  const { isManagerLogin } = useManagerAuth();
   const isManagerAccess = user?.role === "user" && typeof window !== "undefined" && localStorage.getItem("isManagerAccess") === "true";
   
   // Get company ID from localStorage or user context
@@ -58,7 +60,7 @@ export default function Flowchart() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setLocation(isManagerAccess ? getAxisBackPath("/manager-dashboard") : "/dashboard")}
+              onClick={() => setLocation((isManagerAccess || isManagerLogin) ? getAxisBackPath("/manager-dashboard") : "/dashboard")}
             >
               ← Volver
             </Button>
