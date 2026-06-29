@@ -790,9 +790,42 @@ export default function ProcessStakeholderCriticality() {
   };
 
   const calculateCompletionPercentage = () => {
-    if (data.stakeholders.length === 0) return 0;
-    const completed = data.stakeholders.filter(s => s.completed === "Si").length;
-    return Math.round((completed / data.stakeholders.length) * 100);
+    // % acciones realizadas
+    let accionesPercent = 0;
+    if (data.stakeholders.length > 0) {
+      const completed = data.stakeholders.filter(s => s.completed === "Si").length;
+      accionesPercent = Math.round((completed / data.stakeholders.length) * 100);
+    }
+
+    // Si hay encuestas, calcular promedio de satisfacción y mezclar 50/50
+    if (surveysFromDb && surveysFromDb.length > 0) {
+      const surveyScores: number[] = [];
+      for (const s of surveysFromDb as any[]) {
+        // NPS: escala -100 a 100 -> normalizar a 0-100
+        if (s.nps !== null && s.nps !== undefined) {
+          surveyScores.push(Math.round((s.nps + 100) / 2));
+        }
+        // CSAT: ya está en 0-100
+        if (s.csat !== null && s.csat !== undefined) {
+          surveyScores.push(s.csat);
+        }
+        // avgRating: parsear "4.2/5" o "8.4/10"
+        if (s.avgRating) {
+          const match = s.avgRating.match(/([\d.]+)\s*\/\s*([\d.]+)/);
+          if (match) {
+            const val = parseFloat(match[1]);
+            const max = parseFloat(match[2]);
+            if (max > 0) surveyScores.push(Math.round((val / max) * 100));
+          }
+        }
+      }
+      if (surveyScores.length > 0) {
+        const avgSurvey = Math.round(surveyScores.reduce((a, b) => a + b, 0) / surveyScores.length);
+        return Math.round((accionesPercent + avgSurvey) / 2);
+      }
+    }
+
+    return accionesPercent;
   };
 
   const exportToPDF = () => {
@@ -991,7 +1024,12 @@ export default function ProcessStakeholderCriticality() {
                 {calculateCompletionPercentage()}%
               </div>
             </div>
-            <p className="text-sm text-slate-600 mt-2">{data.stakeholders.filter(s => s.completed === "Si").length} de {data.stakeholders.length} completados</p>
+            <p className="text-sm text-slate-600 mt-2">
+              {data.stakeholders.filter(s => s.completed === "Si").length} de {data.stakeholders.length} acciones completadas
+              {surveysFromDb && surveysFromDb.length > 0 && (
+                <span className="ml-2 text-blue-600">· Promedio mixto: acciones + {surveysFromDb.length} encuesta{surveysFromDb.length > 1 ? 's' : ''}</span>
+              )}
+            </p>
           </div>
 
           {/* Sección ASOCIADOS DE NEGOCIO eliminada según solicitud del usuario */}
