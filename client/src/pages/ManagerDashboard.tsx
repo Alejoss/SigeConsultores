@@ -244,104 +244,8 @@ export default function ManagerDashboard() {
         {/* Welcome Card */}
         <WelcomeCard companyId={companyId} companyName={companyName} />
 
-        {/* Company Info */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="w-5 h-5" />
-                Información de la Empresa
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600 mb-2">ID de Empresa:</p>
-              <p className="text-lg font-semibold text-gray-900">{companyId || "Cargando..."}</p>
-              <p className="text-sm text-gray-600 mt-4 mb-2">Tu Correo:</p>
-              <p className="text-sm font-medium text-gray-900">{managerEmail}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="w-5 h-5" />
-                Acciones Rápidas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => handleQuickAction("editProfile")}
-              >
-                Editar Perfil
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => handleQuickAction("changePassword")}
-              >
-                Cambiar Contraseña
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => handleQuickAction("documentation")}
-              >
-                Ver Documentación
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Estado del Sistema</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Plataforma</span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    Operativa
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Tu Acceso</span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    Activo
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Administrator Section */}
+        {/* Axis Cards — D */}
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Administración</h2>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Gestión de Jefes de Proceso
-              </CardTitle>
-              <CardDescription>
-                Invita y gestiona a los jefes de proceso de tu empresa
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                onClick={() => setShowInviteModal(true)}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Invitar Jefe de Proceso
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Axis Cards */}
-        <div>
           <h2 className="text-xl font-bold text-gray-900 mb-5">Módulos del Sistema</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {MODULE_GROUPS.map((group) => {
@@ -369,6 +273,80 @@ export default function ManagerDashboard() {
             })}
           </div>
         </div>
+
+        {/* Administrator Section — C */}
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Administración</h2>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Gestión de Jefes de Proceso
+              </CardTitle>
+              <CardDescription>
+                Invita y gestiona a los jefes de proceso de tu empresa
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={() => setShowInviteModal(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Invitar Jefe de Proceso
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Company Info — B (compacto) */}
+        <details className="mb-8 group">
+          <summary className="cursor-pointer flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-gray-700 select-none list-none">
+            <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+            Datos Generales
+          </summary>
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Building2 className="w-4 h-4" />
+                  Información de la Empresa
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <p className="text-xs text-gray-500">ID de Empresa: <span className="font-semibold text-gray-800">{companyId || "Cargando..."}</span></p>
+                <p className="text-xs text-gray-500 mt-1">Correo: <span className="font-semibold text-gray-800">{managerEmail}</span></p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Settings className="w-4 h-4" />
+                  Acciones Rápidas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 flex flex-col gap-1">
+                <Button variant="outline" size="sm" className="w-full justify-start text-xs" onClick={() => handleQuickAction("editProfile")}>Editar Perfil</Button>
+                <Button variant="outline" size="sm" className="w-full justify-start text-xs" onClick={() => handleQuickAction("changePassword")}>Cambiar Contraseña</Button>
+                <Button variant="outline" size="sm" className="w-full justify-start text-xs" onClick={() => handleQuickAction("documentation")}>Ver Documentación</Button>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm">Estado del Sistema</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-gray-500">Plataforma</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Operativa</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">Tu Acceso</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Activo</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </details>
       </main>
 
       {/* Invite Modal */}
