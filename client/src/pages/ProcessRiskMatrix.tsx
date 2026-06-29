@@ -155,9 +155,9 @@ function AccionOTGRow({
       {/* Campos según tipo */}
       {accion.tipoSeguimiento === 'puntual' && (
         <div>
-          <label className="text-xs font-semibold text-slate-600">% de Avance</label>
+          <label className="text-xs font-semibold text-slate-600">Avance</label>
           <input
-            type="number" step="1" min={0} max={100}
+            type="number" step="any" min={0}
             defaultValue={accion.valorPuntual ?? 0}
             onBlur={(e) => update('valorPuntual', parseFloat(e.target.value) || 0)}
             className="w-full border rounded p-2 text-sm mt-1"
