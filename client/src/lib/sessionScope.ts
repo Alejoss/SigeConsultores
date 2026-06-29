@@ -63,7 +63,8 @@ export function getAxisBackPath(fallback: string = "/manager-dashboard"): string
   const axis = localStorage.getItem("axisOrigin");
   if (axis === "estrategia") return "/axis-estrategia";
   if (axis === "gestion") return "/axis-gestion";
-  if (axis === "desempeno") return "/axis-desempeno";
+  // "desempeno" ya no tiene pantalla intermedia (AxisDesempeno redirige directo a /performance)
+  // por lo tanto el botón Volver debe ir al dashboard principal
   return fallback;
 }
 

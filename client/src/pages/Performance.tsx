@@ -8,7 +8,6 @@ import { trpc } from "@/lib/trpc";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
-import { getAxisBackPath } from "@/lib/sessionScope";
 
 type SubModule = "strategic" | "management" | "systems" | null;
 
@@ -178,6 +177,17 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
     { enabled: companyId > 0 }
   );
 
+  const { data: audits = [], isLoading: auditsLoading } = trpc.auditsInspections.listAudits.useQuery(
+    { companyId },
+    { enabled: companyId > 0 }
+  );
+
+  const { data: inspections = [], isLoading: inspectionsLoading } = trpc.auditsInspections.listInspections.useQuery(
+    { companyId },
+    { enabled: companyId > 0 }
+  );
+
+  // % Programas: promedio de (completedActions / plannedActions) por programa
   const programsCompliance = useMemo(() => {
     if (!programs.length) return 0;
     const total = programs.reduce((sum: number, p: any) => {
@@ -186,6 +196,33 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
     return Math.round(total / programs.length);
   }, [programs]);
 
+  // % Auditorías: promedio de (totalCierres / totalHallazgos) por auditoría
+  const auditsCompliance = useMemo(() => {
+    if (!audits.length) return 0;
+    let count = 0;
+    const total = (audits as any[]).reduce((sum: number, a: any) => {
+      const findings = (a.findingsMajorNC || 0) + (a.findingsMinorNC || 0) + (a.findingsObservations || 0) + (a.findingsOM || 0);
+      if (findings === 0) return sum;
+      const closures = (a.closuresMajorNC || 0) + (a.closuresMinorNC || 0) + (a.closuresObservations || 0) + (a.closuresOM || 0);
+      count++;
+      return sum + Math.min(100, Math.round((closures / findings) * 100));
+    }, 0);
+    return count > 0 ? Math.round(total / count) : 0;
+  }, [audits]);
+
+  // % Inspecciones: promedio de (closures / findings) por inspección
+  const inspectionsCompliance = useMemo(() => {
+    if (!inspections.length) return 0;
+    let count = 0;
+    const total = (inspections as any[]).reduce((sum: number, i: any) => {
+      if (!i.findings || i.findings === 0) return sum;
+      count++;
+      return sum + Math.min(100, Math.round(((i.closures || 0) / i.findings) * 100));
+    }, 0);
+    return count > 0 ? Math.round(total / count) : 0;
+  }, [inspections]);
+
+  // % Cumplimientos y % Capacitaciones: promedio de todos los procesos
   const avgCompliances = useMemo(() => {
     if (!macroIndicators.length) return 0;
     const total = macroIndicators.reduce((sum: number, p: any) => sum + (p.compliancesPercentage || 0), 0);
@@ -199,17 +236,20 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
   }, [macroIndicators]);
 
   const metrics = [
-    { label: "Programas", value: programsCompliance, icon: "📋" },
-    { label: "Cumplimientos", value: avgCompliances, icon: "✅" },
-    { label: "Capacitaciones", value: avgTrainings, icon: "🎓" },
+    { label: "Programas", value: programsCompliance, icon: "📋", count: programs.length },
+    { label: "Cumplimientos", value: avgCompliances, icon: "✅", count: null },
+    { label: "Auditorías", value: auditsCompliance, icon: "🔍", count: (audits as any[]).length },
+    { label: "Inspecciones", value: inspectionsCompliance, icon: "🔎", count: (inspections as any[]).length },
+    { label: "Capacitaciones", value: avgTrainings, icon: "🎓", count: null },
   ];
 
-  if (programsLoading || indicatorsLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin w-6 h-6 text-blue-500" /></div>;
+  const isLoading = programsLoading || indicatorsLoading || auditsLoading || inspectionsLoading;
+  if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin w-6 h-6 text-blue-500" /></div>;
 
   return (
     <div>
       <h3 className="text-lg font-bold text-slate-700 mb-4">Sistemas de Gestión</h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {metrics.map((m) => (
           <Card key={m.label} className="border border-slate-200">
             <CardContent className="pt-4 pb-4 text-center">
@@ -218,13 +258,13 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
               <p className={`text-3xl font-bold mt-2 ${m.value >= 80 ? "text-green-600" : m.value >= 50 ? "text-yellow-600" : "text-red-600"}`}>
                 {m.value}%
               </p>
+              {m.count !== null && (
+                <p className="text-xs text-slate-400 mt-1">{m.count} registros</p>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
-      {programs.length === 0 && macroIndicators.length === 0 && (
-        <p className="text-center text-slate-400 py-4 mt-4">No hay datos registrados aún.</p>
-      )}
     </div>
   );
 }
@@ -258,9 +298,18 @@ export default function Performance() {
       key: "systems" as SubModule,
       icon: <Settings size={40} className="text-blue-500" />,
       title: "Sistemas de Gestión",
-      description: "% cumplimiento de Programas, Capacitaciones y Cumplimientos.",
+      description: "% cumplimiento de Programas, Auditorías, Inspecciones, Capacitaciones y Cumplimientos.",
     },
   ];
+
+  // Botón Volver: si hay submódulo activo, vuelve a la selección; si no, al dashboard
+  const handleBack = () => {
+    if (activeModule) {
+      setActiveModule(null);
+    } else {
+      setLocation("/manager-dashboard");
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -270,10 +319,10 @@ export default function Performance() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => activeModule ? setActiveModule(null) : setLocation(getAxisBackPath("/manager-dashboard"))}
+            onClick={handleBack}
             className="flex items-center gap-2"
           >
-            ← {activeModule ? "Volver" : "Volver"}
+            ← Volver
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-slate-800">Desempeño</h1>
