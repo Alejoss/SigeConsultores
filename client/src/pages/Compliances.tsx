@@ -98,11 +98,23 @@ export default function Compliances() {
     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
   ];
 
+  // Obtener companyId para el botón Volver
+  const companyId = new URLSearchParams(window.location.search).get('companyId') || localStorage.getItem('selectedCompanyId') || '';
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Cumplimientos</h1>
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-3xl font-bold">Cumplimientos</h1>
+            <Button
+              variant="outline"
+              onClick={() => setLocation(`/audits-inspections${companyId ? '?companyId=' + companyId : ''}`)}
+              className="flex items-center gap-2"
+            >
+              ← Volver
+            </Button>
+          </div>
           <p className="text-slate-600 mt-2">
             Gestiona las obligaciones regulatorias del proceso
           </p>
