@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DASHBOARD_MODULES, MODULE_GROUPS, buildScopedModuleRoute } from "@shared/dashboardModules";
 import { useModuleLabels } from "@/hooks/useModuleLabels";
+import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 
 type AxisId = "estrategia" | "gestion" | "desempeno";
 
@@ -41,15 +42,26 @@ export default function AxisPage({ axisId, backPath }: AxisPageProps) {
   const [, setLocation] = useLocation();
   const [companyId, setCompanyId] = useState<number | null>(null);
   const [isManager, setIsManager] = useState(false);
+  const { isManagerLogin, managerCompanyId: authCompanyId } = useManagerAuth();
 
   useEffect(() => {
-    const cid = localStorage.getItem("managerCompanyId");
-    const mgr = localStorage.getItem("managerToken");
-    if (cid) setCompanyId(parseInt(cid));
-    if (mgr) setIsManager(true);
     // Store axis origin so modules know where to go back
     localStorage.setItem("axisOrigin", axisId);
-  }, [axisId]);
+
+    // Try managerCompanyId first (legacy token flow), then selectedCompanyId (isManagerLogin flow)
+    const cid = localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId");
+    const mgr = localStorage.getItem("managerToken");
+    if (cid) setCompanyId(parseInt(cid));
+    if (mgr || isManagerLogin) setIsManager(true);
+  }, [axisId, isManagerLogin]);
+
+  // Also pick up companyId from useManagerAuth hook (reactive)
+  useEffect(() => {
+    if (authCompanyId && !companyId) {
+      setCompanyId(authCompanyId);
+      setIsManager(true);
+    }
+  }, [authCompanyId]);
 
   const group = MODULE_GROUPS.find((g) => g.id === axisId)!;
   const modules = DASHBOARD_MODULES.filter((m) => m.group === axisId);
