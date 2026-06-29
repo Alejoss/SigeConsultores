@@ -1230,12 +1230,24 @@ export default function ProcessStakeholderCriticality() {
                   <tr key={`actions-${stakeholder.id}`} className="hover:bg-slate-50">
                     <td className="border border-slate-300 p-2">{stakeholder.name}</td>
                     <td className="border border-slate-300 p-2">
-                      <Textarea
-                        value={stakeholder.existingDefenses}
-                        onChange={(e) => updateStakeholder(stakeholder.id, "existingDefenses", e.target.value)}
-                        placeholder="Necesidades y Expectativas"
-                        className="text-xs min-h-12 resize-none"
-                      />
+                      {stakeholder.needsSolicita || stakeholder.needsEntrega ? (
+                        <div className="text-xs space-y-1">
+                          {stakeholder.needsSolicita && (
+                            <div>
+                              <span className="font-semibold text-green-700">Solicita: </span>
+                              <span className="text-slate-700">{stakeholder.needsSolicita}</span>
+                            </div>
+                          )}
+                          {stakeholder.needsEntrega && (
+                            <div>
+                              <span className="font-semibold text-blue-700">Entrega: </span>
+                              <span className="text-slate-700">{stakeholder.needsEntrega}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">Sin datos del Mapa de Subprocesos</span>
+                      )}
                     </td>
                     <td className="border border-slate-300 p-2">
                       <Textarea
