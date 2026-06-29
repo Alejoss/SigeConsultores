@@ -113,7 +113,8 @@ export default function LoginSelector() {
           window.location.assign(`/process-leader-dashboard?processId=${data.processId}`);
           return;
         }
-        window.location.assign("/dashboard");
+        // platform_admin u otros roles: redirigir al manager-dashboard
+        window.location.assign("/manager-dashboard");
       } catch {
         showError("Error de red al iniciar sesión.");
       } finally {
