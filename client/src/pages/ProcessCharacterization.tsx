@@ -303,18 +303,19 @@ export default function ProcessCharacterization() {
             <Button
               variant="outline"
               onClick={() => {
-                // Process leader always goes back to process map
                 if (isProcessLeader) {
+                  // Jefe de Proceso: vuelve al mapa con su processId para que el filtro funcione
                   const url = companyId && selectedProcessId 
                     ? `/process-map?companyId=${companyId}&processId=${selectedProcessId}`
                     : "/process-map";
                   setLocation(url);
                 } else if (isManagerAccess) {
-                  setLocation("/axis-gestion");
+                  // Gerente: vuelve al mapa SIN processId para ver todos los procesos
+                  const url = companyId ? `/process-map?companyId=${companyId}` : "/process-map";
+                  setLocation(url);
                 } else {
-                  const url = companyId && selectedProcessId 
-                    ? `/process-map?companyId=${companyId}&processId=${selectedProcessId}`
-                    : "/process-map";
+                  // Admin/usuario normal: vuelve al mapa SIN processId
+                  const url = companyId ? `/process-map?companyId=${companyId}` : "/process-map";
                   setLocation(url);
                 }
               }}

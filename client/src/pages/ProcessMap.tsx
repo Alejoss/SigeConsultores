@@ -24,7 +24,7 @@ export default function ProcessMap() {
   
   // Check if this is being accessed by a manager
   const urlParams = new URLSearchParams(search);
-  const isManagerAccess = urlParams.get('isManager') === 'true';
+  const isManagerAccess = localStorage.getItem('managerCompanyId') !== null;
   
   // Check if user is a process leader
   const isProcessLeader = !!processLeaderSession;
@@ -165,14 +165,18 @@ export default function ProcessMap() {
   });
 
   // Fetch processes from database
-  // If processId is in URL (process leader access), only fetch that process
-  // Otherwise, use processLeaderEmail if user is NOT a manager
-  const processLeaderEmail = !isManagerLogin && !processIdFromUrl && typeof window !== 'undefined' ? localStorage.getItem("processLeaderEmail") : null;
+  // Jefe de Proceso: filtrar por processId (de URL o de su sesión) para mostrar solo su proceso
+  // Gerente/Admin: sin filtro de processId para ver todos los procesos
+  const processLeaderEmail = !isManagerLogin && !processIdFromUrl && !isProcessLeader && typeof window !== 'undefined' ? localStorage.getItem("processLeaderEmail") : null;
+  // Si es Jefe, usar el processId de la URL o el de su sesión como filtro
+  const filterProcessId = isProcessLeader 
+    ? (processIdFromUrl || processLeaderSession?.processId || undefined)
+    : undefined;
   const { data: processes = [], isLoading, refetch } = trpc.processMap.list.useQuery(
     { 
       companyId: companyId || 0, 
       processLeaderEmail: processLeaderEmail || undefined,
-      filterProcessId: processIdFromUrl || undefined
+      filterProcessId: filterProcessId
     },
     { enabled: companyId !== null }
   );
