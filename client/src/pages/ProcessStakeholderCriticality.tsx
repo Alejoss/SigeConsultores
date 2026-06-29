@@ -2,8 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Trash2, MessageCircle, Upload, Eye } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowLeft, Trash2, MessageCircle, Upload, Eye, ClipboardList, BarChart3, Plus, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
@@ -46,6 +46,8 @@ interface StakeholderCriticality {
   startDate: string;
   endDate: string;
   completed: "Si" | "No";
+  actionSource: string;
+  surveyId?: number | null;
 }
 
 interface CriticalityData {
@@ -109,6 +111,24 @@ export default function ProcessStakeholderCriticality() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+  // Pestaña activa: 'acciones' | 'encuestas'
+  const [activeTab, setActiveTab] = useState<'acciones' | 'encuestas'>('acciones');
+  // Estado para nueva encuesta en formulario
+  const [showSurveyForm, setShowSurveyForm] = useState(false);
+  const [editingSurveyId, setEditingSurveyId] = useState<number | null>(null);
+  const [surveyForm, setSurveyForm] = useState({
+    surveyName: '',
+    segment: 'Clientes' as 'Clientes' | 'Proveedores Externos' | 'Proveedores Internos' | 'Mixto',
+    surveyDate: '',
+    sentCount: 0,
+    respondedCount: 0,
+    nps: '' as string,
+    csat: '' as string,
+    avgRating: '',
+    topStrengths: '',
+    topWeaknesses: '',
+    mainFindings: '',
+  });
   const [excelFileName, setExcelFileName] = useState<string>("");
   const [excelUploadStatus, setExcelUploadStatus] = useState<'idle' | 'uploading' | 'saved' | 'error'>('idle');
   const excelInputRef = useRef<HTMLInputElement>(null);
@@ -129,6 +149,15 @@ export default function ProcessStakeholderCriticality() {
     { processId: processId ? parseInt(processId) : 0 },
     { enabled: !!processId }
   );
+
+  // Queries y mutations para encuestas
+  const { data: surveysFromDb, refetch: refetchSurveys } = trpc.stakeholderSurveys.list.useQuery(
+    { processId: processId ? parseInt(processId) : 0 },
+    { enabled: !!processId }
+  );
+  const createSurveyMutation = trpc.stakeholderSurveys.create.useMutation();
+  const updateSurveyMutation = trpc.stakeholderSurveys.update.useMutation();
+  const deleteSurveyMutation = trpc.stakeholderSurveys.delete.useMutation();
 
   // Get companyId from localStorage
   const companyId = parseInt(localStorage.getItem("selectedCompanyId") || "0");
@@ -422,6 +451,9 @@ export default function ProcessStakeholderCriticality() {
           existingDefenses = savedCriticality.existingDefenses || existingDefenses;
         }
         
+        const actionSource = savedCriticality?.actionSource || "Iniciativa propia";
+        const surveyId = savedCriticality?.surveyId || null;
+
         // Siempre crear uno nuevo (reemplazar completamente los stakeholders)
         return {
           id: generateUniqueId(),
@@ -442,6 +474,8 @@ export default function ProcessStakeholderCriticality() {
           startDate,
           endDate,
           completed,
+          actionSource,
+          surveyId,
         };
       });
 
@@ -558,6 +592,8 @@ export default function ProcessStakeholderCriticality() {
             startDate: stakeholder.startDate || undefined,
             endDate: stakeholder.endDate || undefined,
             implementationStatus: stakeholder.completed === "Si",
+            actionSource: stakeholder.actionSource || "Iniciativa propia",
+            surveyId: stakeholder.surveyId || null,
           });
 
           console.log(`[handleSave] Successfully saved criticality entry for: ${stakeholder.name}`);
@@ -596,6 +632,8 @@ export default function ProcessStakeholderCriticality() {
       startDate: "",
       endDate: "",
       completed: "No",
+      actionSource: "Iniciativa propia",
+      surveyId: null,
     };
     const newData = { ...data };
     newData.stakeholders.push(newStakeholder);
@@ -1111,6 +1149,38 @@ export default function ProcessStakeholderCriticality() {
             </table>
           </div>
 
+          {/* Pestañas: Acciones de Mejora | Encuestas */}
+          <div className="flex gap-1 mb-6 border-b border-slate-200">
+            <button
+              onClick={() => setActiveTab('acciones')}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeTab === 'acciones'
+                  ? 'bg-blue-600 text-white border-b-2 border-blue-600'
+                  : 'text-slate-600 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+            >
+              <ClipboardList className="w-4 h-4" />
+              Acciones de Mejora
+            </button>
+            <button
+              onClick={() => setActiveTab('encuestas')}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeTab === 'encuestas'
+                  ? 'bg-blue-600 text-white border-b-2 border-blue-600'
+                  : 'text-slate-600 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              Encuestas
+              {surveysFromDb && surveysFromDb.length > 0 && (
+                <span className="bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded-full">{surveysFromDb.length}</span>
+              )}
+            </button>
+          </div>
+
+          {/* PESTAÑA: Acciones de Mejora */}
+          {activeTab === 'acciones' && (
+          <>
           <div className="mb-8 overflow-x-auto">
             <h3 className="text-lg font-bold text-blue-900 mb-4">MEJORA CONTINUA ENTRE PARTES INTERESADAS</h3>
             <table className="w-full border-collapse text-xs">
@@ -1119,6 +1189,7 @@ export default function ProcessStakeholderCriticality() {
                   <th className="border border-slate-300 p-2 text-left">ASOCIADO</th>
                   <th className="border border-slate-300 p-2 text-left">NECESIDADES Y EXPECTATIVAS</th>
                   <th className="border border-slate-300 p-2 text-left">ACCIÓN A TOMAR</th>
+                  <th className="border border-slate-300 p-2 text-left">FUENTE</th>
                   <th className="border border-slate-300 p-2 text-left">OBSERVACIONES</th>
                   <th className="border border-slate-300 p-2 text-left">FECHA INICIO</th>
                   <th className="border border-slate-300 p-2 text-left">FECHA FIN</th>
@@ -1144,6 +1215,20 @@ export default function ProcessStakeholderCriticality() {
                         placeholder="Acción"
                         className="text-xs min-h-12 resize-none"
                       />
+                    </td>
+                    <td className="border border-slate-300 p-2">
+                      <select
+                        value={stakeholder.actionSource || 'Iniciativa propia'}
+                        onChange={(e) => updateStakeholder(stakeholder.id, "actionSource", e.target.value)}
+                        className="w-full text-xs border rounded p-1 min-w-[140px]"
+                      >
+                        <option value="Iniciativa propia">Iniciativa propia</option>
+                        <option value="Conversación interna">Conversación interna</option>
+                        <option value="Conversación entre áreas">Conversación entre áreas</option>
+                        <option value="Conversación con cliente/proveedor">Conversación con cliente/proveedor</option>
+                        <option value="Conversación con gerencia">Conversación con gerencia</option>
+                        <option value="Encuesta">Encuesta</option>
+                      </select>
                     </td>
                     <td className="border border-slate-300 p-2">
                       <Textarea
@@ -1199,6 +1284,257 @@ export default function ProcessStakeholderCriticality() {
               📥 Exportar a PDF
             </Button>
           </div>
+          </>
+          )}
+
+          {/* PESTAÑA: Encuestas */}
+          {activeTab === 'encuestas' && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-blue-900">REGISTRO DE ENCUESTAS</h3>
+              <Button
+                onClick={() => { setShowSurveyForm(true); setEditingSurveyId(null); setSurveyForm({ surveyName: '', segment: 'Clientes', surveyDate: '', sentCount: 0, respondedCount: 0, nps: '', csat: '', avgRating: '', topStrengths: '', topWeaknesses: '', mainFindings: '' }); }}
+                className="bg-blue-600 hover:bg-blue-700 text-white gap-2 text-sm"
+              >
+                <Plus className="w-4 h-4" /> Nueva Encuesta
+              </Button>
+            </div>
+
+            {/* Formulario de encuesta */}
+            {showSurveyForm && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-blue-900">{editingSurveyId ? 'Editar Encuesta' : 'Nueva Encuesta'}</h4>
+                  <button onClick={() => setShowSurveyForm(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Nombre / Tipo de Encuesta</label>
+                    <Input value={surveyForm.surveyName} onChange={(e) => setSurveyForm(f => ({...f, surveyName: e.target.value}))} placeholder="Ej: Encuesta de Satisfacción Anual 2026" className="text-xs" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Segmento</label>
+                    <select value={surveyForm.segment} onChange={(e) => setSurveyForm(f => ({...f, segment: e.target.value as any}))} className="w-full text-xs border rounded p-2">
+                      <option value="Clientes">Clientes</option>
+                      <option value="Proveedores Externos">Proveedores Externos</option>
+                      <option value="Proveedores Internos">Proveedores Internos</option>
+                      <option value="Mixto">Mixto</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Fecha de Aplicación</label>
+                    <Input type="date" value={surveyForm.surveyDate} onChange={(e) => setSurveyForm(f => ({...f, surveyDate: e.target.value}))} className="text-xs" />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Enviadas</label>
+                      <Input type="number" value={surveyForm.sentCount} onChange={(e) => setSurveyForm(f => ({...f, sentCount: parseInt(e.target.value) || 0}))} className="text-xs" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Respondidas</label>
+                      <Input type="number" value={surveyForm.respondedCount} onChange={(e) => setSurveyForm(f => ({...f, respondedCount: parseInt(e.target.value) || 0}))} className="text-xs" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">NPS (-100 a 100)</label>
+                      <Input type="number" value={surveyForm.nps} onChange={(e) => setSurveyForm(f => ({...f, nps: e.target.value}))} placeholder="Ej: 45" className="text-xs" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">CSAT (%)</label>
+                      <Input type="number" value={surveyForm.csat} onChange={(e) => setSurveyForm(f => ({...f, csat: e.target.value}))} placeholder="Ej: 85" className="text-xs" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Calificación</label>
+                      <Input value={surveyForm.avgRating} onChange={(e) => setSurveyForm(f => ({...f, avgRating: e.target.value}))} placeholder="Ej: 4.2/5" className="text-xs" />
+                    </div>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Top Fortalezas mencionadas</label>
+                    <Textarea value={surveyForm.topStrengths} onChange={(e) => setSurveyForm(f => ({...f, topStrengths: e.target.value}))} placeholder="¿Qué destacaron positivamente los encuestados?" className="text-xs min-h-12 resize-none" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Top Debilidades / Quejas</label>
+                    <Textarea value={surveyForm.topWeaknesses} onChange={(e) => setSurveyForm(f => ({...f, topWeaknesses: e.target.value}))} placeholder="¿Qué criticaron o señalaron como área de mejora?" className="text-xs min-h-12 resize-none" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Principales Hallazgos / Conclusiones</label>
+                    <Textarea value={surveyForm.mainFindings} onChange={(e) => setSurveyForm(f => ({...f, mainFindings: e.target.value}))} placeholder="Resumen ejecutivo de los hallazgos de la encuesta" className="text-xs min-h-12 resize-none" />
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const payload = {
+                          processId: parseInt(processId),
+                          surveyName: surveyForm.surveyName,
+                          segment: surveyForm.segment,
+                          surveyDate: surveyForm.surveyDate,
+                          sentCount: surveyForm.sentCount,
+                          respondedCount: surveyForm.respondedCount,
+                          nps: surveyForm.nps !== '' ? parseInt(surveyForm.nps as string) : null,
+                          csat: surveyForm.csat !== '' ? parseInt(surveyForm.csat as string) : null,
+                          avgRating: surveyForm.avgRating,
+                          topStrengths: surveyForm.topStrengths,
+                          topWeaknesses: surveyForm.topWeaknesses,
+                          mainFindings: surveyForm.mainFindings,
+                        };
+                        if (editingSurveyId) {
+                          await updateSurveyMutation.mutateAsync({ id: editingSurveyId, ...payload });
+                        } else {
+                          await createSurveyMutation.mutateAsync(payload);
+                        }
+                        await refetchSurveys();
+                        setShowSurveyForm(false);
+                      } catch (err) {
+                        console.error('Error saving survey:', err);
+                      }
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                  >
+                    {editingSurveyId ? 'Actualizar' : 'Guardar Encuesta'}
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowSurveyForm(false)} className="text-sm">Cancelar</Button>
+                </div>
+              </div>
+            )}
+
+            {/* Lista de encuestas */}
+            {(!surveysFromDb || surveysFromDb.length === 0) && !showSurveyForm && (
+              <div className="text-center py-12 text-slate-400">
+                <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">No hay encuestas registradas.</p>
+                <p className="text-xs mt-1">Haz clic en "Nueva Encuesta" para registrar la primera.</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-4">
+              {(surveysFromDb || []).map((survey: any) => {
+                const participationPct = survey.sentCount > 0 ? Math.round((survey.respondedCount / survey.sentCount) * 100) : 0;
+                const segmentColor: Record<string, string> = {
+                  'Clientes': 'bg-blue-100 text-blue-700',
+                  'Proveedores Externos': 'bg-orange-100 text-orange-700',
+                  'Proveedores Internos': 'bg-purple-100 text-purple-700',
+                  'Mixto': 'bg-teal-100 text-teal-700',
+                };
+                return (
+                  <div key={survey.id} className="border border-slate-200 rounded-lg p-4 bg-white hover:shadow-sm transition-shadow">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="font-semibold text-slate-800 text-sm">{survey.surveyName || 'Encuesta sin nombre'}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${segmentColor[survey.segment] || 'bg-slate-100 text-slate-600'}`}>{survey.segment}</span>
+                          {survey.surveyDate && <span className="text-xs text-slate-500">{new Date(survey.surveyDate).toLocaleDateString('es-ES')}</span>}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => {
+                            setEditingSurveyId(survey.id);
+                            setSurveyForm({
+                              surveyName: survey.surveyName || '',
+                              segment: survey.segment || 'Clientes',
+                              surveyDate: survey.surveyDate || '',
+                              sentCount: survey.sentCount || 0,
+                              respondedCount: survey.respondedCount || 0,
+                              nps: survey.nps !== null && survey.nps !== undefined ? String(survey.nps) : '',
+                              csat: survey.csat !== null && survey.csat !== undefined ? String(survey.csat) : '',
+                              avgRating: survey.avgRating || '',
+                              topStrengths: survey.topStrengths || '',
+                              topWeaknesses: survey.topWeaknesses || '',
+                              mainFindings: survey.mainFindings || '',
+                            });
+                            setShowSurveyForm(true);
+                          }}
+                          className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50"
+                        >Editar</button>
+                        <button
+                          onClick={async () => {
+                            if (confirm('¿Eliminar esta encuesta?')) {
+                              await deleteSurveyMutation.mutateAsync({ id: survey.id });
+                              await refetchSurveys();
+                            }
+                          }}
+                          className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50"
+                        >Eliminar</button>
+                      </div>
+                    </div>
+
+                    {/* KPIs de la encuesta */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                      <div className="bg-slate-50 rounded p-2 text-center">
+                        <p className="text-xs text-slate-500">Participación</p>
+                        <p className="font-bold text-slate-800 text-sm">{participationPct}%</p>
+                        <p className="text-xs text-slate-400">{survey.respondedCount}/{survey.sentCount}</p>
+                      </div>
+                      {survey.nps !== null && survey.nps !== undefined && (
+                        <div className={`rounded p-2 text-center ${survey.nps >= 50 ? 'bg-green-50' : survey.nps >= 0 ? 'bg-yellow-50' : 'bg-red-50'}`}>
+                          <p className="text-xs text-slate-500">NPS</p>
+                          <p className={`font-bold text-sm ${survey.nps >= 50 ? 'text-green-700' : survey.nps >= 0 ? 'text-yellow-700' : 'text-red-700'}`}>{survey.nps}</p>
+                        </div>
+                      )}
+                      {survey.csat !== null && survey.csat !== undefined && (
+                        <div className={`rounded p-2 text-center ${survey.csat >= 80 ? 'bg-green-50' : survey.csat >= 60 ? 'bg-yellow-50' : 'bg-red-50'}`}>
+                          <p className="text-xs text-slate-500">CSAT</p>
+                          <p className={`font-bold text-sm ${survey.csat >= 80 ? 'text-green-700' : survey.csat >= 60 ? 'text-yellow-700' : 'text-red-700'}`}>{survey.csat}%</p>
+                        </div>
+                      )}
+                      {survey.avgRating && (
+                        <div className="bg-slate-50 rounded p-2 text-center">
+                          <p className="text-xs text-slate-500">Calificación</p>
+                          <p className="font-bold text-slate-800 text-sm">{survey.avgRating}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Hallazgos */}
+                    {(survey.topStrengths || survey.topWeaknesses || survey.mainFindings) && (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                        {survey.topStrengths && (
+                          <div className="bg-green-50 border border-green-100 rounded p-2">
+                            <p className="font-medium text-green-700 mb-1">Fortalezas</p>
+                            <p className="text-slate-600">{survey.topStrengths}</p>
+                          </div>
+                        )}
+                        {survey.topWeaknesses && (
+                          <div className="bg-red-50 border border-red-100 rounded p-2">
+                            <p className="font-medium text-red-700 mb-1">Debilidades</p>
+                            <p className="text-slate-600">{survey.topWeaknesses}</p>
+                          </div>
+                        )}
+                        {survey.mainFindings && (
+                          <div className="bg-blue-50 border border-blue-100 rounded p-2">
+                            <p className="font-medium text-blue-700 mb-1">Hallazgos</p>
+                            <p className="text-slate-600">{survey.mainFindings}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Botón crear acción desde encuesta */}
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <button
+                        onClick={() => {
+                          setActiveTab('acciones');
+                          // Preseleccionar la fuente como Encuesta en el primer stakeholder sin acción
+                          const firstEmpty = data.stakeholders.find(s => !s.actionToTake);
+                          if (firstEmpty) {
+                            updateStakeholder(firstEmpty.id, 'actionSource', 'Encuesta');
+                            updateStakeholder(firstEmpty.id, 'surveyId', survey.id);
+                          }
+                        }}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" /> Crear acción de mejora desde esta encuesta
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          )}
         </CardContent>
       </Card>
     </div>

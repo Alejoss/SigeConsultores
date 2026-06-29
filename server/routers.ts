@@ -105,6 +105,7 @@ import { resourcesPDFRouter } from "./routers/resourcesPDF";
 import { organizationChartRouter } from "./routers/organizationChart";
 import { auditsInspectionsRouter } from "./routers/auditsInspections";
 import { managementProgramsRouter } from "./routers/managementPrograms";
+import { stakeholderSurveysRouter } from "./routers/stakeholderSurveys";
 
 // Module Customization Router
 const moduleCustomizationRouter = router({
@@ -860,6 +861,7 @@ export const appRouter = router({
   documents: documentsRouter,
   auditsInspections: auditsInspectionsRouter,
   managementPrograms: managementProgramsRouter,
+  stakeholderSurveys: stakeholderSurveysRouter,
 
   testEmail: adminProcedure
     .input(z.object({
