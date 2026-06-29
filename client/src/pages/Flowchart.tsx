@@ -15,7 +15,7 @@ export default function Flowchart() {
   const { user } = useAuth();
   const [showAIChat, setShowAIChat] = useState(false);
   const { isManagerLogin } = useManagerAuth();
-  const isManagerAccess = user?.role === "user" && typeof window !== "undefined" && localStorage.getItem("isManagerAccess") === "true";
+  const isManagerAccess = localStorage.getItem('managerCompanyId') !== null;
   
   // Get company ID from localStorage or user context
   const companyId = typeof window !== "undefined" ? parseInt(localStorage.getItem("selectedCompanyId") || "0") : 0;
