@@ -20,7 +20,7 @@ export default function CompanyInfo() {
   const search = useSearch();
   // Check if this is being accessed by a manager
   const urlParams = new URLSearchParams(search);
-  const isManagerAccess = urlParams.get('isManager') === 'true';
+  const isManagerAccess = localStorage.getItem('managerCompanyId') !== null;
   
   const { isManagerLogin } = useManagerAuth();
   const { session: processLeaderSession } = useProcessLeaderAuth();
@@ -271,7 +271,7 @@ export default function CompanyInfo() {
             </Button>
             <Button
               variant="outline"
-               onClick={() => setLocation(isProcessLeader ? "/process-leader-dashboard" : (isManagerAccess ? getAxisBackPath("/manager-dashboard") : "/dashboard"))}
+               onClick={() => setLocation(isProcessLeader ? "/process-leader-dashboard" : ((isManagerAccess || isManagerLogin) ? getAxisBackPath("/manager-dashboard") : "/dashboard"))}
             >
               ← Volver
             </Button>
