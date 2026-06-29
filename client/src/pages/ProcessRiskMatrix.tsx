@@ -61,7 +61,7 @@ function AccionOTGRow({
     <div className="border rounded-lg p-4 bg-sky-50 border-sky-200 space-y-4 relative">
       {/* Descripción */}
       <div>
-        <label className="text-xs font-semibold text-slate-600">Descripción de la Acción</label>
+        <label className="text-xs font-semibold text-slate-600">Descripción de la Tarea</label>
         <textarea
           defaultValue={accion.accion}
           onBlur={(e) => update('accion', e.target.value)}
@@ -616,7 +616,8 @@ export default function ProcessRiskMatrix() {
                         <span className={`font-semibold text-xs ${row.mejoraImplementada === 'SI' ? 'text-green-600' : 'text-red-600'}`}>
                           {row.mejoraImplementada === 'SI' ? '✓ SI' : '✗ NO'}
                         </span>
-                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">{pctOTG}%</span>
+                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded" title="% Alcanzado OTG">OTG: {(row as any).porcentajeAlcanzadoOTG ?? 0}%</span>
+                        <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded" title="% Alcanzado en Tareas">Tareas: {pctOTG}%</span>
                         {isExpanded ? <ChevronUp size={18} className="text-slate-500" /> : <ChevronDown size={18} className="text-slate-500" />}
                       </div>
                     </div>
@@ -812,7 +813,7 @@ export default function ProcessRiskMatrix() {
                           onClick={() => addAccion(row.id)}
                           className="w-full py-2 px-4 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded transition-colors flex items-center justify-center gap-2"
                         >
-                          <Plus size={14} />Agregar nueva acción
+                          <Plus size={14} />Agregar nueva tarea
                         </button>
                         {(row.acciones || []).length > 0 && (
                           <div className="text-right text-sm font-semibold text-blue-700 bg-blue-50 p-2 rounded">
@@ -865,7 +866,7 @@ export default function ProcessRiskMatrix() {
                             onClick={() => addAccion(row.id)}
                             className="w-full py-2 px-4 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded transition-colors flex items-center justify-center gap-2"
                           >
-                            <Plus size={14} />Agregar nueva acción
+                            <Plus size={14} />Agregar nueva tarea
                           </button>
                           {(row.acciones || []).length > 0 && (
                             <div className="text-right text-sm font-semibold text-blue-700 bg-blue-50 p-2 rounded">
