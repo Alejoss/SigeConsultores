@@ -394,7 +394,7 @@ export default function ProcessRiskMatrix() {
       const sistema = row.sistemaGestion || 'Calidad';
       if (alcancePorSistema[sistema as keyof typeof alcancePorSistema]) {
         alcancePorSistema[sistema as keyof typeof alcancePorSistema].total++;
-        if (row.objetivoLogrado === 'SI') alcancePorSistema[sistema as keyof typeof alcancePorSistema].alcanzados++;
+        if (row.mejoraImplementada === 'SI') alcancePorSistema[sistema as keyof typeof alcancePorSistema].alcanzados++;
       }
     });
     Object.keys(alcancePorSistema).forEach((s) => {
