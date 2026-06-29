@@ -9,6 +9,7 @@ import {
   processFODA,
   processCompliances,
   processTrainings,
+  stakeholderSurveys,
 } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -36,16 +37,52 @@ export const macroIndicatorsRouter = router({
         // For each process, calculate macro indicators based on 5 detailed indicators
         const macroIndicators = await Promise.all(
           companyProcesses.map(async (process) => {
-        // 1. Criticidad de Partes Interesadas
+        // 1. Criticidad de Partes Interesadas (cálculo mixto: acciones + encuestas)
         const criticalityData = await db
           .select()
           .from(criticalityMatrix)
           .where(eq(criticalityMatrix.processId, process.id));
 
-        let criticalidadCumplimiento = 0;
+        // % acciones realizadas
+        let accionesPercent = 0;
         if (criticalityData.length > 0) {
           const implemented = criticalityData.filter((c: any) => c.implementationStatus === true).length;
-          criticalidadCumplimiento = Math.round((implemented / criticalityData.length) * 100);
+          accionesPercent = Math.round((implemented / criticalityData.length) * 100);
+        }
+
+        // % satisfacción de encuestas (NPS normalizado 0-100, CSAT 0-100, avgRating sobre 5 o 10)
+        const surveysData = await db
+          .select()
+          .from(stakeholderSurveys)
+          .where(eq(stakeholderSurveys.processId, process.id));
+
+        let criticalidadCumplimiento = accionesPercent; // fallback: solo acciones
+        if (surveysData.length > 0) {
+          const surveyScores: number[] = [];
+          for (const s of surveysData) {
+            // NPS: escala -100 a 100 -> normalizar a 0-100
+            if (s.nps !== null && s.nps !== undefined) {
+              surveyScores.push(Math.round((s.nps + 100) / 2));
+            }
+            // CSAT: ya está en 0-100
+            if (s.csat !== null && s.csat !== undefined) {
+              surveyScores.push(s.csat);
+            }
+            // avgRating: parsear "4.2/5" o "8.4/10"
+            if (s.avgRating) {
+              const match = s.avgRating.match(/([\d.]+)\s*\/\s*([\d.]+)/);
+              if (match) {
+                const val = parseFloat(match[1]);
+                const max = parseFloat(match[2]);
+                if (max > 0) surveyScores.push(Math.round((val / max) * 100));
+              }
+            }
+          }
+          if (surveyScores.length > 0) {
+            const avgSurvey = Math.round(surveyScores.reduce((a, b) => a + b, 0) / surveyScores.length);
+            // Cálculo mixto: 50% acciones + 50% encuestas
+            criticalidadCumplimiento = Math.round((accionesPercent + avgSurvey) / 2);
+          }
         }
 
             // 2. Matriz FODA
@@ -169,16 +206,48 @@ export const macroIndicatorsRouter = router({
           return null;
         }
 
-        // 1. Criticidad de Partes Interesadas
+        // 1. Criticidad de Partes Interesadas (cálculo mixto: acciones + encuestas)
         const criticalityData = await db
           .select()
           .from(criticalityMatrix)
           .where(eq(criticalityMatrix.processId, input.processId));
 
-        let criticalidadCumplimiento = 0;
+        // % acciones realizadas
+        let accionesPercent = 0;
         if (criticalityData.length > 0) {
           const implemented = criticalityData.filter((c: any) => c.implementationStatus === true).length;
-          criticalidadCumplimiento = Math.round((implemented / criticalityData.length) * 100);
+          accionesPercent = Math.round((implemented / criticalityData.length) * 100);
+        }
+
+        // % satisfacción de encuestas
+        const surveysData = await db
+          .select()
+          .from(stakeholderSurveys)
+          .where(eq(stakeholderSurveys.processId, input.processId));
+
+        let criticalidadCumplimiento = accionesPercent; // fallback: solo acciones
+        if (surveysData.length > 0) {
+          const surveyScores: number[] = [];
+          for (const s of surveysData) {
+            if (s.nps !== null && s.nps !== undefined) {
+              surveyScores.push(Math.round((s.nps + 100) / 2));
+            }
+            if (s.csat !== null && s.csat !== undefined) {
+              surveyScores.push(s.csat);
+            }
+            if (s.avgRating) {
+              const match = s.avgRating.match(/([\d.]+)\s*\/\s*([\d.]+)/);
+              if (match) {
+                const val = parseFloat(match[1]);
+                const max = parseFloat(match[2]);
+                if (max > 0) surveyScores.push(Math.round((val / max) * 100));
+              }
+            }
+          }
+          if (surveyScores.length > 0) {
+            const avgSurvey = Math.round(surveyScores.reduce((a, b) => a + b, 0) / surveyScores.length);
+            criticalidadCumplimiento = Math.round((accionesPercent + avgSurvey) / 2);
+          }
         }
 
         // 2. Matriz FODA
