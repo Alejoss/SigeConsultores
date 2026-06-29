@@ -314,7 +314,19 @@ export default function ProcessRiskMatrix() {
           try {
             const parsed = JSON.parse(fodaData.matrixData);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              newRows = parsed.map((row: any) => ({ ...row, objetivoPolitica: row.objetivoPolitica || fodaLookup[row.elemento] || '' }));
+              newRows = parsed.map((row: any) => {
+                const pct = calcularPorcentajeAlcanzado(
+                  (row as any).alcanzado,
+                  (row as any).puntoPartida,
+                  (row as any).puntoLlegada,
+                );
+                return {
+                  ...row,
+                  objetivoPolitica: row.objetivoPolitica || fodaLookup[row.elemento] || '',
+                  porcentajeAlcanzadoOTG: pct,
+                  mejoraImplementada: pct >= 100 ? 'SI' : 'NO',
+                };
+              });
             }
           } catch (e) { console.error('Error parsing matrixData:', e); }
         }
