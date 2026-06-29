@@ -10,6 +10,35 @@ import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { AIChatPanel } from "@/components/AIChatPanel";
 
 
+// Componente de tooltip informativo al hacer clic
+function InfoTooltip({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="text-xs font-medium text-slate-700 underline decoration-dotted cursor-help hover:text-blue-700 transition-colors"
+      >
+        {title}
+      </button>
+      {open && (
+        <>
+          {/* Overlay para cerrar al hacer clic fuera */}
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-6 z-50 w-72 bg-white border border-blue-200 rounded-lg shadow-xl p-3 text-xs text-slate-700 leading-relaxed">
+            <div className="flex items-start justify-between mb-1">
+              <span className="font-bold text-blue-800 text-sm">{title}</span>
+              <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600 ml-2 flex-shrink-0"><X className="w-3 h-3" /></button>
+            </div>
+            {children}
+          </div>
+        </>
+      )}
+    </span>
+  );
+}
+
 // Función para auto-expandir textareas
 const autoExpandTextarea = (textarea: HTMLTextAreaElement | null) => {
   if (!textarea) return;
@@ -1337,15 +1366,35 @@ export default function ProcessStakeholderCriticality() {
                   </div>
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <label className="block text-xs font-medium text-slate-700 mb-1">NPS (-100 a 100)</label>
+                      <label className="block mb-1">
+                        <InfoTooltip title="NPS (-100 a 100)">
+                          <p className="mb-1"><strong>Net Promoter Score</strong> — mide la lealtad y probabilidad de recomendación.</p>
+                          <p className="mb-1">Pregunta: <em>"¿Qué tan probable es que nos recomiendes?"</em> (escala 0-10)</p>
+                          <p className="mb-1"><strong>Fórmula:</strong> % Promotores (9-10) − % Detractores (0-6)</p>
+                          <p className="text-slate-500">Resultado de −100 a +100. Por encima de 50 es excelente.</p>
+                        </InfoTooltip>
+                      </label>
                       <Input type="number" value={surveyForm.nps} onChange={(e) => setSurveyForm(f => ({...f, nps: e.target.value}))} placeholder="Ej: 45" className="text-xs" />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-xs font-medium text-slate-700 mb-1">CSAT (%)</label>
+                      <label className="block mb-1">
+                        <InfoTooltip title="CSAT (%)">
+                          <p className="mb-1"><strong>Customer Satisfaction Score</strong> — mide la satisfacción inmediata con el servicio.</p>
+                          <p className="mb-1">Pregunta: <em>"¿Qué tan satisfecho estuviste con...?"</em> (escala 1-5 o 1-10)</p>
+                          <p className="mb-1"><strong>Fórmula:</strong> (Respuestas positivas ÷ Total) × 100</p>
+                          <p className="text-slate-500">Se expresa en %. Un CSAT ≥ 80% es considerado bueno.</p>
+                        </InfoTooltip>
+                      </label>
                       <Input type="number" value={surveyForm.csat} onChange={(e) => setSurveyForm(f => ({...f, csat: e.target.value}))} placeholder="Ej: 85" className="text-xs" />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Calificación</label>
+                      <label className="block mb-1">
+                        <InfoTooltip title="Calificación">
+                          <p className="mb-1"><strong>Promedio general</strong> de todas las respuestas numéricas de la encuesta.</p>
+                          <p className="mb-1">Se expresa sobre 5 (ej: 4.2/5) o sobre 10 (ej: 8.4/10).</p>
+                          <p className="text-slate-500">Es el indicador más directo de la percepción general del encuestado.</p>
+                        </InfoTooltip>
+                      </label>
                       <Input value={surveyForm.avgRating} onChange={(e) => setSurveyForm(f => ({...f, avgRating: e.target.value}))} placeholder="Ej: 4.2/5" className="text-xs" />
                     </div>
                   </div>
@@ -1470,13 +1519,21 @@ export default function ProcessStakeholderCriticality() {
                       </div>
                       {survey.nps !== null && survey.nps !== undefined && (
                         <div className={`rounded p-2 text-center ${survey.nps >= 50 ? 'bg-green-50' : survey.nps >= 0 ? 'bg-yellow-50' : 'bg-red-50'}`}>
-                          <p className="text-xs text-slate-500">NPS</p>
+                          <InfoTooltip title="NPS">
+                            <p className="mb-1"><strong>Net Promoter Score</strong> — lealtad y recomendación.</p>
+                            <p className="mb-1"><strong>Fórmula:</strong> % Promotores (9-10) − % Detractores (0-6)</p>
+                            <p className="text-slate-500">Rango: −90 a +100. Sobre 50 es excelente.</p>
+                          </InfoTooltip>
                           <p className={`font-bold text-sm ${survey.nps >= 50 ? 'text-green-700' : survey.nps >= 0 ? 'text-yellow-700' : 'text-red-700'}`}>{survey.nps}</p>
                         </div>
                       )}
                       {survey.csat !== null && survey.csat !== undefined && (
                         <div className={`rounded p-2 text-center ${survey.csat >= 80 ? 'bg-green-50' : survey.csat >= 60 ? 'bg-yellow-50' : 'bg-red-50'}`}>
-                          <p className="text-xs text-slate-500">CSAT</p>
+                          <InfoTooltip title="CSAT">
+                            <p className="mb-1"><strong>Customer Satisfaction Score</strong> — satisfacción inmediata.</p>
+                            <p className="mb-1"><strong>Fórmula:</strong> (Respuestas positivas ÷ Total) × 100</p>
+                            <p className="text-slate-500">Se expresa en %. Un CSAT ≥ 80% es bueno.</p>
+                          </InfoTooltip>
                           <p className={`font-bold text-sm ${survey.csat >= 80 ? 'text-green-700' : survey.csat >= 60 ? 'text-yellow-700' : 'text-red-700'}`}>{survey.csat}%</p>
                         </div>
                       )}
