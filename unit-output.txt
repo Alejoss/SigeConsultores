@@ -1,0 +1,1843 @@
+﻿[dotenv@17.2.3] injecting env (18) from .env -- tip: ÔÜÖ´©Å  suppress all logs with { quiet: true }
+[dotenv@17.2.3] injecting env (6) from .env.local -- tip: ÔÜÖ´©Å  override existing env vars with { override: true }
+
+ RUN  v2.1.9 E:/SigeApp/sige-app
+
+ Ô£ô |unit| server/__tests__/endToEndNeedsTransfer.test.ts (5 tests) 10ms
+ Ô£ô |unit| server/__tests__/tasksAverage.test.ts (9 tests) 7ms
+ Ô£ô |unit| client/src/pages/__tests__/ProcessStakeholderCriticality.test.tsx (8 tests) 12ms
+ ÔØ» |unit| client/src/pages/__tests__/ProcessStakeholderCriticalityManagerFix.test.tsx (18 tests | 2 failed) 24ms
+   ├ù ProcessStakeholderCriticality - Manager Role Data Loading > Export Function Error Handling > should safely remove element from DOM after export 12ms
+     ÔåÆ document is not defined
+   ├ù ProcessStakeholderCriticality - Manager Role Data Loading > Export Function Error Handling > should not throw error if element is already removed 1ms
+     ÔåÆ document is not defined
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email Function > should accept valid email options
+[EmailService] sendEmail queued (background) {
+  correlationId: 'a2140790',
+  to: 'te***@example.com',
+  subject: 'Test Email'
+}
+
+node : stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email 
+Function > should accept valid email options
+En C:\Users\User\AppData\Local\Temp\ps-script-3fee70da-3ad2-4cdd-8ce0-c26825c19922.ps1: 109 Carácter: 35
++ ... p\sige-app; node node_modules/vitest/vitest.mjs run --project unit 2> ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (stderr | server...d email options:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email Function > should handle multiple recipients
+[EmailService] sendEmail queued (background) {
+  correlationId: 'd32c1688',
+  to: 'te***@example.com, te***@example.com',
+  subject: 'Test Email'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email Function > 
+should handle multiple recipients
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email Function > should generate text content from HTML if not provided
+[EmailService] sendEmail queued (background) {
+  correlationId: 'da8f8c43',
+  to: 'te***@example.com',
+  subject: 'Test Email'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email Function > 
+should generate text content from HTML if not provided
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderAccessConfirmationEmail > should send process leader confirmation email
+[EmailService] sendEmail queued (background) {
+  correlationId: '099b30ea',
+  to: 'le***@example.com',
+  subject: 'Bienvenido a SIGE - Empresa Test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > 
+sendProcessLeaderAccessConfirmationEmail > should send process leader confirmation email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > should send access invitation email with valid parameters
+[EmailService] sendEmail queued (background) {
+  correlationId: '156e5c94',
+  to: 'co***@company.com',
+  subject: 'Acceso Confirmado - INVITATION_TOKEN_123'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > 
+should send access invitation email with valid parameters
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > should include company name in email
+[EmailService] sendEmail queued (background) {
+  correlationId: '566705d1',
+  to: 'co***@company.com',
+  subject: 'Acceso Confirmado - TOKEN_123'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > 
+should include company name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > should include expiration days in email
+[EmailService] sendEmail queued (background) {
+  correlationId: 'cfa2e6df',
+  to: 'co***@company.com',
+  subject: 'Acceso Confirmado - TOKEN_123'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > 
+should include expiration days in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > should handle default base URL
+[EmailService] sendEmail queued (background) {
+  correlationId: '450495b9',
+  to: 'co***@company.com',
+  subject: 'Acceso Confirmado - TOKEN_123'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > 
+should handle default base URL
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should send manager access invitation email with valid parameters
+[EmailService] sendEmail queued (background) {
+  correlationId: 'd69860db',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Empresa Test S.A.'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should send manager access invitation email with valid parameters
+[EmailService] Brevo diagnostics: {
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should include company name in email
+[EmailService] sendEmail queued (background) {
+  correlationId: 'b0079b71',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Manager Test Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should include setup link with token
+[EmailService] sendEmail queued (background) {
+  correlationId: 'bc1ca4f6',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should handle default base URL
+[EmailService] sendEmail queued (background) {
+  correlationId: 'f689a513',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > should send approval notification email with valid parameters
+[EmailService] sendEmail queued (background) {
+  correlationId: '679f0e01',
+  to: 'ma***@example.com',
+  subject: 'Acceso Aprobado - Company Name'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > should include company name in email
+[EmailService] sendEmail queued (background) {
+  correlationId: '28faaecf',
+  to: 'ma***@example.com',
+  subject: 'Acceso Aprobado - Test Company Inc.'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > should include contact name in email
+[EmailService] sendEmail queued (background) {
+  correlationId: 'b796a77d',
+  to: 'ma***@example.com',
+  subject: 'Acceso Aprobado - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should send manager access invitation email with valid parameters
+[EmailService] sendEmail queued (background) {
+  correlationId: 'c0ff8f7d',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Empresa Test S.A.'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should include company name in email
+[EmailService] sendEmail queued (background) {
+  correlationId: 'efb1b1b2',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Manager Test Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should include expiration days in email
+[EmailService] sendEmail queued (background) {
+  correlationId: '360e783c',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should handle default base URL
+[EmailService] sendEmail queued (background) {
+  correlationId: '35467cb5',
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should include company name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should include setup link with token
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should handle default base URL
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > 
+should send approval notification email with valid parameters
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > 
+should include company name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > 
+should include contact name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should send manager access invitation email with valid parameters
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should include company name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should include expiration days in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should handle default base URL
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail 
+> should send process leader invitation email with valid parameters
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail 
+> should include leader name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail > should send process leader invitation email with valid parameters
+[ProcessLeaderInvitation] Queuing invitation email {
+  toDomain: 'company.com',
+  processName: 'Proceso de Ventas',
+  companyName: 'Empresa Test S.A.',
+  setupUrl: 'http://localhost:3000/setup-process-leader-password?token=LEADER_TOKEN_123'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: '470a7059',
+  to: 'le***@company.com',
+  subject: 'Invitaci├│n - Jefe de Proceso "Proceso de Ventas" - Empresa Test S.A.'
+}
+
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail 
+> should include process name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail 
+> should include company name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > 
+should handle all email types without errors
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > 
+should handle email addresses with special characters
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > 
+should handle long company names
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > 
+should handle special characters in user names
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > 
+should handle invalid email addresses gracefully
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > 
+should handle empty recipient list
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > 
+should handle very long email content
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail > should include leader name in email
+[ProcessLeaderInvitation] Queuing invitation email {
+  toDomain: 'company.com',
+  processName: 'Process Name',
+  companyName: 'Company',
+  setupUrl: 'http://localhost:3000/setup-process-leader-password?token=TOKEN_123'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: 'd3d02a0d',
+  to: 'le***@company.com',
+  subject: 'Invitaci├│n - Jefe de Proceso "Process Name" - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail > should include process name in email
+[ProcessLeaderInvitation] Queuing invitation email {
+  toDomain: 'company.com',
+  processName: 'Proceso de Log├¡stica',
+  companyName: 'Company',
+  setupUrl: 'http://localhost:3000/setup-process-leader-password?token=TOKEN_123'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: '554265e6',
+  to: 'le***@company.com',
+  subject: 'Invitaci├│n - Jefe de Proceso "Proceso de Log├¡stica" - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail > should include company name in email
+[ProcessLeaderInvitation] Queuing invitation email {
+  toDomain: 'company.com',
+  processName: 'Process',
+  companyName: 'Empresa Ejemplo S.A.',
+  setupUrl: 'http://localhost:3000/setup-process-leader-password?token=TOKEN_123'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: '0eb9f01b',
+  to: 'le***@company.com',
+  subject: 'Invitaci├│n - Jefe de Proceso "Process" - Empresa Ejemplo S.A.'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > should handle all email types without errors
+[EmailService] sendEmail queued (background) {
+  correlationId: '7fc6567c',
+  to: 'le***@example.com',
+  subject: 'Bienvenido a SIGE - Company'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: 'a0282150',
+  to: 'co***@example.com',
+  subject: 'Acceso Confirmado - TOKEN2'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: '7d8e2823',
+  to: 'ma***@example.com',
+  subject: 'Acceso Aprobado - Company'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: '28ef0981',
+  to: 'ma***@example.com',
+  subject: 'Invitaci├│n a SIGE - Company'
+}
+[ProcessLeaderInvitation] Queuing invitation email {
+  toDomain: 'example.com',
+  processName: 'Process',
+  companyName: 'Company',
+  setupUrl: 'http://localhost:3000/setup-process-leader-password?token=TOKEN6'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: '86f46039',
+  to: 'le***@example.com',
+  subject: 'Invitaci├│n - Jefe de Proceso "Process" - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > should handle email addresses with special characters
+[EmailService] sendEmail queued (background) {
+  correlationId: '01534546',
+  to: 'us***@example.co.uk',
+  subject: 'Bienvenido a SIGE - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > should handle long company names
+[EmailService] sendEmail queued (background) {
+  correlationId: '5c706221',
+  to: 'co***@example.com',
+  subject: 'Acceso Confirmado - TOKEN'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > should handle special characters in user names
+[ProcessLeaderInvitation] Queuing invitation email {
+  toDomain: 'example.com',
+  processName: 'Process',
+  companyName: 'Company',
+  setupUrl: 'http://localhost:3000/setup-process-leader-password?token=TOKEN'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: '6bdb5194',
+  to: 'le***@example.com',
+  subject: 'Invitaci├│n - Jefe de Proceso "Process" - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > should handle invalid email addresses gracefully
+[EmailService] sendEmail queued (background) { correlationId: '7902af0b', to: '***', subject: 'Test' }
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > should handle empty recipient list
+[EmailService] sendEmail queued (background) { correlationId: '9dab52b3', to: '', subject: 'Test' }
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > should handle very long email content
+[EmailService] sendEmail queued (background) { correlationId: 'd7f9f639', to: 'te***@example.com', subject: 'Test' }
+
+ Ô£ô |unit| server/__tests__/emailService.test.ts (30 tests) 24ms
+ Ô£ô |unit| server/__tests__/criticalityFinalDedup.test.ts (5 tests) 8ms
+ Ô£ô |unit| server/__tests__/consolidatedScheduleIndicatorsFix.test.ts (23 tests) 15ms
+ Ô£ô |unit| server/__tests__/tasksWeightedAverage.test.ts (15 tests) 10ms
+ Ô£ô |unit| server/__tests__/updateDefinitionPreservesPlanning.test.ts (5 tests) 7ms
+ Ô£ô |unit| server/__tests__/consolidatedScheduleBadges.test.ts (21 tests) 16ms
+ Ô£ô |unit| server/__tests__/invitationsEndToEnd.test.ts (19 tests) 1254ms
+ Ô£ô |unit| server/__tests__/planningDataPersistence.test.ts (6 tests) 10ms
+ Ô£ô |unit| server/__tests__/processLeaderInvitations.test.ts (22 tests) 15ms
+stderr | server/routers/__tests__/recovery.test.ts > Recovery Router > getCompanies > should return empty array on 
+error
+[Recovery] Error fetching companies: Error: Database error
+    at Object.<anonymous> (E:\SigeApp\sige-app\server\routers\__tests__\recovery.test.ts:52:17)
+    at Object.mockCall 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+spy@2.1.9/node_modules/@vitest/spy/dist/index.js:61:17)
+    at Object.spy [as select] 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/tinyspy@3.0.2/node_modules/tinyspy/dist/index.js:45:80)
+    at E:\SigeApp\sige-app\server\routers\recovery.ts:177:10
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at resolveMiddleware (file:///E:/SigeApp/sige-app/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modu
+les/@trpc/server/src/unstable-core-do-not-import/procedureBuilder.ts:571:22)
+    at callRecursive (file:///E:/SigeApp/sige-app/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/
+@trpc/server/src/unstable-core-do-not-import/procedureBuilder.ts:633:20)
+    at procedure (file:///E:/SigeApp/sige-app/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trp
+c/server/src/unstable-core-do-not-import/procedureBuilder.ts:673:20)
+    at file:///E:/SigeApp/sige-app/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/sr
+c/unstable-core-do-not-import/router.ts:474:20
+    at E:\SigeApp\sige-app\server\routers\__tests__\recovery.test.ts:59:22
+
+stderr | server/routers/__tests__/recovery.test.ts > Recovery Router > getProcesses > should return empty array on 
+error
+[Recovery] Error fetching processes: Error: Database error
+    at Object.<anonymous> (E:\SigeApp\sige-app\server\routers\__tests__\recovery.test.ts:103:17)
+    at Object.mockCall 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+spy@2.1.9/node_modules/@vitest/spy/dist/index.js:61:17)
+    at Object.spy [as select] 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/tinyspy@3.0.2/node_modules/tinyspy/dist/index.js:45:80)
+    at E:\SigeApp\sige-app\server\routers\recovery.ts:208:12
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at resolveMiddleware (file:///E:/SigeApp/sige-app/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modu
+les/@trpc/server/src/unstable-core-do-not-import/procedureBuilder.ts:571:22)
+    at callRecursive (file:///E:/SigeApp/sige-app/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/
+@trpc/server/src/unstable-core-do-not-import/procedureBuilder.ts:633:20)
+
+ Ô£ô |unit| server/routers/__tests__/recovery.test.ts (17 tests) 43ms
+ Ô£ô |unit| server/__tests__/consolidatedScheduleIntegration.test.ts (13 tests) 13ms
+ Ô£ô |unit| server/__tests__/defensasExistentesLoading.test.ts (7 tests) 7ms
+ Ô£ô |unit| client/src/__tests__/calculateIndicators.test.ts (8 tests) 8ms
+stdout | server/routers/__tests__/managerAuth.test.ts > Manager Auth Router
+Test setup: Created password hash
+
+ Ô£ô |unit| server/__tests__/planningDataIntegrity.test.ts (7 tests) 7ms
+ Ô£ô |unit| server/__tests__/consolidatedScheduleFODAExtraction.test.ts (11 tests) 10ms
+ Ô£ô |unit| server/__tests__/criticalityNormalizedDedup.test.ts (5 tests) 8ms
+stderr | server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality
+Could not setup test data: DrizzleQueryError: Failed query: select `id`, `name`, `description`, `ownerAccountId`, 
+`status`, `cancelledAt`, `storageLimitMb`, `createdAt`, `updatedAt` from `companies` where `companies`.`id` = ? limit ?
+params: 9991,1
+    at MySql2PreparedQuery.queryWithCache (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.1
+5.1/node_modules/src/mysql-core/session.ts:79:11)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at MySql2PreparedQuery.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/nod
+e_modules/src/mysql2/session.ts:132:18)
+    at E:\SigeApp\sige-app\server\__tests__\procedures.test.ts:120:31
+    at callSuiteHook 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:964:22)
+    at runSuite 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1175:29)
+    at runSuite 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1271:3)
+    at file:///E:/SigeApp/sige-app/node_modules/.pnpm/vitest@2.1.9_@types+node@24_006cc0c805c8d6ed2555062aa28a8041/node
+_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11 {
+  query: 'select `id`, `name`, `description`, `ownerAccountId`, `status`, `cancelledAt`, `storageLimitMb`, 
+`createdAt`, `updatedAt` from `companies` where `companies`.`id` = ? limit ?',
+  params: [ 9991, 1 ],
+  cause: Error: connect ECONNREFUSED 127.0.0.1:3307
+      at PromisePool.query 
+(E:\SigeApp\sige-app\node_modules\.pnpm\mysql2@3.15.1\node_modules\mysql2\lib\promise\pool.js:36:22)
+      at file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/sessio
+n.ts:133:24
+      at MySql2PreparedQuery.queryWithCache (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3
+.15.1/node_modules/src/mysql-core/session.ts:77:18)
+      at MySql2PreparedQuery.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/n
+ode_modules/src/mysql2/session.ts:132:29)
+      at MySqlSelectBase.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_
+modules/src/mysql-core/query-builders/select.ts:1145:25)
+      at MySqlSelectBase.then (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_mod
+ules/src/query-promise.ts:31:15)
+      at processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    code: 'ECONNREFUSED',
+    errno: -4078,
+    sql: undefined,
+    sqlState: undefined,
+    sqlMessage: undefined
+  }
+}
+
+stderr | server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should create multiple 
+procedures for deletion testing
+Could not create test procedures: DrizzleQueryError: Failed query: insert into `procedures` (`id`, `processId`, 
+`name`, `objective`, `code`, `version`, `createdDate`, `lastVersion`, `procedureFileUrl`, `procedureFileKey`, 
+`procedureFileSizeBytes`, `flowchartFileUrl`, `flowchartFileKey`, `flowchartFileSizeBytes`, `createdAt`, `updatedAt`) 
+values (default, ?, ?, ?, ?, ?, ?, default, default, default, default, default, default, default, default, default)
+params: 9991,Procedimiento Eliminable 1,Objetivo 1,PE-001,1.0,2026-07-01
+    at MySql2PreparedQuery.queryWithCache (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.1
+5.1/node_modules/src/mysql-core/session.ts:79:11)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at MySql2PreparedQuery.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/nod
+e_modules/src/mysql2/session.ts:100:16)
+    at E:\SigeApp\sige-app\server\__tests__\procedures.test.ts:170:24
+    at 
+file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1271:3) 
+{
+  query: 'insert into `procedures` (`id`, `processId`, `name`, `objective`, `code`, `version`, `createdDate`, 
+`lastVersion`, `procedureFileUrl`, `procedureFileKey`, `procedureFileSizeBytes`, `flowchartFileUrl`, 
+`flowchartFileKey`, `flowchartFileSizeBytes`, `createdAt`, `updatedAt`) values (default, ?, ?, ?, ?, ?, ?, default, 
+default, default, default, default, default, default, default, default)',
+  params: [
+    9991,
+    'Procedimiento Eliminable 1',
+    'Objetivo 1',
+    'PE-001',
+    '1.0',
+    '2026-07-01'
+  ],
+  cause: Error: connect ECONNREFUSED 127.0.0.1:3307
+      at PromisePool.query 
+(E:\SigeApp\sige-app\node_modules\.pnpm\mysql2@3.15.1\node_modules\mysql2\lib\promise\pool.js:36:22)
+      at file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/sessio
+n.ts:101:25
+      at MySql2PreparedQuery.queryWithCache (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3
+.15.1/node_modules/src/mysql-core/session.ts:77:18)
+      at MySql2PreparedQuery.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/n
+ode_modules/src/mysql2/session.ts:100:27)
+      at QueryPromise.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_mod
+ules/src/mysql-core/query-builders/insert.ts:323:25)
+      at QueryPromise.then (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_module
+s/src/query-promise.ts:31:15)
+      at processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    code: 'ECONNREFUSED',
+    errno: -4078,
+    sql: undefined,
+    sqlState: undefined,
+    sqlMessage: undefined
+  }
+}
+
+stderr | server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should delete a single 
+procedure
+Database not available or no test procedures, skipping test
+
+stderr | server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should delete multiple 
+procedures
+Database not available or not enough test procedures, skipping test
+
+stderr | server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should cascade delete 
+procedure records when procedure is deleted
+Could not complete cascade delete test: DrizzleQueryError: Failed query: insert into `procedures` (`id`, `processId`, 
+`name`, `objective`, `code`, `version`, `createdDate`, `lastVersion`, `procedureFileUrl`, `procedureFileKey`, 
+`procedureFileSizeBytes`, `flowchartFileUrl`, `flowchartFileKey`, `flowchartFileSizeBytes`, `createdAt`, `updatedAt`) 
+values (default, ?, ?, default, ?, ?, ?, default, default, default, default, default, default, default, default, 
+default)
+params: 9991,Procedimiento con Registros para Eliminar,PCR-001,1.0,2026-07-01
+    at MySql2PreparedQuery.queryWithCache (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.1
+5.1/node_modules/src/mysql-core/session.ts:79:11)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at MySql2PreparedQuery.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/nod
+e_modules/src/mysql2/session.ts:100:16)
+    at E:\SigeApp\sige-app\server\__tests__\procedures.test.ts:244:31
+    at 
+file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1271:3) 
+{
+  query: 'insert into `procedures` (`id`, `processId`, `name`, `objective`, `code`, `version`, `createdDate`, 
+`lastVersion`, `procedureFileUrl`, `procedureFileKey`, `procedureFileSizeBytes`, `flowchartFileUrl`, 
+`flowchartFileKey`, `flowchartFileSizeBytes`, `createdAt`, `updatedAt`) values (default, ?, ?, default, ?, ?, ?, 
+default, default, default, default, default, default, default, default, default)',
+  params: [
+    9991,
+    'Procedimiento con Registros para Eliminar',
+    'PCR-001',
+    '1.0',
+    '2026-07-01'
+  ],
+  cause: Error: connect ECONNREFUSED 127.0.0.1:3307
+      at PromisePool.query 
+(E:\SigeApp\sige-app\node_modules\.pnpm\mysql2@3.15.1\node_modules\mysql2\lib\promise\pool.js:36:22)
+      at file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/sessio
+n.ts:101:25
+      at MySql2PreparedQuery.queryWithCache (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3
+.15.1/node_modules/src/mysql-core/session.ts:77:18)
+      at MySql2PreparedQuery.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/n
+ode_modules/src/mysql2/session.ts:100:27)
+      at QueryPromise.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_mod
+ules/src/mysql-core/query-builders/insert.ts:323:25)
+      at QueryPromise.then (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_module
+s/src/query-promise.ts:31:15)
+      at processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    code: 'ECONNREFUSED',
+    errno: -4078,
+    sql: undefined,
+    sqlState: undefined,
+    sqlMessage: undefined
+  }
+}
+
+ ÔØ» |unit| server/__tests__/procedures.test.ts (11 tests | 1 failed) 80ms
+   ├ù Procedures Module - Delete Functionality > should handle deletion of non-existent procedure gracefully 6ms
+     ÔåÆ Failed query: delete from `procedures` where `procedures`.`id` = ?
+params: 999999
+ Ô£ô |unit| server/__tests__/savePlanningJSONSanitization.test.ts (7 tests) 11ms
+ Ô£ô |unit| server/__tests__/criticalityDeduplication.test.ts (6 tests) 7ms
+ Ô£ô |unit| src/tests/foda-persistence.test.ts (10 tests) 12ms
+ Ô£ô |unit| server/__tests__/managerInvitations.test.ts (22 tests) 1186ms
+ ÔØ» |unit| server/__tests__/fixes.test.ts (8 tests | 3 failed) 67ms
+   ├ù Bug Fixes - Guardado de Datos > Problema 1: Capacitaciones - Campos Responsable y Cumplido > Debe guardar el campo 'responsible' en capacitaciones 38ms
+     ÔåÆ Failed query: select `id`, `processId`, `name`, `objective`, `type`, `audience`, `plannedAttendees`, `modality`, `plannedDate`, `conductedDate`, `actualAttendees`, `attendancePercentage`, `createdAt`, `updatedAt` from `processTrainings` where `processTrainings`.`processId` = ? limit ?
+params: 999,1
+   ├ù Bug Fixes - Guardado de Datos > Problema 1: Capacitaciones - Campos Responsable y Cumplido > Debe guardar el campo 'completed' correctamente 5ms
+     ÔåÆ Failed query: select `id`, `processId`, `name`, `objective`, `type`, `audience`, `plannedAttendees`, `modality`, `plannedDate`, `conductedDate`, `actualAttendees`, `attendancePercentage`, `createdAt`, `updatedAt` from `processTrainings` limit ?
+params: 1
+   ├ù Bug Fixes - Guardado de Datos > Problema 2: Matriz del FODA - Guardado de Datos Completos > Debe tener el campo 'matrixData' en la tabla processFODA 3ms
+     ÔåÆ Failed query: select `id`, `processId`, `strengths`, `opportunities`, `weaknesses`, `threats`, `matrixData`, `createdAt`, `updatedAt` from `processFODA` limit ?
+params: 1
+ Ô£ô |unit| server/__tests__/directNeedsMapping.test.ts (6 tests) 9ms
+ Ô£ô |unit| server/__tests__/taskTypes.test.ts (14 tests) 11ms
+ Ô£ô |unit| server/__tests__/stakeholderNeedsTransfer.test.ts (6 tests) 9ms
+ Ô£ô |unit| server/__tests__/stakeholderUpdateLogic.test.ts (3 tests) 7ms
+ Ô£ô |unit| server/__tests__/consolidatedScheduleDeduplication.test.ts (7 tests) 11ms
+ Ô£ô |unit| server/__tests__/stakeholderCriticalityPersistence.test.ts (13 tests) 14ms
+ Ô£ô |unit| server/__tests__/consolidatedScheduleFodaDedupFix.test.ts (7 tests) 11ms
+ ÔØ» |unit| client/src/__tests__/calculateIndicatorsFixed.test.ts (7 tests | 5 failed) 23ms
+   ├ù calculateIndicators - Fixed Weighted Indicators > should mark as efficient when OO < Meta 11ms
+     ÔåÆ expected +0 to be 100 // Object.is equality
+   ├ù calculateIndicators - Fixed Weighted Indicators > should mark as inefficient when OO > Meta 1ms
+     ÔåÆ expected +0 to be 50 // Object.is equality
+   ├ù calculateIndicators - Fixed Weighted Indicators > should handle multiple objectives with different ponderaciones 2ms
+     ÔåÆ expected +0 to be 70 // Object.is equality
+   ├ù calculateIndicators - Fixed Weighted Indicators > should handle zero ponderacion gracefully 1ms
+     ÔåÆ expected +0 to be 50 // Object.is equality
+   ├ù calculateIndicators - Fixed Weighted Indicators > should handle negative avance values 1ms
+     ÔåÆ expected +0 to be 100 // Object.is equality
+ Ô£ô |unit| server/routers/__tests__/fodasRouter.test.ts (10 tests) 10ms
+ Ô£ô |unit| server/__tests__/recovery.test.ts (15 tests) 14ms
+ Ô£ô |unit| server/routers/__tests__/managerAuth.test.ts (13 tests) 2688ms
+   Ô£ô Manager Auth Router > login procedure > should be case-sensitive for passwords 351ms
+   Ô£ô Manager Auth Router > login procedure > should handle bcrypt with different rounds 1169ms
+   Ô£ô managerLogin procedure > should verify password hash comparison logic 343ms
+ Ô£ô |unit| server/__tests__/subprocessNeeds.test.ts (5 tests) 7ms
+ Ô£ô |unit| server/__tests__/aiCriticalityIntegration.test.ts (14 tests) 34ms
+ Ô£ô |unit| server/__tests__/processMapStorage.test.ts (5 tests) 8ms
+ Ô£ô |unit| server/__tests__/newCalculusSystem.test.ts (9 tests) 9ms
+ Ô£ô |unit| server/routers/__tests__/tacticalDefinitionJsonParsing.test.ts (10 tests) 7ms
+ ÔØ» |unit| client/src/pages/__tests__/TacticalDefinition.test.ts (10 tests | 1 failed) 20ms
+   ├ù TacticalDefinition JSON Parsing > should parse JSON with name field and extract name 13ms
+     ÔåÆ expected 'dfdfd' to be 'Incremento de la rentabilidad' // Object.is equality
+ Ô£ô |unit| server/_core/rbac.test.ts (17 tests) 10ms
+ Ô£ô |unit| server/__tests__/consolidatedSchedule.test.ts (6 tests) 8ms
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendEmail > should return true immediately without waiting
+[EmailService] sendEmail queued (background) { correlationId: '1ce102f1', to: 'te***@example.com', subject: 'Test' }
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendEmail > should 
+return true immediately without waiting
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendEmail > should be non-blocking (return immediately)
+[EmailService] sendEmail queued (background) { correlationId: 'e0dfd9dd', to: 'te***@example.com', subject: 'Test' }
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendEmail > should 
+be non-blocking (return immediately)
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendManagerAccessInvitationEmail > should return true immediately without waiting
+[EmailService] sendEmail queued (background) {
+  correlationId: 'adb9bd08',
+  to: 'ma***@example.com',
+  subject: 'Invitaci├│n a SIGE - Test Company'
+}
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > 
+sendManagerAccessInvitationEmail > should return true immediately without waiting
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendManagerAccessInvitationEmail > should not be async
+[EmailService] sendEmail queued (background) {
+  correlationId: '0341993d',
+  to: 'ma***@example.com',
+  subject: 'Invitaci├│n a SIGE - Test Company'
+}
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > 
+sendManagerAccessInvitationEmail > should not be async
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendManagerAccessConfirmationEmail > should return true immediately without waiting
+[ManagerAccessConfirmation] Attempting to send confirmation email to manager@example.com
+[ManagerAccessConfirmation] Login URL: https://localhost:3000/login
+[ManagerAccessConfirmation] Company: Test Company
+[EmailService] sendEmail queued (background) {
+  correlationId: '6b682c2c',
+  to: 'ma***@example.com',
+  subject: 'Bienvenido a SIGE - Test Company'
+}
+[ManagerAccessConfirmation] Email queued for sending
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > 
+sendManagerAccessConfirmationEmail > should return true immediately without waiting
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendManagerAccessConfirmationEmail > should not be async
+[ManagerAccessConfirmation] Attempting to send confirmation email to manager@example.com
+[ManagerAccessConfirmation] Login URL: http://localhost:3000/login
+[ManagerAccessConfirmation] Company: Test Company
+[EmailService] sendEmail queued (background) {
+  correlationId: '696d8807',
+  to: 'ma***@example.com',
+  subject: 'Bienvenido a SIGE - Test Company'
+}
+[ManagerAccessConfirmation] Email queued for sending
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > 
+sendManagerAccessConfirmationEmail > should not be async
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendProcessLeaderAccessConfirmationEmail > should return true immediately without waiting
+[EmailService] sendEmail queued (background) {
+  correlationId: '90941f4f',
+  to: 'le***@example.com',
+  subject: 'Bienvenido a SIGE - Test Company'
+}
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > 
+sendProcessLeaderAccessConfirmationEmail > should return true immediately without waiting
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendProcessLeaderAccessConfirmationEmail > should not be async
+[EmailService] sendEmail queued (background) {
+  correlationId: 'b2910428',
+  to: 'le***@example.com',
+  subject: 'Bienvenido a SIGE - Test Company'
+}
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > 
+sendProcessLeaderAccessConfirmationEmail > should not be async
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+ Ô£ô |unit| server/_core/__tests__/emailService.test.ts (8 tests) 15ms
+ ÔØ» |unit| client/src/pages/__tests__/ManagerLogin.test.ts (9 tests | 9 failed) 15ms
+   ├ù ManagerLogin > should validate email and password inputs 9ms
+     ÔåÆ localStorage is not defined
+   ├ù ManagerLogin > should reject passwords shorter than 12 characters 1ms
+     ÔåÆ localStorage is not defined
+   ├ù ManagerLogin > should store manager data in localStorage on successful login 1ms
+     ÔåÆ localStorage is not defined
+   ├ù ManagerLogin > should clear localStorage when needed 1ms
+     ÔåÆ localStorage is not defined
+   ├ù ManagerLogin > should handle form submission with valid credentials 1ms
+     ÔåÆ localStorage is not defined
+   ├ù ManagerLogin > should reject form submission with invalid email 0ms
+     ÔåÆ localStorage is not defined
+   ├ù ManagerLogin > should handle error states properly 0ms
+     ÔåÆ localStorage is not defined
+   ├ù ManagerLogin > should validate email format 0ms
+     ÔåÆ localStorage is not defined
+   ├ù ManagerLogin > should require minimum password length of 12 characters 1ms
+     ÔåÆ localStorage is not defined
+ Ô£ô |unit| server/lib/__tests__/parseStrategicObjective.test.ts (12 tests) 8ms
+ Ô£ô |unit| server/routers/__tests__/processResources.test.ts (5 tests) 7ms
+ Ô£ô |unit| server/__tests__/aiRouterIntegration.test.ts (9 tests) 8ms
+ ÔØ» |unit| server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts (4 tests | 4 failed) 67ms
+   ├ù Consolidated Indicators - Meta Alcanzada > should extract metaAlcanzada from planningData 48ms
+     ÔåÆ Failed query: insert into `processTacticalObjectives` (`id`, `processId`, `name`, `description`, `target`, `responsible`, `deadline`, `subprocess`, `strategicObjective`, `strategicObjectiveDescription`, `planningData`, `completed`, `createdAt`, `updatedAt`) values (?, ?, ?, ?, default, default, default, default, default, default, ?, default, ?, ?)
+params: 999,999,Test Objective,Test Description,{"category":"test","goal":"test goal","metaAlcanzada":-11,"resultKeys":[]},2026-07-01 23:25:53.313,2026-07-01 23:25:53.313
+     ÔåÆ Failed query: delete from `processTacticalObjectives` where `processTacticalObjectives`.`processId` = ?
+params: 999
+   ├ù Consolidated Indicators - Meta Alcanzada > should calculate average metaAlcanzada across multiple objectives 7ms
+     ÔåÆ Failed query: insert into `processTacticalObjectives` (`id`, `processId`, `name`, `description`, `target`, `responsible`, `deadline`, `subprocess`, `strategicObjective`, `strategicObjectiveDescription`, `planningData`, `completed`, `createdAt`, `updatedAt`) values (?, ?, ?, ?, default, default, default, default, default, default, ?, default, ?, ?)
+params: 999,999,Test Objective 0,Test Description,{"category":"test","goal":"test goal","metaAlcanzada":10,"resultKeys":[]},2026-07-01 23:25:53.351,2026-07-01 23:25:53.351
+     ÔåÆ Failed query: delete from `processTacticalObjectives` where `processTacticalObjectives`.`processId` = ?
+params: 999
+   ├ù Consolidated Indicators - Meta Alcanzada > should handle missing metaAlcanzada gracefully 6ms
+     ÔåÆ Failed query: insert into `processTacticalObjectives` (`id`, `processId`, `name`, `description`, `target`, `responsible`, `deadline`, `subprocess`, `strategicObjective`, `strategicObjectiveDescription`, `planningData`, `completed`, `createdAt`, `updatedAt`) values (?, ?, ?, ?, default, default, default, default, default, default, ?, default, ?, ?)
+params: 999,999,Test Objective,Test Description,{"category":"test","goal":"test goal","resultKeys":[]},2026-07-01 23:25:53.358,2026-07-01 23:25:53.358
+     ÔåÆ Failed query: delete from `processTacticalObjectives` where `processTacticalObjectives`.`processId` = ?
+params: 999
+   ├ù Consolidated Indicators - Meta Alcanzada > should handle negative metaAlcanzada values 4ms
+     ÔåÆ Failed query: insert into `processTacticalObjectives` (`id`, `processId`, `name`, `description`, `target`, `responsible`, `deadline`, `subprocess`, `strategicObjective`, `strategicObjectiveDescription`, `planningData`, `completed`, `createdAt`, `updatedAt`) values (?, ?, ?, ?, default, default, default, default, default, default, ?, default, ?, ?)
+params: 999,999,Test Objective,Test Description,{"category":"test","goal":"test goal","metaAlcanzada":-11,"resultKeys":[]},2026-07-01 23:25:53.364,2026-07-01 23:25:53.364
+     ÔåÆ Failed query: delete from `processTacticalObjectives` where `processTacticalObjectives`.`processId` = ?
+params: 999
+ Ô£ô |unit| server/__tests__/aiInfrastructure.test.ts (9 tests) 9ms
+ Ô£ô |unit| server/__tests__/RecoveryForm.test.ts (7 tests) 9ms
+ Ô£ô |unit| server/routers/__tests__/managerInvitations.test.ts (2 tests) 5ms
+ Ô£ô |unit| server/__tests__/tacticalObjectives.test.ts (4 tests) 5ms
+ ÔØ» |unit| client/__tests__/clipboard.test.ts (3 tests | 3 failed) 10ms
+   ├ù Clipboard Copy Fallback Logic > should create textarea element for fallback copy 7ms
+     ÔåÆ document is not defined
+   ├ù Clipboard Copy Fallback Logic > should handle execCommand copy method 1ms
+     ÔåÆ document is not defined
+   ├ù Clipboard Copy Fallback Logic > should properly clean up textarea after copy 1ms
+     ÔåÆ document is not defined
+ Ô£ô |unit| server/__tests__/documentTypeMapping.test.ts (6 tests) 6ms
+stdout | server/__tests__/tacticalSyncTest.test.ts > Tactical Objectives Data Sync > should verify planningData JSON structure
+Guardado en BD: {"ponderacion":25,"puntoPartida":50,"metaLlegada":75,"unidadMedida":"%"}
+Cargado desde BD: {
+  ponderacion: 25,
+  puntoPartida: 50,
+  metaLlegada: 75,
+  unidadMedida: '%'
+}
+
+ Ô£ô |unit| server/__tests__/tacticalSyncTest.test.ts (2 tests) 6ms
+ Ô£ô |unit| client/src/__tests__/password.test.ts (3 tests) 4ms
+stderr | server/__tests__/tacticalObjectivesFixed.test.ts > Tactical Objectives - Fixed Schema > should create a 
+tactical objective with only existing fields
+Error: DrizzleQueryError: Failed query: insert into `processTacticalObjectives` (`id`, `processId`, `name`, 
+`description`, `target`, `responsible`, `deadline`, `subprocess`, `strategicObjective`, 
+`strategicObjectiveDescription`, `planningData`, `completed`, `createdAt`, `updatedAt`) values (?, ?, ?, ?, ?, ?, ?, 
+?, ?, ?, ?, ?, default, default)
+params: 999001,999,Test Objective - Fixed,Test description,100%,Manager,Wed Jul 01 2026 18:25:54 GMT-0500 (hora de 
+Ecuador),Test Subprocess,Strategic Goal,Strategic description,,NO
+    at MySql2PreparedQuery.queryWithCache (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.1
+5.1/node_modules/src/mysql-core/session.ts:79:11)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at MySql2PreparedQuery.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/nod
+e_modules/src/mysql2/session.ts:100:16)
+    at E:\SigeApp\sige-app\server\__tests__\tacticalObjectivesFixed.test.ts:24:7
+    at 
+file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1271:3) 
+{
+  query: 'insert into `processTacticalObjectives` (`id`, `processId`, `name`, `description`, `target`, `responsible`, 
+`deadline`, `subprocess`, `strategicObjective`, `strategicObjectiveDescription`, `planningData`, `completed`, 
+`createdAt`, `updatedAt`) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default)',
+  params: [
+    999001,
+    999,
+    'Test Objective - Fixed',
+    'Test description',
+    '100%',
+    'Manager',
+    2026-07-01T23:25:54.624Z,
+    'Test Subprocess',
+    'Strategic Goal',
+    'Strategic description',
+    null,
+    'NO'
+  ],
+  cause: Error: connect ECONNREFUSED 127.0.0.1:3307
+      at PromisePool.query 
+(E:\SigeApp\sige-app\node_modules\.pnpm\mysql2@3.15.1\node_modules\mysql2\lib\promise\pool.js:36:22)
+      at file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/sessio
+n.ts:101:25
+      at MySql2PreparedQuery.queryWithCache (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3
+.15.1/node_modules/src/mysql-core/session.ts:77:18)
+      at MySql2PreparedQuery.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/n
+ode_modules/src/mysql2/session.ts:100:27)
+      at QueryPromise.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_mod
+ules/src/mysql-core/query-builders/insert.ts:323:25)
+      at QueryPromise.then (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_module
+s/src/query-promise.ts:31:15)
+      at processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    code: 'ECONNREFUSED',
+    errno: -4078,
+    sql: undefined,
+    sqlState: undefined,
+    sqlMessage: undefined
+  }
+}
+
+stderr | server/__tests__/tacticalObjectivesFixed.test.ts > Tactical Objectives - Fixed Schema > should update a 
+tactical objective with only existing fields
+Error: DrizzleQueryError: Failed query: update `processTacticalObjectives` set `name` = ?, `description` = ?, 
+`completed` = ? where `processTacticalObjectives`.`id` = ?
+params: Test Objective - Updated,Updated description,SI,999001
+    at MySql2PreparedQuery.queryWithCache (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.1
+5.1/node_modules/src/mysql-core/session.ts:79:11)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at MySql2PreparedQuery.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/nod
+e_modules/src/mysql2/session.ts:100:16)
+    at E:\SigeApp\sige-app\server\__tests__\tacticalObjectivesFixed.test.ts:60:7
+    at 
+file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1271:3) 
+{
+  query: 'update `processTacticalObjectives` set `name` = ?, `description` = ?, `completed` = ? where 
+`processTacticalObjectives`.`id` = ?',
+  params: [ 'Test Objective - Updated', 'Updated description', 'SI', 999001 ],
+  cause: Error: connect ECONNREFUSED 127.0.0.1:3307
+      at PromisePool.query 
+(E:\SigeApp\sige-app\node_modules\.pnpm\mysql2@3.15.1\node_modules\mysql2\lib\promise\pool.js:36:22)
+      at file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/sessio
+n.ts:101:25
+      at MySql2PreparedQuery.queryWithCache (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3
+.15.1/node_modules/src/mysql-core/session.ts:77:18)
+      at MySql2PreparedQuery.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/n
+ode_modules/src/mysql2/session.ts:100:27)
+      at QueryPromise.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_mod
+ules/src/mysql-core/query-builders/update.ts:242:25)
+      at QueryPromise.then (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_module
+s/src/query-promise.ts:31:15)
+      at processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    code: 'ECONNREFUSED',
+    errno: -4078,
+    sql: undefined,
+    sqlState: undefined,
+    sqlMessage: undefined
+  }
+}
+
+stderr | server/__tests__/tacticalObjectivesFixed.test.ts > Tactical Objectives - Fixed Schema
+Cleanup error: DrizzleQueryError: Failed query: delete from `processTacticalObjectives` where 
+`processTacticalObjectives`.`id` = ?
+params: 999001
+    at MySql2PreparedQuery.queryWithCache (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.1
+5.1/node_modules/src/mysql-core/session.ts:79:11)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at MySql2PreparedQuery.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/nod
+e_modules/src/mysql2/session.ts:100:16)
+    at E:\SigeApp\sige-app\server\__tests__\tacticalObjectivesFixed.test.ts:90:7
+    at callSuiteHook 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:964:22)
+    at runSuite 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1214:7)
+    at runSuite 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests 
+(file:///E:/SigeApp/sige-app/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1271:3)
+    at file:///E:/SigeApp/sige-app/node_modules/.pnpm/vitest@2.1.9_@types+node@24_006cc0c805c8d6ed2555062aa28a8041/node
+_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11 {
+  query: 'delete from `processTacticalObjectives` where `processTacticalObjectives`.`id` = ?',
+  params: [ 999001 ],
+  cause: Error: connect ECONNREFUSED 127.0.0.1:3307
+      at PromisePool.query 
+(E:\SigeApp\sige-app\node_modules\.pnpm\mysql2@3.15.1\node_modules\mysql2\lib\promise\pool.js:36:22)
+      at file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/sessio
+n.ts:101:25
+      at MySql2PreparedQuery.queryWithCache (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3
+.15.1/node_modules/src/mysql-core/session.ts:77:18)
+      at MySql2PreparedQuery.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/n
+ode_modules/src/mysql2/session.ts:100:27)
+      at QueryPromise.execute (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_mod
+ules/src/mysql-core/query-builders/delete.ts:200:25)
+      at QueryPromise.then (file:///E:/SigeApp/sige-app/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_module
+s/src/query-promise.ts:31:15)
+      at processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    code: 'ECONNREFUSED',
+    errno: -4078,
+    sql: undefined,
+    sqlState: undefined,
+    sqlMessage: undefined
+  }
+}
+
+ ÔØ» |unit| server/__tests__/tacticalObjectivesFixed.test.ts (2 tests | 2 failed) 46ms
+   ├ù Tactical Objectives - Fixed Schema > should create a tactical objective with only existing fields 27ms
+     ÔåÆ Failed query: insert into `processTacticalObjectives` (`id`, `processId`, `name`, `description`, `target`, `responsible`, `deadline`, `subprocess`, `strategicObjective`, `strategicObjectiveDescription`, `planningData`, `completed`, `createdAt`, `updatedAt`) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default)
+params: 999001,999,Test Objective - Fixed,Test description,100%,Manager,Wed Jul 01 2026 18:25:54 GMT-0500 (hora de Ecuador),Test Subprocess,Strategic Goal,Strategic description,,NO
+   ├ù Tactical Objectives - Fixed Schema > should update a tactical objective with only existing fields 6ms
+     ÔåÆ Failed query: update `processTacticalObjectives` set `name` = ?, `description` = ?, `completed` = ? where `processTacticalObjectives`.`id` = ?
+params: Test Objective - Updated,Updated description,SI,999001
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ» Failed Tests 30 ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+
+ FAIL |unit|  server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada 
+> should extract metaAlcanzada from planningData
+Error: Failed query: insert into `processTacticalObjectives` (`id`, `processId`, `name`, `description`, `target`, 
+`responsible`, `deadline`, `subprocess`, `strategicObjective`, `strategicObjectiveDescription`, `planningData`, 
+`completed`, `createdAt`, `updatedAt`) values (?, ?, ?, ?, default, default, default, default, default, default, ?, 
+default, ?, ?)
+params: 999,999,Test Objective,Test Description,{"category":"test","goal":"test 
+goal","metaAlcanzada":-11,"resultKeys":[]},2026-07-01 23:25:53.313,2026-07-01 23:25:53.313
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:16
+ ÔØ» server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts:37:5
+     35|     };
+     36| 
+     37|     await db.insert(processTacticalObjectives).values({
+       |     ^
+     38|       id: objectiveId,
+     39|       processId: processId,
+
+Caused by: Error: connect ECONNREFUSED 127.0.0.1:3307
+ ÔØ» PromisePool.query node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22
+ ÔØ» node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:101:25
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:27
+ ÔØ» QueryPromise.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/insert.ts:323:25
+ ÔØ» QueryPromise.then node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+Serialized Error: { code: 'ECONNREFUSED', errno: -4078, sql: undefined, sqlState: undefined, sqlMessage: undefined }
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[1/34]ÔÄ»
+
+ FAIL |unit|  server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada 
+> should extract metaAlcanzada from planningData
+ FAIL |unit|  server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada 
+> should calculate average metaAlcanzada across multiple objectives
+ FAIL |unit|  server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada 
+> should handle missing metaAlcanzada gracefully
+ FAIL |unit|  server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada 
+> should handle negative metaAlcanzada values
+Error: Failed query: delete from `processTacticalObjectives` where `processTacticalObjectives`.`processId` = ?
+params: 999
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:16
+ ÔØ» server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts:17:7
+     15|   afterEach(async () => {
+     16|     if (db) {
+     17|       await db.delete(processTacticalObjectives).where(
+       |       ^
+     18|         eq(processTacticalObjectives.processId, processId)
+     19|       );
+
+Caused by: Error: connect ECONNREFUSED 127.0.0.1:3307
+ ÔØ» PromisePool.query node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22
+ ÔØ» node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:101:25
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:27
+ ÔØ» QueryPromise.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/delete.ts:200:25
+ ÔØ» QueryPromise.then node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+Serialized Error: { code: 'ECONNREFUSED', errno: -4078, sql: undefined, sqlState: undefined, sqlMessage: undefined }
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[2/34]ÔÄ»
+
+ FAIL |unit|  server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada 
+> should calculate average metaAlcanzada across multiple objectives
+Error: Failed query: insert into `processTacticalObjectives` (`id`, `processId`, `name`, `description`, `target`, 
+`responsible`, `deadline`, `subprocess`, `strategicObjective`, `strategicObjectiveDescription`, `planningData`, 
+`completed`, `createdAt`, `updatedAt`) values (?, ?, ?, ?, default, default, default, default, default, default, ?, 
+default, ?, ?)
+params: 999,999,Test Objective 0,Test Description,{"category":"test","goal":"test 
+goal","metaAlcanzada":10,"resultKeys":[]},2026-07-01 23:25:53.351,2026-07-01 23:25:53.351
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:16
+ ÔØ» server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts:79:7
+     77|       };
+     78| 
+     79|       await db.insert(processTacticalObjectives).values({
+       |       ^
+     80|         id: objectiveId + i,
+     81|         processId: processId,
+
+Caused by: Error: connect ECONNREFUSED 127.0.0.1:3307
+ ÔØ» PromisePool.query node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22
+ ÔØ» node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:101:25
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:27
+ ÔØ» QueryPromise.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/insert.ts:323:25
+ ÔØ» QueryPromise.then node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+Serialized Error: { code: 'ECONNREFUSED', errno: -4078, sql: undefined, sqlState: undefined, sqlMessage: undefined }
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[3/34]ÔÄ»
+
+ FAIL |unit|  server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada 
+> should handle missing metaAlcanzada gracefully
+Error: Failed query: insert into `processTacticalObjectives` (`id`, `processId`, `name`, `description`, `target`, 
+`responsible`, `deadline`, `subprocess`, `strategicObjective`, `strategicObjectiveDescription`, `planningData`, 
+`completed`, `createdAt`, `updatedAt`) values (?, ?, ?, ?, default, default, default, default, default, default, ?, 
+default, ?, ?)
+params: 999,999,Test Objective,Test Description,{"category":"test","goal":"test goal","resultKeys":[]},2026-07-01 
+23:25:53.358,2026-07-01 23:25:53.358
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:16
+ ÔØ» server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts:120:5
+    118|     };
+    119| 
+    120|     await db.insert(processTacticalObjectives).values({
+       |     ^
+    121|       id: objectiveId,
+    122|       processId: processId,
+
+Caused by: Error: connect ECONNREFUSED 127.0.0.1:3307
+ ÔØ» PromisePool.query node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22
+ ÔØ» node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:101:25
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:27
+ ÔØ» QueryPromise.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/insert.ts:323:25
+ ÔØ» QueryPromise.then node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+Serialized Error: { code: 'ECONNREFUSED', errno: -4078, sql: undefined, sqlState: undefined, sqlMessage: undefined }
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[4/34]ÔÄ»
+
+ FAIL |unit|  server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada 
+> should handle negative metaAlcanzada values
+Error: Failed query: insert into `processTacticalObjectives` (`id`, `processId`, `name`, `description`, `target`, 
+`responsible`, `deadline`, `subprocess`, `strategicObjective`, `strategicObjectiveDescription`, `planningData`, 
+`completed`, `createdAt`, `updatedAt`) values (?, ?, ?, ?, default, default, default, default, default, default, ?, 
+default, ?, ?)
+params: 999,999,Test Objective,Test Description,{"category":"test","goal":"test 
+goal","metaAlcanzada":-11,"resultKeys":[]},2026-07-01 23:25:53.364,2026-07-01 23:25:53.364
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:16
+ ÔØ» server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts:156:5
+    154|     };
+    155| 
+    156|     await db.insert(processTacticalObjectives).values({
+       |     ^
+    157|       id: objectiveId,
+    158|       processId: processId,
+
+Caused by: Error: connect ECONNREFUSED 127.0.0.1:3307
+ ÔØ» PromisePool.query node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22
+ ÔØ» node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:101:25
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:27
+ ÔØ» QueryPromise.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/insert.ts:323:25
+ ÔØ» QueryPromise.then node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+Serialized Error: { code: 'ECONNREFUSED', errno: -4078, sql: undefined, sqlState: undefined, sqlMessage: undefined }
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[5/34]ÔÄ»
+
+ FAIL |unit|  server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 1: Capacitaciones - Campos 
+Responsable y Cumplido > Debe guardar el campo 'responsible' en capacitaciones
+Error: Failed query: select `id`, `processId`, `name`, `objective`, `type`, `audience`, `plannedAttendees`, 
+`modality`, `plannedDate`, `conductedDate`, `actualAttendees`, `attendancePercentage`, `createdAt`, `updatedAt` from 
+`processTrainings` where `processTrainings`.`processId` = ? limit ?
+params: 999,1
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:18
+ ÔØ» server/__tests__/fixes.test.ts:30:22
+     28| 
+     29|       // Verificar que los campos existen en el schema
+     30|       const result = await db
+       |                      ^
+     31|         .select()
+     32|         .from(processTrainings)
+
+Caused by: Error: connect ECONNREFUSED 127.0.0.1:3307
+ ÔØ» PromisePool.query node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22
+ ÔØ» node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:133:24
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:29
+ ÔØ» MySqlSelectBase.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/select.ts:1145:25
+ ÔØ» MySqlSelectBase.then node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+Serialized Error: { code: 'ECONNREFUSED', errno: -4078, sql: undefined, sqlState: undefined, sqlMessage: undefined }
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[6/34]ÔÄ»
+
+ FAIL |unit|  server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 1: Capacitaciones - Campos 
+Responsable y Cumplido > Debe guardar el campo 'completed' correctamente
+Error: Failed query: select `id`, `processId`, `name`, `objective`, `type`, `audience`, `plannedAttendees`, 
+`modality`, `plannedDate`, `conductedDate`, `actualAttendees`, `attendancePercentage`, `createdAt`, `updatedAt` from 
+`processTrainings` limit ?
+params: 1
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:18
+ ÔØ» server/__tests__/fixes.test.ts:50:22
+     48| 
+     49|       // Verificar que el schema tiene los campos
+     50|       const result = await db
+       |                      ^
+     51|         .select()
+     52|         .from(processTrainings)
+
+Caused by: Error: connect ECONNREFUSED 127.0.0.1:3307
+ ÔØ» PromisePool.query node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22
+ ÔØ» node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:133:24
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:29
+ ÔØ» MySqlSelectBase.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/select.ts:1145:25
+ ÔØ» MySqlSelectBase.then node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+Serialized Error: { code: 'ECONNREFUSED', errno: -4078, sql: undefined, sqlState: undefined, sqlMessage: undefined }
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[7/34]ÔÄ»
+
+ FAIL |unit|  server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 2: Matriz del FODA - Guardado 
+de Datos Completos > Debe tener el campo 'matrixData' en la tabla processFODA
+Error: Failed query: select `id`, `processId`, `strengths`, `opportunities`, `weaknesses`, `threats`, `matrixData`, 
+`createdAt`, `updatedAt` from `processFODA` limit ?
+params: 1
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:18
+ ÔØ» server/__tests__/fixes.test.ts:70:22
+     68| 
+     69|       // Verificar que la tabla tiene el campo matrixData
+     70|       const result = await db
+       |                      ^
+     71|         .select()
+     72|         .from(processFODA)
+
+Caused by: Error: connect ECONNREFUSED 127.0.0.1:3307
+ ÔØ» PromisePool.query node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22
+ ÔØ» node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:133:24
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:29
+ ÔØ» MySqlSelectBase.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/select.ts:1145:25
+ ÔØ» MySqlSelectBase.then node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+Serialized Error: { code: 'ECONNREFUSED', errno: -4078, sql: undefined, sqlState: undefined, sqlMessage: undefined }
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[8/34]ÔÄ»
+
+ FAIL |unit|  server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should handle deletion 
+of non-existent procedure gracefully
+Error: Failed query: delete from `procedures` where `procedures`.`id` = ?
+params: 999999
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:16
+ ÔØ» server/__tests__/procedures.test.ts:309:20
+    307|     const nonExistentId = 999999;
+    308| 
+    309|     const result = await db
+       |                    ^
+    310|       .delete(procedures)
+    311|       .where(eq(procedures.id, nonExistentId));
+
+Caused by: Error: connect ECONNREFUSED 127.0.0.1:3307
+ ÔØ» PromisePool.query node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22
+ ÔØ» node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:101:25
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:27
+ ÔØ» QueryPromise.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/delete.ts:200:25
+ ÔØ» QueryPromise.then node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+Serialized Error: { code: 'ECONNREFUSED', errno: -4078, sql: undefined, sqlState: undefined, sqlMessage: undefined }
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[9/34]ÔÄ»
+
+ FAIL |unit|  server/__tests__/tacticalObjectivesFixed.test.ts > Tactical Objectives - Fixed Schema > should create a 
+tactical objective with only existing fields
+Error: Failed query: insert into `processTacticalObjectives` (`id`, `processId`, `name`, `description`, `target`, 
+`responsible`, `deadline`, `subprocess`, `strategicObjective`, `strategicObjectiveDescription`, `planningData`, 
+`completed`, `createdAt`, `updatedAt`) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, default)
+params: 999001,999,Test Objective - Fixed,Test description,100%,Manager,Wed Jul 01 2026 18:25:54 GMT-0500 (hora de 
+Ecuador),Test Subprocess,Strategic Goal,Strategic description,,NO
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:16
+ ÔØ» server/__tests__/tacticalObjectivesFixed.test.ts:24:7
+     22|     try {
+     23|       // Insert a test objective with only fields that exist in the BD
+     24|       await db.insert(processTacticalObjectives).values({
+       |       ^
+     25|         id: testObjectiveId,
+     26|         processId: testProcessId,
+
+Caused by: Error: connect ECONNREFUSED 127.0.0.1:3307
+ ÔØ» PromisePool.query node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22
+ ÔØ» node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:101:25
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:27
+ ÔØ» QueryPromise.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/insert.ts:323:25
+ ÔØ» QueryPromise.then node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+Serialized Error: { code: 'ECONNREFUSED', errno: -4078, sql: undefined, sqlState: undefined, sqlMessage: undefined }
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[10/34]ÔÄ»
+
+ FAIL |unit|  server/__tests__/tacticalObjectivesFixed.test.ts > Tactical Objectives - Fixed Schema > should update a 
+tactical objective with only existing fields
+Error: Failed query: update `processTacticalObjectives` set `name` = ?, `description` = ?, `completed` = ? where 
+`processTacticalObjectives`.`id` = ?
+params: Test Objective - Updated,Updated description,SI,999001
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:16
+ ÔØ» server/__tests__/tacticalObjectivesFixed.test.ts:60:7
+     58|     try {
+     59|       // Update the test objective
+     60|       await db
+       |       ^
+     61|         .update(processTacticalObjectives)
+     62|         .set({
+
+Caused by: Error: connect ECONNREFUSED 127.0.0.1:3307
+ ÔØ» PromisePool.query node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22
+ ÔØ» node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:101:25
+ ÔØ» MySql2PreparedQuery.queryWithCache 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18
+ ÔØ» MySql2PreparedQuery.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:27
+ ÔØ» QueryPromise.execute 
+node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/update.ts:242:25
+ ÔØ» QueryPromise.then node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+Serialized Error: { code: 'ECONNREFUSED', errno: -4078, sql: undefined, sqlState: undefined, sqlMessage: undefined }
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[11/34]ÔÄ»
+
+ FAIL |unit|  client/__tests__/clipboard.test.ts > Clipboard Copy Fallback Logic > should create textarea element for 
+fallback copy
+ReferenceError: document is not defined
+ ÔØ» client/__tests__/clipboard.test.ts:6:22
+      4|   it('should create textarea element for fallback copy', () => {
+      5|     const testText = 'https://example.com/login';
+      6|     const textarea = document.createElement('textarea');
+       |                      ^
+      7|     textarea.value = testText;
+      8|     textarea.style.position = 'fixed';
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[12/34]ÔÄ»
+
+ FAIL |unit|  client/__tests__/clipboard.test.ts > Clipboard Copy Fallback Logic > should handle execCommand copy 
+method
+ReferenceError: document is not defined
+ ÔØ» client/__tests__/clipboard.test.ts:20:38
+     18| 
+     19|   it('should handle execCommand copy method', () => {
+     20|     const execCommandMock = vi.spyOn(document, 'execCommand').mockRetuÔÇª
+       |                                      ^
+     21|     
+     22|     const textarea = document.createElement('textarea');
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[13/34]ÔÄ»
+
+ FAIL |unit|  client/__tests__/clipboard.test.ts > Clipboard Copy Fallback Logic > should properly clean up textarea 
+after copy
+ReferenceError: document is not defined
+ ÔØ» client/__tests__/clipboard.test.ts:37:22
+     35| 
+     36|   it('should properly clean up textarea after copy', () => {
+     37|     const textarea = document.createElement('textarea');
+       |                      ^
+     38|     textarea.id = 'test-textarea';
+     39|     textarea.value = 'test-link';
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[14/34]ÔÄ»
+
+ FAIL |unit|  client/src/__tests__/calculateIndicatorsFixed.test.ts > calculateIndicators - Fixed Weighted Indicators 
+> should mark as efficient when OO < Meta
+AssertionError: expected +0 to be 100 // Object.is equality
+
+- Expected
++ Received
+
+- 100
++ 0
+
+ ÔØ» client/src/__tests__/calculateIndicatorsFixed.test.ts:83:34
+     81|     const result = calculateIndicators(plannings);
+     82|     
+     83|     expect(result.metaAlcanzada).toBe(100);
+       |                                  ^
+     84|     expect(result.alcanzadoPorOO).toBe(50);
+     85|     expect(result.difference).toBe(-50);
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[15/34]ÔÄ»
+
+ FAIL |unit|  client/src/__tests__/calculateIndicatorsFixed.test.ts > calculateIndicators - Fixed Weighted Indicators 
+> should mark as inefficient when OO > Meta
+AssertionError: expected +0 to be 50 // Object.is equality
+
+- Expected
++ Received
+
+- 50
++ 0
+
+ ÔØ» client/src/__tests__/calculateIndicatorsFixed.test.ts:100:34
+     98|     const result = calculateIndicators(plannings);
+     99|     
+    100|     expect(result.metaAlcanzada).toBe(50);
+       |                                  ^
+    101|     expect(result.alcanzadoPorOO).toBe(100);
+    102|     expect(result.difference).toBe(50);
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[16/34]ÔÄ»
+
+ FAIL |unit|  client/src/__tests__/calculateIndicatorsFixed.test.ts > calculateIndicators - Fixed Weighted Indicators 
+> should handle multiple objectives with different ponderaciones
+AssertionError: expected +0 to be 70 // Object.is equality
+
+- Expected
++ Received
+
+- 70
++ 0
+
+ ÔØ» client/src/__tests__/calculateIndicatorsFixed.test.ts:123:34
+    121|     
+    122|     // % Meta Alcanzada = (100 * 40%) + (50 * 60%) = 40 + 30 = 70
+    123|     expect(result.metaAlcanzada).toBe(70);
+       |                                  ^
+    124|     
+    125|     // % Alcanzado por OO = (80 * 40%) + (40 * 60%) = 32 + 24 = 56
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[17/34]ÔÄ»
+
+ FAIL |unit|  client/src/__tests__/calculateIndicatorsFixed.test.ts > calculateIndicators - Fixed Weighted Indicators 
+> should handle zero ponderacion gracefully
+AssertionError: expected +0 to be 50 // Object.is equality
+
+- Expected
++ Received
+
+- 50
++ 0
+
+ ÔØ» client/src/__tests__/calculateIndicatorsFixed.test.ts:152:34
+    150|     
+    151|     // % Meta Alcanzada = (100 * 0%) + (50 * 100%) = 0 + 50 = 50
+    152|     expect(result.metaAlcanzada).toBe(50);
+       |                                  ^
+    153|     
+    154|     // % Alcanzado por OO = (50 * 0%) + (40 * 100%) = 0 + 40 = 40
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[18/34]ÔÄ»
+
+ FAIL |unit|  client/src/__tests__/calculateIndicatorsFixed.test.ts > calculateIndicators - Fixed Weighted Indicators 
+> should handle negative avance values
+AssertionError: expected +0 to be 100 // Object.is equality
+
+- Expected
++ Received
+
+- 100
++ 0
+
+ ÔØ» client/src/__tests__/calculateIndicatorsFixed.test.ts:175:34
+    173|     const result = calculateIndicators(plannings);
+    174|     
+    175|     expect(result.metaAlcanzada).toBe(100);
+       |                                  ^
+    176|     expect(result.alcanzadoPorOO).toBe(-50);
+    177|     expect(result.difference).toBe(-150);
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[19/34]ÔÄ»
+
+ FAIL |unit|  client/src/pages/__tests__/ManagerLogin.test.ts > ManagerLogin > should validate email and password 
+inputs
+ FAIL |unit|  client/src/pages/__tests__/ManagerLogin.test.ts > ManagerLogin > should reject passwords shorter than 12 
+characters
+ FAIL |unit|  client/src/pages/__tests__/ManagerLogin.test.ts > ManagerLogin > should store manager data in 
+localStorage on successful login
+ FAIL |unit|  client/src/pages/__tests__/ManagerLogin.test.ts > ManagerLogin > should clear localStorage when needed
+ FAIL |unit|  client/src/pages/__tests__/ManagerLogin.test.ts > ManagerLogin > should handle form submission with 
+valid credentials
+ FAIL |unit|  client/src/pages/__tests__/ManagerLogin.test.ts > ManagerLogin > should reject form submission with 
+invalid email
+ FAIL |unit|  client/src/pages/__tests__/ManagerLogin.test.ts > ManagerLogin > should handle error states properly
+ FAIL |unit|  client/src/pages/__tests__/ManagerLogin.test.ts > ManagerLogin > should validate email format
+ FAIL |unit|  client/src/pages/__tests__/ManagerLogin.test.ts > ManagerLogin > should require minimum password length 
+of 12 characters
+ReferenceError: localStorage is not defined
+ ÔØ» client/src/pages/__tests__/ManagerLogin.test.ts:11:5
+      9|   beforeEach(() => {
+     10|     // Clear localStorage before each test
+     11|     localStorage.clear();
+       |     ^
+     12|   });
+     13| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[20/34]ÔÄ»
+
+ FAIL |unit|  client/src/pages/__tests__/ProcessStakeholderCriticalityManagerFix.test.tsx > 
+ProcessStakeholderCriticality - Manager Role Data Loading > Export Function Error Handling > should safely remove 
+element from DOM after export
+ReferenceError: document is not defined
+ ÔØ» client/src/pages/__tests__/ProcessStakeholderCriticalityManagerFix.test.tsx:281:23
+    279|     it('should safely remove element from DOM after export', () => {
+    280|       // Simulate DOM element
+    281|       const element = document.createElement('a');
+       |                       ^
+    282|       document.body.appendChild(element);
+    283|       
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[21/34]ÔÄ»
+
+ FAIL |unit|  client/src/pages/__tests__/ProcessStakeholderCriticalityManagerFix.test.tsx > 
+ProcessStakeholderCriticality - Manager Role Data Loading > Export Function Error Handling > should not throw error if 
+element is already removed
+ReferenceError: document is not defined
+ ÔØ» client/src/pages/__tests__/ProcessStakeholderCriticalityManagerFix.test.tsx:298:23
+    296|     it('should not throw error if element is already removed', () => {
+    297|       // Simulate element that's not in DOM
+    298|       const element = document.createElement('a');
+       |                       ^
+    299|       
+    300|       // Should not throw error
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[22/34]ÔÄ»
+
+ FAIL |unit|  client/src/pages/__tests__/TacticalDefinition.test.ts > TacticalDefinition JSON Parsing > should parse 
+JSON with name field and extract name
+AssertionError: expected 'dfdfd' to be 'Incremento de la rentabilidad' // Object.is equality
+
+Expected: "Incremento de la rentabilidad"
+Received: "dfdfd"
+
+ ÔØ» client/src/pages/__tests__/TacticalDefinition.test.ts:54:20
+     52|     });
+     53|     const result = parseStrategicObjectiveDescription(jsonWithName);
+     54|     expect(result).toBe('Incremento de la rentabilidad');
+       |                    ^
+     55|   });
+     56| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[23/34]ÔÄ»
+
+ Test Files  9 failed | 51 passed (60)
+      Tests  30 failed | 550 passed (580)
+   Start at  18:25:45
+   Duration  9.41s (transform 1.44s, setup 0ms, collect 15.71s, tests 6.00s, environment 20ms, prepare 15.26s)
+

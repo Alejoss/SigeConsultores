@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { processLeaderInvitations, processOwners } from "../../drizzle/schema";
+import { processOwnerInvitations, processOwners } from "../../drizzle/schema";
 
-describe("Process Leader Invitations Module", () => {
-  describe("Process Leader Invitations Table Structure", () => {
-    it("should have processLeaderInvitations table defined", () => {
-      expect(processLeaderInvitations).toBeDefined();
+describe("Process Owner Invitations Module", () => {
+  describe("Process Owner Invitations Table Structure", () => {
+    it("should have processOwnerInvitations table defined", () => {
+      expect(processOwnerInvitations).toBeDefined();
     });
 
     it("should have processOwners table defined", () => {

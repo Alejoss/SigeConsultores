@@ -13,13 +13,14 @@ import { exportTacticalObjectivesToPDF } from "@/lib/exportTacticalObjectivesToP
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { useModuleLabels } from "@/hooks/useModuleLabels";
+import { getAxisBackPath } from "@/lib/sessionScope";
 
 export default function CompanyInfo() {
   const [, setLocation] = useLocation();
   const search = useSearch();
   // Check if this is being accessed by a manager
   const urlParams = new URLSearchParams(search);
-  const isManagerAccess = urlParams.get('isManager') === 'true';
+  const isManagerAccess = localStorage.getItem('managerCompanyId') !== null;
   
   const { isManagerLogin } = useManagerAuth();
   const { session: processLeaderSession } = useProcessLeaderAuth();
@@ -270,7 +271,7 @@ export default function CompanyInfo() {
             </Button>
             <Button
               variant="outline"
-               onClick={() => setLocation(isProcessLeader ? "/process-leader-dashboard" : (isManagerAccess ? "/manager-dashboard" : "/dashboard"))}
+               onClick={() => setLocation(isProcessLeader ? "/process-leader-dashboard" : ((isManagerAccess || isManagerLogin) ? getAxisBackPath("/manager-dashboard") : "/dashboard"))}
             >
               ← Volver
             </Button>

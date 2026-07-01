@@ -1,15 +1,19 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import bcryptjs from "bcryptjs";
-import { managerInvitations, companyManagerCredentials, companies } from "../../drizzle/schema";
+import { authInvitations, accounts, companyManagers } from "../../drizzle/schema";
 
 describe("Manager Invitations Module", () => {
   describe("Manager Invitations Table Structure", () => {
-    it("should have managerInvitations table defined", () => {
-      expect(managerInvitations).toBeDefined();
+    it("should have authInvitations table defined", () => {
+      expect(authInvitations).toBeDefined();
     });
 
-    it("should have companyManagerCredentials table defined", () => {
-      expect(companyManagerCredentials).toBeDefined();
+    it("should have accounts table defined for manager credentials", () => {
+      expect(accounts).toBeDefined();
+    });
+
+    it("should have companyManagers table defined", () => {
+      expect(companyManagers).toBeDefined();
     });
 
     it("should validate manager invitation structure", () => {

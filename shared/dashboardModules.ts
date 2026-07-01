@@ -6,10 +6,21 @@ export type DashboardModuleDefinition = {
   defaultTitle: string;
   description: string;
   icon: string;
+  /** Top-level group this module belongs to */
+  group: "estrategia" | "gestion" | "desempeno";
 };
 
 /** Canonical SIGE dashboard modules — same set for admin, gerente and jefe de proceso */
 export const DASHBOARD_MODULES: DashboardModuleDefinition[] = [
+  // ── ESTRATEGIA ──────────────────────────────────────────────────────────────
+  {
+    moduleName: "flowchart",
+    path: "/flowchart",
+    defaultTitle: "Flujograma SIGE",
+    description: "Visualiza la estructura completa del Sistema Integrado de Gestión",
+    icon: "🔄",
+    group: "estrategia",
+  },
   {
     moduleName: "companyInfo",
     path: "/company-info",
@@ -17,6 +28,7 @@ export const DASHBOARD_MODULES: DashboardModuleDefinition[] = [
     defaultTitle: "Propósito, Misión, Visión",
     description: "Define los fundamentos estratégicos de tu empresa",
     icon: "🎯",
+    group: "estrategia",
   },
   {
     moduleName: "values",
@@ -25,6 +37,7 @@ export const DASHBOARD_MODULES: DashboardModuleDefinition[] = [
     defaultTitle: "Valores Empresariales",
     description: "Establece los valores que guían tu organización",
     icon: "💎",
+    group: "estrategia",
   },
   {
     moduleName: "policy",
@@ -33,22 +46,15 @@ export const DASHBOARD_MODULES: DashboardModuleDefinition[] = [
     defaultTitle: "Política",
     description: "Documenta la política del Sistema Integrado de Gestión",
     icon: "📋",
+    group: "estrategia",
   },
   {
-    moduleName: "organizationChart",
-    path: "/organization-chart",
-    labelKey: "sige_organization_chart",
-    defaultTitle: "Organigrama",
-    description: "Gestiona la estructura organizacional de tu empresa",
-    icon: "🏢",
-  },
-  {
-    moduleName: "processMap",
-    path: "/process-map",
-    labelKey: "sige_process_map",
-    defaultTitle: "Mapa de Procesos",
-    description: "Visualiza y gestiona los procesos empresariales",
-    icon: "🗺️",
+    moduleName: "foda",
+    path: "/foda",
+    defaultTitle: "FODA Empresarial",
+    description: "Consolida los FODA de procesos y crea el FODA general de la empresa",
+    icon: "📈",
+    group: "estrategia",
   },
   {
     moduleName: "strategicObjectives",
@@ -57,36 +63,65 @@ export const DASHBOARD_MODULES: DashboardModuleDefinition[] = [
     defaultTitle: "Objetivos Estratégicos",
     description: "Define los objetivos a largo plazo de la empresa",
     icon: "🎪",
+    group: "estrategia",
+  },
+  // ── GESTIÓN EMPRESARIAL ─────────────────────────────────────────────────────
+  {
+    moduleName: "processMap",
+    path: "/process-map",
+    labelKey: "sige_process_map",
+    defaultTitle: "Mapa de Procesos",
+    description: "Visualiza y gestiona los procesos empresariales",
+    icon: "🗺️",
+    group: "gestion",
   },
   {
-    moduleName: "foda",
-    path: "/foda",
-    defaultTitle: "FODA de Empresa",
-    description: "Consolida los FODA de procesos y crea el FODA general de la empresa",
-    icon: "📈",
-  },
-  {
-    moduleName: "auditsInspections",
+    moduleName: "managementSystems",
     path: "/audits-inspections",
-    defaultTitle: "Auditorías e Inspecciones",
+    defaultTitle: "Sistemas de Gestión",
     description:
-      "Con ellas se busca garantizar conformidad, mitigar riesgos y mejorar continuamente.",
+      "Gestiona sistemas de gestión, programas, auditorías, inspecciones y cumplimientos.",
     icon: "🔍",
+    group: "gestion",
   },
   {
-    moduleName: "indicators",
-    path: "/indicators",
-    labelKey: "sige_indicators",
-    defaultTitle: "Indicadores",
-    description: "Monitorea el desempeño de tu Sistema Integrado de Gestión",
+    moduleName: "organizationChart",
+    path: "/organization-chart",
+    labelKey: "sige_organization_chart",
+    defaultTitle: "Organigrama",
+    description: "Gestiona la estructura organizacional de tu empresa",
+    icon: "🏢",
+    group: "gestion",
+  },
+  // ── DESEMPEÑO ───────────────────────────────────────────────────────────────
+  {
+    moduleName: "performance",
+    path: "/performance",
+    defaultTitle: "Desempeño",
+    description: "Monitorea el desempeño integral del Sistema Integrado de Gestión",
     icon: "📊",
+    group: "desempeno",
+  },
+];
+
+export const MODULE_GROUPS = [
+  {
+    id: "estrategia" as const,
+    label: "Estrategia",
+    description: "Fundamentos estratégicos de la organización",
+    icon: "🏛️",
   },
   {
-    moduleName: "flowchart",
-    path: "/flowchart",
-    defaultTitle: "Flujograma SIGE",
-    description: "Visualiza la estructura completa del Sistema Integrado de Gestión",
-    icon: "🔄",
+    id: "gestion" as const,
+    label: "Gestión Empresarial",
+    description: "Operación y gestión de los procesos",
+    icon: "⚙️",
+  },
+  {
+    id: "desempeno" as const,
+    label: "Desempeño",
+    description: "Medición y seguimiento de resultados",
+    icon: "📊",
   },
 ];
 

@@ -2,8 +2,10 @@ import { useState, useMemo, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useLocation } from "wouter";
 import { ArrowLeft, MessageCircle } from "lucide-react";
+import { getAxisBackPath } from "@/lib/sessionScope";
 import FODAConsolidation from "@/components/FODA/FODAConsolidation";
 import FODACompany from "@/components/FODA/FODACompany";
 import { AIChatPanel } from "@/components/AIChatPanel";
@@ -17,6 +19,7 @@ import { trpc } from "@/lib/trpc";
  */
 export default function FODA() {
   const { user } = useAuth();
+  const { isManagerLogin } = useManagerAuth();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("consolidation");
   const [showAIChat, setShowAIChat] = useState(false);
@@ -51,8 +54,8 @@ export default function FODA() {
   }, [enterpriseVersions, companyId]);
 
   // Check if user is a manager
-  const isManagerAccess = localStorage.getItem("managerEmail") !== null;
-  const dashboardRoute = isManagerAccess ? "/manager-dashboard" : "/dashboard";
+  const isManagerAccess = localStorage.getItem('managerCompanyId') !== null;
+  const dashboardRoute = (isManagerAccess || isManagerLogin) ? getAxisBackPath("/manager-dashboard") : "/dashboard";
 
   const handleAIQuery = async (query: string): Promise<string> => {
     try {

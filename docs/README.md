@@ -7,6 +7,7 @@
 | [GUIA_MANUS.md](./GUIA_MANUS.md) | **Cliente / Manus:** Git, ramas, sync con `main`, push a staging |
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | GHCR, deploy automático y manual (`deploy-prod.sh`), fallback build local |
 | [GITHUB_SETUP.md](./GITHUB_SETUP.md) | Workflows, secretos de Actions, permisos GHCR |
+| [TESTING.md](./TESTING.md) | Vitest: unit, integración (MySQL), CI |
 | [INFRASTRUCTURE.md](./INFRASTRUCTURE.md) | Arquitectura de servicios (droplet, contenedores, S3, correo, OAuth) |
 | [BACKUP_SYSTEM.md](./BACKUP_SYSTEM.md) | Respaldos diarios a S3, cron, restauración |
 | [FILE_STORAGE.md](./FILE_STORAGE.md) | Subidas a S3, prefijos `uploads/`, URLs firmadas |

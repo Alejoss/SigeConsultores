@@ -149,7 +149,7 @@ export const exportStakeholderCriticalityToPDF = (stakeholders: StakeholderCriti
     // Table 2 Header
     const table2StartY = yPosition;
     const colWidths2 = [20, 25, 25, 25, 18, 18, 15];
-    const colLabels2 = ['Asociado', 'Defensas Existentes', 'Acción a Tomar', 'Observaciones', 'Fecha Inicio', 'Fecha Fin', 'Realizado'];
+    const colLabels2 = ['Asociado', 'Necesidades y Expectativas', 'Acción a Tomar', 'Observaciones', 'Fecha Inicio', 'Fecha Fin', 'Realizado'];
     const colX2 = [margin, margin + 20, margin + 45, margin + 70, margin + 95, margin + 113, margin + 131];
 
     // Draw header

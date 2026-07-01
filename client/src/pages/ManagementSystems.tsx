@@ -242,15 +242,6 @@ export default function ManagementSystems() {
           </div>
         </div>
 
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.xls,.xlsx"
-          className="hidden"
-          onChange={handleFileSelected}
-        />
-
         {isLoading ? (
           <div className="flex items-center gap-2 text-slate-500"><Loader2 className="animate-spin" size={18} /> Cargando...</div>
         ) : (
@@ -345,6 +336,15 @@ export default function ManagementSystems() {
             </Button>
           </div>
         )}
+
+        {/* Hidden file input - fuera del bloque condicional para evitar crash de insertBefore */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.xls,.xlsx"
+          className="hidden"
+          onChange={handleFileSelected}
+        />
 
         {/* File View Modal */}
         {modal?.mode === "view" && (

@@ -28,8 +28,11 @@ export interface AccionOTG {
 }
 export function calcularPorcentajeAccion(accion: AccionOTG): number {
   switch (accion.tipoSeguimiento) {
-    case 'puntual':
-      return Math.min(100, Math.max(0, Math.round(accion.valorPuntual ?? 0)));
+    case 'puntual': {
+      const llegada = accion.puntoLlegadaAccion ?? 0;
+      if (llegada === 0) return 0;
+      return Math.min(100, Math.max(0, Math.round(((accion.valorPuntual ?? 0) / llegada) * 100)));
+    }
     case 'mensual_sumatoria': {
       const vals = accion.monthlyValues || Array(12).fill(0);
       const suma = vals.reduce((s: number, v: number) => s + (v || 0), 0);
@@ -104,6 +107,14 @@ export interface MatrizFODARow {
   evidencia: string;
   
   // OTG
+  objetivoTactico?: string;
+  puntoPartida?: number;
+  puntoLlegada?: number;
+  unidadMedida?: string;
+  responsableOTG?: string;
+  alcanzado?: number;
+  porcentajeAlcanzadoOTG?: number;
+  fechaPlanificacionMejora?: string;
   acciones?: AccionOTG[];
   porcentajeCumplimiento?: number;
 

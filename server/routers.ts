@@ -7,7 +7,7 @@ import { managerCreationRouter } from "./routers/managerCreation";
 import { aiRouter } from "./routers/ai";
 import { publicProcedure, router, protectedProcedure, adminProcedure, companyProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { companies, companyValues, processes } from "../drizzle/schema";
+import { companies, companyValues, processes, companyTrainings } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import {
   createCompany,
@@ -104,6 +104,8 @@ import { matrixFODAPDFRouter } from "./routers/matrixFODAPDF";
 import { resourcesPDFRouter } from "./routers/resourcesPDF";
 import { organizationChartRouter } from "./routers/organizationChart";
 import { auditsInspectionsRouter } from "./routers/auditsInspections";
+import { managementProgramsRouter } from "./routers/managementPrograms";
+import { stakeholderSurveysRouter } from "./routers/stakeholderSurveys";
 
 // Module Customization Router
 const moduleCustomizationRouter = router({
@@ -858,6 +860,107 @@ export const appRouter = router({
   hierarchicalAccess: hierarchicalAccessRouter,
   documents: documentsRouter,
   auditsInspections: auditsInspectionsRouter,
+  managementPrograms: managementProgramsRouter,
+  stakeholderSurveys: stakeholderSurveysRouter,
+
+  // Company Trainings (Capacitaciones a nivel empresa)
+  companyTrainings: router({
+    create: companyProcedure
+      .input(z.object({
+        companyId: z.number(),
+        name: z.string(),
+        objective: z.string().optional(),
+        type: z.enum(["Mandatoria", "Reglamentaria", "Sugerida"]).optional(),
+        audience: z.string().optional(),
+        plannedAttendees: z.number().optional(),
+        modality: z.enum(["Presencial", "Online", "Externa"]).optional(),
+        responsible: z.string().optional(),
+        plannedDate: z.string().optional(),
+        conductedDate: z.string().optional(),
+        actualAttendees: z.number().optional(),
+        attendancePercentage: z.number().optional(),
+        completed: z.enum(["SI", "NO"]).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.insert(companyTrainings).values({
+          companyId: input.companyId,
+          name: input.name,
+          objective: input.objective || null,
+          type: input.type || "Mandatoria",
+          audience: input.audience || null,
+          plannedAttendees: input.plannedAttendees || 0,
+          modality: input.modality || "Presencial",
+          responsible: input.responsible || null,
+          plannedDate: input.plannedDate ? new Date(input.plannedDate) : null,
+          conductedDate: input.conductedDate ? new Date(input.conductedDate) : null,
+          actualAttendees: input.actualAttendees || 0,
+          attendancePercentage: input.attendancePercentage || 0,
+          completed: input.completed || null,
+        });
+        return { success: true };
+      }),
+
+    list: companyProcedure
+      .input(z.object({ companyId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        return db.select().from(companyTrainings)
+          .where(eq(companyTrainings.companyId, input.companyId));
+      }),
+
+    delete: companyProcedure
+      .input(z.object({ trainingId: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.delete(companyTrainings)
+          .where(eq(companyTrainings.id, input.trainingId));
+        return { success: true };
+      }),
+
+    update: companyProcedure
+      .input(z.object({
+        trainingId: z.number(),
+        name: z.string().optional(),
+        objective: z.string().optional(),
+        type: z.enum(["Mandatoria", "Reglamentaria", "Sugerida"]).optional(),
+        audience: z.string().optional(),
+        plannedAttendees: z.number().optional(),
+        modality: z.enum(["Presencial", "Online", "Externa"]).optional(),
+        responsible: z.string().optional(),
+        plannedDate: z.string().optional(),
+        conductedDate: z.string().optional(),
+        actualAttendees: z.number().optional(),
+        attendancePercentage: z.number().optional(),
+        completed: z.enum(["SI", "NO"]).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        const { trainingId, ...fields } = input;
+        await db.update(companyTrainings)
+          .set({
+            ...(fields.name !== undefined && { name: fields.name }),
+            ...(fields.objective !== undefined && { objective: fields.objective }),
+            ...(fields.type !== undefined && { type: fields.type }),
+            ...(fields.audience !== undefined && { audience: fields.audience }),
+            ...(fields.plannedAttendees !== undefined && { plannedAttendees: fields.plannedAttendees }),
+            ...(fields.modality !== undefined && { modality: fields.modality }),
+            ...(fields.responsible !== undefined && { responsible: fields.responsible }),
+            ...(fields.plannedDate !== undefined && { plannedDate: fields.plannedDate ? new Date(fields.plannedDate) : null }),
+            ...(fields.conductedDate !== undefined && { conductedDate: fields.conductedDate ? new Date(fields.conductedDate) : null }),
+            ...(fields.actualAttendees !== undefined && { actualAttendees: fields.actualAttendees }),
+            ...(fields.attendancePercentage !== undefined && { attendancePercentage: fields.attendancePercentage }),
+            ...(fields.completed !== undefined && { completed: fields.completed }),
+            updatedAt: new Date(),
+          })
+          .where(eq(companyTrainings.id, trainingId));
+        return { success: true };
+      }),
+  }),
 
   testEmail: adminProcedure
     .input(z.object({

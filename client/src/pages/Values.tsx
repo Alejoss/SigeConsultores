@@ -13,6 +13,7 @@ import { useState, useEffect } from "react";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
+import { getAxisBackPath } from "@/lib/sessionScope";
 import { exportValuesToPDF } from "@/lib/exportValuesToPDF";
 
 const MAX_VALUES = 15;
@@ -27,7 +28,7 @@ export default function Values() {
   
   // Check if this is being accessed by a manager
   const urlParams = new URLSearchParams(search);
-  const isManagerAccess = urlParams.get('isManager') === 'true';
+  const isManagerAccess = localStorage.getItem('managerCompanyId') !== null;
   const [companyId, setCompanyIdState] = useState<number | null>(() => {
     // If Process Leader, use their company ID from session
     if (isProcessLeader && processLeaderSession?.companyId) {
@@ -76,7 +77,7 @@ export default function Values() {
   
   // Back button handler
   const handleBack = () => {
-    setLocation(isProcessLeader ? "/process-leader-dashboard" : (isManagerAccess ? "/manager-dashboard" : "/dashboard"));
+    setLocation(isProcessLeader ? "/process-leader-dashboard" : ((isManagerAccess || isManagerLogin) ? getAxisBackPath("/manager-dashboard") : "/dashboard"));
   };
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);

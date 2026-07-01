@@ -13,6 +13,7 @@ import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
 
 import { exportPolicyToPDF } from "@/lib/exportPolicyToPDF";
+import { getAxisBackPath } from "@/lib/sessionScope";
 
 const POLICY_TEMPLATE = `POLÍTICA DEL SISTEMA INTEGRADO DE GESTIÓN
 
@@ -67,7 +68,7 @@ export default function Policy() {
   
   // Check if this is being accessed by a manager
   const urlParams = new URLSearchParams(search);
-  const isManagerAccess = urlParams.get('isManager') === 'true';
+  const isManagerAccess = localStorage.getItem('managerCompanyId') !== null;
   
   const [companyId, setCompanyIdState] = useState<number | null>(() => {
     // If Process Leader, use their company ID from session
@@ -117,7 +118,7 @@ export default function Policy() {
   
   // Back button handler
   const handleBack = () => {
-    setLocation(isProcessLeader ? "/process-leader-dashboard" : (isManagerAccess ? "/manager-dashboard" : "/dashboard"));
+    setLocation(isProcessLeader ? "/process-leader-dashboard" : ((isManagerAccess || isManagerLogin) ? getAxisBackPath("/manager-dashboard") : "/dashboard"));
   };
   const [policy, setPolicy] = useState("");
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);

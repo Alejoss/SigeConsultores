@@ -81,14 +81,16 @@ sige-app/
 | `pnpm build` | Cliente Vite + bundle del servidor a `dist/` |
 | `pnpm start` | Producción: `node dist/index.js` |
 | `pnpm check` | Typecheck (`tsc --noEmit`) |
-| `pnpm test` | Tests (Vitest) |
+| `pnpm test` | Tests unitarios + cliente (sin MySQL) |
+| `pnpm test:integration` | Tests de integración (requiere MySQL y `DATABASE_URL`) |
+| `pnpm test:all` | Todos los proyectos Vitest |
 | `pnpm format` | Prettier |
 | `pnpm db:push` | Sincroniza esquema con la BD (drizzle-kit push) |
 | `pnpm db:studio` | Drizzle Studio (requiere `DATABASE_URL` o `MYSQL_*`) |
 | `pnpm admin:create` | Crear superusuario (`-- --email ... --password ...`) |
 | `pnpm roles:seed` | Sembrar roles de plataforma |
 
-Tests en un archivo: `pnpm test -- server/__tests__/archivo.test.ts`.
+Tests en un archivo: `pnpm test:unit -- server/__tests__/archivo.test.ts`. Ver [docs/TESTING.md](docs/TESTING.md).
 
 ## Producción (Docker + GHCR)
 

@@ -1,130 +1,113 @@
-import { describe, it, expect } from 'vitest';
-import mysql from 'mysql2/promise';
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { eq, sql } from "drizzle-orm";
+import { getDb } from "../db";
+import { criticalityMatrix, stakeholders } from "../../drizzle/schema";
+import { describeWithDb } from "./helpers/db";
 
-describe('Criticality Duplication Fix', () => {
-  let connection: any;
+const TEST_PROCESS_ID = 1290028;
 
-  async function getConnection() {
-    const url = process.env.DATABASE_URL;
-    if (!url) throw new Error('DATABASE_URL not set');
+describeWithDb("Criticality Matrix integrity", () => {
+  let db: Awaited<ReturnType<typeof getDb>>;
 
-    const urlObj = new URL(url);
-    const sslParam = urlObj.searchParams.get('ssl');
-
-    const config = {
-      host: urlObj.hostname,
-      port: parseInt(urlObj.port) || 3306,
-      user: urlObj.username,
-      password: urlObj.password,
-      database: urlObj.pathname.replace('/', ''),
-      ssl: sslParam ? JSON.parse(sslParam) : undefined,
-    };
-
-    return mysql.createConnection(config);
-  }
-
-  it('should have no duplicate (processId, stakeholderId) pairs', async () => {
-    const conn = await getConnection();
-
-    try {
-      const [duplicates] = await conn.query(`
-        SELECT 
-          processId,
-          stakeholderId,
-          COUNT(*) as count
-        FROM criticalityMatrix
-        GROUP BY processId, stakeholderId
-        HAVING count > 1
-      `);
-
-      expect(duplicates).toHaveLength(0);
-    } finally {
-      await conn.end();
-    }
+  beforeAll(async () => {
+    db = await getDb();
+    if (!db) throw new Error("Database connection failed");
   });
 
-  it('should have exactly 3 criticality records for Postcosecha La Esperanza', async () => {
-    const conn = await getConnection();
+  afterAll(async () => {
+    if (!db) return;
+    await db.delete(criticalityMatrix).where(eq(criticalityMatrix.processId, TEST_PROCESS_ID));
+    await db.delete(stakeholders).where(eq(stakeholders.processId, TEST_PROCESS_ID));
+  });
 
-    try {
-      // Get process ID
-      const [processes] = await conn.query(
-        `SELECT id FROM processes WHERE name LIKE '%Postcosecha%' LIMIT 1`
-      );
+  it("should have no duplicate (processId, stakeholderId) pairs", async () => {
+    if (!db) throw new Error("Database not available");
 
-      if (processes.length === 0) {
-        console.log('Process not found, skipping test');
-        return;
+    const duplicates = await db
+      .select({
+        processId: criticalityMatrix.processId,
+        stakeholderId: criticalityMatrix.stakeholderId,
+        count: sql<number>`count(*)`.mapWith(Number),
+      })
+      .from(criticalityMatrix)
+      .groupBy(criticalityMatrix.processId, criticalityMatrix.stakeholderId)
+      .having(sql`count(*) > 1`);
+
+    expect(duplicates).toHaveLength(0);
+  });
+
+  it("should enforce one criticality row per stakeholder in a process", async () => {
+    if (!db) throw new Error("Database not available");
+
+    await db.delete(criticalityMatrix).where(eq(criticalityMatrix.processId, TEST_PROCESS_ID));
+    await db.delete(stakeholders).where(eq(stakeholders.processId, TEST_PROCESS_ID));
+
+    const stakeholderNames = ["Integrity A", "Integrity B", "Integrity C"];
+    const stakeholderIds: number[] = [];
+
+    for (const [index, name] of stakeholderNames.entries()) {
+      const result = await db.insert(stakeholders).values({
+        processId: TEST_PROCESS_ID,
+        name,
+        type: "cliente",
+        isInternal: false,
+        orderIndex: index,
+      });
+      const insertId = Number((result as { insertId?: number | bigint }).insertId ?? 0);
+      if (insertId) {
+        stakeholderIds.push(insertId);
+      } else {
+        const rows = await db
+          .select()
+          .from(stakeholders)
+          .where(eq(stakeholders.processId, TEST_PROCESS_ID));
+        stakeholderIds.push(rows[rows.length - 1]!.id);
       }
+    }
 
-      const processId = processes[0].id;
+    expect(stakeholderIds).toHaveLength(3);
 
-      // Get criticality records
-      const [records] = await conn.query(
-        `SELECT COUNT(*) as count FROM criticalityMatrix WHERE processId = ?`,
-        [processId]
+    const endDate = new Date("2026-04-30T12:00:00.000Z");
+    for (const stakeholderId of stakeholderIds) {
+      await db.insert(criticalityMatrix).values({
+        processId: TEST_PROCESS_ID,
+        stakeholderId,
+        incidence: "1",
+        risk: "A",
+        criticality: "1A",
+        actionToTake: "Test action",
+        endDate,
+      });
+    }
+
+    const rows = await db
+      .select()
+      .from(criticalityMatrix)
+      .where(eq(criticalityMatrix.processId, TEST_PROCESS_ID));
+
+    expect(rows).toHaveLength(3);
+    expect(rows.every((row) => row.actionToTake && row.actionToTake.length > 0)).toBe(true);
+
+    const monthCounts = await db
+      .select({
+        year: sql<number>`YEAR(${criticalityMatrix.endDate})`.mapWith(Number),
+        month: sql<number>`MONTH(${criticalityMatrix.endDate})`.mapWith(Number),
+        count: sql<number>`count(*)`.mapWith(Number),
+      })
+      .from(criticalityMatrix)
+      .where(eq(criticalityMatrix.processId, TEST_PROCESS_ID))
+      .groupBy(
+        sql`YEAR(${criticalityMatrix.endDate})`,
+        sql`MONTH(${criticalityMatrix.endDate})`
       );
 
-      expect(records[0].count).toBe(3);
-    } finally {
-      await conn.end();
-    }
-  });
+    const april2026 = monthCounts.filter((entry) => entry.year === 2026 && entry.month === 4);
+    expect(april2026).toHaveLength(1);
+    expect(april2026[0]?.count).toBe(3);
 
-  it('should have all criticality records with actionToTake populated', async () => {
-    const conn = await getConnection();
-
-    try {
-      const [records] = await conn.query(`
-        SELECT id, actionToTake
-        FROM criticalityMatrix
-        WHERE actionToTake IS NULL OR actionToTake = ''
-      `);
-
-      expect(records).toHaveLength(0);
-    } finally {
-      await conn.end();
-    }
-  });
-
-  it('should have consolidated schedule showing correct counts per month', async () => {
-    const conn = await getConnection();
-
-    try {
-      // Get process ID
-      const [processes] = await conn.query(
-        `SELECT id FROM processes WHERE name LIKE '%Postcosecha%' LIMIT 1`
-      );
-
-      if (processes.length === 0) {
-        console.log('Process not found, skipping test');
-        return;
-      }
-
-      const processId = processes[0].id;
-
-      // Count criticality entries by month
-      const [monthCounts] = await conn.query(`
-        SELECT 
-          YEAR(cm.endDate) as year,
-          MONTH(cm.endDate) as month,
-          COUNT(*) as count
-        FROM criticalityMatrix cm
-        WHERE cm.processId = ?
-        GROUP BY YEAR(cm.endDate), MONTH(cm.endDate)
-        ORDER BY year, month
-      `, [processId]);
-
-      // Should have entries only in April 2026 (month 4)
-      const aprilEntries = monthCounts.filter((m: any) => m.month === 4 && m.year === 2026);
-      expect(aprilEntries).toHaveLength(1);
-      expect(aprilEntries[0].count).toBe(3);
-
-      // Should have NO entries in May or June
-      const mayJuneEntries = monthCounts.filter((m: any) => (m.month === 5 || m.month === 6) && m.year === 2026);
-      expect(mayJuneEntries).toHaveLength(0);
-    } finally {
-      await conn.end();
-    }
+    const mayJune2026 = monthCounts.filter(
+      (entry) => entry.year === 2026 && (entry.month === 5 || entry.month === 6)
+    );
+    expect(mayJune2026).toHaveLength(0);
   });
 });

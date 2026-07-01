@@ -347,7 +347,7 @@ export default function TacticalDefinition() {
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900">DEFINICIÓN DE OBJETIVOS TÁCTICOS</h1>
+            <h1 className="text-3xl font-bold text-gray-900">OTE - DEFINICIÓN DE OBJETIVOS TÁCTICOS ESTRATÉGICOS</h1>
             {processId && <p className="text-sm text-gray-600 mt-1">Proceso: {processId}</p>}
           </div>
           <div className="flex gap-2">

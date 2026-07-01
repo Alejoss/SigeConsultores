@@ -1,0 +1,1967 @@
+﻿
+ RUN  v2.1.9 E:/SigeApp/sige-app
+
+ Ô£ô server/__tests__/tasksAverage.test.ts > Tasks Average Calculations > calculateTasksAverage > should return 0 when there are no tasks
+ Ô£ô server/__tests__/tasksAverage.test.ts > Tasks Average Calculations > calculateTasksAverage > should calculate average of 3 tasks correctly
+ Ô£ô server/__tests__/tasksAverage.test.ts > Tasks Average Calculations > calculateTasksAverage > should handle all tasks at 100%
+ Ô£ô server/__tests__/tasksAverage.test.ts > Tasks Average Calculations > calculateTasksAverage > should handle all tasks at 0%
+ Ô£ô server/__tests__/tasksAverage.test.ts > Tasks Average Calculations > calculateTasksAverage > should handle decimal percentages
+ Ô£ô server/__tests__/tasksAverage.test.ts > Tasks Average Calculations > calculateOTTasksAverage > should return 0 when there are no OOs
+ Ô£ô server/__tests__/tasksAverage.test.ts > Tasks Average Calculations > calculateOTTasksAverage > should calculate average of 2 OOs with tasks correctly
+ Ô£ô server/__tests__/tasksAverage.test.ts > Tasks Average Calculations > calculateOTTasksAverage > should handle OT with single OO
+ Ô£ô server/__tests__/tasksAverage.test.ts > Tasks Average Calculations > calculateOTTasksAverage > should match Agrogana scenario: OO1=75%, OO2=60%
+ Ô£ô server/__tests__/endToEndNeedsTransfer.test.ts > End-to-End Needs Transfer Workflow > should load all stakeholders with correct solicita and entrega data
+ Ô£ô server/__tests__/endToEndNeedsTransfer.test.ts > End-to-End Needs Transfer Workflow > should avoid duplicates when loading stakeholders
+ Ô£ô server/__tests__/endToEndNeedsTransfer.test.ts > End-to-End Needs Transfer Workflow > should preserve data integrity when updating existing stakeholders
+ Ô£ô server/__tests__/endToEndNeedsTransfer.test.ts > End-to-End Needs Transfer Workflow > should handle empty solicita and entrega fields
+ Ô£ô server/__tests__/endToEndNeedsTransfer.test.ts > End-to-End Needs Transfer Workflow > should correctly combine loaded stakeholders with existing ones
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email Function > should accept valid email options
+[EmailService] sendEmail queued (background) {
+  correlationId: '22bc36c4',
+  to: 'te***@example.com',
+  subject: 'Test Email'
+}
+
+node : stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email 
+Function > should accept valid email options
+En C:\Users\User\AppData\Local\Temp\ps-script-1f855693-76d3-4112-94e3-2105c28ce5b4.ps1: 109 Carácter: 35
++ ... p\sige-app; node .\node_modules\vitest\vitest.mjs run --reporter=verb ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (stderr | server...d email options:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email Function > should handle multiple recipients
+[EmailService] sendEmail queued (background) {
+  correlationId: '42b28e19',
+  to: 'te***@example.com, te***@example.com',
+  subject: 'Test Email'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email Function > 
+should handle multiple recipients
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email Function > should generate text content from HTML if not provided
+[EmailService] sendEmail queued (background) {
+  correlationId: 'b111251c',
+  to: 'te***@example.com',
+  subject: 'Test Email'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email Function > 
+should generate text content from HTML if not provided
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderAccessConfirmationEmail > should send process leader confirmation email
+[EmailService] sendEmail queued (background) {
+  correlationId: 'c9162cc2',
+  to: 'le***@example.com',
+  subject: 'Bienvenido a SIGE - Empresa Test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > 
+sendProcessLeaderAccessConfirmationEmail > should send process leader confirmation email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > should send access invitation email with valid parameters
+[EmailService] sendEmail queued (background) {
+  correlationId: '41dd4283',
+  to: 'co***@company.com',
+  subject: 'Acceso Confirmado - INVITATION_TOKEN_123'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > 
+should send access invitation email with valid parameters
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > should include company name in email
+[EmailService] sendEmail queued (background) {
+  correlationId: '1f9b3737',
+  to: 'co***@company.com',
+  subject: 'Acceso Confirmado - TOKEN_123'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > 
+should include company name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > should include expiration days in email
+[EmailService] sendEmail queued (background) {
+  correlationId: '820260fa',
+  to: 'co***@company.com',
+  subject: 'Acceso Confirmado - TOKEN_123'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > should handle default base URL
+[EmailService] sendEmail queued (background) {
+  correlationId: '0537c79e',
+  to: 'co***@company.com',
+  subject: 'Acceso Confirmado - TOKEN_123'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > 
+should include expiration days in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should send manager access invitation email with valid parameters
+[EmailService] sendEmail queued (background) {
+  correlationId: 'a31997a2',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Empresa Test S.A.'
+}
+
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > 
+should handle default base URL
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should send manager access invitation email with valid parameters
+[EmailService] Brevo diagnostics: {
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should include company name in email
+[EmailService] sendEmail queued (background) {
+  correlationId: 'a38321a4',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Manager Test Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should include setup link with token
+[EmailService] sendEmail queued (background) {
+  correlationId: '01ef085f',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should handle default base URL
+[EmailService] sendEmail queued (background) {
+  correlationId: '19b7530d',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > should send approval notification email with valid parameters
+[EmailService] sendEmail queued (background) {
+  correlationId: 'b32ae070',
+  to: 'ma***@example.com',
+  subject: 'Acceso Aprobado - Company Name'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > should include company name in email
+[EmailService] sendEmail queued (background) {
+  correlationId: '4fb19689',
+  to: 'ma***@example.com',
+  subject: 'Acceso Aprobado - Test Company Inc.'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > should include contact name in email
+[EmailService] sendEmail queued (background) {
+  correlationId: '9c6bca85',
+  to: 'ma***@example.com',
+  subject: 'Acceso Aprobado - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should send manager access invitation email with valid parameters
+[EmailService] sendEmail queued (background) {
+  correlationId: '13d08eeb',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Empresa Test S.A.'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should include company name in email
+[EmailService] sendEmail queued (background) {
+  correlationId: '35302daa',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Manager Test Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should include expiration days in email
+[EmailService] sendEmail queued (background) {
+  correlationId: 'ebec3c94',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should handle default base URL
+[EmailService] sendEmail queued (background) {
+  correlationId: 'a534de7d',
+  to: 'ma***@company.com',
+  subject: 'Invitaci├│n a SIGE - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail > should send process leader invitation email with valid parameters
+[ProcessLeaderInvitation] Queuing invitation email {
+  toDomain: 'company.com',
+  processName: 'Proceso de Ventas',
+  companyName: 'Empresa Test S.A.',
+  setupUrl: 'http://localhost:3000/setup-process-leader-password?token=LEADER_TOKEN_123'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: 'a07c89cc',
+  to: 'le***@company.com',
+  subject: 'Invitaci├│n - Jefe de Proceso "Proceso de Ventas" - Empresa Test S.A.'
+}
+
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should include company name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should include setup link with token
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should handle default base URL
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > 
+should send approval notification email with valid parameters
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > 
+should include company name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > 
+should include contact name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should send manager access invitation email with valid parameters
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should include company name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should include expiration days in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail 
+> should handle default base URL
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail 
+> should send process leader invitation email with valid parameters
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail > should include leader name in email
+[ProcessLeaderInvitation] Queuing invitation email {
+  toDomain: 'company.com',
+  processName: 'Process Name',
+  companyName: 'Company',
+  setupUrl: 'http://localhost:3000/setup-process-leader-password?token=TOKEN_123'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: '78cd15e0',
+  to: 'le***@company.com',
+  subject: 'Invitaci├│n - Jefe de Proceso "Process Name" - Company'
+}
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail 
+> should include leader name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail 
+> should include process name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail 
+> should include company name in email
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > 
+should handle all email types without errors
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > 
+should handle email addresses with special characters
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > 
+should handle long company names
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > 
+should handle special characters in user names
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > 
+should handle invalid email addresses gracefully
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > 
+should handle empty recipient list
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stderr | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > 
+should handle very long email content
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail > should include process name in email
+[ProcessLeaderInvitation] Queuing invitation email {
+  toDomain: 'company.com',
+  processName: 'Proceso de Log├¡stica',
+  companyName: 'Company',
+  setupUrl: 'http://localhost:3000/setup-process-leader-password?token=TOKEN_123'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: 'c089cd54',
+  to: 'le***@company.com',
+  subject: 'Invitaci├│n - Jefe de Proceso "Proceso de Log├¡stica" - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail > should include company name in email
+[ProcessLeaderInvitation] Queuing invitation email {
+  toDomain: 'company.com',
+  processName: 'Process',
+  companyName: 'Empresa Ejemplo S.A.',
+  setupUrl: 'http://localhost:3000/setup-process-leader-password?token=TOKEN_123'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: '055e5381',
+  to: 'le***@company.com',
+  subject: 'Invitaci├│n - Jefe de Proceso "Process" - Empresa Ejemplo S.A.'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > should handle all email types without errors
+[EmailService] sendEmail queued (background) {
+  correlationId: '417923e1',
+  to: 'le***@example.com',
+  subject: 'Bienvenido a SIGE - Company'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: '4b7c5ca3',
+  to: 'co***@example.com',
+  subject: 'Acceso Confirmado - TOKEN2'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: '2ada7703',
+  to: 'ma***@example.com',
+  subject: 'Acceso Aprobado - Company'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: '9ce437f1',
+  to: 'ma***@example.com',
+  subject: 'Invitaci├│n a SIGE - Company'
+}
+[ProcessLeaderInvitation] Queuing invitation email {
+  toDomain: 'example.com',
+  processName: 'Process',
+  companyName: 'Company',
+  setupUrl: 'http://localhost:3000/setup-process-leader-password?token=TOKEN6'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: '5546c56d',
+  to: 'le***@example.com',
+  subject: 'Invitaci├│n - Jefe de Proceso "Process" - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > should handle email addresses with special characters
+[EmailService] sendEmail queued (background) {
+  correlationId: '92466b5a',
+  to: 'us***@example.co.uk',
+  subject: 'Bienvenido a SIGE - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > should handle long company names
+[EmailService] sendEmail queued (background) {
+  correlationId: 'da5c274c',
+  to: 'co***@example.com',
+  subject: 'Acceso Confirmado - TOKEN'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > should handle special characters in user names
+[ProcessLeaderInvitation] Queuing invitation email {
+  toDomain: 'example.com',
+  processName: 'Process',
+  companyName: 'Company',
+  setupUrl: 'http://localhost:3000/setup-process-leader-password?token=TOKEN'
+}
+[EmailService] sendEmail queued (background) {
+  correlationId: '3e88df9a',
+  to: 'le***@example.com',
+  subject: 'Invitaci├│n - Jefe de Proceso "Process" - Company'
+}
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > should handle invalid email addresses gracefully
+[EmailService] sendEmail queued (background) { correlationId: 'ce7fb958', to: '***', subject: 'Test' }
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > should handle empty recipient list
+[EmailService] sendEmail queued (background) { correlationId: 'f48a1b01', to: '', subject: 'Test' }
+
+stdout | server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > should handle very long email content
+[EmailService] sendEmail queued (background) { correlationId: 'f152b41c', to: 'te***@example.com', subject: 'Test' }
+
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email Function > should accept valid email options
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email Function > should handle multiple recipients
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendEmail - Base Email Function > should generate text content from HTML if not provided
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderAccessConfirmationEmail > should send process leader confirmation email
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > should send access invitation email with valid parameters
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > should include company name in email
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > should include expiration days in email
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendAccessInvitationEmail > should handle default base URL
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should send manager access invitation email with valid parameters
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should include company name in email
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should include setup link with token
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should handle default base URL
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > should send approval notification email with valid parameters
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > should include company name in email
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendApprovalNotificationEmail > should include contact name in email
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should send manager access invitation email with valid parameters
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should include company name in email
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should include expiration days in email
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendManagerAccessInvitationEmail > should handle default base URL
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail > should send process leader invitation email with valid parameters
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail > should include leader name in email
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail > should include process name in email
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > sendProcessLeaderInvitationEmail > should include company name in email
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > should handle all email types without errors
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > should handle email addresses with special characters
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > should handle long company names
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Integration > should handle special characters in user names
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > should handle invalid email addresses gracefully
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > should handle empty recipient list
+ Ô£ô server/__tests__/emailService.test.ts > Email Service - Brevo Integration > Email Service Error Handling > should handle very long email content
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Complete Manager Invitation Flow > should complete full manager invitation workflow
+ Ô£ô server/__tests__/criticalityFinalDedup.test.ts > Consolidated Schedule - Final Criticality Deduplication (Action Only) > should deduplicate entries with same stakeholder and action but different endDates
+ Ô£ô server/__tests__/criticalityFinalDedup.test.ts > Consolidated Schedule - Final Criticality Deduplication (Action Only) > should handle 3 unique stakeholders with multiple duplicates per month
+ Ô£ô server/__tests__/criticalityFinalDedup.test.ts > Consolidated Schedule - Final Criticality Deduplication (Action Only) > should generate consistent IDs based on stakeholder and action only
+ Ô£ô server/__tests__/criticalityFinalDedup.test.ts > Consolidated Schedule - Final Criticality Deduplication (Action Only) > should keep the latest endDate when multiple entries exist
+ Ô£ô server/__tests__/criticalityFinalDedup.test.ts > Consolidated Schedule - Final Criticality Deduplication (Action Only) > should reduce 70 entries (3 stakeholders ├ù 23 duplicates) to 3
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Query Parameter Support > should parse processId from query params in ConsolidatedSchedule
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Query Parameter Support > should parse companyId from query params in Indicators
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Query Parameter Support > should handle multiple query params
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > ProcessLeader Context Support > should use processId from ProcessLeader context when available
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > ProcessLeader Context Support > should use companyId from ProcessLeader context when available
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > ID Resolution Priority > should prioritize query params over ProcessLeader context
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > ID Resolution Priority > should fall back to ProcessLeader context when no query params
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > ID Resolution Priority > should fall back to localStorage when no query params or context
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Query Enablement Logic > should enable query when processId > 0
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Query Enablement Logic > should disable query when processId = 0
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Query Enablement Logic > should enable query when companyId > 0
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Query Enablement Logic > should disable query when companyId = 0
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Redirect Prevention > should not trigger redirect when processId is valid
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Redirect Prevention > should not trigger redirect when companyId is valid
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Redirect Prevention > should prevent query execution when ID is 0 (avoiding UNAUTHORIZED)
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Multi-Role Support > should support Admin role with localStorage
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Multi-Role Support > should support ProcessLeader role with context
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Multi-Role Support > should support Manager role with query params
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Data Loading Flow > should load ConsolidatedSchedule data when processId is valid
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Data Loading Flow > should load Indicators data when companyId is valid
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Data Loading Flow > should not load data when IDs are invalid
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Error Prevention > should prevent UNAUTHORIZED errors by disabling queries with ID=0
+ Ô£ô server/__tests__/consolidatedScheduleIndicatorsFix.test.ts > ConsolidatedSchedule and Indicators - Data Loading Fixes > Error Prevention > should prevent redirect loop by ensuring valid IDs before queries
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Complete Manager Invitation Flow > should prevent manager login with wrong password
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Complete Manager Invitation Flow > should prevent login with expired invitation
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Complete Process Leader Invitation Flow > should complete full process leader invitation workflow
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Complete Process Leader Invitation Flow > should prevent process leader access if invitation rejected
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Multiple Managers and Leaders Scenario > should handle multiple managers in same company
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Multiple Managers and Leaders Scenario > should handle multiple process leaders for different processes
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Multiple Managers and Leaders Scenario > should handle same leader for multiple processes
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Real-world Scenarios > should handle Issael login scenario
+ Ô£ô server/__tests__/updateDefinitionPreservesPlanning.test.ts > Update Definition Preserves Planning Data - Bug #2 Final Fix > Scenario: User edits Definition field, Planning data should be preserved > should preserve planning data when updating metaLlegada in Definition
+ Ô£ô server/__tests__/updateDefinitionPreservesPlanning.test.ts > Update Definition Preserves Planning Data - Bug #2 Final Fix > Scenario: User edits Definition field, Planning data should be preserved > should preserve all planning fields when only one Definition field changes
+ Ô£ô server/__tests__/updateDefinitionPreservesPlanning.test.ts > Update Definition Preserves Planning Data - Bug #2 Final Fix > Scenario: User edits Definition field, Planning data should be preserved > should handle empty existing planning data gracefully
+ Ô£ô server/__tests__/updateDefinitionPreservesPlanning.test.ts > Update Definition Preserves Planning Data - Bug #2 Final Fix > Scenario: User edits Definition field, Planning data should be preserved > should preserve avanceMeta when updating Definition
+ Ô£ô server/__tests__/updateDefinitionPreservesPlanning.test.ts > Update Definition Preserves Planning Data - Bug #2 Final Fix > Scenario: User edits Definition field, Planning data should be preserved > should preserve resultKeys and category when updating any Definition field
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateTasksAverage - OO Level > should return 0 for empty tasks
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateTasksAverage - OO Level > should calculate weighted average correctly - Agrogana OO1 example
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateTasksAverage - OO Level > should handle single task correctly
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateTasksAverage - OO Level > should handle all tasks at 100%
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateTasksAverage - OO Level > should handle all tasks at 0%
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateTasksAverage - OO Level > should handle unequal weightings
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateTasksAverage - OO Level > should fallback to simple average when total weighting is 0
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateOTTasksAverage - OT Level > should return 0 for empty result keys
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateOTTasksAverage - OT Level > should calculate weighted average correctly - Agrogana OT example
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateOTTasksAverage - OT Level > should handle single OO correctly
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateOTTasksAverage - OT Level > should handle all OO at 100%
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateOTTasksAverage - OT Level > should handle all OO at 0%
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateOTTasksAverage - OT Level > should handle unequal OO weightings
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateOTTasksAverage - OT Level > should fallback to simple average when total OO ponderacion is 0
+ Ô£ô server/__tests__/tasksWeightedAverage.test.ts > Weighted Average Task Progress Calculation > calculateOTTasksAverage - OT Level > should handle complex nested scenario
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Real-world Scenarios > should handle Javier login scenario
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Real-world Scenarios > should handle ├üngela login scenario
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Error Handling and Edge Cases > should handle invitation token validation
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Error Handling and Edge Cases > should handle empty email gracefully
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Error Handling and Edge Cases > should handle null password gracefully
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Error Handling and Edge Cases > should handle concurrent invitation attempts
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Security Validations > should validate strong password requirements
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Security Validations > should reject weak passwords
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Security Validations > should prevent token reuse
+ Ô£ô server/__tests__/invitationsEndToEnd.test.ts > End-to-End Invitation Workflows > Security Validations > should validate email domain for corporate emails
+ ├ù server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitations Table Structure > should have processLeaderInvitations table defined
+   ÔåÆ expected undefined to be defined
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitations Table Structure > should have processOwners table defined
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitations Table Structure > should validate process leader invitation structure
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitations Table Structure > should validate process owner structure
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitation Workflow > should validate complete process leader invitation workflow
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitation Workflow > should validate process leader can be assigned to multiple processes
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitation Workflow > should validate process leader rejection workflow
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Email Validation > should validate process leader email format
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Email Validation > should reject invalid process leader email
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitation Token Management > should validate token format for process leaders
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitation Token Management > should validate token expiration for process leaders
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitation Token Management > should detect expired process leader token
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitation Status Transitions > should validate status transition from pending to accepted
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitation Status Transitions > should validate status transition from pending to rejected
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitation Status Transitions > should prevent invalid status transitions
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Uniqueness Constraints > should allow same leader for different processes in same company
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Uniqueness Constraints > should allow same leader for same process in different companies
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Uniqueness Constraints > should prevent duplicate leader for same process in same company
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitation Expiration > should validate invitation expires after 30 days
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader Invitation Expiration > should allow custom expiration days
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Manager Creating Process Leader Invitations > should validate manager can create invitation for process leader
+ Ô£ô server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Manager Creating Process Leader Invitations > should prevent manager from creating invitation for different company
+ Ôåô server/routers/__tests__/criticalityMatrix.test.ts > Criticality Matrix Router > should insert a new criticality matrix entry with action data
+ Ôåô server/routers/__tests__/criticalityMatrix.test.ts > Criticality Matrix Router > should update an existing criticality matrix entry
+ Ôåô server/routers/__tests__/criticalityMatrix.test.ts > Criticality Matrix Router > should retrieve criticality matrix entries for consolidated schedule
+ Ôåô server/routers/__tests__/criticalityMatrix.test.ts > Criticality Matrix Router > should handle NULL values for optional action fields
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should assign correct badge for Criticidad de Partes Interesadas
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should assign correct badge for Fortaleza FODA
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should assign correct badge for Oportunidad FODA
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should assign correct badge for Debilidad FODA
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should assign correct badge for Amenaza FODA
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should assign correct badge for Objetivo T├íctico
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should assign correct badge for Cumplimiento
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should assign correct badge for Capacitaci├│n
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should calculate days remaining correctly
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should identify overdue activities
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should extract criticality action data correctly
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should extract FODA action data correctly
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should extract tactical objective task data correctly
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should extract compliance data correctly
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should extract training data correctly
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should calculate training completion percentage
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should aggregate activities from all modules
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should sort activities by due date
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should validate badge color format
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should handle empty activity list
+ Ô£ô server/__tests__/consolidatedScheduleBadges.test.ts > Consolidated Schedule with Badges > should display completion percentage for objectives and compliance
+ Ô£ô server/__tests__/planningDataPersistence.test.ts > Planning Data Persistence - Bug Fix > savePlanning with all fields > should preserve all planning fields when saving
+ Ô£ô server/__tests__/planningDataPersistence.test.ts > Planning Data Persistence - Bug Fix > savePlanning with all fields > should update planning fields when provided
+ Ô£ô server/__tests__/planningDataPersistence.test.ts > Planning Data Persistence - Bug Fix > savePlanning with all fields > should handle empty input without losing data
+ Ô£ô server/__tests__/planningDataPersistence.test.ts > Planning Data Persistence - Bug Fix > loadPlanningData with all fields > should return all planning fields when loading
+ Ô£ô server/__tests__/planningDataPersistence.test.ts > Planning Data Persistence - Bug Fix > loadPlanningData with all fields > should provide defaults for missing fields
+ Ô£ô server/__tests__/planningDataPersistence.test.ts > Planning Data Persistence - Bug Fix > Data loss prevention > should not lose data when switching between Definition and Planning
+ Ô£ô server/__tests__/consolidatedScheduleIntegration.test.ts > Consolidated Schedule Integration > should parse stakeholder criticality JSON data correctly
+ Ô£ô server/__tests__/consolidatedScheduleIntegration.test.ts > Consolidated Schedule Integration > should parse FODA matrix JSON data correctly
+ Ô£ô server/__tests__/consolidatedScheduleIntegration.test.ts > Consolidated Schedule Integration > should parse tactical objectives planning data correctly
+ Ô£ô server/__tests__/consolidatedScheduleIntegration.test.ts > Consolidated Schedule Integration > should aggregate activities from multiple sources
+ Ô£ô server/__tests__/consolidatedScheduleIntegration.test.ts > Consolidated Schedule Integration > should sort activities by due date
+ Ô£ô server/__tests__/consolidatedScheduleIntegration.test.ts > Consolidated Schedule Integration > should filter activities by month
+ Ô£ô server/__tests__/consolidatedScheduleIntegration.test.ts > Consolidated Schedule Integration > should calculate completion percentage correctly
+ Ô£ô server/__tests__/consolidatedScheduleIntegration.test.ts > Consolidated Schedule Integration > should handle empty activity list
+ Ô£ô server/__tests__/consolidatedScheduleIntegration.test.ts > Consolidated Schedule Integration > should extract element type from activity
+ Ô£ô server/__tests__/consolidatedScheduleIntegration.test.ts > Consolidated Schedule Integration > should validate activity structure
+ Ô£ô server/__tests__/consolidatedScheduleIntegration.test.ts > Consolidated Schedule Integration > should calculate days remaining from due date
+ Ô£ô server/__tests__/consolidatedScheduleIntegration.test.ts > Consolidated Schedule Integration > should identify overdue activities
+ Ô£ô server/__tests__/consolidatedScheduleIntegration.test.ts > Consolidated Schedule Integration > should handle multiple activities on same date
+ ├ù server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Invitations Table Structure > should have managerInvitations table defined
+   ÔåÆ expected undefined to be defined
+ ├ù server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Invitations Table Structure > should have companyManagerCredentials table defined
+   ÔåÆ expected undefined to be defined
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Invitations Table Structure > should validate manager invitation structure
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Invitations Table Structure > should validate manager credentials structure
+ Ôåô server/routers/__tests__/consolidatedIndicators.test.ts > Consolidated Indicators Router > should calculate Criticidad Partes Interesadas correctly
+ Ôåô server/routers/__tests__/consolidatedIndicators.test.ts > Consolidated Indicators Router > should calculate Matriz FODA correctly
+ Ôåô server/routers/__tests__/consolidatedIndicators.test.ts > Consolidated Indicators Router > should calculate Objetivos T├ícticos correctly from planningData
+ Ôåô server/routers/__tests__/consolidatedIndicators.test.ts > Consolidated Indicators Router > should calculate Cumplimientos correctly
+ Ôåô server/routers/__tests__/consolidatedIndicators.test.ts > Consolidated Indicators Router > should calculate Capacitaciones correctly
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Password Hashing with bcryptjs > should hash password correctly with bcryptjs
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Password Hashing with bcryptjs > should verify hashed password correctly
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Password Hashing with bcryptjs > should reject incorrect password
+ ├ù server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Company Managers > should create a company manager
+   ÔåÆ Database not available
+ ├ù server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Company Managers > should get a company manager
+   ÔåÆ expected undefined to be defined
+ ├ù server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Company Managers > should get all managers for a company
+   ÔåÆ expected 0 to be greater than 0
+ ├ù server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Company Managers > should delete a company manager
+   ÔåÆ Database not available
+ Ôåô server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owner Invitations > should create a process owner invitation
+ Ôåô server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owner Invitations > should get a process owner invitation by token
+ Ôåô server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owner Invitations > should get all invitations for a company
+ Ôåô server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owner Invitations > should accept a process owner invitation
+ Ôåô server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owner Invitations > should not accept an already accepted invitation
+ ├ù server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owners > should create a process owner
+   ÔåÆ Database not available
+ ├ù server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owners > should get a process owner
+   ÔåÆ expected undefined to be defined
+ ├ù server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owners > should get all owners for a process
+   ÔåÆ expected 0 to be greater than 0
+ ├ù server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owners > should get all processes owned by a user
+   ÔåÆ expected 0 to be greater than 0
+ ├ù server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owners > should delete a process owner
+   ÔåÆ Database not available
+ ├ù server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Hierarchical Access Integration > should complete the full invitation flow
+   ÔåÆ Database not available
+ Ô£ô server/__tests__/defensasExistentesLoading.test.ts > Defensas Existentes Loading > should create a map of subprocess names to actions
+ Ô£ô server/__tests__/defensasExistentesLoading.test.ts > Defensas Existentes Loading > should match stakeholder names with subprocess names
+ Ô£ô server/__tests__/defensasExistentesLoading.test.ts > Defensas Existentes Loading > should load defensas existentes for all matching stakeholders
+ Ô£ô server/__tests__/defensasExistentesLoading.test.ts > Defensas Existentes Loading > should handle case-insensitive matching
+ Ô£ô server/__tests__/defensasExistentesLoading.test.ts > Defensas Existentes Loading > should handle bidirectional name matching
+ Ô£ô server/__tests__/defensasExistentesLoading.test.ts > Defensas Existentes Loading > should not overwrite existing defensas if no match found
+ Ô£ô server/__tests__/defensasExistentesLoading.test.ts > Defensas Existentes Loading > should handle empty subprocess actions gracefully
+ Ôåô server/__tests__/matrixFODAPDF.test.ts > Matrix FODA PDF Export > should preserve matrix data when exporting to PDF
+ Ôåô server/__tests__/matrixFODAPDF.test.ts > Matrix FODA PDF Export > should not modify data when reading for PDF export
+ Ôåô server/__tests__/matrixFODAPDF.test.ts > Matrix FODA PDF Export > should handle all FODA types correctly
+ Ôåô server/__tests__/matrixFODAPDF.test.ts > Matrix FODA PDF Export > should preserve all fields when exporting
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Password Hashing with bcryptjs > should handle special characters in password
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Invitation Workflow > should validate complete invitation workflow
+stdout | server/routers/__tests__/managerAuth.test.ts > Manager Auth Router
+Test setup: Created password hash
+
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Invitation Workflow > should validate manager can login after accepting invitation
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Invitation Workflow > should reject login with inactive credentials
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Token Generation and Validation > should validate token format
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Token Generation and Validation > should validate token expiration
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Token Generation and Validation > should detect expired token
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Email Validation > should validate email format
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Email Validation > should reject invalid email format
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Credentials Uniqueness > should ensure unique manager email per company
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Credentials Uniqueness > should prevent duplicate manager email in same company
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Invitation Status Transitions > should validate status transition from pending to accepted
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Invitation Status Transitions > should validate status transition from pending to rejected
+ Ô£ô server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Invitation Status Transitions > should prevent invalid status transitions
+ Ô£ô server/routers/__tests__/managerAuth.test.ts > Manager Auth Router > login procedure > should successfully login with correct credentials
+ Ô£ô server/__tests__/planningDataIntegrity.test.ts > Planning Data Integrity - Bug #2 Fix > loadPlanningData preserves all planning information > should load planning data correctly from JSON
+ Ô£ô server/__tests__/planningDataIntegrity.test.ts > Planning Data Integrity - Bug #2 Fix > loadPlanningData preserves all planning information > should calculate porcentajeMetaAlcanzado correctly when loading
+ Ô£ô server/__tests__/planningDataIntegrity.test.ts > Planning Data Integrity - Bug #2 Fix > loadPlanningData preserves all planning information > should not lose data when Definition changes and Planning is reloaded
+ Ô£ô server/__tests__/planningDataIntegrity.test.ts > Planning Data Integrity - Bug #2 Fix > loadPlanningData preserves all planning information > should handle empty planningData gracefully
+ Ô£ô server/__tests__/planningDataIntegrity.test.ts > Planning Data Integrity - Bug #2 Fix > loadPlanningData preserves all planning information > should preserve planning data even when resultKeys array is large
+ Ô£ô server/__tests__/planningDataIntegrity.test.ts > Planning Data Integrity - Bug #2 Fix > Merge logic for Definition + Planning data > should use planning data values when available
+ Ô£ô server/__tests__/planningDataIntegrity.test.ts > Planning Data Integrity - Bug #2 Fix > Merge logic for Definition + Planning data > should provide defaults when planning data is missing
+ Ô£ô server/routers/__tests__/managerAuth.test.ts > Manager Auth Router > login procedure > should fail login with incorrect password
+stderr | server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality
+Database not available, skipping procedures delete tests
+
+stderr | server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should create multiple 
+procedures for deletion testing
+Database not available, skipping test
+
+stderr | server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should delete a single 
+procedure
+Database not available or no test procedures, skipping test
+
+stderr | server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should delete multiple 
+procedures
+Database not available or not enough test procedures, skipping test
+
+stderr | server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should cascade delete 
+procedure records when procedure is deleted
+Database not available, skipping test
+
+stderr | server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should handle deletion of 
+non-existent procedure gracefully
+Database not available, skipping test
+
+ Ô£ô server/__tests__/procedures.test.ts > Procedures Module > should have procedures table defined
+ Ô£ô server/__tests__/procedures.test.ts > Procedures Module > should have procedureRecords table defined
+ Ô£ô server/__tests__/procedures.test.ts > Procedures Module > should validate procedure structure
+ Ô£ô server/__tests__/procedures.test.ts > Procedures Module > should validate procedure record structure
+ Ô£ô server/__tests__/procedures.test.ts > Procedures Module > should validate procedure with multiple records
+ Ô£ô server/__tests__/procedures.test.ts > Procedures Module > should validate Control de Documentos data structure
+ Ô£ô server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should create multiple procedures for deletion testing
+ Ô£ô server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should delete a single procedure
+ Ô£ô server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should delete multiple procedures
+ Ô£ô server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should cascade delete procedure records when procedure is deleted
+ Ô£ô server/__tests__/procedures.test.ts > Procedures Module - Delete Functionality > should handle deletion of non-existent procedure gracefully
+ Ô£ô server/__tests__/consolidatedScheduleFODAExtraction.test.ts > Consolidated Schedule - FODA Extraction > should extract FODA data with correct field names
+ Ô£ô server/__tests__/consolidatedScheduleFODAExtraction.test.ts > Consolidated Schedule - FODA Extraction > should handle FODA with null accionATomar
+ Ô£ô server/__tests__/consolidatedScheduleFODAExtraction.test.ts > Consolidated Schedule - FODA Extraction > should extract FODA type from foda field
+ Ô£ô server/__tests__/consolidatedScheduleFODAExtraction.test.ts > Consolidated Schedule - FODA Extraction > should calculate daysRemaining for FODA
+ Ô£ô server/__tests__/consolidatedScheduleFODAExtraction.test.ts > Consolidated Schedule - FODA Extraction > should validate FODA has required fields for consolidation
+ Ô£ô server/__tests__/consolidatedScheduleFODAExtraction.test.ts > Consolidated Schedule - FODA Extraction > should handle completion status from multiple fields
+ Ô£ô server/__tests__/consolidatedScheduleFODAExtraction.test.ts > Consolidated Schedule - FODA Extraction > should filter out FODA rows without action or date
+ Ô£ô server/__tests__/consolidatedScheduleFODAExtraction.test.ts > Consolidated Schedule - FODA Extraction > should parse FODA matrixData JSON correctly
+ Ô£ô server/__tests__/consolidatedScheduleFODAExtraction.test.ts > Consolidated Schedule - FODA Extraction > should extract FODA badge info correctly
+ Ô£ô server/__tests__/consolidatedScheduleFODAExtraction.test.ts > Consolidated Schedule - FODA Extraction > should handle FODA with empty accionATomar string
+ Ô£ô server/__tests__/consolidatedScheduleFODAExtraction.test.ts > Consolidated Schedule - FODA Extraction > should validate FODA extraction preserves all required fields
+ Ô£ô server/routers/__tests__/managerAuth.test.ts > Manager Auth Router > login procedure > should handle password with special characters
+ Ô£ô server/routers/__tests__/managerAuth.test.ts > Manager Auth Router > login procedure > should handle password with unicode characters
+ Ô£ô server/__tests__/criticalityNormalizedDedup.test.ts > Consolidated Schedule - Normalized Criticality Deduplication > should normalize actionToTake with different spacing and case
+ Ô£ô server/__tests__/criticalityNormalizedDedup.test.ts > Consolidated Schedule - Normalized Criticality Deduplication > should deduplicate entries with different startDate but same endDate
+ Ô£ô server/__tests__/criticalityNormalizedDedup.test.ts > Consolidated Schedule - Normalized Criticality Deduplication > should generate consistent IDs for normalized actions
+ Ô£ô server/__tests__/criticalityNormalizedDedup.test.ts > Consolidated Schedule - Normalized Criticality Deduplication > should handle 3 unique stakeholders with multiple duplicates each
+ Ô£ô server/__tests__/criticalityNormalizedDedup.test.ts > Consolidated Schedule - Normalized Criticality Deduplication > should preserve original actionToTake in output while using normalized for deduplication
+ Ô£ô server/__tests__/savePlanningJSONSanitization.test.ts > savePlanning JSON Sanitization - Fix for 80 Errors > Sanitize function should handle complex objects > should remove undefined values from objects
+ Ô£ô server/__tests__/savePlanningJSONSanitization.test.ts > savePlanning JSON Sanitization - Fix for 80 Errors > Sanitize function should handle complex objects > should handle arrays with undefined values
+ Ô£ô server/__tests__/savePlanningJSONSanitization.test.ts > savePlanning JSON Sanitization - Fix for 80 Errors > Sanitize function should handle complex objects > should skip function properties
+ Ô£ô server/__tests__/savePlanningJSONSanitization.test.ts > savePlanning JSON Sanitization - Fix for 80 Errors > Sanitize function should handle complex objects > should handle nested objects with mixed undefined and null values
+ Ô£ô server/__tests__/savePlanningJSONSanitization.test.ts > savePlanning JSON Sanitization - Fix for 80 Errors > Sanitize function should handle complex objects > should be JSON.stringify compatible after sanitization
+ Ô£ô server/__tests__/savePlanningJSONSanitization.test.ts > savePlanning JSON Sanitization - Fix for 80 Errors > Sanitize function should handle complex objects > should handle ResultKey objects from TacticalPlanning
+ Ô£ô server/__tests__/savePlanningJSONSanitization.test.ts > savePlanning JSON Sanitization - Fix for 80 Errors > Sanitize function should handle complex objects > should handle planning data merge scenario
+ Ô£ô server/__tests__/criticalityDeduplication.test.ts > Consolidated Schedule - Criticality Deduplication > should deduplicate criticality entries by (stakeholderId, actionToTake, startDate, endDate)
+ Ô£ô server/__tests__/criticalityDeduplication.test.ts > Consolidated Schedule - Criticality Deduplication > should generate consistent content-based IDs for identical criticality entries
+ Ô£ô server/__tests__/criticalityDeduplication.test.ts > Consolidated Schedule - Criticality Deduplication > should generate different IDs for different criticality entries
+ Ô£ô server/__tests__/criticalityDeduplication.test.ts > Consolidated Schedule - Criticality Deduplication > should handle empty criticality entries
+ Ô£ô server/__tests__/criticalityDeduplication.test.ts > Consolidated Schedule - Criticality Deduplication > should handle criticality entries with missing actionToTake or endDate
+ Ô£ô server/__tests__/criticalityDeduplication.test.ts > Consolidated Schedule - Criticality Deduplication > should preserve the first occurrence when duplicates exist
+ Ô£ô server/routers/__tests__/managerAuth.test.ts > Manager Auth Router > login procedure > should be case-sensitive for passwords 370ms
+stderr | server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 1: Capacitaciones - Campos 
+Responsable y Cumplido > Debe guardar el campo 'responsible' en capacitaciones
+Database not available, skipping test
+
+stderr | server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 1: Capacitaciones - Campos 
+Responsable y Cumplido > Debe guardar el campo 'completed' correctamente
+Database not available, skipping test
+
+stderr | server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 2: Matriz del FODA - Guardado de 
+Datos Completos > Debe tener el campo 'matrixData' en la tabla processFODA
+Database not available, skipping test
+
+stderr | server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 2: Matriz del FODA - Guardado de 
+Datos Completos > Debe permitir guardar JSON en matrixData
+Database not available, skipping test
+
+stderr | server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 3: Cronograma Consolidado - 
+Consolidaci├│n de Datos > Debe leer datos de m├║ltiples fuentes
+Database not available, skipping test
+
+ Ô£ô server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 1: Capacitaciones - Campos Responsable y Cumplido > Debe guardar el campo 'responsible' en capacitaciones
+ Ô£ô server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 1: Capacitaciones - Campos Responsable y Cumplido > Debe guardar el campo 'completed' correctamente
+ Ô£ô server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 2: Matriz del FODA - Guardado de Datos Completos > Debe tener el campo 'matrixData' en la tabla processFODA
+ Ô£ô server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 2: Matriz del FODA - Guardado de Datos Completos > Debe permitir guardar JSON en matrixData
+ Ô£ô server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 2: Matriz del FODA - Guardado de Datos Completos > Debe preservar todos los 52 campos de MatrizFODARow
+ Ô£ô server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 3: Cronograma Consolidado - Consolidaci├│n de Datos > Debe leer datos de m├║ltiples fuentes
+ Ô£ô server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Problema 3: Cronograma Consolidado - Consolidaci├│n de Datos > Debe consolidar actividades con fechas
+ Ô£ô server/__tests__/fixes.test.ts > Bug Fixes - Guardado de Datos > Integraci├│n: Guardado y Recuperaci├│n > Debe permitir guardar y recuperar datos sin p├®rdida
+ Ô£ô server/__tests__/directNeedsMapping.test.ts > Direct Needs Mapping - Solicita and Entrega > should map solicita and entrega fields directly from entrada to stakeholders
+ Ô£ô server/__tests__/directNeedsMapping.test.ts > Direct Needs Mapping - Solicita and Entrega > should handle empty solicita and entrega fields gracefully
+ Ô£ô server/__tests__/directNeedsMapping.test.ts > Direct Needs Mapping - Solicita and Entrega > should preserve multiline text in solicita and entrega
+ Ô£ô server/__tests__/directNeedsMapping.test.ts > Direct Needs Mapping - Solicita and Entrega > should avoid duplicates when loading stakeholders
+ Ô£ô server/__tests__/directNeedsMapping.test.ts > Direct Needs Mapping - Solicita and Entrega > should handle null/undefined values in entrada items
+ Ô£ô server/__tests__/directNeedsMapping.test.ts > Direct Needs Mapping - Solicita and Entrega > should correctly identify internal vs external stakeholders
+ Ô£ô server/__tests__/taskTypes.test.ts > Task Types - Puntual vs Mensual > Puntual Task Type (Direct %) > should accept percentage directly from 0-100
+ Ô£ô server/__tests__/taskTypes.test.ts > Task Types - Puntual vs Mensual > Puntual Task Type (Direct %) > should handle 0% completion
+ Ô£ô server/__tests__/taskTypes.test.ts > Task Types - Puntual vs Mensual > Puntual Task Type (Direct %) > should handle 100% completion
+ Ô£ô server/__tests__/taskTypes.test.ts > Task Types - Puntual vs Mensual > Mensual Task Type (Monthly Tracker) > should initialize with 12 months array
+ Ô£ô server/__tests__/taskTypes.test.ts > Task Types - Puntual vs Mensual > Mensual Task Type (Monthly Tracker) > should calculate percentage from monthly progress
+ Ô£ô server/__tests__/taskTypes.test.ts > Task Types - Puntual vs Mensual > Mensual Task Type (Monthly Tracker) > should calculate 100% when all months are completed
+ Ô£ô server/__tests__/taskTypes.test.ts > Task Types - Puntual vs Mensual > Mensual Task Type (Monthly Tracker) > should calculate 0% when no months are completed
+ Ô£ô server/__tests__/taskTypes.test.ts > Task Types - Puntual vs Mensual > Mensual Task Type (Monthly Tracker) > should calculate 8.33% for 1 month completed
+ Ô£ô server/__tests__/taskTypes.test.ts > Task Types - Puntual vs Mensual > Mensual Task Type (Monthly Tracker) > should handle toggling months on and off
+ Ô£ô server/__tests__/taskTypes.test.ts > Task Types - Puntual vs Mensual > Task Type Conversion > should preserve percentage when switching from puntual to mensual
+ Ô£ô server/__tests__/taskTypes.test.ts > Task Types - Puntual vs Mensual > Task Type Conversion > should preserve percentage when switching from mensual to puntual
+ Ô£ô server/__tests__/taskTypes.test.ts > Task Types - Puntual vs Mensual > Real-world Scenarios - Agrogana > Scenario 1: Tarea Puntual - "Implementar sistema ERP"
+ Ô£ô server/__tests__/taskTypes.test.ts > Task Types - Puntual vs Mensual > Real-world Scenarios - Agrogana > Scenario 2: Tarea Mensual - "Capacitaci├│n mensual del equipo"
+ Ô£ô server/__tests__/taskTypes.test.ts > Task Types - Puntual vs Mensual > Real-world Scenarios - Agrogana > Scenario 3: Tarea Mensual - "Revisi├│n de indicadores" (3 veces al a├▒o)
+ Ô£ô server/__tests__/stakeholderNeedsTransfer.test.ts > Stakeholder Needs Transfer from Subprocess Map > should combine solicita and entrega fields into necesidades text
+ Ô£ô server/__tests__/stakeholderNeedsTransfer.test.ts > Stakeholder Needs Transfer from Subprocess Map > should handle empty solicita and entrega fields
+ Ô£ô server/__tests__/stakeholderNeedsTransfer.test.ts > Stakeholder Needs Transfer from Subprocess Map > should create stakeholders with necesidades from subprocess map
+ Ô£ô server/__tests__/stakeholderNeedsTransfer.test.ts > Stakeholder Needs Transfer from Subprocess Map > should handle multiple stakeholders with different needs
+ Ô£ô server/__tests__/stakeholderNeedsTransfer.test.ts > Stakeholder Needs Transfer from Subprocess Map > should preserve formatting when combining needs
+ Ô£ô server/__tests__/stakeholderNeedsTransfer.test.ts > Stakeholder Needs Transfer from Subprocess Map > should handle null or undefined necesidades gracefully
+ Ô£ô server/__tests__/stakeholderUpdateLogic.test.ts > Stakeholder Update Logic > should update existing stakeholders with new data from subprocess map
+ Ô£ô server/__tests__/stakeholderUpdateLogic.test.ts > Stakeholder Update Logic > should handle empty solicita and entrega fields
+ Ô£ô server/__tests__/stakeholderUpdateLogic.test.ts > Stakeholder Update Logic > should correctly count updated and new stakeholders
+ ├ù server/routers/__tests__/criticalityMatrixWithStakeholders.test.ts > Criticality Matrix - getWithStakeholders > should retrieve criticality data with stakeholder information via JOIN
+   ÔåÆ Database not available
+ ├ù server/routers/__tests__/criticalityMatrixWithStakeholders.test.ts > Criticality Matrix - getWithStakeholders > should handle empty criticality data gracefully
+   ÔåÆ Database not available
+ ├ù server/routers/__tests__/criticalityMatrixWithStakeholders.test.ts > Criticality Matrix - getWithStakeholders > should preserve all criticality fields when joining with stakeholders
+   ÔåÆ Database not available
+ Ô£ô server/routers/__tests__/managerAuth.test.ts > Manager Auth Router > login procedure > should handle bcrypt with different rounds 1160ms
+ Ô£ô server/routers/__tests__/managerAuth.test.ts > Manager Auth Router > login procedure > should validate password requirements
+ Ô£ô server/routers/__tests__/managerAuth.test.ts > Manager Auth Router > checkEmail procedure > should validate email format
+ Ô£ô server/routers/__tests__/managerAuth.test.ts > managerLogin procedure > should validate that password must be at least 12 characters
+ Ô£ô server/routers/__tests__/managerAuth.test.ts > managerLogin procedure > should handle email validation for login
+ Ô£ô server/routers/__tests__/managerAuth.test.ts > managerLogin procedure > should verify password hash comparison logic 354ms
+ Ô£ô server/routers/__tests__/managerAuth.test.ts > managerLogin procedure > should ensure manager login returns required fields
+ Ô£ô server/routers/__tests__/managerAuth.test.ts > managerLogin procedure > should validate that email and password are required for login
+ Ô£ô server/__tests__/consolidatedScheduleDeduplication.test.ts > Consolidated Schedule Deduplication > should generate same ID for identical content
+ Ô£ô server/__tests__/consolidatedScheduleDeduplication.test.ts > Consolidated Schedule Deduplication > should generate different IDs for different content
+ Ô£ô server/__tests__/consolidatedScheduleDeduplication.test.ts > Consolidated Schedule Deduplication > should deduplicate activities with same ID
+ Ô£ô server/__tests__/consolidatedScheduleDeduplication.test.ts > Consolidated Schedule Deduplication > should preserve first occurrence when deduplicating
+ Ô£ô server/__tests__/consolidatedScheduleDeduplication.test.ts > Consolidated Schedule Deduplication > should handle empty activity list
+ Ô£ô server/__tests__/consolidatedScheduleDeduplication.test.ts > Consolidated Schedule Deduplication > should handle list with no duplicates
+ Ô£ô server/__tests__/consolidatedScheduleDeduplication.test.ts > Consolidated Schedule Deduplication > should sort activities by date after deduplication
+ Ô£ô server/__tests__/consolidatedScheduleFodaDedupFix.test.ts > Consolidated Schedule - FODA Deduplication with SQL LIMIT 1 > should generate consistent content hashes for identical FODA activities
+ Ô£ô server/__tests__/consolidatedScheduleFodaDedupFix.test.ts > Consolidated Schedule - FODA Deduplication with SQL LIMIT 1 > should generate different content hashes for different FODA activities
+ Ô£ô server/__tests__/consolidatedScheduleFodaDedupFix.test.ts > Consolidated Schedule - FODA Deduplication with SQL LIMIT 1 > should correctly parse FODA matrix data with multiple activities
+ Ô£ô server/__tests__/consolidatedScheduleFodaDedupFix.test.ts > Consolidated Schedule - FODA Deduplication with SQL LIMIT 1 > should deduplicate activities using Map with content-based IDs
+ Ô£ô server/__tests__/consolidatedScheduleFodaDedupFix.test.ts > Consolidated Schedule - FODA Deduplication with SQL LIMIT 1 > should handle empty FODA matrix data
+ Ô£ô server/__tests__/consolidatedScheduleFodaDedupFix.test.ts > Consolidated Schedule - FODA Deduplication with SQL LIMIT 1 > should correctly identify completed activities from FODA data
+ Ô£ô server/__tests__/consolidatedScheduleFodaDedupFix.test.ts > Consolidated Schedule - FODA Deduplication with SQL LIMIT 1 > should correctly sort activities by due date
+ Ô£ô server/__tests__/stakeholderCriticalityPersistence.test.ts > Stakeholder Criticality Database Persistence > should validate action data structure for database storage
+ Ô£ô server/__tests__/stakeholderCriticalityPersistence.test.ts > Stakeholder Criticality Database Persistence > should convert frontend completion status to database format
+ Ô£ô server/__tests__/stakeholderCriticalityPersistence.test.ts > Stakeholder Criticality Database Persistence > should convert frontend completion status 'No' to database format
+ Ô£ô server/__tests__/stakeholderCriticalityPersistence.test.ts > Stakeholder Criticality Database Persistence > should parse stakeholder ID from string to number
+ Ô£ô server/__tests__/stakeholderCriticalityPersistence.test.ts > Stakeholder Criticality Database Persistence > should handle invalid stakeholder ID gracefully
+ Ô£ô server/__tests__/stakeholderCriticalityPersistence.test.ts > Stakeholder Criticality Database Persistence > should validate date format for database storage
+ Ô£ô server/__tests__/stakeholderCriticalityPersistence.test.ts > Stakeholder Criticality Database Persistence > should filter stakeholders with action data for database save
+ Ô£ô server/__tests__/stakeholderCriticalityPersistence.test.ts > Stakeholder Criticality Database Persistence > should handle multiple stakeholders save in parallel
+ Ô£ô server/__tests__/stakeholderCriticalityPersistence.test.ts > Stakeholder Criticality Database Persistence > should validate consolidated schedule data from stakeholder criticality
+ Ô£ô server/__tests__/stakeholderCriticalityPersistence.test.ts > Stakeholder Criticality Database Persistence > should calculate days remaining from end date
+ Ô£ô server/__tests__/stakeholderCriticalityPersistence.test.ts > Stakeholder Criticality Database Persistence > should handle overdue activities correctly
+ Ô£ô server/__tests__/stakeholderCriticalityPersistence.test.ts > Stakeholder Criticality Database Persistence > should validate stakeholder criticality update payload
+ Ô£ô server/__tests__/stakeholderCriticalityPersistence.test.ts > Stakeholder Criticality Database Persistence > should handle empty action data gracefully
+ Ôåô server/routers/__tests__/consolidatedSchedule.test.ts > Consolidated Schedule Router - Criticality Migration > should migrate criticality actions to consolidated schedule
+ Ôåô server/routers/__tests__/consolidatedSchedule.test.ts > Consolidated Schedule Router - Criticality Migration > should correctly filter criticality entries by actionToTake and endDate
+ Ôåô server/routers/__tests__/macroIndicators.test.ts > MacroIndicators - Postocosecha La Esperanza > should calculate Criticidad de Partes Interesadas correctly
+ Ôåô server/routers/__tests__/macroIndicators.test.ts > MacroIndicators - Postocosecha La Esperanza > should calculate all 5 indicators and average correctly
+ Ôåô server/__tests__/consolidatedIndicators.test.ts > Consolidated Indicators Calculation > should calculate criticality percentage from stakeholders
+ Ôåô server/__tests__/consolidatedIndicators.test.ts > Consolidated Indicators Calculation > should calculate compliance percentage
+ Ôåô server/__tests__/consolidatedIndicators.test.ts > Consolidated Indicators Calculation > should calculate training conducted percentage
+ Ôåô server/__tests__/consolidatedIndicators.test.ts > Consolidated Indicators Calculation > should calculate tactical objectives percentage
+ Ôåô server/__tests__/consolidatedIndicators.test.ts > Consolidated Indicators Calculation > should return all indicators in correct format
+ Ôåô server/__tests__/uniqueConstraintTest.test.ts > Criticality Matrix - UNIQUE Constraint > should allow creating one criticality entry per (processId, stakeholderId)
+ Ôåô server/__tests__/uniqueConstraintTest.test.ts > Criticality Matrix - UNIQUE Constraint > should allow creating entries for different stakeholders in same process
+ Ô£ô server/routers/__tests__/fodasRouter.test.ts > fodasRouter > should support all FODA types
+ Ô£ô server/routers/__tests__/fodasRouter.test.ts > fodasRouter > should track FODA element origin
+ Ô£ô server/routers/__tests__/fodasRouter.test.ts > fodasRouter > should support FODA element editing
+ Ô£ô server/routers/__tests__/fodasRouter.test.ts > fodasRouter > should support FODA selection tracking
+ Ô£ô server/routers/__tests__/fodasRouter.test.ts > fodasRouter > should validate FODA type enum
+ Ô£ô server/routers/__tests__/fodasRouter.test.ts > fodasRouter > should support grouping FODA by type
+ Ô£ô server/routers/__tests__/fodasRouter.test.ts > fodasRouter > should support justification field in FODA elements
+ Ô£ô server/routers/__tests__/fodasRouter.test.ts > fodasRouter > should allow optional justification field
+ Ô£ô server/routers/__tests__/fodasRouter.test.ts > fodasRouter > should update justification when editing FODA element
+ Ô£ô server/routers/__tests__/fodasRouter.test.ts > fodasRouter > should support adding custom FODA with justification
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > logRecovery > should create a recovery record with valid input
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > logRecovery > should handle partial recovery status
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > logRecovery > should handle failed recovery status
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > listRecoveries > should return paginated results
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > listRecoveries > should support filtering by company
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > listRecoveries > should handle pagination offsets
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > getRecovery > should retrieve a specific recovery record
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > getRecovery > should return null for non-existent recovery
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > authorizeRecovery > should authorize a recovery with admin credentials
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > authorizeRecovery > should set authorization date
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > Data Validation > should validate required fields in recovery input
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > Data Validation > should validate status enum values
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > Data Validation > should validate modulesRecovered as array
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > JSON Serialization > should serialize modulesRecovered array to JSON
+ Ô£ô server/__tests__/recovery.test.ts > Recovery Module > JSON Serialization > should deserialize modulesRecovered from JSON
+ Ôåô server/__tests__/upsertUser.test.ts > upsertUser - Email-based lookup for OAuth flow > should create a new user when neither openId nor email exists
+ Ôåô server/__tests__/upsertUser.test.ts > upsertUser - Email-based lookup for OAuth flow > should find user by email when openId doesn't exist (OAuth login after setup)
+ Ôåô server/__tests__/upsertUser.test.ts > upsertUser - Email-based lookup for OAuth flow > should preserve role when updating existing user
+ Ôåô server/__tests__/upsertUser.test.ts > upsertUser - Email-based lookup for OAuth flow > should update lastSignedIn on each login
+ Ôåô server/__tests__/upsertUser.test.ts > upsertUser - Email-based lookup for OAuth flow > should handle null email gracefully
+ Ôåô server/__tests__/processOwnerInvitationAccept.test.ts > Process Owner Invitation Acceptance Flow > should create a process owner invitation
+ Ôåô server/__tests__/processOwnerInvitationAccept.test.ts > Process Owner Invitation Acceptance Flow > should retrieve invitation by token
+ Ôåô server/__tests__/processOwnerInvitationAccept.test.ts > Process Owner Invitation Acceptance Flow > should accept invitation with correct access code
+ Ôåô server/__tests__/processOwnerInvitationAccept.test.ts > Process Owner Invitation Acceptance Flow > should mark invitation as accepted after acceptance
+ Ôåô server/__tests__/processOwnerInvitationAccept.test.ts > Process Owner Invitation Acceptance Flow > should not accept invitation twice with same token
+ Ôåô server/__tests__/processOwnerInvitationAccept.test.ts > Process Owner Invitation Acceptance Flow > should reject invitation with wrong access code
+ Ôåô server/__tests__/processOwnerInvitationAccept.test.ts > Process Owner Invitation Acceptance Flow > should handle expired invitations
+ Ô£ô server/__tests__/aiCriticalityIntegration.test.ts > AI Criticality Integration - HITO 4 > Criticality Module Prompts > should generate Criticality system prompt
+ Ô£ô server/__tests__/aiCriticalityIntegration.test.ts > AI Criticality Integration - HITO 4 > Criticality Module Prompts > Criticality prompt should mention stakeholder criticality
+ Ô£ô server/__tests__/aiCriticalityIntegration.test.ts > AI Criticality Integration - HITO 4 > Criticality Module Prompts > Criticality prompt should mention Incidence and Risk
+ Ô£ô server/__tests__/aiCriticalityIntegration.test.ts > AI Criticality Integration - HITO 4 > Criticality Module Prompts > Criticality prompt should mention business continuity
+ Ô£ô server/__tests__/aiCriticalityIntegration.test.ts > AI Criticality Integration - HITO 4 > Criticality Module Prompts > should generate user prompt for Criticality queries
+ Ô£ô server/__tests__/aiCriticalityIntegration.test.ts > AI Criticality Integration - HITO 4 > Criticality Context Data > should handle stakeholder context in prompts
+ Ô£ô server/__tests__/aiCriticalityIntegration.test.ts > AI Criticality Integration - HITO 4 > Criticality Context Data > should handle multiple stakeholders context
+ Ô£ô server/__tests__/aiCriticalityIntegration.test.ts > AI Criticality Integration - HITO 4 > Criticality Prompt Consistency > Criticality prompt should enforce confidentiality
+ Ô£ô server/__tests__/aiCriticalityIntegration.test.ts > AI Criticality Integration - HITO 4 > Criticality Prompt Consistency > Criticality prompt should be in Spanish
+ Ô£ô server/__tests__/aiCriticalityIntegration.test.ts > AI Criticality Integration - HITO 4 > Criticality Prompt Consistency > Criticality prompt should restrict to SIGE platform
+ Ô£ô server/__tests__/aiCriticalityIntegration.test.ts > AI Criticality Integration - HITO 4 > Criticality Prompt Consistency > Criticality prompt should provide actionable recommendations
+ Ô£ô server/__tests__/aiCriticalityIntegration.test.ts > AI Criticality Integration - HITO 4 > Criticality Analysis Guidance > should guide analysis of critical stakeholders
+ Ô£ô server/__tests__/aiCriticalityIntegration.test.ts > AI Criticality Integration - HITO 4 > Criticality Analysis Guidance > should suggest monitoring strategies
+ Ô£ô server/__tests__/aiCriticalityIntegration.test.ts > AI Criticality Integration - HITO 4 > Criticality Analysis Guidance > should help prioritize engagement efforts
+ Ô£ô server/__tests__/subprocessNeeds.test.ts > Subprocess Needs Extraction > should extract needs from entrada data
+ Ô£ô server/__tests__/subprocessNeeds.test.ts > Subprocess Needs Extraction > should handle duplicate needs
+ Ô£ô server/__tests__/subprocessNeeds.test.ts > Subprocess Needs Extraction > should extract needs with source information
+ Ô£ô server/__tests__/subprocessNeeds.test.ts > Subprocess Needs Extraction > should handle empty entrada data
+ Ô£ô server/__tests__/subprocessNeeds.test.ts > Subprocess Needs Extraction > should ignore empty or whitespace-only needs
+ ├ù server/routers/__tests__/processTacticalObjectives.test.ts > Tactical Planning Data Persistence > should save planning data to planningData column without overwriting strategicObjectiveDescription
+   ÔåÆ Database not available for testing
+ ├ù server/routers/__tests__/processTacticalObjectives.test.ts > Tactical Planning Data Persistence > should load planning data from planningData column correctly
+   ÔåÆ Database not available for testing
+ ├ù server/routers/__tests__/processTacticalObjectives.test.ts > Tactical Planning Data Persistence > should handle empty planningData gracefully
+   ÔåÆ Database not available for testing
+ ├ù server/routers/__tests__/processTacticalObjectives.test.ts > Tactical Planning Data Persistence > should preserve both strategicObjectiveDescription and planningData independently
+   ÔåÆ Database not available for testing
+stderr | server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada > 
+should extract metaAlcanzada from planningData
+Database not available, skipping test
+
+stderr | server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada > 
+should calculate average metaAlcanzada across multiple objectives
+Database not available, skipping test
+
+stderr | server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada > 
+should handle missing metaAlcanzada gracefully
+Database not available, skipping test
+
+stderr | server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada > 
+should handle negative metaAlcanzada values
+Database not available, skipping test
+
+ Ô£ô server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada > should extract metaAlcanzada from planningData
+ Ô£ô server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada > should calculate average metaAlcanzada across multiple objectives
+ Ô£ô server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada > should handle missing metaAlcanzada gracefully
+ Ô£ô server/__tests__/consolidatedIndicatorsMetaAlcanzada.test.ts > Consolidated Indicators - Meta Alcanzada > should handle negative metaAlcanzada values
+ Ôåô server/__tests__/resourcesPDF.test.ts > Resources PDF Export > should preserve resource data when exporting to PDF
+ Ôåô server/__tests__/resourcesPDF.test.ts > Resources PDF Export > should preserve participant data when exporting to PDF
+ Ôåô server/__tests__/resourcesPDF.test.ts > Resources PDF Export > should handle multiple resources per participant
+ Ôåô server/__tests__/resourcesPDF.test.ts > Resources PDF Export > should not modify data during PDF generation
+ Ô£ô server/__tests__/processMapStorage.test.ts > Process Map Storage by Company > should store process map image with company ID
+ Ô£ô server/__tests__/processMapStorage.test.ts > Process Map Storage by Company > should keep separate images for different companies
+ Ô£ô server/__tests__/processMapStorage.test.ts > Process Map Storage by Company > should retrieve correct image for specific company
+ Ô£ô server/__tests__/processMapStorage.test.ts > Process Map Storage by Company > should not affect other companies when deleting image
+ Ô£ô server/__tests__/processMapStorage.test.ts > Process Map Storage by Company > should handle company ID as part of storage key
+ Ô£ô server/__tests__/newCalculusSystem.test.ts > New Calculation System - Weighted Indicators > Level 2: % de Meta Alcanzado > should calculate % Meta Alcanzado correctly
+ Ô£ô server/__tests__/newCalculusSystem.test.ts > New Calculation System - Weighted Indicators > Level 2: % de Meta Alcanzado > should handle negative percentages
+ Ô£ô server/__tests__/newCalculusSystem.test.ts > New Calculation System - Weighted Indicators > Level 2: % de Meta Alcanzado > should clamp values between -100 and 100
+ Ô£ô server/__tests__/newCalculusSystem.test.ts > New Calculation System - Weighted Indicators > Level 3: % Alcanzado General PONDERADO > should calculate weighted achievement correctly
+ Ô£ô server/__tests__/newCalculusSystem.test.ts > New Calculation System - Weighted Indicators > Level 3: % Alcanzado General PONDERADO > should handle empty objectives
+ Ô£ô server/__tests__/newCalculusSystem.test.ts > New Calculation System - Weighted Indicators > % Previsto (Temporal Progress) > should calculate % Previsto based on elapsed days
+ Ô£ô server/__tests__/newCalculusSystem.test.ts > New Calculation System - Weighted Indicators > % Previsto (Temporal Progress) > should clamp % Previsto between 0 and 100
+ Ô£ô server/__tests__/newCalculusSystem.test.ts > New Calculation System - Weighted Indicators > % Diferencia (Ahead or Behind) > should calculate difference correctly
+ Ô£ô server/__tests__/newCalculusSystem.test.ts > New Calculation System - Weighted Indicators > % Diferencia (Ahead or Behind) > should handle negative differences
+ Ô£ô server/routers/__tests__/tacticalDefinitionJsonParsing.test.ts > TacticalDefinition JSON Parsing > should display plain text description as-is
+ Ô£ô server/routers/__tests__/tacticalDefinitionJsonParsing.test.ts > TacticalDefinition JSON Parsing > should parse JSON with description field and extract description
+ Ô£ô server/routers/__tests__/tacticalDefinitionJsonParsing.test.ts > TacticalDefinition JSON Parsing > should parse JSON with name field and extract name
+ Ô£ô server/routers/__tests__/tacticalDefinitionJsonParsing.test.ts > TacticalDefinition JSON Parsing > should handle JSON with only description field
+ Ô£ô server/routers/__tests__/tacticalDefinitionJsonParsing.test.ts > TacticalDefinition JSON Parsing > should handle JSON with only name field
+ Ô£ô server/routers/__tests__/tacticalDefinitionJsonParsing.test.ts > TacticalDefinition JSON Parsing > should handle complex JSON from planning data
+ Ô£ô server/routers/__tests__/tacticalDefinitionJsonParsing.test.ts > TacticalDefinition JSON Parsing > should handle empty string
+ Ô£ô server/routers/__tests__/tacticalDefinitionJsonParsing.test.ts > TacticalDefinition JSON Parsing > should handle null-like string values
+ Ô£ô server/routers/__tests__/tacticalDefinitionJsonParsing.test.ts > TacticalDefinition JSON Parsing > should handle malformed JSON gracefully
+ Ô£ô server/routers/__tests__/tacticalDefinitionJsonParsing.test.ts > TacticalDefinition JSON Parsing > should prioritize description over name when both exist
+ Ô£ô server/__tests__/consolidatedSchedule.test.ts > Consolidated Schedule > should filter activities by month correctly
+ Ô£ô server/__tests__/consolidatedSchedule.test.ts > Consolidated Schedule > should calculate month completion percentage
+ Ô£ô server/__tests__/consolidatedSchedule.test.ts > Consolidated Schedule > should determine correct status for overdue activities
+ Ô£ô server/__tests__/consolidatedSchedule.test.ts > Consolidated Schedule > should group activities by element type
+ Ô£ô server/__tests__/consolidatedSchedule.test.ts > Consolidated Schedule > should sort activities by due date
+ Ô£ô server/__tests__/consolidatedSchedule.test.ts > Consolidated Schedule > should have correct element colors mapping
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > getUserRole > should return ADMIN for admin users
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > getUserRole > should return GENERAL_MANAGER for regular OAuth users
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > getUserRole > should return COLLABORATOR for null user
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > canAccessCompany > should allow admin to access any company
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > canAccessCompany > should allow general manager to access their own company
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > canAccessCompany > should deny general manager access to other companies
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > canAccessCompany > should deny null user access
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > canEditCompany > should allow admin to edit any company
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > canEditCompany > should allow general manager to edit their own company
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > canEditCompany > should deny general manager edit access to other companies
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > canEditCompany > should deny null user edit access
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > canAccessProcess > should allow admin to access any process
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > canAccessProcess > should allow general manager to access any process in their company
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > canAccessProcess > should deny null user access
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > canEditProcess > should allow admin to edit any process
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > canEditProcess > should allow general manager to edit any process in their company
+ Ô£ô server/_core/rbac.test.ts > RBAC - Role-Based Access Control > canEditProcess > should deny null user edit access
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendEmail > should return true immediately without waiting
+[EmailService] sendEmail queued (background) { correlationId: 'f28a2beb', to: 'te***@example.com', subject: 'Test' }
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendEmail > should 
+return true immediately without waiting
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendEmail > should be non-blocking (return immediately)
+[EmailService] sendEmail queued (background) { correlationId: 'daa158b3', to: 'te***@example.com', subject: 'Test' }
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendEmail > should 
+be non-blocking (return immediately)
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendManagerAccessInvitationEmail > should return true immediately without waiting
+[EmailService] sendEmail queued (background) {
+  correlationId: 'e82ca095',
+  to: 'ma***@example.com',
+  subject: 'Invitaci├│n a SIGE - Test Company'
+}
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > 
+sendManagerAccessInvitationEmail > should return true immediately without waiting
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendManagerAccessInvitationEmail > should not be async
+[EmailService] sendEmail queued (background) {
+  correlationId: '6cf3af3e',
+  to: 'ma***@example.com',
+  subject: 'Invitaci├│n a SIGE - Test Company'
+}
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > 
+sendManagerAccessInvitationEmail > should not be async
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendManagerAccessConfirmationEmail > should return true immediately without waiting
+[ManagerAccessConfirmation] Attempting to send confirmation email to manager@example.com
+[ManagerAccessConfirmation] Login URL: https://localhost:3000/login
+[ManagerAccessConfirmation] Company: Test Company
+[EmailService] sendEmail queued (background) {
+  correlationId: 'feadfda8',
+  to: 'ma***@example.com',
+  subject: 'Bienvenido a SIGE - Test Company'
+}
+[ManagerAccessConfirmation] Email queued for sending
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > 
+sendManagerAccessConfirmationEmail > should return true immediately without waiting
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendManagerAccessConfirmationEmail > should not be async
+[ManagerAccessConfirmation] Attempting to send confirmation email to manager@example.com
+[ManagerAccessConfirmation] Login URL: http://localhost:3000/login
+[ManagerAccessConfirmation] Company: Test Company
+[EmailService] sendEmail queued (background) {
+  correlationId: '9b9fe0c6',
+  to: 'ma***@example.com',
+  subject: 'Bienvenido a SIGE - Test Company'
+}
+[ManagerAccessConfirmation] Email queued for sending
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > 
+sendManagerAccessConfirmationEmail > should not be async
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendProcessLeaderAccessConfirmationEmail > should return true immediately without waiting
+[EmailService] sendEmail queued (background) {
+  correlationId: 'e1209672',
+  to: 'le***@example.com',
+  subject: 'Bienvenido a SIGE - Test Company'
+}
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > 
+sendProcessLeaderAccessConfirmationEmail > should return true immediately without waiting
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+stdout | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendProcessLeaderAccessConfirmationEmail > should not be async
+[EmailService] sendEmail queued (background) {
+  correlationId: '1062c577',
+  to: 'le***@example.com',
+  subject: 'Bienvenido a SIGE - Test Company'
+}
+
+stderr | server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > 
+sendProcessLeaderAccessConfirmationEmail > should not be async
+[EmailService] Brevo diagnostics: {
+  reason: 'missing BREVO_API_KEY',
+  BREVO_API_KEY: 'MISSING',
+  BREVO_FROM_EMAIL: 'MISSING ÔÇö sending may fail',
+  BREVO_FROM_NAME: 'SIGE Consultores',
+  NODE_ENV: 'test'
+}
+
+ Ô£ô server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendEmail > should return true immediately without waiting
+ Ô£ô server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendEmail > should be non-blocking (return immediately)
+ Ô£ô server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendManagerAccessInvitationEmail > should return true immediately without waiting
+ Ô£ô server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendManagerAccessInvitationEmail > should not be async
+ Ô£ô server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendManagerAccessConfirmationEmail > should return true immediately without waiting
+ Ô£ô server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendManagerAccessConfirmationEmail > should not be async
+ Ô£ô server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendProcessLeaderAccessConfirmationEmail > should return true immediately without waiting
+ Ô£ô server/_core/__tests__/emailService.test.ts > Email Service - Non-blocking Optimization > sendProcessLeaderAccessConfirmationEmail > should not be async
+ ├ù server/__tests__/criticalityDuplicationFix.test.ts > Criticality Duplication Fix > should have no duplicate (processId, stakeholderId) pairs
+   ÔåÆ DATABASE_URL not set
+ ├ù server/__tests__/criticalityDuplicationFix.test.ts > Criticality Duplication Fix > should have exactly 3 criticality records for Postcosecha La Esperanza
+   ÔåÆ DATABASE_URL not set
+ ├ù server/__tests__/criticalityDuplicationFix.test.ts > Criticality Duplication Fix > should have all criticality records with actionToTake populated
+   ÔåÆ DATABASE_URL not set
+ ├ù server/__tests__/criticalityDuplicationFix.test.ts > Criticality Duplication Fix > should have consolidated schedule showing correct counts per month
+   ÔåÆ DATABASE_URL not set
+ Ô£ô server/lib/__tests__/parseStrategicObjective.test.ts > parseStrategicObjectiveDescription > should handle plain text
+ Ô£ô server/lib/__tests__/parseStrategicObjective.test.ts > parseStrategicObjectiveDescription > should extract description from JSON object
+ Ô£ô server/lib/__tests__/parseStrategicObjective.test.ts > parseStrategicObjectiveDescription > should extract name if description is missing
+ Ô£ô server/lib/__tests__/parseStrategicObjective.test.ts > parseStrategicObjectiveDescription > should handle complex JSON with category and goal fields
+ Ô£ô server/lib/__tests__/parseStrategicObjective.test.ts > parseStrategicObjectiveDescription > should handle JSON with only complex fields
+ Ô£ô server/lib/__tests__/parseStrategicObjective.test.ts > parseStrategicObjectiveDescription > should handle array of objects with description
+ Ô£ô server/lib/__tests__/parseStrategicObjective.test.ts > parseStrategicObjectiveDescription > should handle null and undefined
+ Ô£ô server/lib/__tests__/parseStrategicObjective.test.ts > parseStrategicObjectiveDescription > should handle empty string
+ Ô£ô server/lib/__tests__/parseStrategicObjective.test.ts > parseStrategicObjectiveDescription > should handle malformed JSON
+ Ô£ô server/lib/__tests__/parseStrategicObjective.test.ts > parseStrategicObjectiveDescription > should handle JSON with title field
+ Ô£ô server/lib/__tests__/parseStrategicObjective.test.ts > parseStrategicObjectiveDescription > should handle whitespace correctly
+ Ô£ô server/lib/__tests__/parseStrategicObjective.test.ts > parseStrategicObjectiveDescription > should handle the exact JSON from the bug report
+ Ô£ô server/routers/__tests__/processResources.test.ts > processResources Router - Schema Validation > should have participantId as optional FK field
+ Ô£ô server/routers/__tests__/processResources.test.ts > processResources Router - Schema Validation > should support multiple resources per participant
+ Ô£ô server/routers/__tests__/processResources.test.ts > processResources Router - Schema Validation > should support grouping resources by participant
+ Ô£ô server/routers/__tests__/processResources.test.ts > processResources Router - Schema Validation > should handle NULL resourceElements
+ Ô£ô server/routers/__tests__/processResources.test.ts > processResources Router - Schema Validation > should support backward compatibility with old field names
+ Ô£ô server/__tests__/aiRouterIntegration.test.ts > AI Router Integration - HITO 2 > SIGE Module Prompts > should generate SIGE-specific system prompt
+ Ô£ô server/__tests__/aiRouterIntegration.test.ts > AI Router Integration - HITO 2 > SIGE Module Prompts > SIGE prompt should mention Flujograma
+ Ô£ô server/__tests__/aiRouterIntegration.test.ts > AI Router Integration - HITO 2 > SIGE Module Prompts > SIGE prompt should mention 5 levels
+ Ô£ô server/__tests__/aiRouterIntegration.test.ts > AI Router Integration - HITO 2 > SIGE Module Prompts > SIGE prompt should mention modules
+ Ô£ô server/__tests__/aiRouterIntegration.test.ts > AI Router Integration - HITO 2 > SIGE Module Prompts > SIGE prompt should mention integration
+ Ô£ô server/__tests__/aiRouterIntegration.test.ts > AI Router Integration - HITO 2 > Prompt Consistency > all module prompts should contain Spanish language instruction
+ Ô£ô server/__tests__/aiRouterIntegration.test.ts > AI Router Integration - HITO 2 > Prompt Consistency > all module prompts should contain confidentiality notice
+ Ô£ô server/__tests__/aiRouterIntegration.test.ts > AI Router Integration - HITO 2 > Prompt Consistency > all module prompts should restrict to SIGE platform
+ Ô£ô server/__tests__/aiRouterIntegration.test.ts > AI Router Integration - HITO 2 > Query Validation > should validate query length constraints
+ Ô£ô server/__tests__/aiInfrastructure.test.ts > AI Infrastructure - HITO 1 > AI Service Availability > should have AI service available via tRPC router
+ Ô£ô server/__tests__/aiInfrastructure.test.ts > AI Infrastructure - HITO 1 > Prompts System > should generate system prompt
+ Ô£ô server/__tests__/aiInfrastructure.test.ts > AI Infrastructure - HITO 1 > Prompts System > should generate module-specific prompts
+ Ô£ô server/__tests__/aiInfrastructure.test.ts > AI Infrastructure - HITO 1 > Prompts System > SIGE prompt should mention Flujograma
+ Ô£ô server/__tests__/aiInfrastructure.test.ts > AI Infrastructure - HITO 1 > Prompts System > FODA prompt should mention FODA analysis
+ Ô£ô server/__tests__/aiInfrastructure.test.ts > AI Infrastructure - HITO 1 > Prompts System > Criticality prompt should mention stakeholder criticality
+ Ô£ô server/__tests__/aiInfrastructure.test.ts > AI Infrastructure - HITO 1 > Constraints > system prompt should enforce confidentiality
+ Ô£ô server/__tests__/aiInfrastructure.test.ts > AI Infrastructure - HITO 1 > Constraints > system prompt should restrict to SIGE platform only
+ Ô£ô server/__tests__/aiInfrastructure.test.ts > AI Infrastructure - HITO 1 > Constraints > system prompt should be in Spanish
+ Ô£ô server/__tests__/RecoveryForm.test.ts > RecoveryForm Component > Module Structure > should have all required top-level modules
+ Ô£ô server/__tests__/RecoveryForm.test.ts > RecoveryForm Component > Form Validation > should require company selection
+ Ô£ô server/__tests__/RecoveryForm.test.ts > RecoveryForm Component > Form Validation > should require recovery date
+ Ô£ô server/__tests__/RecoveryForm.test.ts > RecoveryForm Component > Form Validation > should accept valid date format
+ Ô£ô server/__tests__/RecoveryForm.test.ts > RecoveryForm Component > Module Selection > should allow selecting individual modules
+ Ô£ô server/__tests__/RecoveryForm.test.ts > RecoveryForm Component > Module Selection > should support selecting all modules
+ Ô£ô server/__tests__/RecoveryForm.test.ts > RecoveryForm Component > Recovery Data Structure > should create valid recovery object
+ Ôåô server/__tests__/getUserCompaniesFix.test.ts > getUserCompanies Fix > should return owned companies
+ Ôåô server/__tests__/getUserCompaniesFix.test.ts > getUserCompanies Fix > should return companies with access via userCompanyAccess
+ Ôåô server/__tests__/getUserCompaniesFix.test.ts > getUserCompanies Fix > should return both owned and access companies
+ Ôåô server/__tests__/getUserCompaniesFix.test.ts > getUserCompanies Fix > should not have duplicate companies
+ Ôåô server/__tests__/getUserCompaniesFix.test.ts > getUserCompanies Fix > should return empty array for user with no companies
+ Ô£ô server/routers/__tests__/managerInvitations.test.ts > Manager Invitations - Performance Optimization > create invitation > should return quickly without waiting for email
+ Ô£ô server/routers/__tests__/managerInvitations.test.ts > Manager Invitations - Performance Optimization > create invitation > should return invitation URL and token immediately
+ Ô£ô server/__tests__/tacticalObjectives.test.ts > Tactical Objectives Calculation > should calculate 0% when no objectives are completed
+ Ô£ô server/__tests__/tacticalObjectives.test.ts > Tactical Objectives Calculation > should calculate 50% when half objectives are completed
+ Ô£ô server/__tests__/tacticalObjectives.test.ts > Tactical Objectives Calculation > should calculate 100% when all objectives are completed
+ Ô£ô server/__tests__/tacticalObjectives.test.ts > Tactical Objectives Calculation > should calculate 33% when one of three objectives is completed
+ Ô£ô server/__tests__/documentTypeMapping.test.ts > Document Type Mapping > should map 'Policy' to 'Politica'
+ Ô£ô server/__tests__/documentTypeMapping.test.ts > Document Type Mapping > should map 'Values' to 'Varios'
+ Ô£ô server/__tests__/documentTypeMapping.test.ts > Document Type Mapping > should map 'StrategicObjectives' to 'Varios'
+ Ô£ô server/__tests__/documentTypeMapping.test.ts > Document Type Mapping > should return original type if not in map
+ Ô£ô server/__tests__/documentTypeMapping.test.ts > Document Type Mapping > should handle unknown types gracefully
+ Ô£ô server/__tests__/documentTypeMapping.test.ts > Document Type Mapping > should be case-sensitive
+ Ôåô server/routers/__tests__/managerCredentials.test.ts > Manager Credentials - Token Validation > should find a valid invitation token in managerInvitations table
+ Ôåô server/routers/__tests__/managerCredentials.test.ts > Manager Credentials - Token Validation > should detect expired invitation tokens
+ Ôåô server/routers/__tests__/managerCredentials.test.ts > Manager Credentials - Token Validation > should detect already used invitation tokens
+stdout | server/__tests__/tacticalSyncTest.test.ts > Tactical Objectives Data Sync > should verify planningData JSON structure
+Guardado en BD: {"ponderacion":25,"puntoPartida":50,"metaLlegada":75,"unidadMedida":"%"}
+Cargado desde BD: {
+  ponderacion: 25,
+  puntoPartida: 50,
+  metaLlegada: 75,
+  unidadMedida: '%'
+}
+
+ Ô£ô server/__tests__/tacticalSyncTest.test.ts > Tactical Objectives Data Sync > should verify planningData JSON structure
+ Ô£ô server/__tests__/tacticalSyncTest.test.ts > Tactical Objectives Data Sync > should handle empty planningData
+stdout | server/__tests__/tacticalObjectivesFixed.test.ts > Tactical Objectives - Fixed Schema
+Database not available, skipping tests
+
+ Ô£ô server/__tests__/tacticalObjectivesFixed.test.ts > Tactical Objectives - Fixed Schema > should create a tactical objective with only existing fields
+ Ô£ô server/__tests__/tacticalObjectivesFixed.test.ts > Tactical Objectives - Fixed Schema > should update a tactical objective with only existing fields
+ ├ù server/__tests__/moduleCustomization.test.ts > Module Customization > creates and retrieves a single customLabel per moduleName
+   ÔåÆ Database not available
+ ├ù server/__tests__/moduleCustomization.test.ts > Module Customization > overwrites the previous label for the same moduleName
+   ÔåÆ Database not available
+ ├ù server/__tests__/moduleCustomization.test.ts > Module Customization > clears customization when label is null
+   ÔåÆ Database not available
+ Ô£ô server/__tests__/moduleCustomization.test.ts > Module Customization > returns undefined for missing row
+ ├ù server/__tests__/moduleCustomization.test.ts > Module Customization > deletes a customization row
+   ÔåÆ Database not available
+ ├ù server/__tests__/moduleCustomization.test.ts > Module Customization > keeps different moduleName rows independent
+   ÔåÆ Database not available
+ ├ù server/__tests__/labelMappingFix.test.ts > CompanyInfo-style label mapping > builds title from three independent module rows
+   ÔåÆ Database not available
+ ├ù server/__tests__/moduleCustomizationFix.test.ts > Module customization isolation > keeps organigrama title independent from prop├│sito label
+   ÔåÆ Database not available
+stderr | server/__tests__/moduleCustomizationIntegration.test.ts > Module Customization Integration > persists one 
+customLabel per moduleName for a real company row
+Agrogana company not found, skipping
+
+ Ô£ô server/__tests__/moduleCustomizationIntegration.test.ts > Module Customization Integration > persists one customLabel per moduleName for a real company row
+ ├ù server/__tests__/moduleCustomizationDataMapping.test.ts > Module customization keys > does not mix labels between moduleName rows
+   ÔåÆ Database not available
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ» Failed Suites 15 ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+
+ FAIL  server/__tests__/consolidatedIndicators.test.ts > Consolidated Indicators Calculation
+Error: Database not available
+ ÔØ» server/__tests__/consolidatedIndicators.test.ts:32:13
+     30|     db = await getDb();
+     31|     if (!db) {
+     32|       throw new Error("Database not available");
+       |             ^
+     33|     }
+     34| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[1/47]ÔÄ»
+
+ FAIL  server/__tests__/getUserCompaniesFix.test.ts > getUserCompanies Fix
+Error: Database not available
+ ÔØ» server/__tests__/getUserCompaniesFix.test.ts:15:20
+     13|   beforeAll(async () => {
+     14|     db = await getDb();
+     15|     if (!db) throw new Error("Database not available");
+       |                    ^
+     16| 
+     17|     // Create test user
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[2/47]ÔÄ»
+
+ FAIL  server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owner Invitations
+Error: Database not available
+ ÔØ» Module.createProcessOwnerInvitation server/db.ts:1168:18
+    1166| ): Promise<ProcessOwnerInvitation> {
+    1167|   const db = await getDb();
+    1168|   if (!db) throw new Error("Database not available");
+       |                  ^
+    1169| 
+    1170|   const result = await db.insert(processOwnerInvitations).values({
+ ÔØ» server/__tests__/hierarchicalAccess.test.ts:85:26
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[3/47]ÔÄ»
+
+ FAIL  server/__tests__/matrixFODAPDF.test.ts > Matrix FODA PDF Export
+Error: Database not available
+ ÔØ» server/__tests__/matrixFODAPDF.test.ts:13:13
+     11|     db = await getDb();
+     12|     if (!db) {
+     13|       throw new Error('Database not available');
+       |             ^
+     14|     }
+     15|   });
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[4/47]ÔÄ»
+
+ FAIL  server/__tests__/processOwnerInvitationAccept.test.ts > Process Owner Invitation Acceptance Flow
+Error: Database not available
+ ÔØ» server/__tests__/processOwnerInvitationAccept.test.ts:28:20
+     26|   beforeAll(async () => {
+     27|     db = await getDb();
+     28|     if (!db) throw new Error("Database not available");
+       |                    ^
+     29| 
+     30|     // Create test user (Company Manager)
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[5/47]ÔÄ»
+
+ FAIL  server/__tests__/processStakeholderCriticality.test.ts [ server/__tests__/processStakeholderCriticality.test.ts 
+]
+Error: Failed to load url ../../db (resolved id: ../../db) in 
+E:/SigeApp/sige-app/server/__tests__/processStakeholderCriticality.test.ts. Does the file exist?
+ ÔØ» loadAndTransform node_modules/.pnpm/vite@5.4.20_@types+node@24.7.0_lightningcss@1.30.1/node_modules/vite/dist/node
+/chunks/dep-D_zLpgQd.js:51968:17
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[6/47]ÔÄ»
+
+ FAIL  server/__tests__/resourcesPDF.test.ts > Resources PDF Export
+Error: Database not available
+ ÔØ» server/__tests__/resourcesPDF.test.ts:14:20
+     12|   beforeAll(async () => {
+     13|     db = await getDb();
+     14|     if (!db) throw new Error('Database not available');
+       |                    ^
+     15| 
+     16|     // Create test data
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[7/47]ÔÄ»
+
+ FAIL  server/__tests__/uniqueConstraintTest.test.ts > Criticality Matrix - UNIQUE Constraint
+Error: Database connection failed
+ ÔØ» server/__tests__/uniqueConstraintTest.test.ts:14:20
+     12|   beforeAll(async () => {
+     13|     db = await getDb();
+     14|     if (!db) throw new Error("Database connection failed");
+       |                    ^
+     15| 
+     16|     // Clean up any existing test data
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[8/47]ÔÄ»
+
+ FAIL  server/__tests__/upsertUser.test.ts > upsertUser - Email-based lookup for OAuth flow
+Error: Database not available for tests
+ ÔØ» server/__tests__/upsertUser.test.ts:12:13
+     10|     db = await getDb();
+     11|     if (!db) {
+     12|       throw new Error("Database not available for tests");
+       |             ^
+     13|     }
+     14|   });
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[9/47]ÔÄ»
+
+ FAIL  server/routers/__tests__/consolidatedIndicators.test.ts > Consolidated Indicators Router
+Error: Database connection failed
+ ÔØ» server/routers/__tests__/consolidatedIndicators.test.ts:20:20
+     18|   beforeAll(async () => {
+     19|     db = await getDb();
+     20|     if (!db) throw new Error("Database connection failed");
+       |                    ^
+     21|     
+     22|     // Clean up any existing test data
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[10/47]ÔÄ»
+
+ FAIL  server/routers/__tests__/consolidatedSchedule.test.ts > Consolidated Schedule Router - Criticality Migration
+Error: Database connection failed
+ ÔØ» server/routers/__tests__/consolidatedSchedule.test.ts:16:20
+     14|   beforeAll(async () => {
+     15|     db = await getDb();
+     16|     if (!db) throw new Error("Database connection failed");
+       |                    ^
+     17|     
+     18|     // Clean up any existing test data
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[11/47]ÔÄ»
+
+ FAIL  server/routers/__tests__/criticalityMatrix.test.ts > Criticality Matrix Router
+Error: Database connection failed
+ ÔØ» server/routers/__tests__/criticalityMatrix.test.ts:13:20
+     11|   beforeAll(async () => {
+     12|     db = await getDb();
+     13|     if (!db) throw new Error("Database connection failed");
+       |                    ^
+     14| 
+     15|     // Clean up all test records from previous runs
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[12/47]ÔÄ»
+
+ FAIL  server/routers/__tests__/macroIndicators.test.ts > MacroIndicators - Postocosecha La Esperanza
+Error: Database not available
+ ÔØ» server/routers/__tests__/macroIndicators.test.ts:20:13
+     18|     db = await getDb();
+     19|     if (!db) {
+     20|       throw new Error("Database not available");
+       |             ^
+     21|     }
+     22| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[13/47]ÔÄ»
+
+ FAIL  server/routers/__tests__/managerCredentials.test.ts > Manager Credentials - Token Validation
+Error: Database not available
+ ÔØ» server/routers/__tests__/managerCredentials.test.ts:13:20
+     11|   beforeAll(async () => {
+     12|     db = await getDb();
+     13|     if (!db) throw new Error("Database not available");
+       |                    ^
+     14| 
+     15|     // Create a test company
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[14/47]ÔÄ»
+
+ FAIL  server/routers/__tests__/recovery.test.ts [ server/routers/__tests__/recovery.test.ts ]
+Error: Failed to load url @shared/const (resolved id: @shared/const) in E:/SigeApp/sige-app/server/_core/trpc.ts. Does 
+the file exist?
+ ÔØ» loadAndTransform node_modules/.pnpm/vite@5.4.20_@types+node@24.7.0_lightningcss@1.30.1/node_modules/vite/dist/node
+/chunks/dep-D_zLpgQd.js:51968:17
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[15/47]ÔÄ»
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ» Failed Tests 32 ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+
+ FAIL  server/__tests__/criticalityDuplicationFix.test.ts > Criticality Duplication Fix > should have no duplicate 
+(processId, stakeholderId) pairs
+Error: DATABASE_URL not set
+ ÔØ» getConnection server/__tests__/criticalityDuplicationFix.test.ts:9:21
+      7|   async function getConnection() {
+      8|     const url = process.env.DATABASE_URL;
+      9|     if (!url) throw new Error('DATABASE_URL not set');
+       |                     ^
+     10| 
+     11|     const urlObj = new URL(url);
+ ÔØ» server/__tests__/criticalityDuplicationFix.test.ts:27:24
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[16/47]ÔÄ»
+
+ FAIL  server/__tests__/criticalityDuplicationFix.test.ts > Criticality Duplication Fix > should have exactly 3 
+criticality records for Postcosecha La Esperanza
+Error: DATABASE_URL not set
+ ÔØ» getConnection server/__tests__/criticalityDuplicationFix.test.ts:9:21
+      7|   async function getConnection() {
+      8|     const url = process.env.DATABASE_URL;
+      9|     if (!url) throw new Error('DATABASE_URL not set');
+       |                     ^
+     10| 
+     11|     const urlObj = new URL(url);
+ ÔØ» server/__tests__/criticalityDuplicationFix.test.ts:47:24
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[17/47]ÔÄ»
+
+ FAIL  server/__tests__/criticalityDuplicationFix.test.ts > Criticality Duplication Fix > should have all criticality 
+records with actionToTake populated
+Error: DATABASE_URL not set
+ ÔØ» getConnection server/__tests__/criticalityDuplicationFix.test.ts:9:21
+      7|   async function getConnection() {
+      8|     const url = process.env.DATABASE_URL;
+      9|     if (!url) throw new Error('DATABASE_URL not set');
+       |                     ^
+     10| 
+     11|     const urlObj = new URL(url);
+ ÔØ» server/__tests__/criticalityDuplicationFix.test.ts:75:24
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[18/47]ÔÄ»
+
+ FAIL  server/__tests__/criticalityDuplicationFix.test.ts > Criticality Duplication Fix > should have consolidated 
+schedule showing correct counts per month
+Error: DATABASE_URL not set
+ ÔØ» getConnection server/__tests__/criticalityDuplicationFix.test.ts:9:21
+      7|   async function getConnection() {
+      8|     const url = process.env.DATABASE_URL;
+      9|     if (!url) throw new Error('DATABASE_URL not set');
+       |                     ^
+     10| 
+     11|     const urlObj = new URL(url);
+ ÔØ» server/__tests__/criticalityDuplicationFix.test.ts:91:24
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[19/47]ÔÄ»
+
+ FAIL  server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Company Managers > should create 
+a company manager
+Error: Database not available
+ ÔØ» Module.createCompanyManager server/db.ts:1098:18
+    1096| export async function createCompanyManager(companyId: number, accountIÔÇª
+    1097|   const db = await getDb();
+    1098|   if (!db) throw new Error("Database not available");
+       |                  ^
+    1099| 
+    1100|   const result = await db.insert(companyManagers).values({
+ ÔØ» server/__tests__/hierarchicalAccess.test.ts:40:23
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[20/47]ÔÄ»
+
+ FAIL  server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Company Managers > should get a 
+company manager
+AssertionError: expected undefined to be defined
+ ÔØ» server/__tests__/hierarchicalAccess.test.ts:51:23
+     49|       const manager = await getCompanyManager(TEST_COMPANY_ID, TEST_USÔÇª
+     50| 
+     51|       expect(manager).toBeDefined();
+       |                       ^
+     52|       expect(manager?.companyId).toBe(TEST_COMPANY_ID);
+     53|       expect(manager?.userId).toBe(TEST_USER_ID);
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[21/47]ÔÄ»
+
+ FAIL  server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Company Managers > should get 
+all managers for a company
+AssertionError: expected 0 to be greater than 0
+ ÔØ» server/__tests__/hierarchicalAccess.test.ts:60:31
+     58| 
+     59|       expect(managers).toBeDefined();
+     60|       expect(managers.length).toBeGreaterThan(0);
+       |                               ^
+     61|       expect(managers[0].companyId).toBe(TEST_COMPANY_ID);
+     62|     });
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[22/47]ÔÄ»
+
+ FAIL  server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Company Managers > should delete 
+a company manager
+Error: Database not available
+ ÔØ» Module.deleteCompanyManager server/db.ts:1148:18
+    1146| export async function deleteCompanyManager(companyId: number, accountIÔÇª
+    1147|   const db = await getDb();
+    1148|   if (!db) throw new Error("Database not available");
+       |                  ^
+    1149| 
+    1150|   await db
+ ÔØ» server/__tests__/hierarchicalAccess.test.ts:65:7
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[23/47]ÔÄ»
+
+ FAIL  server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owners > should create a 
+process owner
+Error: Database not available
+ ÔØ» Module.createProcessOwner server/db.ts:1290:18
+    1288| ): Promise<ProcessOwner> {
+    1289|   const db = await getDb();
+    1290|   if (!db) throw new Error("Database not available");
+       |                  ^
+    1291| 
+    1292|   const result = await db.insert(processOwners).values({
+ ÔØ» server/__tests__/hierarchicalAccess.test.ts:173:21
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[24/47]ÔÄ»
+
+ FAIL  server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owners > should get a 
+process owner
+AssertionError: expected undefined to be defined
+ ÔØ» server/__tests__/hierarchicalAccess.test.ts:190:21
+    188|       const owner = await getProcessOwner(TEST_PROCESS_ID, TEST_USER_IÔÇª
+    189| 
+    190|       expect(owner).toBeDefined();
+       |                     ^
+    191|       expect(owner?.processId).toBe(TEST_PROCESS_ID);
+    192|       expect(owner?.userId).toBe(TEST_USER_ID_2);
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[25/47]ÔÄ»
+
+ FAIL  server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owners > should get all 
+owners for a process
+AssertionError: expected 0 to be greater than 0
+ ÔØ» server/__tests__/hierarchicalAccess.test.ts:199:29
+    197| 
+    198|       expect(owners).toBeDefined();
+    199|       expect(owners.length).toBeGreaterThan(0);
+       |                             ^
+    200|       expect(owners[0].processId).toBe(TEST_PROCESS_ID);
+    201|     });
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[26/47]ÔÄ»
+
+ FAIL  server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owners > should get all 
+processes owned by a user
+AssertionError: expected 0 to be greater than 0
+ ÔØ» server/__tests__/hierarchicalAccess.test.ts:207:32
+    205| 
+    206|       expect(processes).toBeDefined();
+    207|       expect(processes.length).toBeGreaterThan(0);
+       |                                ^
+    208|       expect(processes[0].userId).toBe(TEST_USER_ID_2);
+    209|     });
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[27/47]ÔÄ»
+
+ FAIL  server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Process Owners > should delete a 
+process owner
+Error: Database not available
+ ÔØ» Module.deleteProcessOwner server/db.ts:1360:18
+    1358| export async function deleteProcessOwner(processId: number, accountId:ÔÇª
+    1359|   const db = await getDb();
+    1360|   if (!db) throw new Error("Database not available");
+       |                  ^
+    1361| 
+    1362|   await db
+ ÔØ» server/__tests__/hierarchicalAccess.test.ts:212:7
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[28/47]ÔÄ»
+
+ FAIL  server/__tests__/hierarchicalAccess.test.ts > Hierarchical Access Management > Hierarchical Access Integration 
+> should complete the full invitation flow
+Error: Database not available
+ ÔØ» Module.createCompanyManager server/db.ts:1098:18
+    1096| export async function createCompanyManager(companyId: number, accountIÔÇª
+    1097|   const db = await getDb();
+    1098|   if (!db) throw new Error("Database not available");
+       |                  ^
+    1099| 
+    1100|   const result = await db.insert(companyManagers).values({
+ ÔØ» server/__tests__/hierarchicalAccess.test.ts:226:23
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[29/47]ÔÄ»
+
+ FAIL  server/__tests__/labelMappingFix.test.ts > CompanyInfo-style label mapping > builds title from three 
+independent module rows
+Error: Database not available
+ ÔØ» Module.upsertModuleCustomization server/db.ts:1039:18
+    1037| ) {
+    1038|   const db = await getDb();
+    1039|   if (!db) throw new Error("Database not available");
+       |                  ^
+    1040| 
+    1041|   const existing = await getModuleCustomization(companyId, moduleName);
+ ÔØ» server/__tests__/labelMappingFix.test.ts:19:5
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[30/47]ÔÄ»
+
+ FAIL  server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Invitations Table Structure 
+> should have managerInvitations table defined
+AssertionError: expected undefined to be defined
+ ÔØ» server/__tests__/managerInvitations.test.ts:8:34
+      6|   describe("Manager Invitations Table Structure", () => {
+      7|     it("should have managerInvitations table defined", () => {
+      8|       expect(managerInvitations).toBeDefined();
+       |                                  ^
+      9|     });
+     10| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[31/47]ÔÄ»
+
+ FAIL  server/__tests__/managerInvitations.test.ts > Manager Invitations Module > Manager Invitations Table Structure 
+> should have companyManagerCredentials table defined
+AssertionError: expected undefined to be defined
+ ÔØ» server/__tests__/managerInvitations.test.ts:12:41
+     10| 
+     11|     it("should have companyManagerCredentials table defined", () => {
+     12|       expect(companyManagerCredentials).toBeDefined();
+       |                                         ^
+     13|     });
+     14| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[32/47]ÔÄ»
+
+ FAIL  server/__tests__/moduleCustomization.test.ts > Module Customization > creates and retrieves a single 
+customLabel per moduleName
+Error: Database not available
+ ÔØ» Module.upsertModuleCustomization server/db.ts:1039:18
+    1037| ) {
+    1038|   const db = await getDb();
+    1039|   if (!db) throw new Error("Database not available");
+       |                  ^
+    1040| 
+    1041|   const existing = await getModuleCustomization(companyId, moduleName);
+ ÔØ» server/__tests__/moduleCustomization.test.ts:24:21
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[33/47]ÔÄ»
+
+ FAIL  server/__tests__/moduleCustomization.test.ts > Module Customization > overwrites the previous label for the 
+same moduleName
+Error: Database not available
+ ÔØ» Module.upsertModuleCustomization server/db.ts:1039:18
+    1037| ) {
+    1038|   const db = await getDb();
+    1039|   if (!db) throw new Error("Database not available");
+       |                  ^
+    1040| 
+    1041|   const existing = await getModuleCustomization(companyId, moduleName);
+ ÔØ» server/__tests__/moduleCustomization.test.ts:34:5
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[34/47]ÔÄ»
+
+ FAIL  server/__tests__/moduleCustomization.test.ts > Module Customization > clears customization when label is null
+Error: Database not available
+ ÔØ» Module.upsertModuleCustomization server/db.ts:1039:18
+    1037| ) {
+    1038|   const db = await getDb();
+    1039|   if (!db) throw new Error("Database not available");
+       |                  ^
+    1040| 
+    1041|   const existing = await getModuleCustomization(companyId, moduleName);
+ ÔØ» server/__tests__/moduleCustomization.test.ts:40:5
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[35/47]ÔÄ»
+
+ FAIL  server/__tests__/moduleCustomization.test.ts > Module Customization > deletes a customization row
+Error: Database not available
+ ÔØ» Module.upsertModuleCustomization server/db.ts:1039:18
+    1037| ) {
+    1038|   const db = await getDb();
+    1039|   if (!db) throw new Error("Database not available");
+       |                  ^
+    1040| 
+    1041|   const existing = await getModuleCustomization(companyId, moduleName);
+ ÔØ» server/__tests__/moduleCustomization.test.ts:51:5
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[36/47]ÔÄ»
+
+ FAIL  server/__tests__/moduleCustomization.test.ts > Module Customization > keeps different moduleName rows 
+independent
+Error: Database not available
+ ÔØ» Module.upsertModuleCustomization server/db.ts:1039:18
+    1037| ) {
+    1038|   const db = await getDb();
+    1039|   if (!db) throw new Error("Database not available");
+       |                  ^
+    1040| 
+    1041|   const existing = await getModuleCustomization(companyId, moduleName);
+ ÔØ» server/__tests__/moduleCustomization.test.ts:58:5
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[37/47]ÔÄ»
+
+ FAIL  server/__tests__/moduleCustomizationDataMapping.test.ts > Module customization keys > does not mix labels 
+between moduleName rows
+Error: Database not available
+ ÔØ» Module.upsertModuleCustomization server/db.ts:1039:18
+    1037| ) {
+    1038|   const db = await getDb();
+    1039|   if (!db) throw new Error("Database not available");
+       |                  ^
+    1040| 
+    1041|   const existing = await getModuleCustomization(companyId, moduleName);
+ ÔØ» server/__tests__/moduleCustomizationDataMapping.test.ts:21:5
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[38/47]ÔÄ»
+
+ FAIL  server/__tests__/moduleCustomizationFix.test.ts > Module customization isolation > keeps organigrama title 
+independent from prop├│sito label
+Error: Database not available
+ ÔØ» Module.upsertModuleCustomization server/db.ts:1039:18
+    1037| ) {
+    1038|   const db = await getDb();
+    1039|   if (!db) throw new Error("Database not available");
+       |                  ^
+    1040| 
+    1041|   const existing = await getModuleCustomization(companyId, moduleName);
+ ÔØ» server/__tests__/moduleCustomizationFix.test.ts:21:5
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[39/47]ÔÄ»
+
+ FAIL  server/__tests__/processLeaderInvitations.test.ts > Process Leader Invitations Module > Process Leader 
+Invitations Table Structure > should have processLeaderInvitations table defined
+AssertionError: expected undefined to be defined
+ ÔØ» server/__tests__/processLeaderInvitations.test.ts:7:40
+      5|   describe("Process Leader Invitations Table Structure", () => {
+      6|     it("should have processLeaderInvitations table defined", () => {
+      7|       expect(processLeaderInvitations).toBeDefined();
+       |                                        ^
+      8|     });
+      9| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[40/47]ÔÄ»
+
+ FAIL  server/routers/__tests__/criticalityMatrixWithStakeholders.test.ts > Criticality Matrix - getWithStakeholders > 
+should retrieve criticality data with stakeholder information via JOIN
+ FAIL  server/routers/__tests__/criticalityMatrixWithStakeholders.test.ts > Criticality Matrix - getWithStakeholders > 
+should handle empty criticality data gracefully
+ FAIL  server/routers/__tests__/criticalityMatrixWithStakeholders.test.ts > Criticality Matrix - getWithStakeholders > 
+should preserve all criticality fields when joining with stakeholders
+Error: Database not available
+ ÔØ» server/routers/__tests__/criticalityMatrixWithStakeholders.test.ts:14:13
+     12|     db = await getDb();
+     13|     if (!db) {
+     14|       throw new Error('Database not available');
+       |             ^
+     15|     }
+     16| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[41/47]ÔÄ»
+
+ FAIL  server/routers/__tests__/processTacticalObjectives.test.ts > Tactical Planning Data Persistence > should save 
+planning data to planningData column without overwriting strategicObjectiveDescription
+ FAIL  server/routers/__tests__/processTacticalObjectives.test.ts > Tactical Planning Data Persistence > should load 
+planning data from planningData column correctly
+ FAIL  server/routers/__tests__/processTacticalObjectives.test.ts > Tactical Planning Data Persistence > should handle 
+empty planningData gracefully
+ FAIL  server/routers/__tests__/processTacticalObjectives.test.ts > Tactical Planning Data Persistence > should 
+preserve both strategicObjectiveDescription and planningData independently
+Error: Database not available for testing
+ ÔØ» server/routers/__tests__/processTacticalObjectives.test.ts:13:13
+     11|     db = await getDb();
+     12|     if (!db) {
+     13|       throw new Error('Database not available for testing');
+       |             ^
+     14|     }
+     15| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[42/47]ÔÄ»
+
+ Test Files  24 failed | 49 passed (73)
+      Tests  32 failed | 485 passed | 53 skipped (570)
+   Start at  18:11:59
+   Duration  15.50s (transform 1.90s, setup 0ms, collect 47.98s, tests 6.01s, environment 24ms, prepare 17.61s)
+

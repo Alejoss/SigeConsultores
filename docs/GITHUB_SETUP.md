@@ -6,7 +6,7 @@ Configuración de CI/CD: integración en `infra/staging-cicd`, producción en `m
 
 | Workflow | Cuándo corre | Qué hace |
 |----------|----------------|----------|
-| **CI** | Push/PR a `infra/staging-cicd` o `main` | `pnpm check` + `pnpm build` |
+| **CI** | Push/PR a `infra/staging-cicd` o `main` | `pnpm check` + `pnpm build` + tests (unit, client, integración con MySQL) |
 | **Deploy Production** | Push a `main` (y manual *Run workflow*) | Build imagen → **GHCR**; deploy al droplet si hay secretos |
 
 La imagen se publica en:
@@ -95,19 +95,20 @@ export GHCR_TOKEN=<PAT>
 | `infra/staging-cicd` | Sin bloqueo de push; CI informativo |
 | `main` | PR + CI; **Repository admin** en bypass para push directo del owner |
 
-## CI: qué no incluye (aún)
+## CI: tests
 
-- **`pnpm test`** — requiere MySQL en el runner; ejecutar en local antes de merge si tocaste servidor.
-- Tests en CI: ver sección futura al final de este doc.
+| Job | Qué corre |
+|-----|-----------|
+| `check-and-build` | Typecheck + build |
+| `test-unit` | `pnpm test:unit` + `pnpm test:client` (sin MySQL) |
+| `test-integration` | MySQL 8 en el runner → `pnpm db:push` → `pnpm test:integration` |
+
+Guía completa: [TESTING.md](./TESTING.md).
 
 ## Dejar de recibir emails de Actions
 
 **GitHub → Settings → Notifications → Actions** → ajustar notificaciones de fallos.
 
-## Activar tests en CI (futuro)
-
-Servicio MySQL en el workflow, `DATABASE_URL`, `drizzle-kit push` antes de `pnpm test`.
-
 ---
 
-Última revisión: mayo 2026.
+Última revisión: julio 2026.

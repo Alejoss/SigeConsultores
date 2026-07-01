@@ -41,5 +41,73 @@ jobs:
       - name: Build
         run: pnpm build
 
-      # Tests need MySQL locally; run with `pnpm test` before push when you touch server code.
-      # See docs/GITHUB_SETUP.md to enable tests in CI later.
+  test-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Unit tests (server logic + client utilities)
+        run: pnpm test:unit
+
+      - name: Client component tests (jsdom)
+        run: pnpm test:client
+
+  test-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: sige_platform_test
+          MYSQL_USER: sige
+          MYSQL_PASSWORD: sige
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: mysql://sige:sige@127.0.0.1:3306/sige_platform_test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply database schema
+        run: pnpm db:push
+
+      - name: Integration tests (MySQL)
+        run: pnpm test:integration

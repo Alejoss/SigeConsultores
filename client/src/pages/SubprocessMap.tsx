@@ -11,6 +11,13 @@ import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { exportSubprocessMapToPDF } from "@/lib/exportSubprocessMapToPDF";
 
+// Auto-expand textarea al escribir
+const autoExpandTextarea = (el: HTMLTextAreaElement | null) => {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.max(el.scrollHeight, 48) + 'px';
+};
+
 interface EntradaRow {
   id: number;
   partesInteresadas: string;
@@ -375,8 +382,9 @@ export default function SubprocessMap() {
                   <Textarea
                     placeholder="Ingrese partes interesadas"
                     value={row.partesInteresadas}
-                    onChange={(e) => updateField("entrada", row.id, "partesInteresadas", e.target.value)}
-                    className="text-xs min-h-12 resize-none"
+                    onChange={(e) => { updateField("entrada", row.id, "partesInteresadas", e.target.value); autoExpandTextarea(e.target); }}
+                    onInput={(e) => autoExpandTextarea(e.currentTarget)}
+                    className="text-xs min-h-12 resize-none overflow-hidden"
                   />
                 </div>
                 <div>
@@ -411,8 +419,9 @@ export default function SubprocessMap() {
                       <Textarea
                         placeholder="Ingrese solicitud"
                         value={row.solicita}
-                        onChange={(e) => updateField("entrada", row.id, "solicita", e.target.value)}
-                        className="text-xs min-h-12 resize-none"
+                        onChange={(e) => { updateField("entrada", row.id, "solicita", e.target.value); autoExpandTextarea(e.target); }}
+                        onInput={(e) => autoExpandTextarea(e.currentTarget)}
+                        className="text-xs min-h-12 resize-none overflow-hidden"
                       />
                     </div>
                     <div>
@@ -420,8 +429,9 @@ export default function SubprocessMap() {
                       <Textarea
                         placeholder="Ingrese entrega"
                         value={row.entrega}
-                        onChange={(e) => updateField("entrada", row.id, "entrega", e.target.value)}
-                        className="text-xs min-h-12 resize-none"
+                        onChange={(e) => { updateField("entrada", row.id, "entrega", e.target.value); autoExpandTextarea(e.target); }}
+                        onInput={(e) => autoExpandTextarea(e.currentTarget)}
+                        className="text-xs min-h-12 resize-none overflow-hidden"
                       />
                     </div>
                   </div>
@@ -466,8 +476,9 @@ export default function SubprocessMap() {
                   <Textarea
                     placeholder="Ingrese acciones"
                     value={row.acciones}
-                    onChange={(e) => updateField("subprocesos", row.id, "acciones", e.target.value)}
-                    className="text-xs min-h-12 resize-none"
+                    onChange={(e) => { updateField("subprocesos", row.id, "acciones", e.target.value); autoExpandTextarea(e.target); }}
+                    onInput={(e) => autoExpandTextarea(e.currentTarget)}
+                    className="text-xs min-h-12 resize-none overflow-hidden"
                   />
                 </div>
                 <div>
@@ -475,8 +486,9 @@ export default function SubprocessMap() {
                   <Textarea
                     placeholder="Ingrese subproceso"
                     value={row.subproceso}
-                    onChange={(e) => updateField("subprocesos", row.id, "subproceso", e.target.value)}
-                    className="text-xs min-h-12 resize-none"
+                    onChange={(e) => { updateField("subprocesos", row.id, "subproceso", e.target.value); autoExpandTextarea(e.target); }}
+                    onInput={(e) => autoExpandTextarea(e.currentTarget)}
+                    className="text-xs min-h-12 resize-none overflow-hidden"
                   />
                 </div>
               </div>
@@ -519,8 +531,9 @@ export default function SubprocessMap() {
                   <Textarea
                     placeholder="Ingrese salidas"
                     value={row.salidas}
-                    onChange={(e) => updateField("salida", row.id, "salidas", e.target.value)}
-                    className="text-xs min-h-12 resize-none"
+                    onChange={(e) => { updateField("salida", row.id, "salidas", e.target.value); autoExpandTextarea(e.target); }}
+                    onInput={(e) => autoExpandTextarea(e.currentTarget)}
+                    className="text-xs min-h-12 resize-none overflow-hidden"
                   />
                 </div>
                 <div>
@@ -528,8 +541,9 @@ export default function SubprocessMap() {
                   <Textarea
                     placeholder="Ingrese entregables"
                     value={row.entregables}
-                    onChange={(e) => updateField("salida", row.id, "entregables", e.target.value)}
-                    className="text-xs min-h-12 resize-none"
+                    onChange={(e) => { updateField("salida", row.id, "entregables", e.target.value); autoExpandTextarea(e.target); }}
+                    onInput={(e) => autoExpandTextarea(e.currentTarget)}
+                    className="text-xs min-h-12 resize-none overflow-hidden"
                   />
                 </div>
                 <div>
@@ -537,8 +551,9 @@ export default function SubprocessMap() {
                   <Textarea
                     placeholder="Ingrese documentación"
                     value={row.doc}
-                    onChange={(e) => updateField("salida", row.id, "doc", e.target.value)}
-                    className="text-xs min-h-12 resize-none"
+                    onChange={(e) => { updateField("salida", row.id, "doc", e.target.value); autoExpandTextarea(e.target); }}
+                    onInput={(e) => autoExpandTextarea(e.currentTarget)}
+                    className="text-xs min-h-12 resize-none overflow-hidden"
                   />
                 </div>
               </div>

@@ -39,6 +39,8 @@ export const criticalityMatrixRouter = router({
         endDate: criticalityMatrix.endDate,
         implementationStatus: criticalityMatrix.implementationStatus,
         completionPercentage: criticalityMatrix.completionPercentage,
+        actionSource: criticalityMatrix.actionSource,
+        surveyId: criticalityMatrix.surveyId,
         stakeholderName: stakeholders.name,
         stakeholderType: stakeholders.type,
         stakeholderIsInternal: stakeholders.isInternal,
@@ -65,6 +67,8 @@ export const criticalityMatrixRouter = router({
       endDate: z.string().optional(),
       implementationStatus: z.boolean().optional(),
       completionPercentage: z.number().optional(),
+      actionSource: z.string().optional(),
+      surveyId: z.number().optional().nullable(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -88,6 +92,8 @@ export const criticalityMatrixRouter = router({
         if (input.endDate !== undefined) updateData.endDate = input.endDate ? new Date(input.endDate) : null;
         if (input.implementationStatus !== undefined) updateData.implementationStatus = input.implementationStatus;
         if (input.completionPercentage !== undefined) updateData.completionPercentage = input.completionPercentage;
+        if (input.actionSource !== undefined) updateData.actionSource = input.actionSource;
+        if (input.surveyId !== undefined) updateData.surveyId = input.surveyId;
 
         console.log("[criticalityMatrix.upsert] Updating record with id:", input.id, "updateData:", updateData);
 
@@ -125,6 +131,8 @@ export const criticalityMatrixRouter = router({
           if (input.endDate !== undefined) updateData.endDate = input.endDate ? new Date(input.endDate) : null;
           if (input.implementationStatus !== undefined) updateData.implementationStatus = input.implementationStatus;
           if (input.completionPercentage !== undefined) updateData.completionPercentage = input.completionPercentage;
+          if (input.actionSource !== undefined) updateData.actionSource = input.actionSource;
+          if (input.surveyId !== undefined) updateData.surveyId = input.surveyId;
 
           console.log(`[criticalityMatrix.upsert] Updating existing record ${existingRecord.id}`);
 
@@ -149,6 +157,8 @@ export const criticalityMatrixRouter = router({
             endDate: input.endDate ? new Date(input.endDate) : null,
             implementationStatus: input.implementationStatus || false,
             completionPercentage: input.completionPercentage || 0,
+            actionSource: input.actionSource || "Iniciativa propia",
+            surveyId: input.surveyId || null,
           };
 
           console.log("[criticalityMatrix.upsert] Creating new record:", newRecord);

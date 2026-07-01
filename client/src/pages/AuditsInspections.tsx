@@ -3,10 +3,11 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
-import { Loader2, ClipboardList, Search, Settings } from "lucide-react";
+import { Loader2, ClipboardList, Search, Settings, BookOpen, CheckSquare, GraduationCap } from "lucide-react";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
+import { getAxisBackPath } from "@/lib/sessionScope";
 
 export default function AuditsInspections() {
   const [, setLocation] = useLocation();
@@ -47,13 +48,34 @@ export default function AuditsInspections() {
     );
   }
 
-  const modules = [
+  const modules: {
+    key: string;
+    icon: React.ReactNode;
+    title: string;
+    description: string;
+    path: string;
+    comingSoon?: boolean;
+  }[] = [
     {
       key: "management-systems",
       icon: <Settings size={40} className="text-blue-500" />,
       title: "Sistema de Gestión",
       description: "Gestiona los sistemas de gestión certificados de la empresa y sus archivos de certificación y check lists.",
       path: `/audits-inspections/management-systems?companyId=${companyId}`,
+    },
+    {
+      key: "programs",
+      icon: <BookOpen size={40} className="text-blue-500" />,
+      title: "Programas",
+      description: "Registra y controla los programas de cada sistema de gestión, sus acciones planificadas y realizadas.",
+      path: `/audits-inspections/programs?companyId=${companyId}`,
+    },
+    {
+      key: "compliances",
+      icon: <CheckSquare size={40} className="text-blue-500" />,
+      title: "Cumplimientos",
+      description: "Registra y controla los requisitos legales y normativos aplicables a la empresa.",
+      path: `/compliances?companyId=${companyId}`,
     },
     {
       key: "audits",
@@ -65,9 +87,16 @@ export default function AuditsInspections() {
     {
       key: "inspections",
       icon: <Search size={40} className="text-blue-500" />,
-      title: "Inspecciones",
+      title: "Inspecciones y Simulacros",
       description: "Registra y controla las inspecciones realizadas por área, hallazgos y cierres.",
       path: `/audits-inspections/inspections?companyId=${companyId}`,
+    },
+    {
+      key: "trainings",
+      icon: <GraduationCap size={40} className="text-purple-500" />,
+      title: "Capacitaciones",
+      description: "Registra y controla las capacitaciones planificadas y realizadas por área.",
+      path: `/trainings?companyId=${companyId}`,
     },
   ];
 
@@ -80,15 +109,15 @@ export default function AuditsInspections() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setLocation("/dashboard")}
+              onClick={() => setLocation(getAxisBackPath("/manager-dashboard"))}
               className="flex items-center gap-2"
             >
               ← Volver
             </Button>
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">Auditorías e Inspecciones</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Sistemas de Gestión</h1>
           <p className="text-slate-500 mt-1">
-            Con ellas se busca garantizar conformidad, mitigar riesgos y mejorar continuamente.
+            Con ellos se busca garantizar conformidad, mitigar riesgos y mejorar continuamente.
           </p>
         </div>
 
@@ -97,24 +126,42 @@ export default function AuditsInspections() {
           {modules.map((mod) => (
             <Card
               key={mod.key}
-              className="border-2 border-blue-100 hover:border-blue-300 transition-colors cursor-pointer"
-              onClick={() => setLocation(mod.path)}
+              className={`border-2 transition-colors ${
+                mod.comingSoon
+                  ? "border-slate-200 bg-slate-50 opacity-70 cursor-default"
+                  : "border-blue-100 hover:border-blue-300 cursor-pointer"
+              }`}
+              onClick={() => !mod.comingSoon && setLocation(mod.path)}
             >
               <CardContent className="pt-6 pb-6 flex flex-col items-start gap-4">
-                <div>{mod.icon}</div>
+                <div className="flex items-start justify-between w-full">
+                  <div>{mod.icon}</div>
+                  {mod.comingSoon && (
+                    <span className="text-xs font-semibold bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full">
+                      Próximamente
+                    </span>
+                  )}
+                </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-800">{mod.title}</h2>
+                  <h2 className={`text-lg font-bold ${mod.comingSoon ? "text-slate-400" : "text-slate-800"}`}>
+                    {mod.title}
+                  </h2>
                   <p className="text-sm text-slate-500 mt-1">{mod.description}</p>
                 </div>
                 <Button
                   variant="outline"
-                  className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                  disabled={mod.comingSoon}
+                  className={`w-full ${
+                    mod.comingSoon
+                      ? "border-slate-300 text-slate-400 cursor-not-allowed"
+                      : "border-blue-300 text-blue-700 hover:bg-blue-50"
+                  }`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setLocation(mod.path);
+                    if (!mod.comingSoon) setLocation(mod.path);
                   }}
                 >
-                  Acceder
+                  {mod.comingSoon ? "Próximamente" : "Acceder"}
                 </Button>
               </CardContent>
             </Card>

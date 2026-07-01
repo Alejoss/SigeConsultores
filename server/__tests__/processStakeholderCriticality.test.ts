@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { getDb } from "../../db";
-import { stakeholderCriticalities } from "../../../drizzle/schema";
+import { getDb } from "../db";
+import { stakeholderCriticalities } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 
 describe("Stakeholder Criticality Persistence", () => {

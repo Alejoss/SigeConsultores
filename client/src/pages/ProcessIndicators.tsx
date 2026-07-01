@@ -34,14 +34,14 @@ export default function ProcessIndicators() {
   const [elements, setElements] = useState<IndicatorElement[]>([
     {
       id: "criticidad",
-      name: "Criticidad Partes Interesadas",
+      name: "Gestión con Partes Interesadas",
       indicators: [
         { id: "cumplimiento", name: "Porcentaje de cumplimiento", value: 0 }
       ]
     },
     {
       id: "matriz",
-      name: "Matriz (FODA)",
+      name: "OTG",
       indicators: [
         { id: "total_alcanzado", name: "Total alcanzado", value: 0 },
         { id: "comunicado", name: "%Comunicado", value: 0 }
@@ -49,16 +49,9 @@ export default function ProcessIndicators() {
     },
     {
       id: "objetivos",
-      name: "Objetivos tácticos (Planificación)",
+      name: "OTE",
       indicators: [
         { id: "alcanzado", name: "% Meta alcanzada por Objetivos Tácticos", value: 0 }
-      ]
-    },
-    {
-      id: "cumplimientos",
-      name: "Cumplimientos",
-      indicators: [
-        { id: "promedio_cumplimiento", name: "%Promedio de cumplimiento", value: 0 }
       ]
     },
     {

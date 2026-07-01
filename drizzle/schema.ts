@@ -298,6 +298,10 @@ export const criticalityMatrix = mysqlTable("criticalityMatrix", {
   endDate: date("endDate"),
   implementationStatus: boolean("implementationStatus").default(false),
   completionPercentage: int("completionPercentage").default(0),
+  // Fuente/origen de la acción de mejora
+  actionSource: varchar("actionSource", { length: 100 }).default("Iniciativa propia"),
+  // Referencia a encuesta que originó la acción (si aplica)
+  surveyId: int("surveyId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -1365,3 +1369,78 @@ export const processStakeholderMatrixFiles = mysqlTable("processStakeholderMatri
 
 export type ProcessStakeholderMatrixFile = typeof processStakeholderMatrixFiles.$inferSelect;
 export type InsertProcessStakeholderMatrixFile = typeof processStakeholderMatrixFiles.$inferInsert;
+
+/**
+ * Management Programs - Stores programs for each company's management systems
+ */
+export const managementPrograms = mysqlTable("managementPrograms", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  programName: varchar("programName", { length: 500 }).notNull(),
+  managementSystem: varchar("managementSystem", { length: 100 }).notNull().default("Calidad"),
+  plannedActions: int("plannedActions").default(0),
+  completedActions: int("completedActions").default(0),
+  planFileKey: text("planFileKey"),
+  planFileName: varchar("planFileName", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ManagementProgram = typeof managementPrograms.$inferSelect;
+export type InsertManagementProgram = typeof managementPrograms.$inferInsert;
+
+/**
+ * Stakeholder Surveys - Registra encuestas aplicadas a partes interesadas
+ * Cada encuesta puede generar acciones que se vinculan a la tabla criticalityMatrix
+ */
+export const stakeholderSurveys = mysqlTable("stakeholderSurveys", {
+  id: int("id").autoincrement().primaryKey(),
+  processId: int("processId").notNull(),
+  // Datos de control
+  surveyName: varchar("surveyName", { length: 500 }).notNull().default(""),
+  segment: mysqlEnum("segment", ["Clientes", "Proveedores Externos", "Proveedores Internos", "Mixto"]).notNull().default("Clientes"),
+  surveyDate: varchar("surveyDate", { length: 20 }).default(""),
+  sentCount: int("sentCount").default(0),
+  respondedCount: int("respondedCount").default(0),
+  // KPIs de satisfacción
+  nps: int("nps"),                          // -100 a 100
+  csat: int("csat"),                        // 0 a 100 (%)
+  avgRating: varchar("avgRating", { length: 20 }).default(""),  // Ej: "4.2/5"
+  // Hallazgos cualitativos
+  topStrengths: text("topStrengths"),       // Top fortalezas mencionadas
+  topWeaknesses: text("topWeaknesses"),     // Top debilidades mencionadas
+  mainFindings: text("mainFindings"),       // Resumen ejecutivo de hallazgos
+  // Vinculación con acciones (JSON array de criticalityMatrix IDs)
+  linkedActionIds: text("linkedActionIds"), // JSON: [1, 2, 3]
+  orderIndex: int("orderIndex").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type StakeholderSurvey = typeof stakeholderSurveys.$inferSelect;
+export type InsertStakeholderSurvey = typeof stakeholderSurveys.$inferInsert;
+
+/**
+ * Company Trainings - Stores training records at company level (Sistema de Gestión)
+ */
+export const companyTrainings = mysqlTable("companyTrainings", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  objective: text("objective"),
+  type: mysqlEnum("type", ["Mandatoria", "Reglamentaria", "Sugerida"]).default("Mandatoria").notNull(),
+  audience: varchar("audience", { length: 255 }),
+  plannedAttendees: int("plannedAttendees").default(0),
+  modality: mysqlEnum("modality", ["Presencial", "Online", "Externa"]).default("Presencial").notNull(),
+  responsible: varchar("responsible", { length: 255 }),
+  plannedDate: date("plannedDate"),
+  conductedDate: date("conductedDate"),
+  actualAttendees: int("actualAttendees").default(0),
+  attendancePercentage: int("attendancePercentage").default(0),
+  completed: mysqlEnum("completed", ["SI", "NO"]),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CompanyTraining = typeof companyTrainings.$inferSelect;
+export type InsertCompanyTraining = typeof companyTrainings.$inferInsert;

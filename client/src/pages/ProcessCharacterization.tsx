@@ -27,11 +27,10 @@ const CHARACTERIZATION_MODULES = [
   { id: "participantes", label: "Participantes", icon: "👥" },
   { id: "recursos", label: "Recursos", icon: "📦" },
   { id: "subprocesos", label: "Mapa de\nSubprocesos", icon: "📊" },
-  { id: "criticidad", label: "Matriz de\nPartes Interesadas", icon: "⚠️" },
+  { id: "criticidad", label: "Gestión con\nPartes Interesadas", icon: "⚠️" },
   { id: "foda", label: "FODA", icon: "🎯" },
-  { id: "matriz", label: "Matriz", icon: "📋" },
-  { id: "objetivos", label: "Objetivos\nTácticos", icon: "🎪" },
-  { id: "cumplimientos", label: "Cumplimientos", icon: "✅" },
+  { id: "matriz", label: "Objetivos Tácticos\nde Gestión", icon: "📋" },
+  { id: "objetivos", label: "Objetivos Tácticos\nEstratégicos", icon: "🎪" },
   { id: "capacitaciones", label: "Capacitaciones", icon: "📚" },
   { id: "procedimientos", label: "Procedimientos", icon: "📄" },
   { id: "cronograma", label: "Cronograma\nConsolidado", icon: "📅" },
@@ -118,7 +117,7 @@ export default function ProcessCharacterization() {
             if (isProcessLeader) {
               setLocation("/process-leader-dashboard");
             } else {
-              setLocation(isManagerAccess ? "/manager-dashboard" : "/process-map");
+              setLocation(isManagerAccess ? "/axis-gestion" : "/process-map");
             }
             return;
           }
@@ -242,7 +241,6 @@ export default function ProcessCharacterization() {
       "foda": "/process-foda",
       "matriz": "/process-risk-matrix",
       "objetivos": "/process-tactical-objectives",
-      "cumplimientos": "/process-compliances",
       "capacitaciones": "/process-trainings",
       "cronograma": "/consolidated-schedule",
       "indicadores": "/process-indicators",
@@ -274,7 +272,7 @@ export default function ProcessCharacterization() {
             </p>
             <Button
               className="w-full mt-4"
-                onClick={() => setLocation(isProcessLeader ? "/process-map" : (isManagerAccess ? "/manager-dashboard" : "/process-map"))}
+                onClick={() => setLocation(isProcessLeader ? "/process-map" : (isManagerAccess ? "/axis-gestion" : "/process-map"))}
              >
                 Volver al Mapa de Procesos
             </Button>
@@ -305,18 +303,19 @@ export default function ProcessCharacterization() {
             <Button
               variant="outline"
               onClick={() => {
-                // Process leader always goes back to process map
                 if (isProcessLeader) {
+                  // Jefe de Proceso: vuelve al mapa con su processId para que el filtro funcione
                   const url = companyId && selectedProcessId 
                     ? `/process-map?companyId=${companyId}&processId=${selectedProcessId}`
                     : "/process-map";
                   setLocation(url);
                 } else if (isManagerAccess) {
-                  setLocation("/manager-dashboard");
+                  // Gerente: vuelve al mapa SIN processId para ver todos los procesos
+                  const url = companyId ? `/process-map?companyId=${companyId}` : "/process-map";
+                  setLocation(url);
                 } else {
-                  const url = companyId && selectedProcessId 
-                    ? `/process-map?companyId=${companyId}&processId=${selectedProcessId}`
-                    : "/process-map";
+                  // Admin/usuario normal: vuelve al mapa SIN processId
+                  const url = companyId ? `/process-map?companyId=${companyId}` : "/process-map";
                   setLocation(url);
                 }
               }}

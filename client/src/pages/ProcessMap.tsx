@@ -11,6 +11,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { useSearch } from "wouter";
+import { getAxisBackPath } from "@/lib/sessionScope";
 
 type ProcessType = "estrategico" | "misional" | "soporte";
 
@@ -23,7 +24,7 @@ export default function ProcessMap() {
   
   // Check if this is being accessed by a manager
   const urlParams = new URLSearchParams(search);
-  const isManagerAccess = urlParams.get('isManager') === 'true';
+  const isManagerAccess = localStorage.getItem('managerCompanyId') !== null;
   
   // Check if user is a process leader
   const isProcessLeader = !!processLeaderSession;
@@ -35,7 +36,7 @@ export default function ProcessMap() {
     if (isProcessLeader) {
       setLocation('/process-leader-dashboard');
     } else if (isManagerLogin || isManagerAccess) {
-      setLocation('/manager-dashboard');
+      setLocation(getAxisBackPath('/manager-dashboard'));
     } else {
       setLocation('/dashboard');
     }
@@ -164,14 +165,18 @@ export default function ProcessMap() {
   });
 
   // Fetch processes from database
-  // If processId is in URL (process leader access), only fetch that process
-  // Otherwise, use processLeaderEmail if user is NOT a manager
-  const processLeaderEmail = !isManagerLogin && !processIdFromUrl && typeof window !== 'undefined' ? localStorage.getItem("processLeaderEmail") : null;
+  // Jefe de Proceso: filtrar por processId (de URL o de su sesión) para mostrar solo su proceso
+  // Gerente/Admin: sin filtro de processId para ver todos los procesos
+  const processLeaderEmail = !isManagerLogin && !processIdFromUrl && !isProcessLeader && typeof window !== 'undefined' ? localStorage.getItem("processLeaderEmail") : null;
+  // Si es Jefe, usar el processId de la URL o el de su sesión como filtro
+  const filterProcessId = isProcessLeader 
+    ? (processIdFromUrl || processLeaderSession?.processId || undefined)
+    : undefined;
   const { data: processes = [], isLoading, refetch } = trpc.processMap.list.useQuery(
     { 
       companyId: companyId || 0, 
       processLeaderEmail: processLeaderEmail || undefined,
-      filterProcessId: processIdFromUrl || undefined
+      filterProcessId: filterProcessId
     },
     { enabled: companyId !== null }
   );
@@ -435,26 +440,24 @@ export default function ProcessMap() {
                         key={process.id}
                         className="flex items-center justify-between p-3 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
                       >
-                        <div className="flex-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteProcess(process.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                        <div className="flex-1 px-2">
                           <p className="font-medium text-blue-900">{process.name}</p>
                           <p className="text-xs text-blue-700">Estratégico</p>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAccessProcess(process.id)}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteProcess(process.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleAccessProcess(process.id)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -475,26 +478,24 @@ export default function ProcessMap() {
                         key={process.id}
                         className="flex items-center justify-between p-3 border border-green-200 bg-green-50 rounded-lg hover:bg-green-100 transition"
                       >
-                        <div className="flex-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteProcess(process.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                        <div className="flex-1 px-2">
                           <p className="font-medium text-green-900">{process.name}</p>
                           <p className="text-xs text-green-700">Misional</p>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAccessProcess(process.id)}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteProcess(process.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleAccessProcess(process.id)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -515,26 +516,24 @@ export default function ProcessMap() {
                         key={process.id}
                         className="flex items-center justify-between p-3 border border-orange-200 bg-orange-50 rounded-lg hover:bg-orange-100 transition"
                       >
-                        <div className="flex-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteProcess(process.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                        <div className="flex-1 px-2">
                           <p className="font-medium text-orange-900">{process.name}</p>
                           <p className="text-xs text-orange-700">Soporte</p>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleAccessProcess(process.id)}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteProcess(process.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleAccessProcess(process.id)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
                     ))}
                   </div>
