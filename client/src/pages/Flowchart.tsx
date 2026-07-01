@@ -91,64 +91,69 @@ export default function Flowchart() {
           )}
         </div>
 
-        {/* Quick Modules */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Quick Modules — estructura actualizada oct25 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          {/* Bloque 1 */}
           <div className="space-y-2">
-            <h3 className="font-bold text-blue-900 text-sm">1. FUNDAMENTOS EMPRESARIALES</h3>
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleModuleClick("/strategic-objectives")}
-              >
-                Objetivos Estratégicos
+            <h3 className="font-bold text-blue-900 text-xs uppercase tracking-wide border-b border-blue-200 pb-1">1. Fundamentos Empresariales</h3>
+            <div className="flex flex-col gap-1">
+              <Button variant="outline" size="sm" className="justify-start text-xs" onClick={() => handleModuleClick("/company-info")}>
+                ¿Por qué?, ¿Cómo? y ¿Qué?
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleModuleClick("/values")}
-              >
-                Valores
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleModuleClick("/policy")}
-              >
-                Política
+              <Button variant="outline" size="sm" className="justify-start text-xs" onClick={() => handleModuleClick("/values")}>
+                Valores Empresariales
               </Button>
             </div>
           </div>
 
+          {/* Bloque 2 */}
           <div className="space-y-2">
-            <h3 className="font-bold text-blue-900 text-sm">2. GESTIÓN DE PROCESOS</h3>
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleModuleClick("/process-map")}
-              >
+            <h3 className="font-bold text-blue-900 text-xs uppercase tracking-wide border-b border-blue-200 pb-1">2. Marco Estratégico</h3>
+            <div className="flex flex-col gap-1">
+              <Button variant="outline" size="sm" className="justify-start text-xs" onClick={() => handleModuleClick("/process-map")}>
                 Mapa de Procesos
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleModuleClick("/process-characterization")}
-              >
-                Caracterización
+              <Button variant="outline" size="sm" className="justify-start text-xs" onClick={() => handleModuleClick("/policy")}>
+                Política SIG
+              </Button>
+              <Button variant="outline" size="sm" className="justify-start text-xs" onClick={() => handleModuleClick("/strategic-objectives")}>
+                Objetivos Estratégicos
               </Button>
             </div>
           </div>
 
+          {/* Bloque 3 */}
           <div className="space-y-2">
-            <h3 className="font-bold text-blue-900 text-sm">3. INDICADORES</h3>
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleModuleClick("/indicators")}
-              >
+            <h3 className="font-bold text-green-800 text-xs uppercase tracking-wide border-b border-green-200 pb-1">3. Operación y Caracterización</h3>
+            <div className="flex flex-col gap-1">
+              <Button variant="outline" size="sm" className="justify-start text-xs" onClick={() => handleModuleClick("/process-map")}>
+                Subprocesos
+              </Button>
+              <Button variant="outline" size="sm" className="justify-start text-xs" onClick={() => handleModuleClick("/otg")}>
+                OTG
+              </Button>
+              <Button variant="outline" size="sm" className="justify-start text-xs" onClick={() => handleModuleClick("/ote")}>
+                OTE
+              </Button>
+            </div>
+          </div>
+
+          {/* Bloque 4 */}
+          <div className="space-y-2">
+            <h3 className="font-bold text-green-800 text-xs uppercase tracking-wide border-b border-green-200 pb-1">4. Acciones de Seguimiento</h3>
+            <div className="flex flex-col gap-1">
+              <Button variant="outline" size="sm" className="justify-start text-xs" onClick={() => handleModuleClick("/indicators")}>
                 Indicadores
+              </Button>
+            </div>
+          </div>
+
+          {/* Bloque 5 */}
+          <div className="space-y-2">
+            <h3 className="font-bold text-orange-800 text-xs uppercase tracking-wide border-b border-orange-200 pb-1">5. Control y Mejora Continua</h3>
+            <div className="flex flex-col gap-1">
+              <Button variant="outline" size="sm" className="justify-start text-xs" onClick={() => handleModuleClick("/audits-inspections")}>
+                Auditorías e Inspecciones
               </Button>
             </div>
           </div>
