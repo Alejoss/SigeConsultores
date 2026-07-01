@@ -1419,3 +1419,28 @@ export const stakeholderSurveys = mysqlTable("stakeholderSurveys", {
 
 export type StakeholderSurvey = typeof stakeholderSurveys.$inferSelect;
 export type InsertStakeholderSurvey = typeof stakeholderSurveys.$inferInsert;
+
+/**
+ * Company Trainings - Stores training records at company level (Sistema de Gestión)
+ */
+export const companyTrainings = mysqlTable("companyTrainings", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  objective: text("objective"),
+  type: mysqlEnum("type", ["Mandatoria", "Reglamentaria", "Sugerida"]).default("Mandatoria").notNull(),
+  audience: varchar("audience", { length: 255 }),
+  plannedAttendees: int("plannedAttendees").default(0),
+  modality: mysqlEnum("modality", ["Presencial", "Online", "Externa"]).default("Presencial").notNull(),
+  responsible: varchar("responsible", { length: 255 }),
+  plannedDate: date("plannedDate"),
+  conductedDate: date("conductedDate"),
+  actualAttendees: int("actualAttendees").default(0),
+  attendancePercentage: int("attendancePercentage").default(0),
+  completed: mysqlEnum("completed", ["SI", "NO"]),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CompanyTraining = typeof companyTrainings.$inferSelect;
+export type InsertCompanyTraining = typeof companyTrainings.$inferInsert;

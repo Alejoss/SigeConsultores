@@ -93,11 +93,10 @@ export default function AuditsInspections() {
     },
     {
       key: "trainings",
-      icon: <GraduationCap size={40} className="text-slate-400" />,
+      icon: <GraduationCap size={40} className="text-purple-500" />,
       title: "Capacitaciones",
       description: "Registra y controla las capacitaciones planificadas y realizadas por área.",
-      path: `/audits-inspections/trainings?companyId=${companyId}`,
-      comingSoon: true,
+      path: `/trainings?companyId=${companyId}`,
     },
   ];
 
