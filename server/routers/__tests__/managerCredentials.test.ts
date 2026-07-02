@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { getDb } from "../../db";
-import { accounts, managerInvitations, companies } from "../../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { accounts, authInvitations, companies } from "../../../drizzle/schema";
+import { and, eq } from "drizzle-orm";
 import { insertTestAccount } from "../../__tests__/helpers/accounts";
 
 describe("Manager Credentials - Token Validation", () => {
@@ -31,33 +31,37 @@ describe("Manager Credentials - Token Validation", () => {
   afterAll(async () => {
     if (!db) return;
     await db
-      .delete(managerInvitations)
-      .where(eq(managerInvitations.companyId, testCompanyId));
+      .delete(authInvitations)
+      .where(eq(authInvitations.companyId, testCompanyId));
     await db.delete(companies).where(eq(companies.id, testCompanyId));
     await db.delete(accounts).where(eq(accounts.id, ownerAccountId));
   });
 
-  it("should find a valid invitation token in managerInvitations table", async () => {
+  it("should find a valid manager invitation token in authInvitations", async () => {
     if (!db) throw new Error("Database not available");
 
-    // Create a test invitation
     testToken = "test-token-" + Date.now();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
-    await db.insert(managerInvitations).values({
-      companyId: testCompanyId,
-      managerEmail: "test@example.com",
+    await db.insert(authInvitations).values({
+      kind: "manager",
+      email: "test@example.com",
       invitationToken: testToken,
+      companyId: testCompanyId,
       expiresAt,
       acceptedAt: null,
     });
 
-    // Verify the token can be found
     const invitation = await db
       .select()
-      .from(managerInvitations)
-      .where(eq(managerInvitations.invitationToken, testToken))
+      .from(authInvitations)
+      .where(
+        and(
+          eq(authInvitations.invitationToken, testToken),
+          eq(authInvitations.kind, "manager")
+        )
+      )
       .limit(1);
 
     expect(invitation).toHaveLength(1);
@@ -68,24 +72,23 @@ describe("Manager Credentials - Token Validation", () => {
   it("should detect expired invitation tokens", async () => {
     if (!db) throw new Error("Database not available");
 
-    // Create an expired invitation
     const expiredToken = "expired-token-" + Date.now();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() - 1); // Yesterday
+    expiresAt.setDate(expiresAt.getDate() - 1);
 
-    await db.insert(managerInvitations).values({
-      companyId: testCompanyId,
-      managerEmail: "expired@example.com",
+    await db.insert(authInvitations).values({
+      kind: "manager",
+      email: "expired@example.com",
       invitationToken: expiredToken,
+      companyId: testCompanyId,
       expiresAt,
       acceptedAt: null,
     });
 
-    // Verify the token is expired
     const invitation = await db
       .select()
-      .from(managerInvitations)
-      .where(eq(managerInvitations.invitationToken, expiredToken))
+      .from(authInvitations)
+      .where(eq(authInvitations.invitationToken, expiredToken))
       .limit(1);
 
     expect(invitation).toHaveLength(1);
@@ -95,24 +98,23 @@ describe("Manager Credentials - Token Validation", () => {
   it("should detect already used invitation tokens", async () => {
     if (!db) throw new Error("Database not available");
 
-    // Create a used invitation
     const usedToken = "used-token-" + Date.now();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
-    await db.insert(managerInvitations).values({
-      companyId: testCompanyId,
-      managerEmail: "used@example.com",
+    await db.insert(authInvitations).values({
+      kind: "manager",
+      email: "used@example.com",
       invitationToken: usedToken,
+      companyId: testCompanyId,
       expiresAt,
       acceptedAt: new Date(),
     });
 
-    // Verify the token is marked as used
     const invitation = await db
       .select()
-      .from(managerInvitations)
-      .where(eq(managerInvitations.invitationToken, usedToken))
+      .from(authInvitations)
+      .where(eq(authInvitations.invitationToken, usedToken))
       .limit(1);
 
     expect(invitation).toHaveLength(1);

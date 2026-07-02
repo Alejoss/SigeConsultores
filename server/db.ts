@@ -1244,6 +1244,24 @@ export async function acceptProcessOwnerInvitation(invitationToken: string): Pro
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  const existing = await db
+    .select()
+    .from(processOwnerInvitations)
+    .where(eq(processOwnerInvitations.invitationToken, invitationToken))
+    .limit(1);
+
+  if (!existing.length) {
+    throw new Error("Invitation not found");
+  }
+
+  const invitation = existing[0];
+  if (invitation.status !== "pending") {
+    throw new Error("Invitation is no longer valid");
+  }
+  if (new Date() > invitation.expiresAt) {
+    throw new Error("Invitation has expired");
+  }
+
   const now = new Date();
   await db
     .update(processOwnerInvitations)
@@ -1260,7 +1278,7 @@ export async function acceptProcessOwnerInvitation(invitationToken: string): Pro
     .where(eq(processOwnerInvitations.invitationToken, invitationToken))
     .limit(1);
 
-  if (!updated || updated.length === 0) {
+  if (!updated.length) {
     throw new Error("Failed to accept process owner invitation");
   }
 

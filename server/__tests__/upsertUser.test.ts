@@ -111,7 +111,7 @@ describe("upsertUser - Email-based lookup for OAuth flow", () => {
     const openId = "oauth-lastsignedin-" + Date.now();
     const email = "test-lastsignedin@example.com";
 
-    const now1 = new Date();
+    const now1 = new Date("2026-01-01T12:00:00Z");
     await upsertUser({
       openId,
       email,
@@ -122,8 +122,7 @@ describe("upsertUser - Email-based lookup for OAuth flow", () => {
     let account = await db!.select().from(accounts).where(eq(accounts.openId, openId)).limit(1);
     const firstLogin = account[0].lastSignedIn;
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const now2 = new Date();
+    const now2 = new Date("2026-01-02T12:00:00Z");
     await upsertUser({
       openId,
       email,
