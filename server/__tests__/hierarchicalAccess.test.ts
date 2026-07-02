@@ -23,8 +23,8 @@ import {
 describe("Hierarchical Access Management", () => {
   const TEST_COMPANY_ID = 999;
   const TEST_PROCESS_ID = 888;
-  const TEST_USER_ID = 777;
-  const TEST_USER_ID_2 = 776;
+  const TEST_ACCOUNT_ID = 777;
+  const TEST_ACCOUNT_ID_2 = 776;
 
   // ============================================================================
   // COMPANY MANAGERS TESTS
@@ -33,24 +33,24 @@ describe("Hierarchical Access Management", () => {
   describe("Company Managers", () => {
     afterAll(async () => {
       // Clean up
-      await deleteCompanyManager(TEST_COMPANY_ID, TEST_USER_ID).catch(() => {});
+      await deleteCompanyManager(TEST_COMPANY_ID, TEST_ACCOUNT_ID).catch(() => {});
     });
 
     it("should create a company manager", async () => {
-      const manager = await createCompanyManager(TEST_COMPANY_ID, TEST_USER_ID);
+      const manager = await createCompanyManager(TEST_COMPANY_ID, TEST_ACCOUNT_ID);
 
       expect(manager).toBeDefined();
       expect(manager.companyId).toBe(TEST_COMPANY_ID);
-      expect(manager.userId).toBe(TEST_USER_ID);
+      expect(manager.accountId).toBe(TEST_ACCOUNT_ID);
       expect(manager.createdAt).toBeDefined();
     });
 
     it("should get a company manager", async () => {
-      const manager = await getCompanyManager(TEST_COMPANY_ID, TEST_USER_ID);
+      const manager = await getCompanyManager(TEST_COMPANY_ID, TEST_ACCOUNT_ID);
 
       expect(manager).toBeDefined();
       expect(manager?.companyId).toBe(TEST_COMPANY_ID);
-      expect(manager?.userId).toBe(TEST_USER_ID);
+      expect(manager?.accountId).toBe(TEST_ACCOUNT_ID);
     });
 
     it("should get all managers for a company", async () => {
@@ -62,9 +62,9 @@ describe("Hierarchical Access Management", () => {
     });
 
     it("should delete a company manager", async () => {
-      await deleteCompanyManager(TEST_COMPANY_ID, TEST_USER_ID);
+      await deleteCompanyManager(TEST_COMPANY_ID, TEST_ACCOUNT_ID);
 
-      const manager = await getCompanyManager(TEST_COMPANY_ID, TEST_USER_ID);
+      const manager = await getCompanyManager(TEST_COMPANY_ID, TEST_ACCOUNT_ID);
       expect(manager).toBeUndefined();
     });
   });
@@ -166,30 +166,30 @@ describe("Hierarchical Access Management", () => {
 
     afterAll(async () => {
       // Clean up
-      await deleteProcessOwner(TEST_PROCESS_ID, TEST_USER_ID_2).catch(() => {});
+      await deleteProcessOwner(TEST_PROCESS_ID, TEST_ACCOUNT_ID_2).catch(() => {});
     });
 
     it("should create a process owner", async () => {
       const owner = await createProcessOwner(
         TEST_COMPANY_ID,
         TEST_PROCESS_ID,
-        TEST_USER_ID_2,
+        TEST_ACCOUNT_ID_2,
         accessCode
       );
 
       expect(owner).toBeDefined();
       expect(owner.companyId).toBe(TEST_COMPANY_ID);
       expect(owner.processId).toBe(TEST_PROCESS_ID);
-      expect(owner.userId).toBe(TEST_USER_ID_2);
+      expect(owner.accountId).toBe(TEST_ACCOUNT_ID_2);
       expect(owner.accessCode).toBe(accessCode);
     });
 
     it("should get a process owner", async () => {
-      const owner = await getProcessOwner(TEST_PROCESS_ID, TEST_USER_ID_2);
+      const owner = await getProcessOwner(TEST_PROCESS_ID, TEST_ACCOUNT_ID_2);
 
       expect(owner).toBeDefined();
       expect(owner?.processId).toBe(TEST_PROCESS_ID);
-      expect(owner?.userId).toBe(TEST_USER_ID_2);
+      expect(owner?.accountId).toBe(TEST_ACCOUNT_ID_2);
     });
 
     it("should get all owners for a process", async () => {
@@ -201,17 +201,17 @@ describe("Hierarchical Access Management", () => {
     });
 
     it("should get all processes owned by a user", async () => {
-      const processes = await getProcessOwnersByUser(TEST_USER_ID_2);
+      const processes = await getProcessOwnersByUser(TEST_ACCOUNT_ID_2);
 
       expect(processes).toBeDefined();
       expect(processes.length).toBeGreaterThan(0);
-      expect(processes[0].userId).toBe(TEST_USER_ID_2);
+      expect(processes[0].accountId).toBe(TEST_ACCOUNT_ID_2);
     });
 
     it("should delete a process owner", async () => {
-      await deleteProcessOwner(TEST_PROCESS_ID, TEST_USER_ID_2);
+      await deleteProcessOwner(TEST_PROCESS_ID, TEST_ACCOUNT_ID_2);
 
-      const owner = await getProcessOwner(TEST_PROCESS_ID, TEST_USER_ID_2);
+      const owner = await getProcessOwner(TEST_PROCESS_ID, TEST_ACCOUNT_ID_2);
       expect(owner).toBeUndefined();
     });
   });
@@ -223,7 +223,7 @@ describe("Hierarchical Access Management", () => {
   describe("Hierarchical Access Integration", () => {
     it("should complete the full invitation flow", async () => {
       // Step 1: Create a company manager
-      const manager = await createCompanyManager(TEST_COMPANY_ID, TEST_USER_ID);
+      const manager = await createCompanyManager(TEST_COMPANY_ID, TEST_ACCOUNT_ID);
       expect(manager).toBeDefined();
 
       // Step 2: Create an invitation for a process owner
@@ -248,19 +248,19 @@ describe("Hierarchical Access Management", () => {
       const owner = await createProcessOwner(
         TEST_COMPANY_ID,
         TEST_PROCESS_ID,
-        TEST_USER_ID,
+        TEST_ACCOUNT_ID,
         "4321"
       );
       expect(owner).toBeDefined();
 
       // Step 5: Verify the process owner can access their process
-      const retrievedOwner = await getProcessOwner(TEST_PROCESS_ID, TEST_USER_ID);
+      const retrievedOwner = await getProcessOwner(TEST_PROCESS_ID, TEST_ACCOUNT_ID);
       expect(retrievedOwner).toBeDefined();
-      expect(retrievedOwner?.userId).toBe(TEST_USER_ID);
+      expect(retrievedOwner?.accountId).toBe(TEST_ACCOUNT_ID);
 
       // Clean up
-      await deleteProcessOwner(TEST_PROCESS_ID, TEST_USER_ID);
-      await deleteCompanyManager(TEST_COMPANY_ID, TEST_USER_ID);
+      await deleteProcessOwner(TEST_PROCESS_ID, TEST_ACCOUNT_ID);
+      await deleteCompanyManager(TEST_COMPANY_ID, TEST_ACCOUNT_ID);
       await deleteProcessOwnerInvitation(invitation.invitationToken);
     });
   });

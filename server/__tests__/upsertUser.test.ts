@@ -1,27 +1,36 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { getDb, upsertUser } from "../db";
-import { users } from "../../drizzle/schema";
+import { accounts } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import {
+  deleteTestAccountsByEmails,
+  ensurePlatformRoles,
+  getPlatformRoleSlug,
+} from "./helpers/accounts";
+
+const CLEANUP_EMAILS = [
+  "test-oauth@example.com",
+  "test-setup@example.com",
+  "test-preserve-role@example.com",
+  "test-lastsignedin@example.com",
+];
 
 describe("upsertUser - Email-based lookup for OAuth flow", () => {
   let db: Awaited<ReturnType<typeof getDb>>;
 
   beforeAll(async () => {
     db = await getDb();
-    if (!db) {
-      throw new Error("Database not available for tests");
-    }
+    if (!db) throw new Error("Database not available for tests");
+    await ensurePlatformRoles(db);
   });
 
   afterAll(async () => {
-    // Cleanup test users
     if (db) {
-      await db.delete(users).where(eq(users.email, "test-oauth@example.com"));
-      await db.delete(users).where(eq(users.email, "test-setup@example.com"));
+      await deleteTestAccountsByEmails(db, CLEANUP_EMAILS);
     }
   });
 
-  it("should create a new user when neither openId nor email exists", async () => {
+  it("should create a new account when neither openId nor email exists", async () => {
     const newOpenId = "oauth-unique-id-" + Date.now();
     await upsertUser({
       openId: newOpenId,
@@ -30,85 +39,72 @@ describe("upsertUser - Email-based lookup for OAuth flow", () => {
       loginMethod: "oauth",
     });
 
-    const result = await db!.select().from(users).where(eq(users.openId, newOpenId)).limit(1);
+    const result = await db!.select().from(accounts).where(eq(accounts.openId, newOpenId)).limit(1);
     expect(result).toHaveLength(1);
     expect(result[0].email).toBe("test-oauth@example.com");
     expect(result[0].name).toBe("Test User");
-    expect(result[0].role).toBe("user"); // Default role for new users
+    expect(await getPlatformRoleSlug(db!, result[0].id)).toBe("platform_user");
   });
 
-  it("should find user by email when openId doesn't exist (OAuth login after setup)", async () => {
-    // Step 1: Create user during setup with local-email openId
+  it("should find account by email when openId doesn't exist (OAuth login after setup)", async () => {
     const setupOpenId = "local-test-setup@example.com";
     await upsertUser({
       openId: setupOpenId,
       email: "test-setup@example.com",
       name: "Setup User",
-      role: "user", // Explicitly set during setup
       loginMethod: "setup",
     });
 
-    // Verify user was created with role="user"
-    let setupUser = await db!.select().from(users).where(eq(users.email, "test-setup@example.com")).limit(1);
-    expect(setupUser).toHaveLength(1);
-    expect(setupUser[0].role).toBe("user");
-    expect(setupUser[0].openId).toBe(setupOpenId);
+    let setupAccount = await db!.select().from(accounts).where(eq(accounts.email, "test-setup@example.com")).limit(1);
+    expect(setupAccount).toHaveLength(1);
+    expect(await getPlatformRoleSlug(db!, setupAccount[0].id)).toBe("platform_user");
+    expect(setupAccount[0].openId).toBe(setupOpenId);
 
-    // Step 2: OAuth login with different openId but same email
     const oauthOpenId = "oauth-unique-id-" + Date.now();
     await upsertUser({
       openId: oauthOpenId,
       email: "test-setup@example.com",
-      name: "Setup User", // Name might come from OAuth
+      name: "Setup User",
       loginMethod: "oauth",
     });
 
-    // Step 3: Verify user was UPDATED (not created as new)
-    const oauthUser = await db!.select().from(users).where(eq(users.openId, oauthOpenId)).limit(1);
-    expect(oauthUser).toHaveLength(1);
-    expect(oauthUser[0].email).toBe("test-setup@example.com");
-    expect(oauthUser[0].role).toBe("user"); // Role should be preserved!
-    expect(oauthUser[0].loginMethod).toBe("oauth");
+    const oauthAccount = await db!.select().from(accounts).where(eq(accounts.openId, oauthOpenId)).limit(1);
+    expect(oauthAccount).toHaveLength(1);
+    expect(oauthAccount[0].email).toBe("test-setup@example.com");
+    expect(await getPlatformRoleSlug(db!, oauthAccount[0].id)).toBe("platform_user");
+    expect(oauthAccount[0].loginMethod).toBe("oauth");
 
-    // Step 4: Verify old openId no longer exists
-    const oldOpenIdUser = await db!.select().from(users).where(eq(users.openId, setupOpenId)).limit(1);
-    expect(oldOpenIdUser).toHaveLength(0); // Should be deleted or not found
+    const oldOpenIdAccount = await db!.select().from(accounts).where(eq(accounts.openId, setupOpenId)).limit(1);
+    expect(oldOpenIdAccount).toHaveLength(0);
 
-    // Step 5: Verify there's only ONE user with this email
-    const allUsersWithEmail = await db!.select().from(users).where(eq(users.email, "test-setup@example.com"));
-    expect(allUsersWithEmail).toHaveLength(1);
-    expect(allUsersWithEmail[0].role).toBe("user");
+    const allWithEmail = await db!.select().from(accounts).where(eq(accounts.email, "test-setup@example.com"));
+    expect(allWithEmail).toHaveLength(1);
   });
 
-  it("should preserve role when updating existing user", async () => {
+  it("should preserve platform role when updating existing account", async () => {
     const setupOpenId = "local-preserve-role-" + Date.now();
     const email = "test-preserve-role@example.com";
 
-    // Create user with role="user"
     await upsertUser({
       openId: setupOpenId,
-      email: email,
+      email,
       name: "Original Name",
-      role: "user",
     });
 
-    let user = await db!.select().from(users).where(eq(users.email, email)).limit(1);
-    expect(user[0].role).toBe("user");
+    let account = await db!.select().from(accounts).where(eq(accounts.email, email)).limit(1);
+    expect(await getPlatformRoleSlug(db!, account[0].id)).toBe("platform_user");
 
-    // Update with different openId (OAuth login)
     const oauthOpenId = "oauth-preserve-role-" + Date.now();
     await upsertUser({
       openId: oauthOpenId,
-      email: email,
+      email,
       name: "Updated Name",
-      // Note: NOT providing role, so it should be preserved
     });
 
-    // Verify role is still "user"
-    user = await db!.select().from(users).where(eq(users.openId, oauthOpenId)).limit(1);
-    expect(user).toHaveLength(1);
-    expect(user[0].role).toBe("user");
-    expect(user[0].name).toBe("Updated Name"); // Name should be updated
+    account = await db!.select().from(accounts).where(eq(accounts.openId, oauthOpenId)).limit(1);
+    expect(account).toHaveLength(1);
+    expect(await getPlatformRoleSlug(db!, account[0].id)).toBe("platform_user");
+    expect(account[0].name).toBe("Updated Name");
   });
 
   it("should update lastSignedIn on each login", async () => {
@@ -117,39 +113,38 @@ describe("upsertUser - Email-based lookup for OAuth flow", () => {
 
     const now1 = new Date();
     await upsertUser({
-      openId: openId,
-      email: email,
+      openId,
+      email,
       name: "Test User",
       lastSignedIn: now1,
     });
 
-    let user = await db!.select().from(users).where(eq(users.openId, openId)).limit(1);
-    const firstLogin = user[0].lastSignedIn;
+    let account = await db!.select().from(accounts).where(eq(accounts.openId, openId)).limit(1);
+    const firstLogin = account[0].lastSignedIn;
 
-    // Wait a bit and update
     await new Promise((resolve) => setTimeout(resolve, 100));
     const now2 = new Date();
     await upsertUser({
-      openId: openId,
-      email: email,
+      openId,
+      email,
       lastSignedIn: now2,
     });
 
-    user = await db!.select().from(users).where(eq(users.openId, openId)).limit(1);
-    expect(user[0].lastSignedIn.getTime()).toBeGreaterThan(firstLogin.getTime());
+    account = await db!.select().from(accounts).where(eq(accounts.openId, openId)).limit(1);
+    expect(account[0].lastSignedIn.getTime()).toBeGreaterThan(firstLogin.getTime());
   });
 
   it("should handle null email gracefully", async () => {
     const openId = "oauth-null-email-" + Date.now();
 
     await upsertUser({
-      openId: openId,
+      openId,
       email: null,
       name: "No Email User",
     });
 
-    const user = await db!.select().from(users).where(eq(users.openId, openId)).limit(1);
-    expect(user).toHaveLength(1);
-    expect(user[0].email).toBeNull();
+    const account = await db!.select().from(accounts).where(eq(accounts.openId, openId)).limit(1);
+    expect(account).toHaveLength(1);
+    expect(account[0].email).toBeNull();
   });
 });

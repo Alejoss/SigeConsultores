@@ -12,61 +12,51 @@ describe("Stakeholder Criticality Persistence", () => {
     db = await getDb();
     if (!db) throw new Error("Database connection failed");
 
-    // Clean up any existing test records
-    if (db) {
-      await db
-        .delete(stakeholderCriticalities)
-        .where(
-          and(
-            eq(stakeholderCriticalities.processId, processId),
-            eq(stakeholderCriticalities.nombre, testStakeholderName)
-          )
-        );
-    }
+    await db
+      .delete(stakeholderCriticalities)
+      .where(
+        and(
+          eq(stakeholderCriticalities.processId, processId),
+          eq(stakeholderCriticalities.name, testStakeholderName)
+        )
+      );
   });
 
   afterAll(async () => {
-    // Clean up test records
-    if (db) {
-      await db
-        .delete(stakeholderCriticalities)
-        .where(
-          and(
-            eq(stakeholderCriticalities.processId, processId),
-            eq(stakeholderCriticalities.nombre, testStakeholderName)
-          )
-        );
-    }
+    if (!db) return;
+    await db
+      .delete(stakeholderCriticalities)
+      .where(
+        and(
+          eq(stakeholderCriticalities.processId, processId),
+          eq(stakeholderCriticalities.name, testStakeholderName)
+        )
+      );
   });
 
   it("should insert a new stakeholder criticality with action data", async () => {
     if (!db) throw new Error("Database not available");
 
-    // Insert a new record
     await db.insert(stakeholderCriticalities).values({
       processId,
-      nombre: testStakeholderName,
-      internoExterno: "Externo",
-      clienteProveedor: "Cliente",
-      entrega: "Producto final",
-      solicita: "Especificaciones",
-      criticidad: "3A",
-      defensasExistentes: "Control de calidad",
+      name: testStakeholderName,
+      type: "Externo",
+      influence: 3,
+      dependence: 2,
+      criticality: 3,
       accionATomar: "Implementar proceso de validación",
-      observaciones: "Test observation",
       fechaInicio: new Date("2026-03-13"),
       fechaFin: new Date("2026-04-14"),
       realizado: "NO",
     });
 
-    // Verify the record was inserted
     const records = await db
       .select()
       .from(stakeholderCriticalities)
       .where(
         and(
           eq(stakeholderCriticalities.processId, processId),
-          eq(stakeholderCriticalities.nombre, testStakeholderName)
+          eq(stakeholderCriticalities.name, testStakeholderName)
         )
       );
 
@@ -83,38 +73,29 @@ describe("Stakeholder Criticality Persistence", () => {
 
     const updateName = "Test Update Stakeholder";
 
-    // First insert
     await db.insert(stakeholderCriticalities).values({
       processId,
-      nombre: updateName,
-      internoExterno: "Interno",
-      clienteProveedor: "Proveedor",
-      entrega: "Servicio",
-      solicita: "Requisitos",
-      criticidad: "6A",
-      defensasExistentes: "Auditoría",
+      name: updateName,
+      type: "Interno",
       accionATomar: "Original action",
-      observaciones: "Original observation",
       fechaInicio: new Date("2026-03-01"),
       fechaFin: new Date("2026-03-31"),
       realizado: "NO",
     });
 
-    // Get the inserted record's ID
     const originalRecords = await db
       .select()
       .from(stakeholderCriticalities)
       .where(
         and(
           eq(stakeholderCriticalities.processId, processId),
-          eq(stakeholderCriticalities.nombre, updateName)
+          eq(stakeholderCriticalities.name, updateName)
         )
       );
 
     expect(originalRecords).toHaveLength(1);
     const recordId = originalRecords[0].id;
 
-    // Update the record
     await db
       .update(stakeholderCriticalities)
       .set({
@@ -125,7 +106,6 @@ describe("Stakeholder Criticality Persistence", () => {
       })
       .where(eq(stakeholderCriticalities.id, recordId));
 
-    // Verify the update
     const updatedRecords = await db
       .select()
       .from(stakeholderCriticalities)
@@ -138,10 +118,7 @@ describe("Stakeholder Criticality Persistence", () => {
     expect(updated.fechaFin).toEqual(new Date("2026-04-15"));
     expect(updated.realizado).toBe("SI");
 
-    // Clean up
-    await db
-      .delete(stakeholderCriticalities)
-      .where(eq(stakeholderCriticalities.id, recordId));
+    await db.delete(stakeholderCriticalities).where(eq(stakeholderCriticalities.id, recordId));
   });
 
   it("should handle NULL values for optional action fields", async () => {
@@ -149,31 +126,23 @@ describe("Stakeholder Criticality Persistence", () => {
 
     const nullTestName = "Test Null Fields Stakeholder";
 
-    // Insert with NULL action fields
     await db.insert(stakeholderCriticalities).values({
       processId,
-      nombre: nullTestName,
-      internoExterno: "Externo",
-      clienteProveedor: "Cliente",
-      entrega: "Producto",
-      solicita: "Especificaciones",
-      criticidad: "2C",
-      defensasExistentes: "Documentación",
+      name: nullTestName,
+      type: "Externo",
       accionATomar: null,
-      observaciones: null,
       fechaInicio: null,
       fechaFin: null,
       realizado: "NO",
     });
 
-    // Verify NULL values are preserved
     const records = await db
       .select()
       .from(stakeholderCriticalities)
       .where(
         and(
           eq(stakeholderCriticalities.processId, processId),
-          eq(stakeholderCriticalities.nombre, nullTestName)
+          eq(stakeholderCriticalities.name, nullTestName)
         )
       );
 
@@ -183,11 +152,7 @@ describe("Stakeholder Criticality Persistence", () => {
     expect(record.fechaInicio).toBeNull();
     expect(record.fechaFin).toBeNull();
 
-    // Clean up
-    const recordId = record.id;
-    await db
-      .delete(stakeholderCriticalities)
-      .where(eq(stakeholderCriticalities.id, recordId));
+    await db.delete(stakeholderCriticalities).where(eq(stakeholderCriticalities.id, record.id));
   });
 
   it("should retrieve stakeholder criticalities for consolidated schedule", async () => {
@@ -195,47 +160,33 @@ describe("Stakeholder Criticality Persistence", () => {
 
     const consolidateTestName = "Test Consolidate Stakeholder";
 
-    // Insert multiple records
     await db.insert(stakeholderCriticalities).values({
       processId,
-      nombre: consolidateTestName,
-      internoExterno: "Externo",
-      clienteProveedor: "Cliente",
-      entrega: "Producto",
-      solicita: "Especificaciones",
-      criticidad: "3A",
-      defensasExistentes: "Control",
+      name: consolidateTestName,
+      type: "Cliente",
       accionATomar: "Acción 1",
-      observaciones: "Obs 1",
       fechaInicio: new Date("2026-03-13"),
       fechaFin: new Date("2026-04-14"),
       realizado: "NO",
     });
 
-    // Query for consolidation
     const records = await db
       .select()
       .from(stakeholderCriticalities)
       .where(
         and(
           eq(stakeholderCriticalities.processId, processId),
-          eq(stakeholderCriticalities.nombre, consolidateTestName)
+          eq(stakeholderCriticalities.name, consolidateTestName)
         )
       );
 
     expect(records).toHaveLength(1);
     const record = records[0];
-
-    // Verify all fields needed for consolidation are present
     expect(record.accionATomar).toBe("Acción 1");
     expect(record.fechaInicio).toEqual(new Date("2026-03-13"));
     expect(record.fechaFin).toEqual(new Date("2026-04-14"));
     expect(record.realizado).toBe("NO");
 
-    // Clean up
-    const recordId = record.id;
-    await db
-      .delete(stakeholderCriticalities)
-      .where(eq(stakeholderCriticalities.id, recordId));
+    await db.delete(stakeholderCriticalities).where(eq(stakeholderCriticalities.id, record.id));
   });
 });

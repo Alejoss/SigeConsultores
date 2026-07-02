@@ -109,5 +109,8 @@ jobs:
       - name: Apply database schema
         run: pnpm db:push
 
+      - name: Seed platform roles
+        run: pnpm roles:seed
+
       - name: Integration tests (MySQL)
         run: pnpm test:integration

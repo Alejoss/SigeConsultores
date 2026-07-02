@@ -1,38 +1,40 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { getDb } from "../../db";
-import { managerInvitations, companies } from "../../../drizzle/schema";
+import { accounts, managerInvitations, companies } from "../../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { insertTestAccount } from "../../__tests__/helpers/accounts";
 
 describe("Manager Credentials - Token Validation", () => {
-  let db: any;
+  let db: Awaited<ReturnType<typeof getDb>>;
   let testCompanyId: number;
   let testToken: string;
+  let ownerAccountId: number;
 
   beforeAll(async () => {
     db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    // Create a test company
-    const result = await db
-      .insert(companies)
-      .values({
-        name: "Test Company for Token Validation",
-        industryId: 1,
-      })
-      .$returningId();
+    const owner = await insertTestAccount(db, {
+      openId: `manager-creds-owner-${Date.now()}`,
+      email: `manager-creds-${Date.now()}@example.com`,
+    });
+    ownerAccountId = owner.id;
 
-    testCompanyId = result[0].id;
+    const result = await db.insert(companies).values({
+      name: "Test Company for Token Validation",
+      ownerAccountId,
+    });
+
+    testCompanyId = Number(result[0].insertId);
   });
 
   afterAll(async () => {
     if (!db) return;
-    // Clean up test data
     await db
       .delete(managerInvitations)
       .where(eq(managerInvitations.companyId, testCompanyId));
-    await db
-      .delete(companies)
-      .where(eq(companies.id, testCompanyId));
+    await db.delete(companies).where(eq(companies.id, testCompanyId));
+    await db.delete(accounts).where(eq(accounts.id, ownerAccountId));
   });
 
   it("should find a valid invitation token in managerInvitations table", async () => {

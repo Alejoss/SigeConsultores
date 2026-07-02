@@ -127,7 +127,7 @@ describe("Procedures Module - Delete Functionality", () => {
         await db.insert(companies).values({
           id: testCompanyId,
           name: "Test Company for Delete",
-          ownerUserId: 1,
+          ownerAccountId: 1,
         });
       }
 
