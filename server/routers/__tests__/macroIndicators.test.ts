@@ -20,6 +20,7 @@ describe("MacroIndicators - fixture process", () => {
   let companyId: number;
   let ownerAccountId: number;
   let stakeholderId: number;
+  let stakeholderId2: number;
 
   beforeAll(async () => {
     db = await getDb();
@@ -54,6 +55,15 @@ describe("MacroIndicators - fixture process", () => {
     });
     stakeholderId = Number(stakeholderResult[0].insertId);
 
+    const stakeholder2Result = await db.insert(stakeholders).values({
+      processId,
+      name: "Test Stakeholder 2",
+      type: "proveedor",
+      isInternal: true,
+      orderIndex: 1,
+    });
+    stakeholderId2 = Number(stakeholder2Result[0].insertId);
+
     await db.insert(criticalityMatrix).values([
       {
         processId,
@@ -65,7 +75,7 @@ describe("MacroIndicators - fixture process", () => {
       },
       {
         processId,
-        stakeholderId,
+        stakeholderId: stakeholderId2,
         incidence: "1",
         risk: "A",
         criticality: "Baja",
