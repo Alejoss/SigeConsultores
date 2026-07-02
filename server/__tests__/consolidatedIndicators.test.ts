@@ -1,28 +1,25 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { getDb } from "../db";
 import { eq } from "drizzle-orm";
+import { getDb } from "../db";
 import {
   createStakeholderCriticality,
   createProcessCompliance,
   createProcessTraining,
-  createProcessTacticalObjective,
-  upsertProcessFODA,
-  createProcess,
   createCompany,
+  createProcess,
 } from "../db";
-
-// Mock the completed field for tactical objectives
-type CreateTacticalObjectiveInput = {
-  name: string;
-  description?: string;
-  target?: string;
-  responsible?: string;
-  deadline?: Date;
-  completed?: "SI" | "NO";
-};
+import {
+  companies,
+  processes,
+  stakeholderCriticalities,
+  processCompliances,
+  processTrainings,
+  processTacticalObjectives,
+} from "../../drizzle/schema";
+import { insertTestAccount } from "./helpers/accounts";
 
 describe("Consolidated Indicators Calculation", () => {
-  let db: any;
+  let db: Awaited<ReturnType<typeof getDb>>;
   let companyId: number;
   let processId: number;
 
@@ -32,27 +29,45 @@ describe("Consolidated Indicators Calculation", () => {
       throw new Error("Database not available");
     }
 
-    // Create test company
-    const companyResult = await createCompany("Test Company", "Test Description", 1);
-    companyId = (companyResult as any).insertId || 1;
+    const suffix = Date.now();
+    const owner = await insertTestAccount(db, {
+      openId: `consolidated-indicators-${suffix}`,
+      email: `consolidated-indicators-${suffix}@example.com`,
+    });
 
-    // Create test process
-    const processResult = await createProcess(companyId, "Test Process", "misional", "Test Process Description");
-    processId = (processResult as any).insertId || 1;
+    const companyResult = await createCompany(
+      `Consolidated Indicators Co ${suffix}`,
+      "Test Description",
+      owner.id
+    );
+    companyId = Number(companyResult[0].insertId);
+
+    const processResult = await createProcess(
+      companyId,
+      `Consolidated Indicators Process ${suffix}`,
+      "misional",
+      "Test Process Description"
+    );
+    processId = Number(processResult[0].insertId);
   });
 
   afterAll(async () => {
-    // Cleanup would go here
+    if (!db) return;
+    await db.delete(stakeholderCriticalities).where(eq(stakeholderCriticalities.processId, processId));
+    await db.delete(processCompliances).where(eq(processCompliances.processId, processId));
+    await db.delete(processTrainings).where(eq(processTrainings.processId, processId));
+    await db.delete(processTacticalObjectives).where(eq(processTacticalObjectives.processId, processId));
+    await db.delete(processes).where(eq(processes.id, processId));
+    await db.delete(companies).where(eq(companies.id, companyId));
   });
 
   it("should calculate criticality percentage from stakeholders", async () => {
-    // Create stakeholders with different criticality levels
     await createStakeholderCriticality(processId, {
       name: "Stakeholder 1",
       type: "Cliente",
       influence: 5,
       dependence: 5,
-      criticality: 9, // Max criticality
+      criticality: 9,
     });
 
     await createStakeholderCriticality(processId, {
@@ -63,10 +78,11 @@ describe("Consolidated Indicators Calculation", () => {
       criticality: 5,
     });
 
-    // Expected: (9 + 5) / (2 * 9) * 100 = 77.78%
-    const { stakeholderCriticalities } = await import("../../drizzle/schema");
-    const stakeholders = await db.select().from(stakeholderCriticalities).where((s: any) => s.processId === processId);
-    const totalCriticality = stakeholders.reduce((sum: number, s: any) => sum + (s.criticality || 0), 0);
+    const stakeholders = await db!
+      .select()
+      .from(stakeholderCriticalities)
+      .where(eq(stakeholderCriticalities.processId, processId));
+    const totalCriticality = stakeholders.reduce((sum, s) => sum + (s.criticality || 0), 0);
     const maxPossible = stakeholders.length * 9;
     const percentage = maxPossible > 0 ? Math.round((totalCriticality / maxPossible) * 100) : 0;
 
@@ -75,7 +91,6 @@ describe("Consolidated Indicators Calculation", () => {
   });
 
   it("should calculate compliance percentage", async () => {
-    // Create compliances
     await createProcessCompliance(processId, {
       requirement: "Compliance 1",
       obligationType: "Legal",
@@ -88,23 +103,24 @@ describe("Consolidated Indicators Calculation", () => {
       completed: "NO",
     });
 
-    // Expected: 1/2 = 50%
-    const { processCompliances } = await import("../../drizzle/schema");
-    const compliances = await db.select().from(processCompliances).where((c: any) => c.processId === processId);
-    const completed = compliances.filter((c: any) => c.completed === "SI").length;
-    const percentage = compliances.length > 0 ? Math.round((completed / compliances.length) * 100) : 0;
+    const compliances = await db!
+      .select()
+      .from(processCompliances)
+      .where(eq(processCompliances.processId, processId));
+    const completed = compliances.filter((c) => c.completed === "SI").length;
+    const percentage =
+      compliances.length > 0 ? Math.round((completed / compliances.length) * 100) : 0;
 
     expect(percentage).toBe(50);
   });
 
   it("should calculate training conducted percentage", async () => {
-    // Create trainings
     await createProcessTraining(processId, {
       name: "Training 1",
       type: "Mandatoria",
       modality: "Presencial",
       plannedDate: new Date(),
-      conductedDate: new Date(), // Conducted
+      conductedDate: new Date(),
     });
 
     await createProcessTraining(processId, {
@@ -112,53 +128,55 @@ describe("Consolidated Indicators Calculation", () => {
       type: "Mandatoria",
       modality: "Online",
       plannedDate: new Date(),
-      // No conductedDate - not conducted
     });
 
-    // Expected: 1/2 = 50% - but test data may vary
-    const { processTrainings } = await import("../../drizzle/schema");
-    const trainings = await db.select().from(processTrainings).where((t: any) => t.processId === processId);
-    const conducted = trainings.filter((t: any) => t.conductedDate !== null).length;
-    const percentage = trainings.length > 0 ? Math.round((conducted / trainings.length) * 100) : 0;
+    const trainings = await db!
+      .select()
+      .from(processTrainings)
+      .where(eq(processTrainings.processId, processId));
+    const conducted = trainings.filter((t) => t.conductedDate !== null).length;
+    const percentage =
+      trainings.length > 0 ? Math.round((conducted / trainings.length) * 100) : 0;
 
-    // Should be calculated correctly
     expect(percentage).toBeGreaterThanOrEqual(0);
     expect(percentage).toBeLessThanOrEqual(100);
   });
 
   it("should calculate tactical objectives percentage", async () => {
-    // Create tactical objectives
-    await createProcessTacticalObjective(processId, {
-      name: "Objective 1",
-      description: "Test objective",
-      target: "100%",
-      responsible: "Manager",
-      deadline: new Date(),
-      completed: "SI",
-    });
+    await db!.insert(processTacticalObjectives).values([
+      {
+        processId,
+        name: "Objective 1",
+        description: "Test objective",
+        target: "100%",
+        responsible: "Manager",
+        deadline: new Date(),
+        completed: "SI",
+      },
+      {
+        processId,
+        name: "Objective 2",
+        description: "Test objective 2",
+        target: "100%",
+        responsible: "Manager",
+        deadline: new Date(),
+        completed: "NO",
+      },
+    ]);
 
-    await createProcessTacticalObjective(processId, {
-      name: "Objective 2",
-      description: "Test objective 2",
-      target: "100%",
-      responsible: "Manager",
-      deadline: new Date(),
-      completed: "NO",
-    });
+    const objectives = await db!
+      .select()
+      .from(processTacticalObjectives)
+      .where(eq(processTacticalObjectives.processId, processId));
+    const completed = objectives.filter((o) => o.completed === "SI").length;
+    const percentage =
+      objectives.length > 0 ? Math.round((completed / objectives.length) * 100) : 0;
 
-    // Expected: 1/2 = 50% - but test data may vary
-    const { processTacticalObjectives } = await import("../../drizzle/schema");
-    const objectives = await db.select().from(processTacticalObjectives).where((o: any) => o.processId === processId);
-    const completed = objectives.filter((o: any) => o.completed === "SI").length;
-    const percentage = objectives.length > 0 ? Math.round((completed / objectives.length) * 100) : 0;
-
-    // Should be calculated correctly
     expect(percentage).toBeGreaterThanOrEqual(0);
     expect(percentage).toBeLessThanOrEqual(100);
   });
 
   it("should return all indicators in correct format", async () => {
-    // The consolidated indicators should return an array with all 6 indicators
     const indicators = [
       { id: "criticidad", name: "Criticidad Partes Interesadas", indicator: "Porcentaje de cumplimiento", value: 0 },
       { id: "matriz_alcanzado", name: "Matriz (FODA)", indicator: "Total alcanzado", value: 0 },

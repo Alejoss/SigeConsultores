@@ -5,6 +5,7 @@ import { config as loadEnv } from "dotenv";
 import { defineConfig } from "drizzle-kit";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+const databaseUrlFromEnv = process.env.DATABASE_URL;
 const envPath = path.join(root, ".env");
 const envLocalPath = path.join(root, ".env.local");
 if (existsSync(envPath)) {
@@ -12,6 +13,9 @@ if (existsSync(envPath)) {
 }
 if (existsSync(envLocalPath)) {
   loadEnv({ path: envLocalPath, override: true });
+}
+if (databaseUrlFromEnv?.trim()) {
+  process.env.DATABASE_URL = databaseUrlFromEnv;
 }
 
 function ensureDatabaseUrlFromMysql(): void {
