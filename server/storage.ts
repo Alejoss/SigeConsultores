@@ -12,20 +12,28 @@ let _client: S3Client | null = null;
 function getClient(): S3Client {
   if (_client) return _client;
 
-  const { s3AccessKeyId, s3SecretAccessKey, s3Region } = ENV;
+  const { s3AccessKeyId, s3SecretAccessKey, s3Region, s3Endpoint } = ENV;
   if (!s3AccessKeyId || !s3SecretAccessKey) {
     throw new Error(
-      "AWS credentials missing: set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
+      "AWS credentials missing: set AWS_ACCESS_KEY_ID / S3_ACCESS_KEY and AWS_SECRET_ACCESS_KEY / S3_SECRET_KEY"
     );
   }
 
-  _client = new S3Client({
+  const clientConfig: ConstructorParameters<typeof S3Client>[0] = {
     region: s3Region,
     credentials: {
       accessKeyId: s3AccessKeyId,
       secretAccessKey: s3SecretAccessKey,
     },
-  });
+  };
+
+  // Use custom endpoint for local MinIO or other S3-compatible services
+  if (s3Endpoint) {
+    clientConfig.endpoint = s3Endpoint;
+    clientConfig.forcePathStyle = true; // Required for MinIO
+  }
+
+  _client = new S3Client(clientConfig);
   return _client;
 }
 
