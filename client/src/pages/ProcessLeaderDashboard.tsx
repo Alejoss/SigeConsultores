@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogOut, Building2, Settings } from "lucide-react";
+import { LogOut, Building2, Settings, ChevronDown, ChevronUp } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { APP_TITLE } from "@/const";
 import { useState, useEffect } from "react";
@@ -54,14 +54,10 @@ export default function ProcessLeaderDashboard() {
   const [, setLocation] = useLocation();
   const { session: processLeaderSession, logout, isLoading: contextLoading } = useProcessLeaderAuth();
   const [isLoading, setIsLoading] = useState(true);
+  const [showInfo, setShowInfo] = useState(false);
 
   useEffect(() => {
-    // Wait for context to finish loading before checking authentication
-    if (contextLoading) {
-      return; // Still loading, don't do anything yet
-    }
-    
-    // Check if process leader is authenticated
+    if (contextLoading) return;
     if (!processLeaderSession) {
       setLocation("/login");
       return;
@@ -125,62 +121,7 @@ export default function ProcessLeaderDashboard() {
           processName={processLeaderSession.processName || "Mi Proceso"}
         />
 
-        {/* Company Info */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="w-5 h-5" />
-                Información General
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600 mb-2">Nombre:</p>
-              <p className="text-lg font-semibold text-gray-900">{processLeaderSession.leaderName}</p>
-              <p className="text-sm text-gray-600 mt-4 mb-2">Tu Correo:</p>
-              <p className="text-sm font-medium text-gray-900">{processLeaderSession.leaderEmail}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Tu Proceso
-            </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600 mb-2">Proceso Asignado:</p>
-              <p className="text-lg font-semibold text-gray-900">{processLeaderSession.processName || "Cargando..."}</p>
-              <p className="text-sm text-gray-600 mt-4 mb-2">ID del Proceso:</p>
-              <p className="text-sm font-medium text-gray-900">{processLeaderSession.processId}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Estado del Sistema</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Plataforma</span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    Operativa
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Tu Acceso</span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    Activo
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Modules Section */}
+        {/* Modules Section — primero */}
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-5">Módulos del Sistema</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -208,6 +149,72 @@ export default function ProcessLeaderDashboard() {
               );
             })}
           </div>
+        </div>
+
+        {/* Datos Generales — colapsable, debajo de módulos */}
+        <div className="mb-8">
+          <button
+            className="flex items-center gap-2 text-gray-500 hover:text-gray-800 text-sm font-medium mb-3 transition-colors"
+            onClick={() => setShowInfo(!showInfo)}
+          >
+            {showInfo ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {showInfo ? "Ocultar datos generales" : "▼ Datos generales"}
+          </button>
+          {showInfo && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="w-5 h-5" />
+                    Información General
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 mb-2">Nombre:</p>
+                  <p className="text-lg font-semibold text-gray-900">{processLeaderSession.leaderName}</p>
+                  <p className="text-sm text-gray-600 mt-4 mb-2">Tu Correo:</p>
+                  <p className="text-sm font-medium text-gray-900">{processLeaderSession.leaderEmail}</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Tu Proceso
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 mb-2">Proceso Asignado:</p>
+                  <p className="text-lg font-semibold text-gray-900">{processLeaderSession.processName || "Cargando..."}</p>
+                  <p className="text-sm text-gray-600 mt-4 mb-2">ID del Proceso:</p>
+                  <p className="text-sm font-medium text-gray-900">{processLeaderSession.processId}</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Estado del Sistema</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Plataforma</span>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Operativa
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Tu Acceso</span>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Activo
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
 
         {/* Note Section */}

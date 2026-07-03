@@ -11,7 +11,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { useSearch } from "wouter";
-import { getAxisBackPath } from "@/lib/sessionScope";
+import { getAxisBackPathForRole } from "@/lib/sessionScope";
 
 type ProcessType = "estrategico" | "misional" | "soporte";
 
@@ -32,14 +32,7 @@ export default function ProcessMap() {
   
   // Back button handler
   const handleBack = () => {
-    console.log("[DEBUG] ProcessMap handleBack:", { isProcessLeader, isManagerAccess, isManagerLogin });
-    if (isProcessLeader) {
-      setLocation('/process-leader-dashboard');
-    } else if (isManagerLogin || isManagerAccess) {
-      setLocation(getAxisBackPath('/manager-dashboard'));
-    } else {
-      setLocation('/dashboard');
-    }
+    setLocation(getAxisBackPathForRole());
   };
   // Declare state variables
   const [companyId, setCompanyId] = useState<number | null>(null);
@@ -307,7 +300,7 @@ export default function ProcessMap() {
             </p>
             <Button
               className="w-full mt-4"
-              onClick={() => setLocation(isProcessLeader ? "/process-leader-dashboard" : (isManagerAccess ? "/manager-dashboard" : "/dashboard"))}
+              onClick={() => setLocation(getAxisBackPathForRole())}
             >
               Volver al Dashboard
             </Button>
