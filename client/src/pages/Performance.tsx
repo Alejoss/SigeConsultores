@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
+import { getAxisBackPathForRole } from "@/lib/sessionScope";
 
 type SubModule = "strategic" | "management" | "systems" | null;
 
@@ -304,12 +305,17 @@ export default function Performance() {
     },
   ];
 
-  // Botón Volver: si hay submódulo activo, vuelve a la selección; si no, al dashboard
+  // Botón Volver: si hay submódulo activo, vuelve a la selección; si no, al dashboard del rol
   const handleBack = () => {
     if (activeModule) {
       setActiveModule(null);
     } else {
-      setLocation("/manager-dashboard");
+      // Limpiar axisOrigin para evitar bucles al volver al dashboard
+      localStorage.removeItem("axisOrigin");
+      // Usar el dashboard guardado por AxisDesempeno, o detectar por rol como fallback
+      const savedDashboard = localStorage.getItem("axisBackDashboard");
+      localStorage.removeItem("axisBackDashboard");
+      setLocation(savedDashboard || getAxisBackPathForRole());
     }
   };
 

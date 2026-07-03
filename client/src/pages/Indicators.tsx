@@ -7,6 +7,7 @@ import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { ChevronDown, ChevronUp, Loader2, AlertCircle } from "lucide-react";
+import { getAxisBackPathForRole } from "@/lib/sessionScope";
 import DashboardLayout from "@/components/DashboardLayout";
 
 interface MacroIndicator {
@@ -71,7 +72,7 @@ export default function Indicators() {
   
   // Back button handler
   const handleBack = () => {
-    navigate(isProcessLeader ? "/process-leader-dashboard" : (isManagerAccess ? "/manager-dashboard" : "/dashboard"));
+    navigate(getAxisBackPathForRole());
   };
   
   const [expandedProcessId, setExpandedProcessId] = useState<number | null>(null);

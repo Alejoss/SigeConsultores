@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { exportParticipantsToPDF } from "@/lib/exportParticipantsToPDF";
+import { getAxisBackPathForRole } from "@/lib/sessionScope";
 
 export default function ProcessParticipants() {
   const [, setLocation] = useLocation();
@@ -146,7 +147,7 @@ export default function ProcessParticipants() {
             </div>
             <Button
               className="w-full mt-4"
-               onClick={() => setLocation(isProcessLeader ? "/process-leader-dashboard" : (isManagerAccess ? "/manager-dashboard" : "/process-map"))}
+               onClick={() => setLocation(getAxisBackPathForRole())}
             >
               Volver al Mapa de Procesos
             </Button>

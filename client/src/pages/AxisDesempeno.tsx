@@ -18,6 +18,21 @@ export default function AxisDesempeno() {
     // Guardar el origen del eje para que Performance pueda volver correctamente
     localStorage.setItem("axisOrigin", "desempeno");
 
+    // Guardar el dashboard de origen para que Performance sepa a dónde volver
+    // cuando el usuario pulse Volver (sin crear un bucle con /axis-desempeno)
+    const plSession = (() => {
+      try {
+        const raw = localStorage.getItem("processLeaderSession") || sessionStorage.getItem("processLeaderSession");
+        return raw ? JSON.parse(raw) : null;
+      } catch { return null; }
+    })();
+    const backDashboard = plSession
+      ? "/process-leader-dashboard"
+      : localStorage.getItem("managerCompanyId")
+        ? "/manager-dashboard"
+        : "/dashboard";
+    localStorage.setItem("axisBackDashboard", backDashboard);
+
     const query = new URLSearchParams();
     if (companyId) query.set("companyId", companyId);
     if (isManager) query.set("isManager", isManager);

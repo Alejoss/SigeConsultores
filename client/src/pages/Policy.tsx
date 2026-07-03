@@ -13,7 +13,7 @@ import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
 
 import { exportPolicyToPDF } from "@/lib/exportPolicyToPDF";
-import { getAxisBackPath } from "@/lib/sessionScope";
+import { getAxisBackPathForRole } from "@/lib/sessionScope";
 
 const POLICY_TEMPLATE = `POLÍTICA DEL SISTEMA INTEGRADO DE GESTIÓN
 
@@ -118,7 +118,7 @@ export default function Policy() {
   
   // Back button handler
   const handleBack = () => {
-    setLocation(isProcessLeader ? "/process-leader-dashboard" : ((isManagerAccess || isManagerLogin) ? getAxisBackPath("/manager-dashboard") : "/dashboard"));
+    setLocation(getAxisBackPathForRole());
   };
   const [policy, setPolicy] = useState("");
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);

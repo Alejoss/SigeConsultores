@@ -7,7 +7,7 @@ import { Loader2, ClipboardList, Search, Settings, BookOpen, CheckSquare, Gradua
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
-import { getAxisBackPath } from "@/lib/sessionScope";
+import { getAxisBackPathForRole } from "@/lib/sessionScope";
 
 export default function AuditsInspections() {
   const [, setLocation] = useLocation();
@@ -109,7 +109,7 @@ export default function AuditsInspections() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setLocation(getAxisBackPath("/manager-dashboard"))}
+              onClick={() => setLocation(getAxisBackPathForRole())}
               className="flex items-center gap-2"
             >
               ← Volver
