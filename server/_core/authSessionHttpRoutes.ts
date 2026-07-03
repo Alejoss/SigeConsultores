@@ -75,19 +75,9 @@ export function registerAuthSessionRoutes(app: Express) {
         });
       }
 
-      const platformUser = await getPlatformUserShape(db, outcome.accountId);
-      if (platformUser) {
-        return res.json({
-          ok: true as const,
-          kind: "platform_user" as const,
-          user: {
-            id: platformUser.id,
-            email: platformUser.email,
-            name: platformUser.name,
-            role: platformUser.role,
-          },
-        });
-      }
+      // Priority: company_manager > process_leader > platform_user
+      // This ensures accounts with multiple roles (e.g. platform_admin + company_manager)
+      // are routed to the most specific role first.
       const manager = await getManagerContext(db, outcome.accountId);
       if (manager) {
         return res.json({
@@ -109,6 +99,19 @@ export function registerAuthSessionRoutes(app: Express) {
           processId: processLeader.processId,
           companyId: processLeader.companyId,
           companyName: processLeader.companyName,
+        });
+      }
+      const platformUser = await getPlatformUserShape(db, outcome.accountId);
+      if (platformUser) {
+        return res.json({
+          ok: true as const,
+          kind: "platform_user" as const,
+          user: {
+            id: platformUser.id,
+            email: platformUser.email,
+            name: platformUser.name,
+            role: platformUser.role,
+          },
         });
       }
 
