@@ -104,8 +104,18 @@ interface FormData {
 
 export default function ProcessCompliances() {
   const [, navigate] = useLocation();
-  const selectedProcessId = localStorage.getItem("selectedProcessId");
+  
+  // Resolve processId: query params take priority over localStorage
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const queryProcessId = searchParams.get("processId");
+  const queryCompanyId = searchParams.get("companyId");
+  const selectedProcessId = queryProcessId || localStorage.getItem("selectedProcessId");
   const processId = selectedProcessId ? parseInt(selectedProcessId) : 0;
+
+  // Build back URL preserving processId and companyId context
+  const backUrl = queryProcessId
+    ? `/process-characterization?processId=${queryProcessId}${queryCompanyId ? `&companyId=${queryCompanyId}` : ""}`
+    : "/process-characterization";
 
   const [compliances, setCompliances] = useState<Compliance[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -286,7 +296,7 @@ export default function ProcessCompliances() {
             <h1 className="text-4xl font-bold text-gray-900">Cumplimientos del Proceso</h1>
             <Button
               variant="outline"
-              onClick={() => navigate("/process-characterization")}
+              onClick={() => navigate(backUrl)}
             >
               ← Volver
             </Button>
