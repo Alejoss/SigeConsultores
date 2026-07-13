@@ -66,10 +66,13 @@ export default function ConsolidatedSchedule() {
     }
   }, [consolidatedData]);
 
-  // Filter activities by current month and year
+  // Filter activities by current month and year.
+  // Use UTC methods to avoid timezone-shift bugs: dates stored as "YYYY-MM-DD" are
+  // parsed as UTC midnight by JS, so comparing with local getMonth() shifts them
+  // one day back in UTC-N timezones (e.g. Ecuador UTC-5).
   const monthActivities = activities.filter(activity => {
     const activityDate = new Date(activity.dueDate);
-    return activityDate.getMonth() === currentMonth && activityDate.getFullYear() === currentYear;
+    return activityDate.getUTCMonth() === currentMonth && activityDate.getUTCFullYear() === currentYear;
   });
 
   // Calculate statistics
