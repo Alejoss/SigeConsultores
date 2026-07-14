@@ -197,7 +197,7 @@ export default function ConsolidatedSchedule() {
                 No hay actividades planificadas para {MONTHS[currentMonth].toLowerCase()} de {currentYear}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div key={`${currentYear}-${currentMonth}`} className="space-y-4">
                 {monthActivities.map((activity) => {
                   const { days, status } = getDaysStatus(activity.dueDate);
                   const isOverdue = activity.completed === "NO" && status === "overdue";
