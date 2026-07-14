@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Clock, CalendarDays, HelpCircle, BarChart2 } from "lucide-react";
-import { GanttChart, GanttTask } from "@/components/GanttChart";
+import { SimpleGanttChart, SimpleGanttActivity } from "@/components/SimpleGanttChart";
 
 interface ScheduleActivity {
   id: string;
@@ -109,40 +109,24 @@ export default function ConsolidatedSchedule() {
     }));
   }, [consolidatedData]);
 
-  // ─── Convertir actividades a tareas Gantt ────────────────────────────────────
-  const ganttTasks: GanttTask[] = useMemo(() => {
+  // ─── Convertir actividades a SimpleGanttActivity ───────────────────────────
+  const ganttActivities: SimpleGanttActivity[] = useMemo(() => {
     if (!activities || activities.length === 0) return [];
-    // Mapa de colores por tipo de badge
-    const badgeColorMap: Record<string, string> = {
-      'OTE': '#ca8a04',
-      'Gestión con Partes Interesadas': '#2563eb',
-      'Cumplimientos': '#db2777',
-      'Fortaleza': '#16a34a',
-      'Oportunidad': '#ea580c',
-      'Debilidad': '#dc2626',
-      'Amenaza': '#7c3aed',
-    };
     return activities.map(a => {
       const raw = a.dueDate;
       const date = typeof raw === 'string'
         ? new Date(raw.includes('T') ? raw : raw + 'T12:00:00')
         : new Date(raw);
-      // Para milestone, start y end deben ser el mismo día
-      const start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(date);
-      end.setHours(23, 59, 59, 0);
-      const label = a.action.length > 45 ? a.action.slice(0, 42) + '…' : a.action;
+      const label = a.action.length > 50 ? a.action.slice(0, 47) + '…' : a.action;
       return {
         id: a.id,
-        name: `[${a.badge}] ${label}`,
-        start,
-        end,
-        progress: a.completed === 'SI' ? 100 : 0,
-        type: 'milestone' as const,
-        isDisabled: true,
-      } as GanttTask;
-    }).sort((a, b) => a.start.getTime() - b.start.getTime());
+        label,
+        badge: a.badge,
+        badgeColor: a.badgeColor || '#6b7280',
+        dueDate: date,
+        completed: a.completed === 'SI',
+      } as SimpleGanttActivity;
+    }).sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   }, [activities]);
 
   // Filter activities by current month and year.
@@ -333,14 +317,14 @@ export default function ConsolidatedSchedule() {
         </div>
 
         {/* Diagrama de Gantt */}
-        {showGantt && ganttTasks.length === 0 && (
+        {showGantt && ganttActivities.length === 0 && (
           <Card className="bg-white mb-6">
             <CardContent className="pt-6 pb-6 text-center text-gray-500">
               No hay actividades cargadas para mostrar en el diagrama. Asegúrate de acceder al Cronograma Consolidado desde la Caracterización de Procesos de un proceso específico.
             </CardContent>
           </Card>
         )}
-        {showGantt && ganttTasks.length > 0 && (
+        {showGantt && ganttActivities.length > 0 && (
           <Card className="bg-white mb-6">
             <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b">
               <div className="flex items-center justify-between">
@@ -348,26 +332,11 @@ export default function ConsolidatedSchedule() {
                   <BarChart2 className="w-5 h-5 text-blue-600" />
                   Diagrama de Gantt — Todas las actividades
                 </CardTitle>
-                <span className="text-xs text-gray-500">{ganttTasks.length} actividades · Vista mensual</span>
+                <span className="text-xs text-gray-500">{ganttActivities.length} actividades · Vista mensual</span>
               </div>
             </CardHeader>
             <CardContent className="pt-4 pb-2">
-              <div className="text-xs text-gray-500 mb-3 flex flex-wrap gap-3">
-                <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-yellow-600"></span> OTE</span>
-                <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-blue-600"></span> Gestión con Partes Interesadas</span>
-                <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-pink-600"></span> Cumplimientos</span>
-                <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-green-600"></span> Fortaleza</span>
-                <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-orange-600"></span> Oportunidad</span>
-                <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-red-600"></span> Debilidad</span>
-                <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-purple-600"></span> Amenaza</span>
-                <span className="ml-4 text-gray-400">◆ = Hito completado · ◇ = Hito pendiente</span>
-              </div>
-              <GanttChart
-                tasks={ganttTasks}
-                isReadOnly={true}
-                viewMode="month"
-                height={Math.min(80 + ganttTasks.length * 50, 600)}
-              />
+              <SimpleGanttChart activities={ganttActivities} />
             </CardContent>
           </Card>
         )}
