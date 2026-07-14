@@ -282,8 +282,6 @@ function TrendChart({
   realColor,
   metaColor,
   yearFilter,
-  companyId,
-  showBreakdown,
 }: {
   title: string;
   badge: string;
@@ -295,8 +293,6 @@ function TrendChart({
   realColor: string;
   metaColor: string;
   yearFilter: number | "all";
-  companyId?: number;
-  showBreakdown?: boolean;
 }) {
   const filtered = useMemo(() => {
     if (yearFilter === "all") return data;
@@ -385,10 +381,6 @@ function TrendChart({
           </ResponsiveContainer>
         )}
 
-        {/* Desglose OTE colapsable — solo para el gráfico OTE */}
-        {showBreakdown && companyId && companyId > 0 && (
-          <OteBreakdown companyId={companyId} />
-        )}
       </CardContent>
     </Card>
   );
@@ -512,21 +504,24 @@ export default function StrategicTrends() {
 
             {/* Gráficos */}
             <div className="flex flex-col gap-6">
-              {/* OTE — con botón de desglose */}
-              <TrendChart
-                title="Objetivos Tácticos Estratégicos"
-                badge="OTE"
-                data={data}
-                realKey="otePercent"
-                metaKey="oteMeta"
-                realLabel="OTE — Avance real"
-                metaLabel="Meta OTE"
-                realColor="#3b82f6"
-                metaColor="#ef4444"
-                yearFilter={yearFilter}
-                companyId={companyId}
-                showBreakdown={true}
-              />
+              {/* OTE — con botón de desglose debajo */}
+              <div>
+                <TrendChart
+                  title="Objetivos Tácticos Estratégicos"
+                  badge="OTE"
+                  data={data}
+                  realKey="otePercent"
+                  metaKey="oteMeta"
+                  realLabel="OTE — Avance real"
+                  metaLabel="Meta OTE"
+                  realColor="#3b82f6"
+                  metaColor="#ef4444"
+                  yearFilter={yearFilter}
+                />
+                <div className="mt-2 px-1">
+                  <OteBreakdown companyId={companyId} />
+                </div>
+              </div>
               {/* OTG — sin desglose */}
               <TrendChart
                 title="Objetivos Tácticos de Gestión"
