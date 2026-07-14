@@ -321,7 +321,7 @@ export const macroIndicatorsRouter = router({
               unit: "%",
             },
             tacticalObjectives: {
-              name: "Objetivos Tácticos",
+              name: "OTE",
               value: objectivesPercentage,
               total: tacticalObjectives.length,
               completed: objectivesPercentage,
