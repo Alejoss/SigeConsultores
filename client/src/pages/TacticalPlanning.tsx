@@ -71,7 +71,7 @@ interface TacticalPlanning {
 }
 
 const CATEGORIES = ['Finanzas', 'Cliente', 'Procesos Internos', 'Aprendizaje', 'Crecimiento'];
-const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const MONTHS = ['Ene','Feb','Mar','Abr','Mayo','Jun','Jul','Agos','Sep','Oct','Nov','Dic'];
 
 /**
  * Input numérico sin estado local — usa ref para el DOM.
