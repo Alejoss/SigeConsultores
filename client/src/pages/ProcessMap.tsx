@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import ProcessMapPdfViewer from "@/components/ProcessMapPdfViewer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
-import { Plus, Trash2, ChevronRight, AlertCircle, CheckCircle, Upload, Download, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, ChevronRight, AlertCircle, CheckCircle, Upload, Download, FileText, ExternalLink } from 'lucide-react';
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -50,7 +49,6 @@ export default function ProcessMap() {
   const [mapImage, setMapImage] = useState<string | null>(null);
   const [mapImageFileName, setMapImageFileName] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [isPdfViewerOpen, setIsPdfViewerOpen] = useState(false);
 
   // Fetch user's companies (only if not manager login)
   const userCompaniesQuery = trpc.adminOperations.getUserCompanies.useQuery(
@@ -354,11 +352,15 @@ export default function ProcessMap() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setIsPdfViewerOpen(!isPdfViewerOpen)}
+                      onClick={() => {
+                        if (mapImage) {
+                          window.open(`/api/proxy/file?url=${encodeURIComponent(mapImage)}`, "_blank", "noopener,noreferrer");
+                        }
+                      }}
                       className="gap-2 border-purple-300 text-purple-700 hover:bg-purple-50"
                     >
-                      {isPdfViewerOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      {isPdfViewerOpen ? "Ocultar Mapa" : "Ver Mapa de Procesos"}
+                      <ExternalLink size={16} />
+                      Ver Mapa de Procesos
                     </Button>
                     <Button
                       variant="outline"
@@ -379,14 +381,8 @@ export default function ProcessMap() {
                       Eliminar
                     </Button>
                   </div>
-                  {/* Visor PDF colapsable */}
-                  {isPdfViewerOpen && isPdfFile(mapImageFileName) && mapImage && (
-                    <ProcessMapPdfViewer
-                      fileUrl={`/api/proxy/file?url=${encodeURIComponent(mapImage)}`}
-                      fileName={mapImageFileName || "Mapa de Procesos"}
-                    />
-                  )}
-                  {isPdfViewerOpen && !isPdfFile(mapImageFileName) && mapImage && (
+                  {/* Vista previa de imagen (solo para imágenes, no PDF) */}
+                  {!isPdfFile(mapImageFileName) && mapImage && (
                     <div className="p-6 text-center">
                       <img
                         src={mapImage}
