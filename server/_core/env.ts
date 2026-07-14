@@ -8,11 +8,13 @@ export const ENV = {
   // Forge API (legacy — used by LLM, notifications, voice, etc.)
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
-  // S3 storage (shared bucket with backups — uploads go under "uploads/" prefix)
-  s3Bucket: process.env.AWS_S3_BUCKET ?? "sige-backups",
-  s3Region: process.env.AWS_S3_REGION ?? process.env.AWS_REGION ?? "us-east-2",
-  s3AccessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
-  s3SecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
+  // S3 storage (supports both AWS S3 and local MinIO via S3_* env vars)
+  s3Bucket: process.env.S3_BUCKET ?? process.env.AWS_S3_BUCKET ?? "sige-backups",
+  s3Region: process.env.S3_REGION ?? process.env.AWS_S3_REGION ?? process.env.AWS_REGION ?? "us-east-1",
+  s3AccessKeyId: process.env.S3_ACCESS_KEY ?? process.env.AWS_ACCESS_KEY_ID ?? "",
+  s3SecretAccessKey: process.env.S3_SECRET_KEY ?? process.env.AWS_SECRET_ACCESS_KEY ?? "",
+  s3Endpoint: process.env.S3_ENDPOINT ?? "",
+  s3PublicEndpoint: process.env.S3_PUBLIC_ENDPOINT ?? "",
   // Frontend URL for invitation links
   frontendUrl: process.env.FRONTEND_URL ?? process.env.VITE_FRONTEND_URL ?? "http://localhost:3000",
   // AWS SES Configuration (deprecated - use Brevo instead)
