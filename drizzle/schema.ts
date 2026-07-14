@@ -1444,3 +1444,22 @@ export const companyTrainings = mysqlTable("companyTrainings", {
 
 export type CompanyTraining = typeof companyTrainings.$inferSelect;
 export type InsertCompanyTraining = typeof companyTrainings.$inferInsert;
+
+// Company-level Compliances (Sistema de Gestión)
+export const companyCompliances = mysqlTable("companyCompliances", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  requirement: varchar("requirement", { length: 255 }).notNull(),
+  description: text("description"),
+  obligationType: mysqlEnum("obligationType", ["Legal", "Reglamentaria", "Concesion", "Sistema de Gestion", "Otros"]).notNull(),
+  otherObligationType: varchar("otherObligationType", { length: 255 }),
+  responsible: varchar("responsible", { length: 255 }),
+  completed: mysqlEnum("completed", ["SI", "NO"]).default("NO").notNull(),
+  plannedMonths: varchar("plannedMonths", { length: 50 }),
+  completedMonths: varchar("completedMonths", { length: 50 }),
+  observations: text("observations"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CompanyCompliance = typeof companyCompliances.$inferSelect;
+export type InsertCompanyCompliance = typeof companyCompliances.$inferInsert;

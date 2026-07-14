@@ -622,6 +622,78 @@ export const appRouter = router({
       }),
   }),
 
+  // Company-level Compliances (Sistema de Gestión)
+  companyCompliances: router({
+    list: companyProcedure
+      .input(z.object({ companyId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        const { companyCompliances: tbl } = await import("../drizzle/schema");
+        return await db.select().from(tbl).where(eq(tbl.companyId, input.companyId));
+      }),
+    create: companyProcedure
+      .input(z.object({
+        companyId: z.number(),
+        requirement: z.string().min(1),
+        description: z.string().optional(),
+        obligationType: z.enum(["Legal", "Reglamentaria", "Concesion", "Sistema de Gestion", "Otros"]),
+        otherObligationType: z.string().optional(),
+        responsible: z.string().optional(),
+        plannedMonths: z.string().optional(),
+        completedMonths: z.string().optional(),
+        observations: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("No DB");
+        const { companyCompliances: tbl } = await import("../drizzle/schema");
+        await db.insert(tbl).values({
+          companyId: input.companyId,
+          requirement: input.requirement,
+          description: input.description ?? null,
+          obligationType: input.obligationType,
+          otherObligationType: input.otherObligationType ?? null,
+          responsible: input.responsible ?? null,
+          completed: "NO",
+          plannedMonths: input.plannedMonths ?? null,
+          completedMonths: input.completedMonths ?? null,
+          observations: input.observations ?? null,
+        });
+        return { success: true };
+      }),
+    update: companyProcedure
+      .input(z.object({
+        id: z.number(),
+        requirement: z.string().min(1).optional(),
+        description: z.string().optional(),
+        obligationType: z.enum(["Legal", "Reglamentaria", "Concesion", "Sistema de Gestion", "Otros"]).optional(),
+        otherObligationType: z.string().optional(),
+        responsible: z.string().optional(),
+        completed: z.enum(["SI", "NO"]).optional(),
+        plannedMonths: z.string().optional(),
+        completedMonths: z.string().optional(),
+        observations: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("No DB");
+        const { companyCompliances: tbl } = await import("../drizzle/schema");
+        const { id, ...rest } = input;
+        await db.update(tbl).set({ ...rest, updatedAt: new Date() }).where(eq(tbl.id, id));
+        return { success: true };
+      }),
+    delete: companyProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("No DB");
+        const { companyCompliances: tbl } = await import("../drizzle/schema");
+        await db.delete(tbl).where(eq(tbl.id, input.id));
+        return { success: true };
+      }),
+  }),
+
   // Process Trainings
   processTrainings: router({
     create: companyProcedure
