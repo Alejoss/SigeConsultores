@@ -4,7 +4,7 @@ import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Clock, CalendarDays } from "lucide-react";
 
 interface ScheduleActivity {
   id: string;
@@ -118,6 +118,74 @@ export default function ConsolidatedSchedule() {
     }
   };
 
+  // ─── Exportar a .ics (iCalendar) ─────────────────────────────────────────────
+  const exportToICS = () => {
+    if (!activities || activities.length === 0) return;
+
+    const escapeICS = (str: string) =>
+      (str || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+
+    const formatDate = (d: Date | string) => {
+      const date = typeof d === 'string'
+        ? new Date(d.includes('T') ? d : d + 'T12:00:00')
+        : new Date(d);
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${y}${m}${day}`;
+    };
+
+    const now = new Date();
+    const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+    const lines: string[] = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//SIGE Consultores//Cronograma Consolidado//ES',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'X-WR-CALNAME:Cronograma SIGE',
+      'X-WR-TIMEZONE:America/Bogota',
+    ];
+
+    activities.forEach(activity => {
+      // UID estable basado en el id de la actividad — evita duplicados al reimportar
+      const uid = `${activity.id}@sige.consultores`;
+      const dateStr = formatDate(activity.dueDate);
+      const summary = escapeICS(`[${activity.badge}] ${activity.action}`);
+      const description = escapeICS(
+        `Módulo: ${activity.badge}\n` +
+        (activity.element ? `Elemento: ${activity.element}\n` : '') +
+        `Estado: ${activity.completed === 'SI' ? 'Completada' : 'Pendiente'}\n` +
+        `Seguimiento: ${activity.completionField}`
+      );
+
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:${uid}`);
+      lines.push(`DTSTAMP:${stamp}`);
+      lines.push(`DTSTART;VALUE=DATE:${dateStr}`);
+      lines.push(`DTEND;VALUE=DATE:${dateStr}`);
+      lines.push(`SUMMARY:${summary}`);
+      lines.push(`DESCRIPTION:${description}`);
+      lines.push(`STATUS:${activity.completed === 'SI' ? 'COMPLETED' : 'NEEDS-ACTION'}`);
+      if (activity.completed === 'SI') lines.push(`COMPLETED:${stamp}`);
+      lines.push('END:VEVENT');
+    });
+
+    lines.push('END:VCALENDAR');
+
+    const icsContent = lines.join('\r\n');
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cronograma-sige-proceso-${processId}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const getDaysStatus = (dueDate: Date | string): { days: number; status: "upcoming" | "overdue" | "today" } => {
     const date = new Date(dueDate);
     const today = new Date();
@@ -139,12 +207,23 @@ export default function ConsolidatedSchedule() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-4xl font-bold text-gray-900">Cronograma Consolidado</h1>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/process-characterization")}
-            >
-              ← Volver
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={exportToICS}
+                disabled={!activities || activities.length === 0}
+                title="Exportar todas las actividades a Google Calendar, Outlook o cualquier app de calendario"
+              >
+                <CalendarDays className="w-4 h-4 mr-2" />
+                Exportar a Calendario (.ics)
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/process-characterization")}
+              >
+                ← Volver
+              </Button>
+            </div>
           </div>
 
           {/* Statistics Cards */}
@@ -363,6 +442,8 @@ export default function ConsolidatedSchedule() {
               Los badges de color identifican el módulo de origen de cada actividad. 
               Para completar o actualizar la información de cada actividad, dirígete al módulo específico 
               (Gestión de Partes Interesadas, Matriz FODA, Objetivos Tácticos de Gestión, Objetivos Tácticos Estratégicos o Cumplimientos).
+              El botón <strong>"Exportar a Calendario (.ics)"</strong> descarga un archivo compatible con Google Calendar, Outlook, Apple Calendar y cualquier aplicación de calendario estándar.
+              Al reimportar el archivo, los eventos existentes se actualizan sin duplicarse.
             </p>
           </CardContent>
         </Card>
