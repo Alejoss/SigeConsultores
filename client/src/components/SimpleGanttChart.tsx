@@ -79,7 +79,7 @@ export const SimpleGanttChart: React.FC<SimpleGanttChartProps> = ({ activities }
     <div ref={containerRef} className="relative overflow-x-auto rounded border border-gray-200 bg-white" style={{ maxHeight: 520 }}>
       <div style={{ width: totalW, minWidth: totalW }}>
         {/* Header row */}
-        <div className="flex sticky top-0 z-10 bg-slate-50 border-b border-gray-200" style={{ height: HEADER_H }}>
+        <div className="flex sticky top-0 z-10 bg-slate-50 border-b border-gray-200" style={{ height: HEADER_H }} translate="no">
           {/* Label column header */}
           <div
             className="flex-shrink-0 flex items-center px-3 text-xs font-semibold text-gray-600 border-r border-gray-200 sticky left-0 bg-slate-50 z-20"
