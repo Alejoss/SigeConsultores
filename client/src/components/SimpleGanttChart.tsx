@@ -132,6 +132,7 @@ export const SimpleGanttChart: React.FC<SimpleGanttChartProps> = ({ activities }
                   style={{ width: LABEL_W, minWidth: LABEL_W }}
                 >
                   <span
+                    translate="no"
                     className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 ${style.bg} ${style.text}`}
                   >
                     {activity.badge}
@@ -205,7 +206,7 @@ export const SimpleGanttChart: React.FC<SimpleGanttChartProps> = ({ activities }
         >
           <p className="font-semibold text-gray-900 mb-1">{tooltip.activity.label}</p>
           <p className="text-gray-500 mb-1">
-            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${getBadgeStyle(tooltip.activity.badge).bg} ${getBadgeStyle(tooltip.activity.badge).text}`}>
+            <span translate="no" className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${getBadgeStyle(tooltip.activity.badge).bg} ${getBadgeStyle(tooltip.activity.badge).text}`}>
               {tooltip.activity.badge}
             </span>
           </p>
