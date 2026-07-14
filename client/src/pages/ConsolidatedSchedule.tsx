@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { Button } from "@/components/ui/button";
@@ -53,25 +53,28 @@ export default function ConsolidatedSchedule() {
 
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  const [activities, setActivities] = useState<ScheduleActivity[]>([]);
 
   const { data: consolidatedData, isLoading } = trpc.consolidatedSchedule.getConsolidatedSchedule.useQuery(
     { processId },
-    { enabled: processId > 0 }
+    { 
+      enabled: processId > 0,
+      staleTime: 0,
+      gcTime: 0,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+    }
   );
 
-  useEffect(() => {
-    if (consolidatedData) {
-      // Normalize badges: always use canonical names regardless of cached data
-      const normalized = (consolidatedData as ScheduleActivity[]).map(a => ({
-        ...a,
-        badge: a.type === "objective" ? "OTE" :
-               a.type === "compliance" ? "Cumplimientos" :
-               a.type === "stakeholder" ? "Gestión con Partes Interesadas" :
-               a.badge,
-      }));
-      setActivities(normalized);
-    }
+  // Normalize badges directly from fresh server data
+  const activities = useMemo(() => {
+    if (!consolidatedData) return [];
+    return (consolidatedData as ScheduleActivity[]).map(a => ({
+      ...a,
+      badge: a.type === "objective" ? "OTE" :
+             a.type === "compliance" ? "Cumplimientos" :
+             a.type === "stakeholder" ? "Gestión con Partes Interesadas" :
+             a.badge,
+    }));
   }, [consolidatedData]);
 
   // Filter activities by current month and year.
