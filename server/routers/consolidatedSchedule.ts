@@ -7,14 +7,13 @@ import {
   processFODA,
   processTacticalObjectives,
   processCompliances,
-  processTrainings,
 } from "../../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 import { companyProcedure, router } from "../_core/trpc";
 
 export interface ScheduleActivity {
   id: string;
-  type: "stakeholder" | "foda" | "objective" | "compliance" | "training";
+  type: "stakeholder" | "foda" | "objective" | "compliance";
   element: string;
   action: string;
   dueDate: Date;
@@ -49,8 +48,6 @@ function getBadgeInfo(type: string, fodaType?: string): { badge: string; color: 
       return { badge: "Objetivo Táctico", color: "bg-yellow-100 text-yellow-700 border-yellow-300" };
     case "compliance":
       return { badge: "Cumplimiento", color: "bg-pink-100 text-pink-700 border-pink-300" };
-    case "training":
-      return { badge: "Capacitación", color: "bg-indigo-100 text-indigo-700 border-indigo-300" };
     default:
       return { badge: "Actividad", color: "bg-gray-100 text-gray-700 border-gray-300" };
   }
@@ -324,37 +321,7 @@ export const consolidatedScheduleRouter = router({
           }
         });
 
-        // 5. Capacitaciones
-        const trainings = await db
-          .select()
-          .from(processTrainings)
-          .where(eq(processTrainings.processId, input.processId));
-
-        trainings.forEach((t: any) => {
-          if (t.name && t.plannedDate) {
-            const dueDate = new Date(t.plannedDate);
-            const badgeInfo = getBadgeInfo("training");
-            // Capacitación impartida: if conductedDate exists, it's completed
-            const completed = t.conductedDate ? "SI" : "NO";
-            const completionPercentage = t.conductedDate ? 100 : 0;
-            
-            activities.push({
-              id: `training-${t.id}`,
-              type: "training",
-              element: "Capacitación",
-              action: t.name,
-              dueDate: dueDate,
-              completed: completed,
-              completionField: "Estado",
-              badge: badgeInfo.badge,
-              badgeColor: badgeInfo.color,
-              daysRemaining: calculateDaysRemaining(dueDate),
-              completionPercentage: completionPercentage,
-            });
-          }
-        });
-
-        // Deduplicate activities by ID (content-based hashing ensures same elements get same ID)
+                // Deduplicate activities by ID (content-based hashing ensures same elements get same ID)
         const uniqueActivities = new Map<string, ScheduleActivity>();
         activities.forEach(activity => {
           // Keep the first occurrence of each unique activity

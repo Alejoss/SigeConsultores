@@ -336,9 +336,6 @@ export default function ConsolidatedSchedule() {
               <div className="px-3 py-2 rounded border text-sm font-semibold text-center bg-pink-100 text-pink-700 border-pink-300">
                 Cumplimiento
               </div>
-              <div className="px-3 py-2 rounded border text-sm font-semibold text-center bg-indigo-100 text-indigo-700 border-indigo-300">
-                Capacitación
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -350,7 +347,7 @@ export default function ConsolidatedSchedule() {
               <strong>Nota:</strong> Este cronograma es una vista consolidada de todas tus planificaciones. 
               Los badges de color identifican el módulo de origen de cada actividad. 
               Para completar o actualizar la información de cada actividad, dirígete al módulo específico 
-              (Criticidad de Partes Interesadas, Matriz FODA, Objetivos Tácticos, Cumplimientos o Capacitaciones).
+              (Gestión de Partes Interesadas, Matriz FODA, Objetivos Tácticos de Gestión, Objetivos Tácticos Estratégicos o Cumplimientos).
             </p>
           </CardContent>
         </Card>

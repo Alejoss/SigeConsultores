@@ -3,12 +3,10 @@ import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import {
   processes,
-  processScheduleActivities,
   processTacticalObjectives,
   criticalityMatrix,
   processFODA,
   processCompliances,
-  processTrainings,
   stakeholderSurveys,
 } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -148,21 +146,9 @@ export const macroIndicatorsRouter = router({
               cumplimientosPromedio = Math.round((completed / compliances.length) * 100);
             }
 
-            // 5. Capacitaciones
-            const trainings = await db
-              .select()
-              .from(processTrainings)
-              .where(eq(processTrainings.processId, process.id));
-
-            let capacitacionesImpartidas = 0;
-            if (trainings.length > 0) {
-              const conducted = trainings.filter(t => t.conductedDate !== null).length;
-              capacitacionesImpartidas = Math.round((conducted / trainings.length) * 100);
-            }
-
-            // Calculate compliance percentage as simple average of 5 indicators
+            // Calculate compliance percentage as simple average of 4 indicators
             const compliancePercentage = Math.round(
-              (criticalidadCumplimiento + matrizAlcanzado + objetivosTacticosAlcanzado + cumplimientosPromedio + capacitacionesImpartidas) / 5
+              (criticalidadCumplimiento + matrizAlcanzado + objetivosTacticosAlcanzado + cumplimientosPromedio) / 4
             );
 
             // Calculate tactical objectives performance (same as objectives percentage)
@@ -174,7 +160,7 @@ export const macroIndicatorsRouter = router({
               compliancePercentage,
               objectivesPerformance,
               stakeholderPercentage: criticalidadCumplimiento,
-              trainingsPercentage: capacitacionesImpartidas,
+              trainingsPercentage: 0,
               compliancesPercentage: cumplimientosPromedio,
               fodaPercentage: matrizAlcanzado,
               totalActivities: 0,
@@ -319,20 +305,6 @@ export const macroIndicatorsRouter = router({
             ? Math.round((completedCompliances / compliances.length) * 100)
             : 0;
 
-        // 5. Capacitación
-        const trainings = await db
-          .select()
-          .from(processTrainings)
-          .where(eq(processTrainings.processId, input.processId));
-
-        const conductedTrainings = trainings.filter(
-          (t) => t.conductedDate !== null
-        ).length;
-        const trainingsPercentage =
-          trainings.length > 0
-            ? Math.round((conductedTrainings / trainings.length) * 100)
-            : 0;
-
         return {
           processId: input.processId,
           indicators: {
@@ -360,13 +332,6 @@ export const macroIndicatorsRouter = router({
               value: compliancesPercentage,
               total: compliances.length,
               completed: completedCompliances,
-              unit: "%",
-            },
-            trainings: {
-              name: "Capacitación",
-              value: trainingsPercentage,
-              total: trainings.length,
-              conducted: conductedTrainings,
               unit: "%",
             },
             matrizComunicado: {

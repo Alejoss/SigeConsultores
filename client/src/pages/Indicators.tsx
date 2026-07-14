@@ -48,13 +48,6 @@ interface ProcessIndicators {
       completed: number;
       unit: string;
     };
-    trainings: {
-      name: string;
-      value: number;
-      total: number;
-      conducted: number;
-      unit: string;
-    };
   };
 }
 
@@ -334,20 +327,6 @@ export default function Indicators() {
                           </p>
                         </div>
 
-                        {/* Indicator 5: Capacitación */}
-                        <div className={`p-4 rounded-lg bg-gray-50 ${getIndicatorColor(processIndicators.indicators.trainings.value)}`}>
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-semibold text-gray-900">
-                              {processIndicators.indicators.trainings.name}
-                            </h4>
-                            <span className={`text-lg font-bold ${getComplianceTextColor(processIndicators.indicators.trainings.value)}`}>
-                              {processIndicators.indicators.trainings.value}{processIndicators.indicators.trainings.unit}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-600">
-                            {processIndicators.indicators.trainings.conducted}/{processIndicators.indicators.trainings.total} entrenamientos realizados
-                          </p>
-                        </div>
                       </div>
                     )}
                   </div>
