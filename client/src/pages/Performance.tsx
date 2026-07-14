@@ -224,16 +224,10 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
     return count > 0 ? Math.round(total / count) : 0;
   }, [inspections]);
 
-  // % Cumplimientos y % Capacitaciones: promedio de todos los procesos
+  // % Cumplimientos: promedio de todos los procesos
   const avgCompliances = useMemo(() => {
     if (!macroIndicators.length) return 0;
     const total = macroIndicators.reduce((sum: number, p: any) => sum + (p.compliancesPercentage || 0), 0);
-    return Math.round(total / macroIndicators.length);
-  }, [macroIndicators]);
-
-  const avgTrainings = useMemo(() => {
-    if (!macroIndicators.length) return 0;
-    const total = macroIndicators.reduce((sum: number, p: any) => sum + (p.trainingsPercentage || 0), 0);
     return Math.round(total / macroIndicators.length);
   }, [macroIndicators]);
 
@@ -242,7 +236,6 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
     { label: "Cumplimientos", value: avgCompliances, icon: "✅", count: null },
     { label: "Auditorías", value: auditsCompliance, icon: "🔍", count: (audits as any[]).length },
     { label: "Inspecciones", value: inspectionsCompliance, icon: "🔎", count: (inspections as any[]).length },
-    { label: "Capacitaciones", value: avgTrainings, icon: "🎓", count: null },
   ];
 
   const isLoading = programsLoading || indicatorsLoading || auditsLoading || inspectionsLoading;
@@ -300,7 +293,7 @@ export default function Performance() {
       key: "systems" as SubModule,
       icon: <Settings size={40} className="text-blue-500" />,
       title: "Sistemas de Gestión",
-      description: "% cumplimiento de Programas, Auditorías, Inspecciones, Capacitaciones y Cumplimientos.",
+      description: "% cumplimiento de Programas, Auditorías, Inspecciones y Cumplimientos.",
     },
   ];
 
