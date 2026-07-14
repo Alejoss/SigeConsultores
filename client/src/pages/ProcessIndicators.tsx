@@ -55,10 +55,10 @@ export default function ProcessIndicators() {
       ]
     },
     {
-      id: "capacitaciones",
-      name: "Capacitaciones",
+      id: "cumplimientos",
+      name: "Cumplimientos",
       indicators: [
-        { id: "impartidas", name: "%Impartidas", value: 0 }
+        { id: "promedio_cumplimiento", name: "%Cumplidos", value: 0 }
       ]
     }
   ]);
