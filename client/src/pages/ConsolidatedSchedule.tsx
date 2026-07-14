@@ -185,9 +185,9 @@ export default function ConsolidatedSchedule() {
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <CardTitle className="text-2xl min-w-[200px]">
-                  {MONTHS[currentMonth]} {currentYear}
-                </CardTitle>
+                <h2 key={`${currentYear}-${currentMonth}`} className="text-2xl font-semibold min-w-[200px]">
+                  {MONTHS[currentMonth]} de {currentYear}
+                </h2>
                 <Button
                   variant="ghost"
                   size="sm"
