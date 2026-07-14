@@ -246,6 +246,7 @@ export default function ProcessRiskMatrix() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const initialLoadDoneRef = useRef(false);
+  const fodaSyncDoneRef = useRef(false);
   const savingRef = useRef(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -260,9 +261,10 @@ export default function ProcessRiskMatrix() {
     { enabled: processId !== null }
   );
 
-  // Sync FODA → OTG rows (after initial load)
+  // Sync FODA → OTG rows (after initial load, only once)
   useEffect(() => {
-    if (!fodaData || !initialLoadDoneRef.current) return;
+    if (!fodaData || !initialLoadDoneRef.current || fodaSyncDoneRef.current) return;
+    fodaSyncDoneRef.current = true;
     try {
       const allFodaItems: Array<{ statement: string; type: FODAType; subprocess: string; policyObjective: string }> = [
         ...JSON.parse(fodaData.strengths || '[]').map((i: any) => ({ ...i, type: 'Fortaleza' as FODAType })),
@@ -363,7 +365,7 @@ export default function ProcessRiskMatrix() {
           addRows(weaknesses, 'Debilidad'); addRows(threats, 'Amenaza');
         }
         setRows(newRows);
-        setTimeout(() => { initialLoadDoneRef.current = true; }, 200);
+        initialLoadDoneRef.current = true;
       } catch (error) { console.error('Error loading FODA data:', error); }
     }
   }, [fodaData]);
