@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
-import { Loader2, Target, BarChart2, Settings, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Target, BarChart2, Settings, ChevronDown, ChevronUp, TrendingUp } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
@@ -297,6 +297,8 @@ export default function Performance() {
     },
   ];
 
+  const handleGoToTrends = () => setLocation("/strategic-trends");
+
   // Botón Volver: si hay submódulo activo, vuelve a la selección; si no, al dashboard
   const handleBack = () => {
     if (activeModule) {
@@ -354,6 +356,31 @@ export default function Performance() {
                 </CardContent>
               </Card>
             ))}
+            {/* Card especial: Tendencias Estratégicas — ancho completo */}
+            <Card
+              className="border-2 border-emerald-100 hover:border-emerald-300 transition-colors cursor-pointer col-span-1 md:col-span-3"
+              onClick={handleGoToTrends}
+            >
+              <CardContent className="pt-6 pb-6 flex flex-col md:flex-row items-start md:items-center gap-4">
+                <div className="shrink-0">
+                  <TrendingUp size={40} className="text-emerald-500" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-bold text-slate-800">Tendencias Estratégicas</h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Evolución mensual del % de cumplimiento de OTE, OTG y Gestión con Partes Interesadas.
+                    Visualiza cómo crece tu empresa mes a mes frente a las metas establecidas.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  className="shrink-0 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  onClick={(e) => { e.stopPropagation(); handleGoToTrends(); }}
+                >
+                  Ver tendencias
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         )}
 

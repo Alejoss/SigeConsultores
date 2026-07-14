@@ -106,6 +106,7 @@ import { organizationChartRouter } from "./routers/organizationChart";
 import { auditsInspectionsRouter } from "./routers/auditsInspections";
 import { managementProgramsRouter } from "./routers/managementPrograms";
 import { stakeholderSurveysRouter } from "./routers/stakeholderSurveys";
+import { strategicTrendsRouter } from "./routers/strategicTrends";
 
 // Module Customization Router
 const moduleCustomizationRouter = router({
@@ -934,6 +935,7 @@ export const appRouter = router({
   auditsInspections: auditsInspectionsRouter,
   managementPrograms: managementProgramsRouter,
   stakeholderSurveys: stakeholderSurveysRouter,
+  strategicTrends: strategicTrendsRouter,
 
   // Company Trainings (Capacitaciones a nivel empresa)
   companyTrainings: router({

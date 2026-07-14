@@ -1463,3 +1463,21 @@ export const companyCompliances = mysqlTable("companyCompliances", {
 });
 export type CompanyCompliance = typeof companyCompliances.$inferSelect;
 export type InsertCompanyCompliance = typeof companyCompliances.$inferInsert;
+
+// Company-level Strategic Trends (snapshots mensuales de % avance)
+export const companyTrends = mysqlTable("companyTrends", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  year: int("year").notNull(),
+  month: int("month").notNull(),
+  otePercent: decimal("otePercent", { precision: 6, scale: 2 }).notNull().default("0"),
+  otgPercent: decimal("otgPercent", { precision: 6, scale: 2 }).notNull().default("0"),
+  stakeholderPercent: decimal("stakeholderPercent", { precision: 6, scale: 2 }).notNull().default("0"),
+  oteMeta: decimal("oteMeta", { precision: 6, scale: 2 }).notNull().default("100"),
+  otgMeta: decimal("otgMeta", { precision: 6, scale: 2 }).notNull().default("100"),
+  stakeholderMeta: decimal("stakeholderMeta", { precision: 6, scale: 2 }).notNull().default("100"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CompanyTrend = typeof companyTrends.$inferSelect;
+export type InsertCompanyTrend = typeof companyTrends.$inferInsert;
