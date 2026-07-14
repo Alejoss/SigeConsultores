@@ -274,7 +274,7 @@ export const consolidatedScheduleRouter = router({
                         activities.push({
                           id: `objective-task-${o.id}-${taskIndex}`,
                           type: "objective",
-                          element: `${resultKey.description || "Objetivo Táctico"}`,
+                          element: "OTE",
                           action: task.description,
                           dueDate: dueDate,
                           completed: completionPercentage === 100 ? "SI" : "NO",
