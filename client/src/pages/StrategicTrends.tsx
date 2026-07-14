@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, createPortal } from "react";
 import { useLocation } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, X } from "lucide-react";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type TrendPoint = {
@@ -147,26 +147,13 @@ function KpiCard({
 
 // ─── Desglose OTE colapsable ──────────────────────────────────────────────────
 function OteBreakdown({ companyId }: { companyId: number }) {
-  const [open, setOpen] = useState(false);
   const [expandedProcess, setExpandedProcess] = useState<number | null>(null);
-
   const { data: breakdown = [], isLoading } = trpc.strategicTrends.getOteBreakdown.useQuery(
     { companyId },
-    { enabled: companyId > 0 && open }
+    { enabled: companyId > 0 }
   );
-
   return (
-    <div className="mt-3">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
-      >
-        {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        {open ? "Ocultar desglose de OTE" : "Desplegar OTE"}
-      </button>
-
-      {open && (
-        <div className="mt-4 space-y-3">
+    <div className="space-y-3">
           {isLoading ? (
             <div className="flex justify-center py-6">
               <Loader2 className="animate-spin w-5 h-5 text-blue-400" />
@@ -264,12 +251,9 @@ function OteBreakdown({ companyId }: { companyId: number }) {
               );
             })
           )}
-        </div>
-      )}
-    </div>
+            </div>
   );
 }
-
 // ─── Gráfico individual ───────────────────────────────────────────────────────
 function TrendChart({
   title,
@@ -392,6 +376,7 @@ export default function StrategicTrends() {
   const { isManagerLogin, managerCompanyId } = useManagerAuth();
   const { session: processLeaderSession } = useProcessLeaderAuth();
   const [yearFilter, setYearFilter] = useState<number | "all">("all");
+  const [showOteModal, setShowOteModal] = useState(false);
 
   const companyId = useMemo<number>(() => {
     if (isManagerLogin && managerCompanyId) return managerCompanyId;
@@ -504,8 +489,8 @@ export default function StrategicTrends() {
 
             {/* Gráficos */}
             <div className="flex flex-col gap-6">
-              {/* OTE — con botón de desglose debajo */}
-              <div>
+              {/* OTE — con botón de desglose que abre modal */}
+              <div className="relative">
                 <TrendChart
                   title="Objetivos Tácticos Estratégicos"
                   badge="OTE"
@@ -518,8 +503,14 @@ export default function StrategicTrends() {
                   metaColor="#ef4444"
                   yearFilter={yearFilter}
                 />
-                <div className="mt-2 px-1">
-                  <OteBreakdown companyId={companyId} />
+                <div className="px-4 pb-3">
+                  <button
+                    onClick={() => setShowOteModal(true)}
+                    className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                  >
+                    <ChevronDown size={16} />
+                    Desplegar OTE
+                  </button>
                 </div>
               </div>
               {/* OTG — sin desglose */}
@@ -558,6 +549,29 @@ export default function StrategicTrends() {
           </>
         )}
       </div>
+      {/* Modal de desglose OTE — renderizado via portal fuera del árbol de Recharts */}
+      {showOteModal && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-16 px-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowOteModal(false); }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[75vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-xl">
+              <h2 className="text-lg font-bold text-slate-800">Desglose de Objetivos Tácticos Estratégicos</h2>
+              <button
+                onClick={() => setShowOteModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-5">
+              <OteBreakdown companyId={companyId} />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </DashboardLayout>
   );
 }
