@@ -107,6 +107,7 @@ function RootRedirect() {
         const data = (await res.json()) as
           | { authenticated: true; kind: "process_leader"; processId: number }
           | { authenticated: true; kind: "company_manager" }
+          | { authenticated: true; kind: "platform_user" }
           | { authenticated: false };
 
         if (cancelled) return;
@@ -117,6 +118,10 @@ function RootRedirect() {
         }
         if (data.authenticated && data.kind === "company_manager") {
           setLocation("/manager-dashboard");
+          return;
+        }
+        if (data.authenticated && data.kind === "platform_user") {
+          setLocation("/dashboard");
           return;
         }
       } catch {
