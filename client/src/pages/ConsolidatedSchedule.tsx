@@ -1,10 +1,10 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Clock, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Clock, CalendarDays, HelpCircle } from "lucide-react";
 
 interface ScheduleActivity {
   id: string;
@@ -24,6 +24,36 @@ const MONTHS = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
 ];
+
+function IcsHelpTooltip() {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="relative inline-block">
+      <button
+        type="button"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        className="text-gray-400 hover:text-gray-600 transition-colors"
+        aria-label="Cómo importar el archivo .ics"
+      >
+        <HelpCircle className="w-4 h-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-6 z-50 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs text-gray-700">
+          <p className="font-semibold text-gray-900 mb-2">¿Cómo importar?</p>
+          <ol className="space-y-1 list-decimal list-inside">
+            <li>Descarga el archivo <span className="font-medium">.ics</span></li>
+            <li>Abre <span className="font-medium">Google Calendar</span> → Configuración → Importar y exportar → Importar</li>
+            <li>Selecciona el archivo descargado y haz clic en <span className="font-medium">Importar</span></li>
+          </ol>
+          <p className="mt-2 text-gray-500">También funciona con Outlook, Apple Calendar y cualquier app de calendario estándar. Al reimportar, los eventos existentes se actualizan sin duplicarse.</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ConsolidatedSchedule() {
   const [, navigate] = useLocation();
@@ -217,6 +247,7 @@ export default function ConsolidatedSchedule() {
                 <CalendarDays className="w-4 h-4 mr-2" />
                 Exportar a Calendario (.ics)
               </Button>
+              <IcsHelpTooltip />
               <Button
                 variant="outline"
                 onClick={() => navigate("/process-characterization")}
