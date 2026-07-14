@@ -2,7 +2,7 @@ import { z } from "zod";
 import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { companyTrends, processes, processTacticalObjectives, criticalityMatrix } from "../../drizzle/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 
 const MONTH_NAMES = [
   "Ene", "Feb", "Mar", "Abr", "May", "Jun",
@@ -257,5 +257,84 @@ export const strategicTrendsRouter = router({
         });
 
       return { success: true, otePercent: avgOte, stakeholderPercent: avgStakeholder };
+    }),
+
+  /**
+   * Devuelve el desglose de cada OTE individual con su % de avance actual.
+   * Agrupa por proceso y por objetivo estratégico.
+   */
+  getOteBreakdown: companyProcedure
+    .input(z.object({ companyId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const companyProcesses = await db
+        .select()
+        .from(processes)
+        .where(eq(processes.companyId, input.companyId));
+
+      const result: Array<{
+        processId: number;
+        processName: string;
+        objectives: Array<{
+          id: number;
+          name: string;
+          strategicObjective: string;
+          percent: number;
+          ponderacion: number;
+        }>;
+      }> = [];
+
+      for (const proc of companyProcesses) {
+        const oteRows = await db
+          .select()
+          .from(processTacticalObjectives)
+          .where(eq(processTacticalObjectives.processId, proc.id));
+
+        if (oteRows.length === 0) continue;
+
+        const objectives = oteRows.map((obj: any) => {
+          let percent = 0;
+          let ponderacion = 0;
+          try {
+            const pd = JSON.parse(obj.planningData || "{}");
+            ponderacion = parseFloat(pd.ponderacion) || 0;
+            const puntoPartida = parseFloat(pd.puntoPartida) || 0;
+            const metaLlegada = parseFloat(pd.metaLlegada) || 0;
+            const avanceMeta = parseFloat(pd.avanceMeta) || 0;
+            // Calcular desde resultKeys si no hay puntoPartida/metaLlegada directos
+            if (metaLlegada !== puntoPartida && metaLlegada !== 0) {
+              percent = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
+              percent = Math.max(0, Math.min(100, Math.round(percent)));
+            } else if (pd.resultKeys && Array.isArray(pd.resultKeys)) {
+              // Promedio de porcentajeAlcanzado de los resultKeys
+              const vals = pd.resultKeys
+                .map((rk: any) => parseFloat(rk.porcentajeAlcanzado) || 0)
+                .filter((v: number) => !isNaN(v));
+              if (vals.length > 0) {
+                percent = Math.round(vals.reduce((a: number, b: number) => a + b, 0) / vals.length);
+              }
+            }
+          } catch { /* skip */ }
+          return {
+            id: obj.id,
+            name: obj.name || "Sin nombre",
+            strategicObjective: obj.strategicObjective || "Sin clasificar",
+            percent,
+            ponderacion,
+          };
+        });
+
+        if (objectives.length > 0) {
+          result.push({
+            processId: proc.id,
+            processName: proc.name,
+            objectives,
+          });
+        }
+      }
+
+      return result;
     }),
 });

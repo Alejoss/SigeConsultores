@@ -15,11 +15,9 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ReferenceLine,
   ResponsiveContainer,
-  Dot,
 } from "recharts";
-import { Loader2, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from "lucide-react";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type TrendPoint = {
@@ -32,6 +30,20 @@ type TrendPoint = {
   oteMeta: number;
   otgMeta: number;
   stakeholderMeta: number;
+};
+
+type OteObjective = {
+  id: number;
+  name: string;
+  strategicObjective: string;
+  percent: number;
+  ponderacion: number;
+};
+
+type OteProcess = {
+  processId: number;
+  processName: string;
+  objectives: OteObjective[];
 };
 
 // ─── Tooltip personalizado ────────────────────────────────────────────────────
@@ -100,7 +112,7 @@ function KpiCard({
       <CardContent className="pt-4 pb-4">
         <div className="flex items-start justify-between mb-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1" translate="no">
               {badge}
             </p>
             <p className="text-sm font-medium text-slate-700">{title}</p>
@@ -112,37 +124,149 @@ function KpiCard({
               color: isAbove ? "#16a34a" : isClose ? "#ca8a04" : "#dc2626",
             }}
           >
-            {isAbove ? (
-              <TrendingUp size={12} />
-            ) : isClose ? (
-              <Minus size={12} />
-            ) : (
-              <TrendingDown size={12} />
-            )}
+            {isAbove ? <TrendingUp size={12} /> : isClose ? <Minus size={12} /> : <TrendingDown size={12} />}
             {isAbove ? "En meta" : isClose ? "Cerca" : "Bajo meta"}
           </div>
         </div>
         <div className="flex items-end gap-2">
-          <span
-            className="text-4xl font-bold"
-            style={{ color }}
-          >
+          <span className="text-4xl font-bold" style={{ color }}>
             {current.toFixed(1)}%
           </span>
           <span className="text-slate-400 text-sm mb-1">/ {meta}% meta</span>
         </div>
-        {/* Barra de progreso */}
         <div className="mt-3 h-2 bg-slate-100 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-500"
-            style={{
-              width: `${Math.min(100, current)}%`,
-              backgroundColor: color,
-            }}
+            style={{ width: `${Math.min(100, current)}%`, backgroundColor: color }}
           />
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ─── Desglose OTE colapsable ──────────────────────────────────────────────────
+function OteBreakdown({ companyId }: { companyId: number }) {
+  const [open, setOpen] = useState(false);
+  const [expandedProcess, setExpandedProcess] = useState<number | null>(null);
+
+  const { data: breakdown = [], isLoading } = trpc.strategicTrends.getOteBreakdown.useQuery(
+    { companyId },
+    { enabled: companyId > 0 && open }
+  );
+
+  return (
+    <div className="mt-3">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+      >
+        {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        {open ? "Ocultar desglose de OTE" : "Desplegar OTE"}
+      </button>
+
+      {open && (
+        <div className="mt-4 space-y-3">
+          {isLoading ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="animate-spin w-5 h-5 text-blue-400" />
+            </div>
+          ) : breakdown.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-4">
+              No hay objetivos tácticos registrados.
+            </p>
+          ) : (
+            (breakdown as OteProcess[]).map((proc) => {
+              const isExpanded = expandedProcess === proc.processId;
+              // % promedio del proceso
+              const avgPercent = proc.objectives.length > 0
+                ? Math.round(proc.objectives.reduce((s, o) => s + o.percent, 0) / proc.objectives.length)
+                : 0;
+              const barColor =
+                avgPercent >= 80 ? "#16a34a" : avgPercent >= 50 ? "#ca8a04" : "#dc2626";
+
+              return (
+                <Card key={proc.processId} className="border border-slate-200">
+                  <CardContent className="pt-3 pb-3">
+                    {/* Cabecera del proceso */}
+                    <div
+                      className="flex items-center justify-between cursor-pointer"
+                      onClick={() => setExpandedProcess(isExpanded ? null : proc.processId)}
+                    >
+                      <span className="font-semibold text-slate-700 text-sm">{proc.processName}</span>
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="text-sm font-bold px-2 py-0.5 rounded-full"
+                          style={{
+                            backgroundColor: barColor + "20",
+                            color: barColor,
+                          }}
+                        >
+                          {avgPercent}%
+                        </span>
+                        {isExpanded
+                          ? <ChevronUp size={14} className="text-slate-400" />
+                          : <ChevronDown size={14} className="text-slate-400" />}
+                      </div>
+                    </div>
+
+                    {/* Objetivos del proceso */}
+                    {isExpanded && (
+                      <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                        {proc.objectives.map((obj) => {
+                          const objColor =
+                            obj.percent >= 80 ? "#16a34a"
+                            : obj.percent >= 50 ? "#ca8a04"
+                            : "#dc2626";
+                          return (
+                            <div key={obj.id} className="bg-slate-50 rounded-lg p-3">
+                              <div className="flex items-start justify-between gap-3 mb-2">
+                                <div className="flex-1">
+                                  {obj.strategicObjective && obj.strategicObjective !== "Sin clasificar" && (
+                                    <p className="text-xs text-slate-400 mb-0.5 font-medium uppercase tracking-wide">
+                                      {obj.strategicObjective}
+                                    </p>
+                                  )}
+                                  <p className="text-sm text-slate-700 leading-snug">{obj.name}</p>
+                                </div>
+                                <span
+                                  className="shrink-0 text-sm font-bold px-2 py-0.5 rounded-full"
+                                  style={{
+                                    backgroundColor: objColor + "20",
+                                    color: objColor,
+                                  }}
+                                >
+                                  {obj.percent}%
+                                </span>
+                              </div>
+                              {/* Mini barra de progreso */}
+                              <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{
+                                    width: `${Math.min(100, obj.percent)}%`,
+                                    backgroundColor: objColor,
+                                  }}
+                                />
+                              </div>
+                              {obj.ponderacion > 0 && (
+                                <p className="text-xs text-slate-400 mt-1">
+                                  Ponderación: {obj.ponderacion}%
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -158,6 +282,8 @@ function TrendChart({
   realColor,
   metaColor,
   yearFilter,
+  companyId,
+  showBreakdown,
 }: {
   title: string;
   badge: string;
@@ -169,6 +295,8 @@ function TrendChart({
   realColor: string;
   metaColor: string;
   yearFilter: number | "all";
+  companyId?: number;
+  showBreakdown?: boolean;
 }) {
   const filtered = useMemo(() => {
     if (yearFilter === "all") return data;
@@ -178,9 +306,6 @@ function TrendChart({
   const currentValue = filtered.length > 0
     ? (filtered[filtered.length - 1][realKey] as number)
     : 0;
-  const metaValue = filtered.length > 0
-    ? (filtered[filtered.length - 1][metaKey] as number)
-    : 100;
 
   return (
     <Card className="shadow-sm">
@@ -259,6 +384,11 @@ function TrendChart({
             </LineChart>
           </ResponsiveContainer>
         )}
+
+        {/* Desglose OTE colapsable — solo para el gráfico OTE */}
+        {showBreakdown && companyId && companyId > 0 && (
+          <OteBreakdown companyId={companyId} />
+        )}
       </CardContent>
     </Card>
   );
@@ -284,18 +414,12 @@ export default function StrategicTrends() {
 
   const data: TrendPoint[] = trendsResult?.data ?? [];
 
-  // Años disponibles para el filtro
   const availableYears = useMemo(() => {
     const years = [...new Set(data.map((d) => d.year))].sort();
     return years;
   }, [data]);
 
-  // Último punto de datos para KPIs
   const latest = data.length > 0 ? data[data.length - 1] : null;
-
-  const handleBack = () => {
-    setLocation("/performance");
-  };
 
   return (
     <DashboardLayout>
@@ -305,7 +429,7 @@ export default function StrategicTrends() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleBack}
+            onClick={() => setLocation("/performance")}
             className="flex items-center gap-2"
           >
             ← Volver
@@ -388,6 +512,7 @@ export default function StrategicTrends() {
 
             {/* Gráficos */}
             <div className="flex flex-col gap-6">
+              {/* OTE — con botón de desglose */}
               <TrendChart
                 title="Objetivos Tácticos Estratégicos"
                 badge="OTE"
@@ -399,7 +524,10 @@ export default function StrategicTrends() {
                 realColor="#3b82f6"
                 metaColor="#ef4444"
                 yearFilter={yearFilter}
+                companyId={companyId}
+                showBreakdown={true}
               />
+              {/* OTG — sin desglose */}
               <TrendChart
                 title="Objetivos Tácticos de Gestión"
                 badge="OTG"
@@ -412,6 +540,7 @@ export default function StrategicTrends() {
                 metaColor="#ef4444"
                 yearFilter={yearFilter}
               />
+              {/* GPI — sin desglose */}
               <TrendChart
                 title="Gestión con Partes Interesadas"
                 badge="GPI"
@@ -426,7 +555,6 @@ export default function StrategicTrends() {
               />
             </div>
 
-            {/* Nota al pie */}
             {trendsResult?.hasSavedData === false && (
               <p className="text-xs text-slate-400 text-center mt-6">
                 Mostrando datos calculados en tiempo real. Los snapshots históricos se registran al cierre de cada mes.
