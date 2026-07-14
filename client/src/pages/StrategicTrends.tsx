@@ -1,4 +1,5 @@
-import { useState, useMemo, createPortal } from "react";
+import { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
