@@ -37,7 +37,7 @@ function calculateDaysRemaining(dueDate: Date): number {
 function getBadgeInfo(type: string, fodaType?: string): { badge: string; color: string } {
   switch (type) {
     case "stakeholder":
-      return { badge: "Criticidad", color: "bg-blue-100 text-blue-700 border-blue-300" };
+      return { badge: "Gestión con Partes Interesadas", color: "bg-blue-100 text-blue-700 border-blue-300" };
     case "foda":
       if (fodaType === "Fortaleza") return { badge: "Fortaleza", color: "bg-green-100 text-green-700 border-green-300" };
       if (fodaType === "Oportunidad") return { badge: "Oportunidad", color: "bg-orange-100 text-orange-700 border-orange-300" };
@@ -45,9 +45,9 @@ function getBadgeInfo(type: string, fodaType?: string): { badge: string; color: 
       if (fodaType === "Amenaza") return { badge: "Amenaza", color: "bg-purple-100 text-purple-700 border-purple-300" };
       return { badge: "FODA", color: "bg-gray-100 text-gray-700 border-gray-300" };
     case "objective":
-      return { badge: "Objetivo Táctico", color: "bg-yellow-100 text-yellow-700 border-yellow-300" };
+      return { badge: "OTE", color: "bg-yellow-100 text-yellow-700 border-yellow-300" };
     case "compliance":
-      return { badge: "Cumplimiento", color: "bg-pink-100 text-pink-700 border-pink-300" };
+      return { badge: "Cumplimientos", color: "bg-pink-100 text-pink-700 border-pink-300" };
     default:
       return { badge: "Actividad", color: "bg-gray-100 text-gray-700 border-gray-300" };
   }
