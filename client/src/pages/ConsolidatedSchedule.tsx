@@ -289,7 +289,6 @@ export default function ConsolidatedSchedule() {
               <Button
                 variant={showGantt ? "default" : "outline"}
                 onClick={() => setShowGantt(v => !v)}
-                disabled={!activities || activities.length === 0}
                 title="Ver diagrama de Gantt con todas las actividades planificadas"
               >
                 <BarChart2 className="w-4 h-4 mr-2" />
@@ -334,6 +333,13 @@ export default function ConsolidatedSchedule() {
         </div>
 
         {/* Diagrama de Gantt */}
+        {showGantt && ganttTasks.length === 0 && (
+          <Card className="bg-white mb-6">
+            <CardContent className="pt-6 pb-6 text-center text-gray-500">
+              No hay actividades cargadas para mostrar en el diagrama. Asegúrate de acceder al Cronograma Consolidado desde la Caracterización de Procesos de un proceso específico.
+            </CardContent>
+          </Card>
+        )}
         {showGantt && ganttTasks.length > 0 && (
           <Card className="bg-white mb-6">
             <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b">
