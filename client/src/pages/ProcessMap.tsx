@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import ProcessMapPdfViewer from "@/components/ProcessMapPdfViewer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -379,23 +380,19 @@ export default function ProcessMap() {
                     </Button>
                   </div>
                   {/* Visor PDF colapsable */}
-                  {isPdfViewerOpen && (
-                    <div className="w-full border border-purple-200 rounded-lg overflow-hidden bg-gray-100">
-                      {isPdfFile(mapImageFileName) ? (
-                        <iframe
-                          src={mapImage ? `/api/proxy/file?url=${encodeURIComponent(mapImage)}` : undefined}
-                          className="w-full h-[700px]"
-                          title="Mapa de Procesos"
-                        />
-                      ) : (
-                        <div className="p-6 text-center">
-                          <img
-                            src={mapImage}
-                            alt="Mapa de Procesos"
-                            className="w-full max-h-[700px] object-contain"
-                          />
-                        </div>
-                      )}
+                  {isPdfViewerOpen && isPdfFile(mapImageFileName) && mapImage && (
+                    <ProcessMapPdfViewer
+                      fileUrl={`/api/proxy/file?url=${encodeURIComponent(mapImage)}`}
+                      fileName={mapImageFileName || "Mapa de Procesos"}
+                    />
+                  )}
+                  {isPdfViewerOpen && !isPdfFile(mapImageFileName) && mapImage && (
+                    <div className="p-6 text-center">
+                      <img
+                        src={mapImage}
+                        alt="Mapa de Procesos"
+                        className="w-full max-h-[700px] object-contain"
+                      />
                     </div>
                   )}
                 </div>
