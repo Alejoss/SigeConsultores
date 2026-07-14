@@ -27,7 +27,7 @@ export const MonthlyProgressTracker: React.FC<MonthlyProgressTrackerProps> = ({ 
         <span className="text-sm font-semibold text-gray-700">% Completado: {percentage.toFixed(0)}% ({completedCount}/12 meses)</span>
       </div>
       
-      <div className="flex gap-1 flex-wrap">
+      <div className="flex gap-1 flex-wrap" translate="no">
         {MONTHS.map((month, index) => (
           <div key={index} className="flex flex-col items-center gap-1">
             <button

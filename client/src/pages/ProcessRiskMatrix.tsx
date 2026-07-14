@@ -170,7 +170,7 @@ function AccionOTGRow({
           <label className="text-xs font-semibold text-slate-600 block">
             Valores Mensuales ({accion.tipoSeguimiento === 'mensual_sumatoria' ? 'Sumatoria' : 'Promedio'})
           </label>
-          <div className="grid grid-cols-6 md:grid-cols-12 gap-1">
+          <div className="grid grid-cols-6 md:grid-cols-12 gap-1" translate="no">
             {MONTHS_SHORT.map((mes, idx) => (
               <div key={idx} className="text-center">
                 <div className="text-xs text-slate-500 mb-1">{mes}</div>
@@ -196,7 +196,7 @@ function AccionOTGRow({
       {accion.tipoSeguimiento === 'mensual_checklist' && (
         <div className="space-y-3">
           <label className="text-xs font-semibold text-slate-600 block">Lista de Verificación Mensual</label>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap" translate="no">
             {MONTHS_SHORT.map((mes, idx) => {
               const checked = (accion.checklistValues || Array(12).fill(false))[idx];
               return (
