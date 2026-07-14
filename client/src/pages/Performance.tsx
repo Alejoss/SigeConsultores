@@ -297,7 +297,7 @@ export default function Performance() {
     },
   ];
 
-  const handleGoToTrends = () => setLocation("/strategic-trends");
+  const handleGoToTrends = () => setLocation(companyId > 0 ? `/strategic-trends?companyId=${companyId}` : "/strategic-trends");
 
   // Botón Volver: si hay submódulo activo, vuelve a la selección; si no, al dashboard
   const handleBack = () => {
