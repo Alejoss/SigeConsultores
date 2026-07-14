@@ -62,7 +62,15 @@ export default function ConsolidatedSchedule() {
 
   useEffect(() => {
     if (consolidatedData) {
-      setActivities(consolidatedData as ScheduleActivity[]);
+      // Normalize badges: always use canonical names regardless of cached data
+      const normalized = (consolidatedData as ScheduleActivity[]).map(a => ({
+        ...a,
+        badge: a.type === "objective" ? "OTE" :
+               a.type === "compliance" ? "Cumplimientos" :
+               a.type === "stakeholder" ? "Gestión con Partes Interesadas" :
+               a.badge,
+      }));
+      setActivities(normalized);
     }
   }, [consolidatedData]);
 
@@ -71,8 +79,12 @@ export default function ConsolidatedSchedule() {
   // parsed as UTC midnight by JS, so comparing with local getMonth() shifts them
   // one day back in UTC-N timezones (e.g. Ecuador UTC-5).
   const monthActivities = activities.filter(activity => {
-    const activityDate = new Date(activity.dueDate);
-    return activityDate.getUTCMonth() === currentMonth && activityDate.getUTCFullYear() === currentYear;
+    // Parse date string as local date to avoid UTC offset shifting the day
+    const raw = activity.dueDate;
+    const activityDate = typeof raw === 'string'
+      ? new Date(raw.includes('T') ? raw : raw + 'T12:00:00')
+      : new Date(raw);
+    return activityDate.getMonth() === currentMonth && activityDate.getFullYear() === currentYear;
   });
 
   // Calculate statistics
