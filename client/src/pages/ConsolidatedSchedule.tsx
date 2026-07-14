@@ -426,7 +426,7 @@ export default function ConsolidatedSchedule() {
                         <div className="flex-1">
                           {/* Module Badge - Prominently displayed */}
                           <div className="mb-3 flex items-center gap-2">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${activity.badgeColor}`}>
+                            <span translate="no" className={`px-3 py-1 rounded-full text-xs font-bold border ${activity.badgeColor}`}>
                               {activity.badge}
                             </span>
                             {activity.completionPercentage !== undefined && activity.type === "objective" && (
@@ -443,7 +443,7 @@ export default function ConsolidatedSchedule() {
 
                           {/* Element/Category */}
                           {activity.element && (
-                            <div className="text-xs text-gray-500 mb-1">
+                            <div translate="no" className="text-xs text-gray-500 mb-1">
                               {activity.element}
                             </div>
                           )}
@@ -494,7 +494,7 @@ export default function ConsolidatedSchedule() {
             <CardTitle className="text-lg">Elementos Consolidados</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div translate="no" className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="px-3 py-2 rounded border text-sm font-semibold text-center bg-blue-100 text-blue-700 border-blue-300">
                 Gestión con Partes Interesadas
               </div>
