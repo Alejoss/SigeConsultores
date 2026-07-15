@@ -7,7 +7,7 @@ import { managerCreationRouter } from "./routers/managerCreation";
 import { aiRouter } from "./routers/ai";
 import { publicProcedure, router, protectedProcedure, adminProcedure, companyProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { companies, companyValues, processes, companyTrainings } from "../drizzle/schema";
+import { companies, companyValues, processes, companyTrainings, trainingSchedules, trainingBackups } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import {
   createCompany,
@@ -1032,6 +1032,97 @@ export const appRouter = router({
             updatedAt: new Date(),
           })
           .where(eq(companyTrainings.id, trainingId));
+        return { success: true };
+      }),
+  }),
+
+  // Training Schedules (Cronograma Anual de Capacitación)
+  trainingSchedules: router({
+    upsert: companyProcedure
+      .input(z.object({
+        companyId: z.number(),
+        year: z.number(),
+        fileName: z.string(),
+        fileUrl: z.string(),
+        fileKey: z.string(),
+        fileSizeBytes: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        // Delete existing schedule for this company+year and insert new one
+        await db.delete(trainingSchedules)
+          .where(eq(trainingSchedules.companyId, input.companyId));
+        await db.insert(trainingSchedules).values({
+          companyId: input.companyId,
+          year: input.year,
+          fileName: input.fileName,
+          fileUrl: input.fileUrl,
+          fileKey: input.fileKey,
+          fileSizeBytes: input.fileSizeBytes || 0,
+        });
+        return { success: true };
+      }),
+    get: companyProcedure
+      .input(z.object({ companyId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return null;
+        const rows = await db.select().from(trainingSchedules)
+          .where(eq(trainingSchedules.companyId, input.companyId))
+          .limit(1);
+        return rows[0] || null;
+      }),
+    delete: companyProcedure
+      .input(z.object({ companyId: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.delete(trainingSchedules)
+          .where(eq(trainingSchedules.companyId, input.companyId));
+        return { success: true };
+      }),
+  }),
+
+  // Training Backups (Respaldos por capacitación)
+  trainingBackups: router({
+    add: companyProcedure
+      .input(z.object({
+        trainingId: z.number(),
+        companyId: z.number(),
+        fileName: z.string(),
+        fileUrl: z.string(),
+        fileKey: z.string(),
+        fileSizeBytes: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.insert(trainingBackups).values({
+          trainingId: input.trainingId,
+          companyId: input.companyId,
+          fileName: input.fileName,
+          fileUrl: input.fileUrl,
+          fileKey: input.fileKey,
+          fileSizeBytes: input.fileSizeBytes || 0,
+        });
+        return { success: true };
+      }),
+    list: companyProcedure
+      .input(z.object({ trainingId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        return db.select().from(trainingBackups)
+          .where(eq(trainingBackups.trainingId, input.trainingId));
+      }),
+    delete: companyProcedure
+      .input(z.object({ backupId: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.delete(trainingBackups)
+          .where(eq(trainingBackups.id, input.backupId));
         return { success: true };
       }),
   }),

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { ChevronUp, ChevronDown, Download } from "lucide-react";
+import { ChevronUp, ChevronDown, Download, Upload, FileText, Trash2, X, Paperclip } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface Training {
@@ -57,6 +57,244 @@ const emptyForm: FormData = {
   actualAttendees: "",
 };
 
+// ─── Componente: Respaldos de una capacitación ───────────────────────────────
+function TrainingBackupsPanel({ trainingId, companyId, onClose }: {
+  trainingId: number;
+  companyId: number;
+  onClose: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const utils = trpc.useUtils();
+
+  const { data: backups = [], isLoading } = trpc.trainingBackups.list.useQuery(
+    { trainingId },
+    { enabled: trainingId > 0 }
+  );
+
+  const addMutation = trpc.trainingBackups.add.useMutation();
+  const deleteMutation = trpc.trainingBackups.delete.useMutation();
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload/procedure-file", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Error al subir el archivo");
+      const data = await res.json();
+      await addMutation.mutateAsync({
+        trainingId,
+        companyId,
+        fileName: file.name,
+        fileUrl: data.url,
+        fileKey: data.key || data.url,
+        fileSizeBytes: file.size,
+      });
+      toast.success("Respaldo subido exitosamente");
+      await utils.trainingBackups.list.invalidate({ trainingId });
+    } catch {
+      toast.error("Error al subir el respaldo");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDelete = async (backupId: number) => {
+    if (!confirm("¿Eliminar este respaldo?")) return;
+    try {
+      await deleteMutation.mutateAsync({ backupId });
+      toast.success("Respaldo eliminado");
+      await utils.trainingBackups.list.invalidate({ trainingId });
+    } catch {
+      toast.error("Error al eliminar el respaldo");
+    }
+  };
+
+  const formatSize = (bytes: number) => {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  return (
+    <div className="mt-4 border rounded-lg bg-gray-50 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+          <Paperclip className="w-4 h-4" />
+          Respaldos de la capacitación
+        </h4>
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          <X className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="text-sm text-gray-500 py-2">Cargando respaldos...</div>
+      ) : backups.length === 0 ? (
+        <div className="text-sm text-gray-500 py-2">No hay respaldos subidos aún.</div>
+      ) : (
+        <div className="space-y-2 mb-3">
+          {(backups as any[]).map((backup: any) => (
+            <div key={backup.id} className="flex items-center justify-between bg-white border rounded px-3 py-2 text-sm">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <a
+                  href={backup.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline truncate max-w-xs"
+                >
+                  {backup.fileName}
+                </a>
+                {backup.fileSizeBytes > 0 && (
+                  <span className="text-gray-400 flex-shrink-0">{formatSize(backup.fileSizeBytes)}</span>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-red-500 hover:text-red-700 flex-shrink-0"
+                onClick={() => handleDelete(backup.id)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={handleUpload}
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.zip"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-2"
+        >
+          <Upload className="w-4 h-4" />
+          {uploading ? "Subiendo..." : "Subir respaldo"}
+        </Button>
+        <p className="text-xs text-gray-400 mt-1">PDF, Word, Excel, PowerPoint, imágenes, ZIP</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Componente: Cronograma Anual ─────────────────────────────────────────────
+function TrainingScheduleButton({ companyId }: { companyId: number }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const utils = trpc.useUtils();
+
+  const { data: schedule } = trpc.trainingSchedules.get.useQuery(
+    { companyId },
+    { enabled: companyId > 0 }
+  );
+
+  const upsertMutation = trpc.trainingSchedules.upsert.useMutation();
+  const deleteMutation = trpc.trainingSchedules.delete.useMutation();
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload/procedure-file", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Error al subir el archivo");
+      const data = await res.json();
+      await upsertMutation.mutateAsync({
+        companyId,
+        year: new Date().getFullYear(),
+        fileName: file.name,
+        fileUrl: data.url,
+        fileKey: data.key || data.url,
+        fileSizeBytes: file.size,
+      });
+      toast.success("Cronograma anual subido exitosamente");
+      await utils.trainingSchedules.get.invalidate({ companyId });
+    } catch {
+      toast.error("Error al subir el cronograma");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("¿Eliminar el cronograma anual?")) return;
+    try {
+      await deleteMutation.mutateAsync({ companyId });
+      toast.success("Cronograma eliminado");
+      await utils.trainingSchedules.get.invalidate({ companyId });
+    } catch {
+      toast.error("Error al eliminar el cronograma");
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      {schedule ? (
+        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded px-3 py-1.5 text-sm">
+          <FileText className="w-4 h-4 text-green-600" />
+          <a
+            href={(schedule as any).fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-green-700 hover:underline font-medium"
+          >
+            {(schedule as any).fileName}
+          </a>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-5 w-5 p-0 text-red-400 hover:text-red-600"
+            onClick={handleDelete}
+          >
+            <X className="w-3 h-3" />
+          </Button>
+        </div>
+      ) : null}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleUpload}
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+      />
+      <Button
+        variant="outline"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={uploading}
+        className="flex items-center gap-2"
+      >
+        <Upload className="w-4 h-4" />
+        {uploading ? "Subiendo..." : schedule ? "Actualizar Cronograma" : "Subir Cronograma Anual"}
+      </Button>
+    </div>
+  );
+}
+
+// ─── Página principal ─────────────────────────────────────────────────────────
 export default function Trainings() {
   const [, navigate] = useLocation();
   const companyId = typeof window !== "undefined"
@@ -64,6 +302,7 @@ export default function Trainings() {
     : 0;
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [backupsPanelId, setBackupsPanelId] = useState<number | null>(null);
   const [formData, setFormData] = useState<FormData>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
 
@@ -255,12 +494,17 @@ export default function Trainings() {
 
         {/* Lista */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
             <h2 className="text-2xl font-bold text-gray-900">Capacitaciones Registradas</h2>
-            <Button onClick={exportToExcel} variant="outline" className="flex gap-2">
-              <Download className="w-4 h-4" />
-              Exportar a Excel
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Botón Cronograma Anual */}
+              <TrainingScheduleButton companyId={companyId} />
+              {/* Botón Exportar Excel */}
+              <Button onClick={exportToExcel} variant="outline" className="flex gap-2">
+                <Download className="w-4 h-4" />
+                Exportar a Excel
+              </Button>
+            </div>
           </div>
 
           {isLoading ? (
@@ -277,7 +521,10 @@ export default function Trainings() {
                 <Card key={training.id} className="bg-white">
                   <div
                     className="p-5 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between"
-                    onClick={() => setExpandedId(expandedId === training.id ? null : training.id)}
+                    onClick={() => {
+                      setExpandedId(expandedId === training.id ? null : training.id);
+                      if (backupsPanelId === training.id) setBackupsPanelId(null);
+                    }}
                   >
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 mb-2">{training.name}</h3>
@@ -348,14 +595,37 @@ export default function Trainings() {
                           }`}>{Math.round(training.attendancePercentage)}%</span>
                         </div>
                       </div>
-                      <div className="flex gap-2 mt-4">
+
+                      {/* Botones de acción */}
+                      <div className="flex gap-2 mt-4 flex-wrap">
                         <Button variant="outline" size="sm" onClick={() => handleEditTraining(training)}>
                           Editar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-1 text-blue-600 border-blue-300 hover:bg-blue-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setBackupsPanelId(backupsPanelId === training.id ? null : training.id);
+                          }}
+                        >
+                          <Paperclip className="w-4 h-4" />
+                          Respaldos
                         </Button>
                         <Button variant="destructive" size="sm" onClick={() => handleDeleteTraining(training.id)}>
                           Eliminar
                         </Button>
                       </div>
+
+                      {/* Panel de respaldos */}
+                      {backupsPanelId === training.id && (
+                        <TrainingBackupsPanel
+                          trainingId={training.id}
+                          companyId={companyId}
+                          onClose={() => setBackupsPanelId(null)}
+                        />
+                      )}
                     </CardContent>
                   )}
                 </Card>

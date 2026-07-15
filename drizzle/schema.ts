@@ -1481,3 +1481,31 @@ export const companyTrends = mysqlTable("companyTrends", {
 });
 export type CompanyTrend = typeof companyTrends.$inferSelect;
 export type InsertCompanyTrend = typeof companyTrends.$inferInsert;
+
+// ─── Training Schedules (Cronograma Anual de Capacitación) ────────────────────
+export const trainingSchedules = mysqlTable("trainingSchedules", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  year: int("year").notNull(),
+  fileName: varchar("fileName", { length: 500 }).notNull(),
+  fileUrl: varchar("fileUrl", { length: 1000 }).notNull(),
+  fileKey: varchar("fileKey", { length: 500 }).notNull(),
+  fileSizeBytes: int("fileSizeBytes").default(0),
+  uploadedAt: timestamp("uploadedAt").defaultNow(),
+});
+export type TrainingSchedule = typeof trainingSchedules.$inferSelect;
+export type InsertTrainingSchedule = typeof trainingSchedules.$inferInsert;
+
+// ─── Training Backups (Respaldos por capacitación) ────────────────────────────
+export const trainingBackups = mysqlTable("trainingBackups", {
+  id: int("id").autoincrement().primaryKey(),
+  trainingId: int("trainingId").notNull(),
+  companyId: int("companyId").notNull(),
+  fileName: varchar("fileName", { length: 500 }).notNull(),
+  fileUrl: varchar("fileUrl", { length: 1000 }).notNull(),
+  fileKey: varchar("fileKey", { length: 500 }).notNull(),
+  fileSizeBytes: int("fileSizeBytes").default(0),
+  uploadedAt: timestamp("uploadedAt").defaultNow(),
+});
+export type TrainingBackup = typeof trainingBackups.$inferSelect;
+export type InsertTrainingBackup = typeof trainingBackups.$inferInsert;
