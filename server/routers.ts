@@ -547,6 +547,9 @@ export const appRouter = router({
         observations: z.string().optional(),
         evidence: z.string().optional(),
         completionPercentage: z.number().optional(),
+        evaluationMode: z.enum(["meses", "vigencia"]).optional(),
+        validFrom: z.string().nullable().optional(),
+        validUntil: z.string().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
         await createProcessCompliance(input.processId, {
@@ -565,6 +568,9 @@ export const appRouter = router({
           observations: input.observations || null,
           evidence: input.evidence,
           completionPercentage: input.completionPercentage,
+          evaluationMode: input.evaluationMode,
+          validFrom: input.validFrom ?? null,
+          validUntil: input.validUntil ?? null,
         });
         return { success: true };
       }),
@@ -600,6 +606,9 @@ export const appRouter = router({
         observations: z.string().optional(),
         evidence: z.string().optional(),
         completionPercentage: z.number().optional(),
+        evaluationMode: z.enum(["meses", "vigencia"]).optional(),
+        validFrom: z.string().nullable().optional(),
+        validUntil: z.string().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
         await updateProcessCompliance(input.id, {
@@ -618,6 +627,9 @@ export const appRouter = router({
           observations: input.observations,
           evidence: input.evidence,
           completionPercentage: input.completionPercentage,
+          evaluationMode: input.evaluationMode,
+          validFrom: input.validFrom,
+          validUntil: input.validUntil,
         });
         return { success: true };
       }),
@@ -644,6 +656,9 @@ export const appRouter = router({
         plannedMonths: z.string().optional(),
         completedMonths: z.string().optional(),
         observations: z.string().optional(),
+        evaluationMode: z.enum(["meses", "vigencia"]).optional(),
+        validFrom: z.string().optional(),
+        validUntil: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         const db = await getDb();
@@ -660,6 +675,9 @@ export const appRouter = router({
           plannedMonths: input.plannedMonths ?? null,
           completedMonths: input.completedMonths ?? null,
           observations: input.observations ?? null,
+          evaluationMode: input.evaluationMode ?? "meses",
+          validFrom: input.validFrom ?? null,
+          validUntil: input.validUntil ?? null,
         });
         return { success: true };
       }),
@@ -675,6 +693,9 @@ export const appRouter = router({
         plannedMonths: z.string().optional(),
         completedMonths: z.string().optional(),
         observations: z.string().optional(),
+        evaluationMode: z.enum(["meses", "vigencia"]).optional(),
+        validFrom: z.string().nullable().optional(),
+        validUntil: z.string().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
         const db = await getDb();

@@ -831,6 +831,9 @@ export async function createProcessCompliance(processId: number, data: {
   observations?: string | null;
   evidence?: string;
   completionPercentage?: number;
+  evaluationMode?: "meses" | "vigencia";
+  validFrom?: string | null;
+  validUntil?: string | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -865,6 +868,9 @@ export async function updateProcessCompliance(complianceId: number, data: {
   observations?: string | null;
   evidence?: string;
   completionPercentage?: number;
+  evaluationMode?: "meses" | "vigencia";
+  validFrom?: string | null;
+  validUntil?: string | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

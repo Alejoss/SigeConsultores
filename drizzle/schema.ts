@@ -672,6 +672,9 @@ export const processCompliances = mysqlTable("processCompliances", {
   completedMonths: varchar("completedMonths", { length: 50 }),
   observations: text("observations"),
   completionPercentage: int("completionPercentage").default(0),
+  evaluationMode: mysqlEnum("evaluationMode", ["meses", "vigencia"]).default("meses").notNull(),
+  validFrom: date("validFrom"),
+  validUntil: date("validUntil"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1458,6 +1461,9 @@ export const companyCompliances = mysqlTable("companyCompliances", {
   plannedMonths: varchar("plannedMonths", { length: 50 }),
   completedMonths: varchar("completedMonths", { length: 50 }),
   observations: text("observations"),
+  evaluationMode: mysqlEnum("evaluationMode", ["meses", "vigencia"]).default("meses").notNull(),
+  validFrom: date("validFrom"),
+  validUntil: date("validUntil"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
