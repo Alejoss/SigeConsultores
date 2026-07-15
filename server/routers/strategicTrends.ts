@@ -62,8 +62,10 @@ export const strategicTrendsRouter = router({
 
       // Calcular OTE promedio de todos los procesos
       let totalOte = 0;
+      let totalOteMeta = 0;
       let totalStakeholder = 0;
       let processCount = 0;
+      let oteMetaCount = 0;
 
       for (const proc of companyProcesses) {
         // OTE
@@ -74,6 +76,8 @@ export const strategicTrendsRouter = router({
 
         let procOte = 0;
         let procOteWeight = 0;
+        let procOteMeta = 0;
+        let procOteMetaWeight = 0;
         for (const obj of oteRows) {
           try {
             const pd = JSON.parse(obj.planningData as string || "{}");
@@ -81,14 +85,24 @@ export const strategicTrendsRouter = router({
             for (const rk of resultKeys) {
               const ponderacion = parseFloat(rk.ponderacion) || 0;
               const pct = parseFloat(rk.porcentajeAlcanzado) || 0;
+              const meta = parseFloat(rk.meta);
               procOte += pct * (ponderacion / 100);
               procOteWeight += ponderacion;
+              // Acumular meta ponderada si está definida
+              if (!isNaN(meta) && ponderacion > 0) {
+                procOteMeta += meta * (ponderacion / 100);
+                procOteMetaWeight += ponderacion;
+              }
             }
           } catch { /* skip */ }
         }
         if (procOteWeight > 0) {
           totalOte += Math.max(0, Math.min(100, procOte));
           processCount++;
+        }
+        if (procOteMetaWeight > 0) {
+          totalOteMeta += Math.max(0, Math.min(100, procOteMeta));
+          oteMetaCount++;
         }
 
         // Partes Interesadas
@@ -104,6 +118,8 @@ export const strategicTrendsRouter = router({
       }
 
       const avgOte = processCount > 0 ? Math.round(totalOte / processCount) : 0;
+      // Meta OTE: promedio real de metas de los resultKeys; si no hay metas definidas, usa 100
+      const avgOteMeta = oteMetaCount > 0 ? Math.round(totalOteMeta / oteMetaCount) : 100;
       const avgStakeholder = companyProcesses.length > 0
         ? Math.round(totalStakeholder / companyProcesses.length)
         : 0;
@@ -115,7 +131,7 @@ export const strategicTrendsRouter = router({
         otePercent: avgOte,
         otgPercent: 0, // OTG requiere datos de tareas completadas
         stakeholderPercent: avgStakeholder,
-        oteMeta: 100,
+        oteMeta: avgOteMeta,
         otgMeta: 100,
         stakeholderMeta: 100,
       };
@@ -191,8 +207,10 @@ export const strategicTrendsRouter = router({
         .where(eq(processes.companyId, input.companyId));
 
       let totalOte = 0;
+      let totalOteMeta = 0;
       let totalStakeholder = 0;
       let oteProcessCount = 0;
+      let oteMetaCount = 0;
 
       for (const proc of companyProcesses) {
         const oteRows = await db
@@ -202,6 +220,8 @@ export const strategicTrendsRouter = router({
 
         let procOte = 0;
         let procOteWeight = 0;
+        let procOteMeta = 0;
+        let procOteMetaWeight = 0;
         for (const obj of oteRows) {
           try {
             const pd = JSON.parse(obj.planningData as string || "{}");
@@ -209,14 +229,23 @@ export const strategicTrendsRouter = router({
             for (const rk of resultKeys) {
               const ponderacion = parseFloat(rk.ponderacion) || 0;
               const pct = parseFloat(rk.porcentajeAlcanzado) || 0;
+              const meta = parseFloat(rk.meta);
               procOte += pct * (ponderacion / 100);
               procOteWeight += ponderacion;
+              if (!isNaN(meta) && ponderacion > 0) {
+                procOteMeta += meta * (ponderacion / 100);
+                procOteMetaWeight += ponderacion;
+              }
             }
           } catch { /* skip */ }
         }
         if (procOteWeight > 0) {
           totalOte += Math.max(0, Math.min(100, procOte));
           oteProcessCount++;
+        }
+        if (procOteMetaWeight > 0) {
+          totalOteMeta += Math.max(0, Math.min(100, procOteMeta));
+          oteMetaCount++;
         }
 
         const critRows = await db
@@ -231,6 +260,7 @@ export const strategicTrendsRouter = router({
       }
 
       const avgOte = oteProcessCount > 0 ? Math.round(totalOte / oteProcessCount) : 0;
+      const avgOteMeta = oteMetaCount > 0 ? Math.round(totalOteMeta / oteMetaCount) : 100;
       const avgStakeholder = companyProcesses.length > 0
         ? Math.round(totalStakeholder / companyProcesses.length)
         : 0;
@@ -244,19 +274,20 @@ export const strategicTrendsRouter = router({
           otePercent: String(avgOte),
           otgPercent: "0",
           stakeholderPercent: String(avgStakeholder),
-          oteMeta: "100",
+          oteMeta: String(avgOteMeta),
           otgMeta: "100",
           stakeholderMeta: "100",
         })
         .onDuplicateKeyUpdate({
           set: {
             otePercent: String(avgOte),
+            oteMeta: String(avgOteMeta),
             stakeholderPercent: String(avgStakeholder),
             updatedAt: new Date(),
           },
         });
 
-      return { success: true, otePercent: avgOte, stakeholderPercent: avgStakeholder };
+      return { success: true, otePercent: avgOte, oteMeta: avgOteMeta, stakeholderPercent: avgStakeholder };
     }),
 
   /**
