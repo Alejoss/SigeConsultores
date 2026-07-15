@@ -7,7 +7,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { ChevronUp, ChevronDown, Download, Upload, FileText, Trash2, X, Paperclip } from "lucide-react";
+import { ChevronUp, ChevronDown, Download, Upload, FileText, Trash2, X, Paperclip, BarChart2 } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface Training {
@@ -56,6 +56,208 @@ const emptyForm: FormData = {
   conductedDate: "",
   actualAttendees: "",
 };
+
+// ─── Constantes para Gantt ────────────────────────────────────────────────────
+const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+const TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  Mandatoria:    { bg: "bg-red-100",    text: "text-red-800",    border: "border-red-300" },
+  Reglamentaria: { bg: "bg-orange-100", text: "text-orange-800", border: "border-orange-300" },
+  Sugerida:      { bg: "bg-blue-100",   text: "text-blue-800",   border: "border-blue-300" },
+};
+
+// ─── Componente: Cronograma de Gantt ─────────────────────────────────────────
+function GanttPanel({ trainings, onClose }: { trainings: Training[]; onClose: () => void }) {
+  const currentYear = new Date().getFullYear();
+  const [year, setYear] = useState(currentYear);
+
+  // Años disponibles (de las fechas planificadas + año actual)
+  const years = Array.from(new Set([
+    currentYear,
+    ...trainings
+      .filter(t => t.plannedDate)
+      .map(t => new Date(t.plannedDate as Date | string).getFullYear()),
+  ])).sort();
+
+  // Capacitaciones con fecha en el año seleccionado
+  const withDate = trainings
+    .filter(t => t.plannedDate)
+    .map(t => ({
+      ...t,
+      month: new Date(t.plannedDate as Date | string).getMonth(),
+      planYear: new Date(t.plannedDate as Date | string).getFullYear(),
+    }))
+    .filter(t => t.planYear === year)
+    .sort((a, b) => a.month - b.month);
+
+  // Capacitaciones sin fecha planificada
+  const noDate = trainings.filter(t => !t.plannedDate);
+
+  const currentMonth = new Date().getMonth();
+
+  return (
+    <div className="mt-6 bg-white border rounded-xl shadow-sm overflow-hidden">
+      {/* Cabecera */}
+      <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-b">
+        <div className="flex items-center gap-3 flex-wrap">
+          <BarChart2 className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+          <h3 className="font-bold text-gray-800 text-lg">Cronograma de Gantt — Capacitaciones</h3>
+          {/* Selector de año */}
+          <div className="flex items-center gap-1 ml-2">
+            {years.map(y => (
+              <button
+                key={y}
+                onClick={() => setYear(y)}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  y === year
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white border text-gray-600 hover:bg-indigo-50"
+                }`}
+              >
+                {y}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors ml-4">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Leyenda */}
+      <div className="flex gap-4 px-5 py-2 bg-gray-50 border-b text-xs flex-wrap">
+        {Object.entries(TYPE_COLORS).map(([type, colors]) => (
+          <div key={type} className="flex items-center gap-1.5">
+            <span className={`w-3 h-3 rounded-sm border ${colors.bg} ${colors.border}`} />
+            <span className="text-gray-600">{type}</span>
+          </div>
+        ))}
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm border bg-green-100 border-green-300" />
+          <span className="text-gray-600">Impartida</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm border bg-gray-100 border-gray-300" />
+          <span className="text-gray-500">Sin fecha</span>
+        </div>
+      </div>
+
+      {/* Tabla */}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[900px] text-sm border-collapse">
+          <thead>
+            <tr className="bg-gray-50 border-b">
+              <th className="text-left px-4 py-2.5 font-semibold text-gray-700 w-56 sticky left-0 bg-gray-50 z-10 border-r">
+                Capacitación
+              </th>
+              {MONTHS.map((m, i) => (
+                <th
+                  key={i}
+                  className={`text-center py-2.5 font-medium text-xs w-16 ${
+                    i === currentMonth && year === currentYear
+                      ? "bg-indigo-100 text-indigo-700"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {m}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {withDate.length === 0 && noDate.length === 0 ? (
+              <tr>
+                <td colSpan={13} className="text-center py-10 text-gray-400 italic">
+                  No hay capacitaciones registradas
+                </td>
+              </tr>
+            ) : withDate.length === 0 ? (
+              <tr>
+                <td colSpan={13} className="text-center py-6 text-gray-400 italic">
+                  No hay capacitaciones con fecha planificada en {year}
+                </td>
+              </tr>
+            ) : null}
+
+            {withDate.map((training) => {
+              const colors = TYPE_COLORS[training.type] ?? TYPE_COLORS["Sugerida"];
+              const isCompleted = training.completed === "SI";
+              return (
+                <tr key={training.id} className="border-b hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-2 sticky left-0 bg-white z-10 border-r">
+                    <div
+                      className="font-medium text-gray-800 truncate max-w-[200px]"
+                      title={training.name}
+                    >
+                      {training.name}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-0.5">{training.type}</div>
+                  </td>
+                  {MONTHS.map((_, colMonth) => {
+                    const isThisMonth = colMonth === training.month;
+                    const isCurrent = colMonth === currentMonth && year === currentYear;
+                    return (
+                      <td
+                        key={colMonth}
+                        className={`text-center py-2 ${isCurrent ? "bg-indigo-50" : ""}`}
+                      >
+                        {isThisMonth ? (
+                          <div
+                            className={`mx-1 rounded px-1 py-1 text-xs font-bold border ${
+                              isCompleted
+                                ? "bg-green-100 text-green-800 border-green-300"
+                                : `${colors.bg} ${colors.text} ${colors.border}`
+                            }`}
+                            title={`${training.name} — ${MONTHS[training.month]} ${year}${isCompleted ? " (Impartida)" : ""}`}
+                          >
+                            {isCompleted ? "✓" : "●"}
+                          </div>
+                        ) : null}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+
+            {/* Capacitaciones sin fecha — al final, atenuadas */}
+            {noDate.map((training) => (
+              <tr key={training.id} className="border-b opacity-50">
+                <td className="px-4 py-2 sticky left-0 bg-white z-10 border-r">
+                  <div
+                    className="font-medium text-gray-500 truncate max-w-[200px]"
+                    title={training.name}
+                  >
+                    {training.name}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-0.5">{training.type}</div>
+                </td>
+                {MONTHS.map((_, i) => (
+                  <td key={i} className="text-center py-2">
+                    {i === 0 ? (
+                      <span className="text-xs text-gray-400 italic whitespace-nowrap">Sin fecha</span>
+                    ) : null}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pie */}
+      <div className="px-5 py-3 bg-gray-50 border-t text-xs text-gray-500 flex gap-4 flex-wrap">
+        <span>
+          {withDate.length} capacitación{withDate.length !== 1 ? "es" : ""} planificada{withDate.length !== 1 ? "s" : ""} en {year}
+        </span>
+        {noDate.length > 0 && (
+          <span>{noDate.length} sin fecha planificada</span>
+        )}
+        <span className="ml-auto">✓ Se actualiza automáticamente al editar fechas</span>
+      </div>
+    </div>
+  );
+}
 
 // ─── Componente: Respaldos de una capacitación ───────────────────────────────
 function TrainingBackupsPanel({ trainingId, companyId, onClose }: {
@@ -195,7 +397,7 @@ function TrainingBackupsPanel({ trainingId, companyId, onClose }: {
   );
 }
 
-// ─── Componente: Cronograma Anual ─────────────────────────────────────────────
+// ─── Componente: Cronograma Anual (archivo) ───────────────────────────────────
 function TrainingScheduleButton({ companyId }: { companyId: number }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -303,6 +505,7 @@ export default function Trainings() {
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [backupsPanelId, setBackupsPanelId] = useState<number | null>(null);
+  const [showGantt, setShowGantt] = useState(false);
   const [formData, setFormData] = useState<FormData>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
 
@@ -497,6 +700,15 @@ export default function Trainings() {
           <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
             <h2 className="text-2xl font-bold text-gray-900">Capacitaciones Registradas</h2>
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Botón Gantt */}
+              <Button
+                variant={showGantt ? "default" : "outline"}
+                onClick={() => setShowGantt(!showGantt)}
+                className={`flex items-center gap-2 ${showGantt ? "bg-indigo-600 hover:bg-indigo-700" : ""}`}
+              >
+                <BarChart2 className="w-4 h-4" />
+                Cronograma de Gantt
+              </Button>
               {/* Botón Cronograma Anual */}
               <TrainingScheduleButton companyId={companyId} />
               {/* Botón Exportar Excel */}
@@ -507,16 +719,24 @@ export default function Trainings() {
             </div>
           </div>
 
+          {/* Panel Gantt */}
+          {showGantt && (
+            <GanttPanel
+              trainings={trainings}
+              onClose={() => setShowGantt(false)}
+            />
+          )}
+
           {isLoading ? (
             <div className="text-center py-8 text-gray-500">Cargando capacitaciones...</div>
           ) : trainings.length === 0 ? (
-            <Card className="bg-white">
+            <Card className="bg-white mt-4">
               <CardContent className="pt-6 text-center text-gray-500">
                 No hay capacitaciones registradas aún
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 mt-4">
               {trainings.map((training) => (
                 <Card key={training.id} className="bg-white">
                   <div
