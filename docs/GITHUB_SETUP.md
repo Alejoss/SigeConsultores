@@ -7,10 +7,9 @@ Configuración de CI/CD: integración en `infra/staging-cicd`, producción en `m
 | Workflow | Cuándo corre | Qué hace |
 |----------|----------------|----------|
 | **CI** | Push/PR a `infra/staging-cicd` o `main` | `pnpm check` + `pnpm build` + tests (unit, client, integración con MySQL) |
-| **Deploy Production** | **Después** de CI en verde en `main` (`workflow_run`) | Gate CI → build imagen → **GHCR**; deploy al droplet si hay secretos |
+| **Deploy Production** | Job de `ci.yml` después de `check-and-build`, `test-unit` y `test-integration`, solo en push a `main` | Llama al workflow reutilizable → build imagen → **GHCR**; deploy al droplet si hay secretos |
 
-**Importante:** el CD **no** se dispara en paralelo con el push a `main`. Espera a que CI (incluye tests de integración) termine en `success`. Si CI falla, el job **Gate (CI must be green)** falla y **no se despliega**.
-El workflow no admite ejecución manual: así nadie puede omitir accidentalmente las pruebas.
+**Importante:** el CD **no** corre en paralelo con las pruebas. El job `deploy-production` usa `needs: [check-and-build, test-unit, test-integration]`; si cualquier job falla, GitHub lo omite y **no se despliega**. El workflow reutilizable no admite ejecución manual.
 
 La imagen se publica en:
 
@@ -27,7 +26,7 @@ Los nombres van en **minúsculas** (requisito de GHCR).
 2. PR **`infra/staging-cicd` → `main`** → revisión y merge (ruleset en `main`).
 3. Merge a **`main`** → corre **CI** (check + build + tests).
 4. Solo si CI = **success** → **Deploy Production**:
-   - **Gate (CI must be green)** — aborta si CI falló o no fue un push a `main`
+   - **needs** — GitHub solo invoca el CD cuando los tres jobs anteriores pasan
    - **build-image** — imagen del mismo SHA que pasó CI
    - **Deploy to droplet** — solo con secretos configurados
 

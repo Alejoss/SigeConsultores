@@ -13,8 +13,7 @@ Cliente push → infra/staging-cicd → CI (check + build + tests)
                         ↓
               CI en main (obligatorio)
                         ↓  solo si CI = success
-         Deploy Production (Actions)
-              ├─ gate — aborta si CI falló
+         Deploy Production (workflow reutilizable)
               ├─ build-image → ghcr.io/alejoss/sigeconsultores:<sha>
               └─ deploy-droplet → SSH + deploy-prod.sh (si hay secretos)
 ```
@@ -24,7 +23,7 @@ Cliente push → infra/staging-cicd → CI (check + build + tests)
 | **`infra/staging-cicd`** | Cliente / integración | Push libre; CI informativo (verde o rojo) |
 | **`main`** | Producción | Merge vía PR → **CI completo** → solo entonces CD (GHCR + droplet) |
 
-**Regla crítica:** CI y CD **no** corren en paralelo. El deploy se dispara con `workflow_run` **después** de que el workflow **CI** termine en verde en `main`. Si fallan typecheck, build o tests, **no hay deploy**.
+**Regla crítica:** CI y CD **no** corren en paralelo. En `ci.yml`, el job `deploy-production` tiene `needs: [check-and-build, test-unit, test-integration]`; GitHub solo llama al workflow reutilizable de CD cuando los tres jobs pasan en un push a `main`. Si fallan typecheck, build o tests, **no hay deploy**.
 
 Detalle de Actions y secretos: [GITHUB_SETUP.md](./GITHUB_SETUP.md).
 
@@ -75,12 +74,12 @@ docker pull ghcr.io/alejoss/sigeconsultores:latest
 
 ## Deploy automático (recomendado)
 
-**Trigger:** el workflow **CI** termina en `main` (tras push/merge) → `workflow_run` → `.github/workflows/deploy-production.yml`. El job **gate** exige `success`; no existe *Run workflow* para evitar saltarse las pruebas.
+**Trigger:** push/merge a `main` → `ci.yml` ejecuta todos los controles → el job `deploy-production`, condicionado por `needs`, llama a `.github/workflows/deploy-production.yml`. Este último solo admite `workflow_call`; no existe *Run workflow* para saltarse las pruebas.
 
 | Paso | Dónde | Qué hace |
 |------|--------|----------|
 | 0 | GitHub Actions (CI) | `pnpm check` + `pnpm build` + tests unitarios e integración — **debe pasar** |
-| 1 | GitHub Actions (CD) | Job **gate**: aborta si CI no fue `success` |
+| 1 | GitHub Actions (CI) | `needs` impide invocar el CD si algún job previo no fue `success` |
 | 2 | GitHub Actions | `docker build` + push a GHCR del mismo SHA que pasó CI |
 | 3 | SSH al droplet | `git reset --hard` al commit + escribe `.env.production` + `deploy-prod.sh` |
 | 4 | Droplet | `deploy-prod.sh`: login GHCR, `pull`, `up -d` |
@@ -199,7 +198,7 @@ Alternativa automatizada (mismo enfoque): `scripts/deploy-droplet-local.sh` con 
 | `docker-compose.prod.yml` | MySQL + app; app en `127.0.0.1:3001` |
 | `scripts/deploy-prod.sh` | **Deploy habitual:** pull GHCR + `compose up` |
 | `scripts/deploy-droplet-local.sh` | Fallback: `git` + `docker build` en servidor |
-| `.github/workflows/deploy-production.yml` | Build GHCR + deploy **después** de CI verde en `main` (`workflow_run`) |
+| `.github/workflows/deploy-production.yml` | Workflow reutilizable (`workflow_call`): build GHCR + deploy |
 | `.github/workflows/ci.yml` | `pnpm check` + `pnpm build` en PR/push |
 | `deploy/nginx/sige.conf.example` | Proxy Nginx → `127.0.0.1:3001` |
 

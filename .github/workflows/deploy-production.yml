@@ -1,15 +1,8 @@
 name: Deploy Production
 
-# CD MUST wait for CI: never deploy a commit whose tests/typecheck/build failed.
-# Triggered only after the CI workflow completes on main (push/merge).
+# Reusable CD: ci.yml calls this workflow only after every CI job succeeds.
 on:
-  workflow_run:
-    workflows:
-      - CI
-    types:
-      - completed
-    branches:
-      - main
+  workflow_call:
 
 concurrency:
   group: deploy-production-main
@@ -18,58 +11,18 @@ concurrency:
 permissions:
   contents: read
   packages: write
-  actions: read
 
 jobs:
-  # Resolve the commit to deploy and refuse to continue if CI did not succeed.
-  gate:
-    name: Gate (CI must be green)
-    runs-on: ubuntu-latest
-    # Skip quietly for CI runs that are not a push to main (e.g. pull_request).
-    # Still run (and fail hard) when CI failed on a push to main.
-    if: github.event.workflow_run.event == 'push'
-    outputs:
-      deploy_sha: ${{ steps.sha.outputs.sha }}
-    steps:
-      - name: Require successful CI
-        id: sha
-        run: |
-          set -euo pipefail
-          CONCLUSION="${{ github.event.workflow_run.conclusion }}"
-          EVENT="${{ github.event.workflow_run.event }}"
-          SHA="${{ github.event.workflow_run.head_sha }}"
-          BRANCH="${{ github.event.workflow_run.head_branch }}"
-          RUN_URL="${{ github.event.workflow_run.html_url }}"
-
-          echo "CI run: $RUN_URL"
-          echo "CI event=$EVENT branch=$BRANCH sha=$SHA conclusion=$CONCLUSION"
-
-          if [ "$CONCLUSION" != "success" ]; then
-            echo "::error::CI did not succeed (conclusion=$CONCLUSION). Deploy aborted — production stays on the previous release."
-            exit 1
-          fi
-
-          if [ -z "$SHA" ]; then
-            echo "::error::Missing workflow_run.head_sha"
-            exit 1
-          fi
-
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-
   build-image:
     name: Build and push image
-    needs: gate
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
       image_name: ${{ steps.image.outputs.name }}
-      deploy_sha: ${{ needs.gate.outputs.deploy_sha }}
 
     steps:
-      - name: Checkout deploy commit
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.gate.outputs.deploy_sha }}
 
       - name: Set GHCR image name (lowercase)
         id: image
@@ -92,7 +45,7 @@ jobs:
           push: true
           tags: |
             ${{ steps.image.outputs.name }}:latest
-            ${{ steps.image.outputs.name }}:${{ needs.gate.outputs.deploy_sha }}
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
 
   check-deploy-secrets:
     name: Check deploy secrets
@@ -120,7 +73,7 @@ jobs:
 
   deploy-droplet:
     name: Deploy to droplet
-    needs: [gate, build-image, check-deploy-secrets]
+    needs: [build-image, check-deploy-secrets]
     runs-on: ubuntu-latest
     if: needs.check-deploy-secrets.outputs.ready == 'true'
     timeout-minutes: 20
@@ -129,12 +82,12 @@ jobs:
       - name: Deploy on droplet
         uses: appleboy/ssh-action@v1.2.0
         env:
-          APP_IMAGE: ${{ needs.build-image.outputs.image_name }}:${{ needs.gate.outputs.deploy_sha }}
+          APP_IMAGE: ${{ needs.build-image.outputs.image_name }}:${{ github.sha }}
           GHCR_USERNAME: ${{ vars.GHCR_USERNAME || secrets.GHCR_USERNAME }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
           ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
-          DEPLOY_SHA: ${{ needs.gate.outputs.deploy_sha }}
+          DEPLOY_SHA: ${{ github.sha }}
           REPO_SLUG: ${{ github.repository }}
         with:
           host: ${{ vars.DROPLET_HOST || secrets.DROPLET_HOST }}
