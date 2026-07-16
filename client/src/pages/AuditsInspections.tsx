@@ -109,7 +109,15 @@ export default function AuditsInspections() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setLocation(getAxisBackPath("/manager-dashboard"))}
+              onClick={() => {
+                if (isManagerAccess || isManagerLogin) {
+                  setLocation(getAxisBackPath("/manager-dashboard"));
+                } else if (isProcessLeader) {
+                  setLocation("/process-leader-dashboard");
+                } else {
+                  setLocation("/dashboard");
+                }
+              }}
               className="flex items-center gap-2"
             >
               ← Volver
