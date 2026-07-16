@@ -144,7 +144,7 @@ Cuando el trabajo en `infra/staging-cicd` esté listo y CI en verde:
 
 1. Abrir un **Pull Request** de `infra/staging-cicd` → `main`
 2. Esperar revisión del equipo
-3. Merge del PR → se dispara deploy a producción
+3. Merge del PR → corre **CI en `main`**; solo si CI pasa se dispara **Deploy Production** (CD). Un CI en rojo **no** despliega.
 
 ---
 
@@ -154,7 +154,7 @@ Cuando el trabajo en `infra/staging-cicd` esté listo y CI en verde:
 - **No** commitear `.env`, `.env.local`, `.env.production` ni credenciales.
 - **No** hacer `git push --force` en `infra/staging-cicd` ni en `main`.
 - **No** desplegar al droplet de producción sin coordinación con el equipo (ver [DEPLOYMENT.md](./DEPLOYMENT.md)).
-- **No** ignorar CI en rojo: corrige o comenta en el PR qué falla.
+- **No** ignorar CI en rojo: corrige o comenta en el PR qué falla. El CD solo corre tras CI verde en `main`.
 
 ---
 

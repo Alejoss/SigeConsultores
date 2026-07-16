@@ -7,7 +7,10 @@ Configuración de CI/CD: integración en `infra/staging-cicd`, producción en `m
 | Workflow | Cuándo corre | Qué hace |
 |----------|----------------|----------|
 | **CI** | Push/PR a `infra/staging-cicd` o `main` | `pnpm check` + `pnpm build` + tests (unit, client, integración con MySQL) |
-| **Deploy Production** | Push a `main` (y manual *Run workflow*) | Build imagen → **GHCR**; deploy al droplet si hay secretos |
+| **Deploy Production** | **Después** de CI en verde en `main` (`workflow_run`) | Gate CI → build imagen → **GHCR**; deploy al droplet si hay secretos |
+
+**Importante:** el CD **no** se dispara en paralelo con el push a `main`. Espera a que CI (incluye tests de integración) termine en `success`. Si CI falla, el job **Gate (CI must be green)** falla y **no se despliega**.
+El workflow no admite ejecución manual: así nadie puede omitir accidentalmente las pruebas.
 
 La imagen se publica en:
 
@@ -22,11 +25,13 @@ Los nombres van en **minúsculas** (requisito de GHCR).
 
 1. Cliente pushea a **`infra/staging-cicd`** → CI corre (no bloquea el push).
 2. PR **`infra/staging-cicd` → `main`** → revisión y merge (ruleset en `main`).
-3. Merge a **`main`** → **Deploy Production**:
-   - **build-image** — siempre (si el workflow pasa)
+3. Merge a **`main`** → corre **CI** (check + build + tests).
+4. Solo si CI = **success** → **Deploy Production**:
+   - **Gate (CI must be green)** — aborta si CI falló o no fue un push a `main`
+   - **build-image** — imagen del mismo SHA que pasó CI
    - **Deploy to droplet** — solo con secretos configurados
 
-Sin secretos: el workflow termina en verde con *Deploy skipped*; la imagen **sí** queda en GHCR.
+Sin secretos: tras CI verde, el CD termina con *Deploy skipped*; la imagen **sí** queda en GHCR.
 
 ## Secretos y variables para deploy al droplet
 
