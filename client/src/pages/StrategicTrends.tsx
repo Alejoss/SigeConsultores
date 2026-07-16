@@ -565,12 +565,26 @@ export default function StrategicTrends() {
   const { session: processLeaderSession } = useProcessLeaderAuth();
   const [yearFilter, setYearFilter] = useState<number | "all" | "annual">("all");
   const [showOteModal, setShowOteModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [urlCopied, setUrlCopied] = useState(false);
 
   const companyId = useMemo<number>(() => {
     if (isManagerLogin && managerCompanyId) return managerCompanyId;
     if (processLeaderSession?.companyId) return processLeaderSession.companyId;
     return getCompanyIdFromLocationOrStorage() || 0;
   }, [isManagerLogin, managerCompanyId, processLeaderSession]);
+
+  const publicApiUrl = companyId > 0
+    ? `${window.location.origin}/api/public/strategic-trends/${companyId}`
+    : "";
+
+  const handleCopyUrl = () => {
+    if (!publicApiUrl) return;
+    navigator.clipboard.writeText(publicApiUrl).then(() => {
+      setUrlCopied(true);
+      setTimeout(() => setUrlCopied(false), 2500);
+    });
+  };
 
   const { data: trendsResult, isLoading } = trpc.strategicTrends.getTrends.useQuery(
     { companyId },
@@ -701,6 +715,19 @@ export default function StrategicTrends() {
                   Cierre anual
                 </button>
               )}
+              {/* Botón Transferir URL para Power BI */}
+              {companyId > 0 && (
+                <button
+                  onClick={() => setShowTransferModal(true)}
+                  className="px-3 py-1 rounded-full text-sm font-medium transition-colors border bg-white text-indigo-600 border-indigo-300 hover:bg-indigo-50 flex items-center gap-1.5"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  </svg>
+                  Transferir URL
+                </button>
+              )}
             </div>
 
             {/* Nota explicativa para vista de cierre anual */}
@@ -793,6 +820,99 @@ export default function StrategicTrends() {
             </div>
             <div className="p-5">
               <OteBreakdown companyId={companyId} />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {/* Modal Transferir URL para Power BI */}
+      {showTransferModal && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowTransferModal(false); }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  </svg>
+                </div>
+                <h2 className="text-base font-bold text-slate-800">Transferir URL — Power BI</h2>
+              </div>
+              <button onClick={() => setShowTransferModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-slate-600">
+                Usa esta URL para conectar los datos de Tendencias Estratégicas directamente en <strong>Power BI</strong>, Excel u otras herramientas de análisis. Los datos se actualizan automáticamente cada vez que se consulta la URL.
+              </p>
+
+              {/* URL copiable */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <p className="text-xs text-slate-400 mb-1 font-medium uppercase tracking-wide">URL del endpoint JSON</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs text-indigo-700 break-all font-mono">{publicApiUrl}</code>
+                  <button
+                    onClick={handleCopyUrl}
+                    className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      urlCopied
+                        ? "bg-green-100 text-green-700 border border-green-200"
+                        : "bg-indigo-600 text-white hover:bg-indigo-700"
+                    }`}
+                  >
+                    {urlCopied ? "✓ Copiado" : "Copiar"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Estructura del JSON */}
+              <div>
+                <p className="text-xs font-semibold text-slate-600 mb-2">Estructura de los datos devueltos:</p>
+                <div className="bg-slate-900 rounded-lg p-3 text-xs font-mono text-green-300 overflow-x-auto">
+                  <pre>{`{
+  "empresa_id": ${companyId},
+  "total_registros": N,
+  "datos": [
+    {
+      "a\u00f1o": 2026,
+      "mes": 7,
+      "periodo": "Jul 2026",
+      "ote_avance": 78.0,
+      "ote_meta": 82.0,
+      "otg_avance": 74.0,
+      "otg_meta": 100.0,
+      "gpi_avance": 80.0,
+      "gpi_meta": 100.0
+    }
+  ]
+}`}</pre>
+                </div>
+              </div>
+
+              {/* Instrucciones Power BI */}
+              <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                <p className="text-xs font-semibold text-blue-700 mb-1">Cómo conectar en Power BI:</p>
+                <ol className="text-xs text-blue-600 space-y-1 list-decimal list-inside">
+                  <li>Abre Power BI Desktop → <strong>Obtener datos</strong> → <strong>Web</strong></li>
+                  <li>Pega la URL copiada y haz clic en <strong>Aceptar</strong></li>
+                  <li>En el navegador de datos, selecciona <strong>datos</strong> (lista de registros)</li>
+                  <li>Haz clic en <strong>Transformar datos</strong> para expandir las columnas</li>
+                  <li>Cierra y aplica — los datos quedarán disponibles para tus gráficas</li>
+                </ol>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowTransferModal(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         </div>,
