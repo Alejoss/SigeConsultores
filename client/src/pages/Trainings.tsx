@@ -215,15 +215,58 @@ function GanttPanel({ trainings, onClose }: { trainings: Training[]; onClose: ()
                         className={`text-center py-2 ${isCurrent ? "bg-indigo-50" : ""}`}
                       >
                         {isThisMonth ? (
-                          <div
-                            className={`mx-1 rounded px-1 py-1 text-xs font-bold border ${
-                              isCompleted
-                                ? "bg-green-100 text-green-800 border-green-300"
-                                : `${colors.bg} ${colors.text} ${colors.border}`
-                            }`}
-                            title={`${training.name} — ${MONTHS[training.month]} ${year}${isCompleted ? " (Impartida)" : ""}`}
-                          >
-                            {isCompleted ? "✓" : "●"}
+                          <div className="relative group flex justify-center">
+                            {/* Marcador */}
+                            <div
+                              className={`mx-1 rounded px-1 py-1 text-xs font-bold border cursor-default ${
+                                isCompleted
+                                  ? "bg-green-100 text-green-800 border-green-300"
+                                  : `${colors.bg} ${colors.text} ${colors.border}`
+                              }`}
+                            >
+                              {isCompleted ? "✓" : "●"}
+                            </div>
+                            {/* Tooltip enriquecido */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 hidden group-hover:block pointer-events-none">
+                              <div className="bg-gray-900 text-white text-xs rounded-lg shadow-xl p-3 min-w-[200px] max-w-[280px] whitespace-normal">
+                                <div className="font-semibold text-sm mb-1.5 leading-tight">{training.name}</div>
+                                <div className="space-y-1 text-gray-300">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-gray-400">Tipo:</span>
+                                    <span className={isCompleted ? "text-green-400" : "text-white"}>{training.type}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-gray-400">Fecha:</span>
+                                    <span>{MONTHS[training.month]} {year}</span>
+                                  </div>
+                                  {training.responsible && (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-gray-400">Responsable:</span>
+                                      <span>{training.responsible}</span>
+                                    </div>
+                                  )}
+                                  {training.modality && (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-gray-400">Modalidad:</span>
+                                      <span>{training.modality}</span>
+                                    </div>
+                                  )}
+                                  {training.objective && (
+                                    <div className="mt-1.5 pt-1.5 border-t border-gray-700">
+                                      <span className="text-gray-400">Objetivo:</span>
+                                      <div className="mt-0.5 text-gray-200 leading-snug line-clamp-3">{training.objective}</div>
+                                    </div>
+                                  )}
+                                  {isCompleted && (
+                                    <div className="mt-1.5 pt-1.5 border-t border-gray-700 text-green-400 font-medium">
+                                      ✓ Capacitación impartida
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Flecha del tooltip */}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                              </div>
+                            </div>
                           </div>
                         ) : null}
                       </td>
