@@ -10,6 +10,19 @@ import { toast } from "sonner";
 import { ChevronUp, ChevronDown, Download, Upload, FileText, Trash2, X, Paperclip, BarChart2 } from "lucide-react";
 import * as XLSX from "xlsx";
 
+interface ImportRow {
+  name: string;
+  type?: "Mandatoria" | "Reglamentaria" | "Sugerida";
+  objective?: string;
+  audience?: string;
+  plannedAttendees?: number;
+  modality?: "Presencial" | "Online" | "Externa";
+  responsible?: string;
+  plannedDate?: string;
+  _rowIndex: number;
+  _error?: string;
+}
+
 interface Training {
   id: number;
   companyId: number;
@@ -508,6 +521,10 @@ export default function Trainings() {
   const [showGantt, setShowGantt] = useState(false);
   const [formData, setFormData] = useState<FormData>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importRows, setImportRows] = useState<ImportRow[]>([]);
+  const [importError, setImportError] = useState<string | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const { data: trainingsData, isLoading } = trpc.companyTrainings.list.useQuery(
     { companyId },
@@ -519,6 +536,7 @@ export default function Trainings() {
   const createMutation = trpc.companyTrainings.create.useMutation();
   const updateMutation = trpc.companyTrainings.update.useMutation();
   const deleteMutation = trpc.companyTrainings.delete.useMutation();
+  const importBulkMutation = trpc.companyTrainings.importBulk.useMutation();
   const utils = trpc.useUtils();
 
   const calcAttendancePercentage = (actual: string, planned: string) => {
@@ -629,6 +647,121 @@ export default function Trainings() {
     ? Math.round(trainingsWithAttendance.reduce((sum, t) => sum + t.attendancePercentage, 0) / trainingsWithAttendance.length)
     : 0;
 
+  // ─── Importación desde Excel ─────────────────────────────────────────────
+  const downloadTemplate = () => {
+    const templateData = [
+      {
+        "Capacitación (Obligatorio)": "Ejemplo: Primeros Auxilios",
+        "Tipo (Mandatoria/Reglamentaria/Sugerida)": "Mandatoria",
+        "Modalidad (Presencial/Online/Externa)": "Presencial",
+        "Objetivo": "Capacitar al personal en primeros auxilios básicos",
+        "Destinatario": "Todo el personal",
+        "Responsable": "Juan Pérez",
+        "Asistentes Previstos": 20,
+        "Fecha Planificada (YYYY-MM-DD)": "2026-03-15",
+      },
+      {
+        "Capacitación (Obligatorio)": "Ejemplo: Manejo de Residuos",
+        "Tipo (Mandatoria/Reglamentaria/Sugerida)": "Reglamentaria",
+        "Modalidad (Presencial/Online/Externa)": "Online",
+        "Objetivo": "Cumplir con normativa ambiental",
+        "Destinatario": "Área operativa",
+        "Responsable": "Ana López",
+        "Asistentes Previstos": 15,
+        "Fecha Planificada (YYYY-MM-DD)": "2026-05-20",
+      },
+    ];
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    // Ancho de columnas
+    ws["!cols"] = [{ wch: 35 }, { wch: 38 }, { wch: 35 }, { wch: 45 }, { wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 28 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
+    XLSX.writeFile(wb, "plantilla_cronograma_capacitaciones.xlsx");
+    toast.success("Plantilla descargada");
+  };
+
+  const VALID_TYPES = ["Mandatoria", "Reglamentaria", "Sugerida"];
+  const VALID_MODALITIES = ["Presencial", "Online", "Externa"];
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportError(null);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target!.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+        if (rows.length === 0) { setImportError("El archivo está vacío o no tiene filas de datos."); return; }
+        const parsed: ImportRow[] = rows.map((row, idx) => {
+          const name = String(row["Capacitación (Obligatorio)"] || "").trim();
+          const rawType = String(row["Tipo (Mandatoria/Reglamentaria/Sugerida)"] || "").trim();
+          const rawModality = String(row["Modalidad (Presencial/Online/Externa)"] || "").trim();
+          const rawDate = String(row["Fecha Planificada (YYYY-MM-DD)"] || "").trim();
+          const type = VALID_TYPES.includes(rawType) ? rawType as ImportRow["type"] : undefined;
+          const modality = VALID_MODALITIES.includes(rawModality) ? rawModality as ImportRow["modality"] : undefined;
+          const plannedAttendees = parseInt(String(row["Asistentes Previstos"] || "0")) || undefined;
+          // Validar fecha
+          let plannedDate: string | undefined;
+          if (rawDate) {
+            const d = new Date(rawDate);
+            plannedDate = isNaN(d.getTime()) ? undefined : rawDate;
+          }
+          const error = !name ? "Falta el nombre de la capacitación" :
+            (rawType && !type) ? `Tipo inválido: "${rawType}"` :
+            (rawModality && !modality) ? `Modalidad inválida: "${rawModality}"` : undefined;
+          return {
+            name,
+            type,
+            objective: String(row["Objetivo"] || "").trim() || undefined,
+            audience: String(row["Destinatario"] || "").trim() || undefined,
+            plannedAttendees,
+            modality,
+            responsible: String(row["Responsable"] || "").trim() || undefined,
+            plannedDate,
+            _rowIndex: idx + 2,
+            _error: error,
+          };
+        });
+        setImportRows(parsed);
+        setShowImportModal(true);
+      } catch {
+        setImportError("No se pudo leer el archivo. Asegúrate de que sea un Excel válido (.xlsx o .xls).");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    // Limpiar input para permitir subir el mismo archivo de nuevo
+    e.target.value = "";
+  };
+
+  const handleConfirmImport = async () => {
+    const validRows = importRows.filter(r => !r._error && r.name);
+    if (validRows.length === 0) { toast.error("No hay filas válidas para importar"); return; }
+    try {
+      const result = await importBulkMutation.mutateAsync({
+        companyId,
+        rows: validRows.map(r => ({
+          name: r.name,
+          type: r.type,
+          objective: r.objective,
+          audience: r.audience,
+          plannedAttendees: r.plannedAttendees,
+          modality: r.modality,
+          responsible: r.responsible,
+          plannedDate: r.plannedDate,
+        })),
+      });
+      toast.success(`Se importaron ${result.inserted} capacitaciones exitosamente`);
+      setShowImportModal(false);
+      setImportRows([]);
+      await utils.companyTrainings.list.invalidate({ companyId });
+    } catch {
+      toast.error("Error al importar las capacitaciones");
+    }
+  };
+
   const exportToExcel = () => {
     const toDateStr = (d: Date | null | string) => {
       if (!d) return "";
@@ -711,6 +844,27 @@ export default function Trainings() {
               </Button>
               {/* Botón Cronograma Anual */}
               <TrainingScheduleButton companyId={companyId} />
+              {/* Botón Descargar Plantilla */}
+              <Button onClick={downloadTemplate} variant="outline" className="flex gap-2 border-emerald-400 text-emerald-700 hover:bg-emerald-50">
+                <FileText className="w-4 h-4" />
+                Descargar Plantilla
+              </Button>
+              {/* Botón Importar desde Excel */}
+              <Button
+                onClick={() => importFileRef.current?.click()}
+                variant="outline"
+                className="flex gap-2 border-blue-400 text-blue-700 hover:bg-blue-50"
+              >
+                <Upload className="w-4 h-4" />
+                Importar desde Excel
+              </Button>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleImportFile}
+              />
               {/* Botón Exportar Excel */}
               <Button onClick={exportToExcel} variant="outline" className="flex gap-2">
                 <Download className="w-4 h-4" />
@@ -981,6 +1135,97 @@ export default function Trainings() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de Vista Previa de Importación */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+            {/* Cabecera del modal */}
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Vista previa de importación</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {importRows.filter(r => !r._error).length} filas válidas de {importRows.length} detectadas.
+                  {importRows.some(r => r._error) && (
+                    <span className="text-red-500 ml-2">{importRows.filter(r => r._error).length} con errores (no se importarán).</span>
+                  )}
+                </p>
+              </div>
+              <button onClick={() => { setShowImportModal(false); setImportRows([]); }} className="text-gray-400 hover:text-gray-600">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Tabla de vista previa */}
+            <div className="overflow-auto flex-1 p-4">
+              {importError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{importError}</div>
+              )}
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">#</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Capacitación</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Tipo</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Modalidad</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Responsable</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Fecha Planificada</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Asistentes</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importRows.map((row) => (
+                    <tr key={row._rowIndex} className={row._error ? "bg-red-50" : "hover:bg-gray-50"}>
+                      <td className="border px-3 py-2 text-gray-400 text-xs">{row._rowIndex}</td>
+                      <td className="border px-3 py-2 font-medium text-gray-900">{row.name || <span className="text-red-400 italic">Sin nombre</span>}</td>
+                      <td className="border px-3 py-2">
+                        {row.type ? (
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            row.type === "Mandatoria" ? "bg-red-100 text-red-700" :
+                            row.type === "Reglamentaria" ? "bg-orange-100 text-orange-700" :
+                            "bg-blue-100 text-blue-700"
+                          }`}>{row.type}</span>
+                        ) : <span className="text-gray-400 text-xs">—</span>}
+                      </td>
+                      <td className="border px-3 py-2 text-gray-700">{row.modality || <span className="text-gray-400 text-xs">—</span>}</td>
+                      <td className="border px-3 py-2 text-gray-700">{row.responsible || <span className="text-gray-400 text-xs">—</span>}</td>
+                      <td className="border px-3 py-2 text-gray-700">{row.plannedDate || <span className="text-gray-400 text-xs">—</span>}</td>
+                      <td className="border px-3 py-2 text-gray-700 text-center">{row.plannedAttendees || <span className="text-gray-400 text-xs">—</span>}</td>
+                      <td className="border px-3 py-2">
+                        {row._error ? (
+                          <span className="flex items-center gap-1 text-red-600 text-xs"><X className="w-3 h-3" />{row._error}</span>
+                        ) : (
+                          <span className="text-green-600 text-xs font-medium">✓ Válida</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pie del modal */}
+            <div className="flex items-center justify-between p-6 border-t bg-gray-50 rounded-b-xl">
+              <p className="text-sm text-gray-500">
+                Solo se importarán las filas marcadas como <span className="text-green-600 font-medium">✓ Válida</span>.
+              </p>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => { setShowImportModal(false); setImportRows([]); }}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleConfirmImport}
+                  disabled={importBulkMutation.isPending || importRows.filter(r => !r._error).length === 0}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {importBulkMutation.isPending ? "Importando..." : `Importar ${importRows.filter(r => !r._error).length} capacitaciones`}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1055,6 +1055,45 @@ export const appRouter = router({
           .where(eq(companyTrainings.id, trainingId));
         return { success: true };
       }),
+
+    // Importación masiva desde Excel (filas ya parseadas en el cliente)
+    importBulk: companyProcedure
+      .input(z.object({
+        companyId: z.number(),
+        rows: z.array(z.object({
+          name: z.string(),
+          type: z.enum(["Mandatoria", "Reglamentaria", "Sugerida"]).optional(),
+          objective: z.string().optional(),
+          audience: z.string().optional(),
+          plannedAttendees: z.number().optional(),
+          modality: z.enum(["Presencial", "Online", "Externa"]).optional(),
+          responsible: z.string().optional(),
+          plannedDate: z.string().optional(),
+        }))
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        if (input.rows.length === 0) return { inserted: 0 };
+        await db.insert(companyTrainings).values(
+          input.rows.map(row => ({
+            companyId: input.companyId,
+            name: row.name,
+            type: row.type || "Mandatoria",
+            objective: row.objective || null,
+            audience: row.audience || null,
+            plannedAttendees: row.plannedAttendees || 0,
+            modality: row.modality || "Presencial",
+            responsible: row.responsible || null,
+            plannedDate: row.plannedDate ? new Date(row.plannedDate) : null,
+            conductedDate: null,
+            actualAttendees: 0,
+            attendancePercentage: 0,
+            completed: null,
+          }))
+        );
+        return { inserted: input.rows.length };
+      }),
   }),
 
   // Training Schedules (Cronograma Anual de Capacitación)
