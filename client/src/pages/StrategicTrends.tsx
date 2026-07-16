@@ -11,6 +11,9 @@ import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -18,6 +21,7 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
+  TooltipProps,
 } from "recharts";
 import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, X } from "lucide-react";
 
@@ -167,9 +171,129 @@ function KpiCard({
   );
 }
 
-// ─── Desglose OTE colapsable ──────────────────────────────────────────────────
+// ─── Tooltip para mini gráfica de OTE ────────────────────────────────────────
+function OteChartTooltip({ active, payload }: any) {
+  if (!active || !payload || !payload.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs max-w-xs">
+      <p className="font-bold text-slate-700 mb-1 leading-snug">{d.fullDescription || d.label}</p>
+      {d.responsible && <p className="text-slate-400 mb-1">Responsable: {d.responsible}</p>}
+      {d.endDate && <p className="text-slate-400 mb-1">Fecha: {d.endDate}</p>}
+      <div className="flex gap-3 mt-1">
+        <span className="text-blue-600 font-semibold">Avance: {d.avance}%</span>
+        <span className="text-red-400 font-semibold">Meta: {d.meta}%</span>
+      </div>
+      {d.ponderacion > 0 && <p className="text-slate-400 mt-1">Ponderación: {d.ponderacion}%</p>}
+    </div>
+  );
+}
+
+// ─── Mini gráfica de un OTE individual ───────────────────────────────────────
+function OteDetailChart({ objectiveId, companyId }: { objectiveId: number; companyId: number }) {
+  const { data, isLoading } = trpc.strategicTrends.getOteDetail.useQuery(
+    { objectiveId, companyId },
+    { enabled: objectiveId > 0 && companyId > 0 }
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-32">
+        <Loader2 className="animate-spin w-4 h-4 text-blue-400" />
+      </div>
+    );
+  }
+  if (!data || !data.chartPoints || data.chartPoints.length === 0) {
+    return (
+      <p className="text-slate-400 text-xs text-center py-4">Sin resultados clave registrados.</p>
+    );
+  }
+
+  const globalColor = data.globalPercent >= data.globalMeta ? "#16a34a"
+    : data.globalPercent >= data.globalMeta * 0.7 ? "#ca8a04"
+    : "#dc2626";
+
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-3">
+      {/* Resumen global del OTE */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs text-slate-500 font-medium">Avance global del objetivo</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-400">Meta: {data.globalMeta}%</span>
+          <span
+            className="text-sm font-bold px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: globalColor + "20", color: globalColor }}
+          >
+            {data.globalPercent}%
+          </span>
+        </div>
+      </div>
+      <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden mb-4">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${Math.min(100, data.globalPercent)}%`, backgroundColor: globalColor }}
+        />
+      </div>
+
+      {/* Gráfica de barras por resultado clave */}
+      <p className="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wide">
+        Resultados clave ({data.chartPoints.length})
+      </p>
+      <ResponsiveContainer width="100%" height={data.chartPoints.length > 4 ? 220 : 160}>
+        <BarChart
+          data={data.chartPoints}
+          margin={{ top: 8, right: 8, left: 0, bottom: 5 }}
+          layout="vertical"
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+          <XAxis
+            type="number"
+            domain={[0, 100]}
+            tick={{ fontSize: 10, fill: "#94a3b8" }}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(v) => `${v}%`}
+          />
+          <YAxis
+            type="category"
+            dataKey="label"
+            tick={{ fontSize: 10, fill: "#64748b" }}
+            tickLine={false}
+            axisLine={false}
+            width={110}
+          />
+          <Tooltip content={<OteChartTooltip />} />
+          {/* Barra de meta (fondo) */}
+          <Bar dataKey="meta" name="Meta" fill="#fca5a5" radius={[0, 3, 3, 0]} barSize={10}>
+            {data.chartPoints.map((_: any, i: number) => (
+              <Cell key={`meta-${i}`} fill="#fca5a5" />
+            ))}
+          </Bar>
+          {/* Barra de avance (encima) */}
+          <Bar dataKey="avance" name="Avance" radius={[0, 3, 3, 0]} barSize={10}>
+            {data.chartPoints.map((pt: any, i: number) => {
+              const c = pt.avance >= pt.meta ? "#16a34a"
+                : pt.avance >= pt.meta * 0.7 ? "#ca8a04"
+                : "#3b82f6";
+              return <Cell key={`avance-${i}`} fill={c} />;
+            })}
+          </Bar>
+          <Legend
+            wrapperStyle={{ fontSize: 11, paddingTop: 4 }}
+            iconType="circle"
+            iconSize={7}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─── Desglose OTE colapsable con mini gráficas ───────────────────────────────
 function OteBreakdown({ companyId }: { companyId: number }) {
   const [expandedProcess, setExpandedProcess] = useState<number | null>(null);
+  const [expandedObj, setExpandedObj] = useState<number | null>(null);
   const { data: breakdown = [], isLoading } = trpc.strategicTrends.getOteBreakdown.useQuery(
     { companyId },
     { enabled: companyId > 0 }
@@ -221,9 +345,13 @@ function OteBreakdown({ companyId }: { companyId: number }) {
                             obj.percent >= 80 ? "#16a34a"
                             : obj.percent >= 50 ? "#ca8a04"
                             : "#dc2626";
+                          const isObjExpanded = expandedObj === obj.id;
                           return (
                             <div key={obj.id} className="bg-slate-50 rounded-lg p-3">
-                              <div className="flex items-start justify-between gap-3 mb-2">
+                              <div
+                                className="flex items-start justify-between gap-3 mb-2 cursor-pointer"
+                                onClick={() => setExpandedObj(isObjExpanded ? null : obj.id)}
+                              >
                                 <div className="flex-1">
                                   {obj.strategicObjective && obj.strategicObjective !== "Sin clasificar" && (
                                     <p className="text-xs text-slate-400 mb-0.5 font-medium uppercase tracking-wide">
@@ -232,12 +360,17 @@ function OteBreakdown({ companyId }: { companyId: number }) {
                                   )}
                                   <p className="text-sm text-slate-700 leading-snug">{obj.name}</p>
                                 </div>
-                                <span
-                                  className="shrink-0 text-sm font-bold px-2 py-0.5 rounded-full"
-                                  style={{ backgroundColor: objColor + "20", color: objColor }}
-                                >
-                                  {obj.percent}%
-                                </span>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span
+                                    className="text-sm font-bold px-2 py-0.5 rounded-full"
+                                    style={{ backgroundColor: objColor + "20", color: objColor }}
+                                  >
+                                    {obj.percent}%
+                                  </span>
+                                  {isObjExpanded
+                                    ? <ChevronUp size={13} className="text-slate-400" />
+                                    : <ChevronDown size={13} className="text-slate-400" />}
+                                </div>
                               </div>
                               <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
                                 <div
@@ -249,6 +382,10 @@ function OteBreakdown({ companyId }: { companyId: number }) {
                                 <p className="text-xs text-slate-400 mt-1">
                                   Ponderación: {obj.ponderacion}%
                                 </p>
+                              )}
+                              {/* Mini gráfica desplegable */}
+                              {isObjExpanded && (
+                                <OteDetailChart objectiveId={obj.id} companyId={companyId} />
                               )}
                             </div>
                           );

@@ -368,4 +368,90 @@ export const strategicTrendsRouter = router({
 
       return result;
     }),
+
+  /**
+   * Devuelve el detalle de un OTE individual: sus resultKeys con porcentajeAlcanzado y meta,
+   * para construir la mini gráfica de tendencia por resultado clave.
+   */
+  getOteDetail: companyProcedure
+    .input(z.object({ objectiveId: z.number(), companyId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+
+      const [obj] = await db
+        .select()
+        .from(processTacticalObjectives)
+        .where(eq(processTacticalObjectives.id, input.objectiveId))
+        .limit(1);
+
+      if (!obj) return null;
+
+      try {
+        const pd = JSON.parse((obj as any).planningData || "{}");
+        const resultKeys = Array.isArray(pd.resultKeys) ? pd.resultKeys : [];
+
+        // Construir puntos para la gráfica: cada resultKey es un punto
+        const chartPoints = resultKeys.map((rk: any, idx: number) => {
+          const pct = Math.max(0, Math.min(100, parseFloat(rk.porcentajeAlcanzado) || 0));
+          const meta = parseFloat(rk.meta);
+          const metaVal = !isNaN(meta) ? Math.max(0, Math.min(100, meta)) : 100;
+          const label = rk.description
+            ? (rk.description.length > 30 ? rk.description.slice(0, 28) + "…" : rk.description)
+            : `RK ${idx + 1}`;
+          return {
+            label,
+            fullDescription: rk.description || `Resultado clave ${idx + 1}`,
+            avance: pct,
+            meta: metaVal,
+            ponderacion: parseFloat(rk.ponderacion) || 0,
+            responsible: rk.responsible || "",
+            endDate: rk.endDate || "",
+          };
+        });
+
+        // Calcular % global del objetivo y su meta global
+        let globalPercent = 0;
+        let globalMeta = 100;
+        const puntoPartida = parseFloat(pd.puntoPartida) || 0;
+        const metaLlegada = parseFloat(pd.metaLlegada) || 0;
+        const avanceMeta = parseFloat(pd.avanceMeta) || 0;
+        if (metaLlegada !== puntoPartida && metaLlegada !== 0) {
+          globalPercent = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
+          globalPercent = Math.max(0, Math.min(100, Math.round(globalPercent)));
+          globalMeta = metaLlegada;
+        } else if (resultKeys.length > 0) {
+          const totalWeight = resultKeys.reduce((s: number, rk: any) => s + (parseFloat(rk.ponderacion) || 0), 0);
+          if (totalWeight > 0) {
+            globalPercent = resultKeys.reduce((s: number, rk: any) => {
+              const w = parseFloat(rk.ponderacion) || 0;
+              const p = parseFloat(rk.porcentajeAlcanzado) || 0;
+              return s + p * (w / totalWeight);
+            }, 0);
+            globalPercent = Math.max(0, Math.min(100, Math.round(globalPercent)));
+            const metaVals = resultKeys
+              .filter((rk: any) => !isNaN(parseFloat(rk.meta)) && (parseFloat(rk.ponderacion) || 0) > 0)
+              .map((rk: any) => parseFloat(rk.meta) * ((parseFloat(rk.ponderacion) || 0) / totalWeight));
+            if (metaVals.length > 0) {
+              globalMeta = Math.round(metaVals.reduce((a: number, b: number) => a + b, 0));
+            }
+          } else {
+            const vals = resultKeys.map((rk: any) => parseFloat(rk.porcentajeAlcanzado) || 0);
+            globalPercent = vals.length > 0 ? Math.round(vals.reduce((a: number, b: number) => a + b, 0) / vals.length) : 0;
+          }
+        }
+
+        return {
+          objectiveId: input.objectiveId,
+          name: (obj as any).name || "Sin nombre",
+          strategicObjective: (obj as any).strategicObjective || "",
+          globalPercent,
+          globalMeta,
+          chartPoints,
+          unidadMedida: pd.unidadMedida || "%",
+        };
+      } catch {
+        return null;
+      }
+    }),
 });
