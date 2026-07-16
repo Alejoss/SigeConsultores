@@ -17,6 +17,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
 import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, X } from "lucide-react";
 
@@ -90,23 +91,30 @@ function LabelDot(props: any) {
   );
 }
 
-// ─── Tarjeta de KPI ───────────────────────────────────────────────────────────
+// ─── Tarjeta de KPI con indicador interanual ──────────────────────────────────
 function KpiCard({
   title,
   current,
   meta,
   color,
   badge,
+  prevYearClose,
+  prevYear,
 }: {
   title: string;
   current: number;
   meta: number;
   color: string;
   badge: string;
+  prevYearClose?: number;
+  prevYear?: number;
 }) {
   const diff = current - meta;
   const isAbove = diff >= 0;
   const isClose = Math.abs(diff) < 5;
+
+  // Diferencia vs cierre del año anterior
+  const yoyDiff = prevYearClose !== undefined ? current - prevYearClose : null;
 
   return (
     <Card className="border-2" style={{ borderColor: color + "40" }}>
@@ -141,6 +149,19 @@ function KpiCard({
             style={{ width: `${Math.min(100, current)}%`, backgroundColor: color }}
           />
         </div>
+        {/* Indicador interanual */}
+        {yoyDiff !== null && prevYear !== undefined && (
+          <div className="mt-3 flex items-center gap-1.5 text-xs">
+            <span className="text-slate-400">vs. cierre {prevYear}:</span>
+            <span
+              className="font-bold flex items-center gap-0.5"
+              style={{ color: yoyDiff >= 0 ? "#16a34a" : "#dc2626" }}
+            >
+              {yoyDiff >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+              {yoyDiff >= 0 ? "+" : ""}{yoyDiff.toFixed(1)}%
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -166,7 +187,6 @@ function OteBreakdown({ companyId }: { companyId: number }) {
           ) : (
             (breakdown as OteProcess[]).map((proc) => {
               const isExpanded = expandedProcess === proc.processId;
-              // % promedio del proceso
               const avgPercent = proc.objectives.length > 0
                 ? Math.round(proc.objectives.reduce((s, o) => s + o.percent, 0) / proc.objectives.length)
                 : 0;
@@ -176,7 +196,6 @@ function OteBreakdown({ companyId }: { companyId: number }) {
               return (
                 <Card key={proc.processId} className="border border-slate-200">
                   <CardContent className="pt-3 pb-3">
-                    {/* Cabecera del proceso */}
                     <div
                       className="flex items-center justify-between cursor-pointer"
                       onClick={() => setExpandedProcess(isExpanded ? null : proc.processId)}
@@ -185,10 +204,7 @@ function OteBreakdown({ companyId }: { companyId: number }) {
                       <div className="flex items-center gap-3">
                         <span
                           className="text-sm font-bold px-2 py-0.5 rounded-full"
-                          style={{
-                            backgroundColor: barColor + "20",
-                            color: barColor,
-                          }}
+                          style={{ backgroundColor: barColor + "20", color: barColor }}
                         >
                           {avgPercent}%
                         </span>
@@ -198,7 +214,6 @@ function OteBreakdown({ companyId }: { companyId: number }) {
                       </div>
                     </div>
 
-                    {/* Objetivos del proceso */}
                     {isExpanded && (
                       <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
                         {proc.objectives.map((obj) => {
@@ -219,22 +234,15 @@ function OteBreakdown({ companyId }: { companyId: number }) {
                                 </div>
                                 <span
                                   className="shrink-0 text-sm font-bold px-2 py-0.5 rounded-full"
-                                  style={{
-                                    backgroundColor: objColor + "20",
-                                    color: objColor,
-                                  }}
+                                  style={{ backgroundColor: objColor + "20", color: objColor }}
                                 >
                                   {obj.percent}%
                                 </span>
                               </div>
-                              {/* Mini barra de progreso */}
                               <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
                                 <div
                                   className="h-full rounded-full transition-all duration-500"
-                                  style={{
-                                    width: `${Math.min(100, obj.percent)}%`,
-                                    backgroundColor: objColor,
-                                  }}
+                                  style={{ width: `${Math.min(100, obj.percent)}%`, backgroundColor: objColor }}
                                 />
                               </div>
                               {obj.ponderacion > 0 && (
@@ -252,14 +260,16 @@ function OteBreakdown({ companyId }: { companyId: number }) {
               );
             })
           )}
-            </div>
+    </div>
   );
 }
+
 // ─── Gráfico individual ───────────────────────────────────────────────────────
 function TrendChart({
   title,
   badge,
   data,
+  allData,
   realKey,
   metaKey,
   realLabel,
@@ -271,22 +281,52 @@ function TrendChart({
   title: string;
   badge: string;
   data: TrendPoint[];
+  allData: TrendPoint[];
   realKey: keyof TrendPoint;
   metaKey: keyof TrendPoint;
   realLabel: string;
   metaLabel: string;
   realColor: string;
   metaColor: string;
-  yearFilter: number | "all";
+  yearFilter: number | "all" | "annual";
 }) {
+  // Vista "Cierre Anual": solo diciembre de cada año (o el último mes disponible del año)
   const filtered = useMemo(() => {
     if (yearFilter === "all") return data;
+    if (yearFilter === "annual") {
+      // Agrupar por año y tomar el último mes disponible
+      const byYear = new Map<number, TrendPoint>();
+      for (const d of allData) {
+        const existing = byYear.get(d.year);
+        if (!existing || d.month > existing.month) {
+          byYear.set(d.year, d);
+        }
+      }
+      return Array.from(byYear.values()).sort((a, b) => a.year - b.year);
+    }
     return data.filter((d) => d.year === yearFilter);
-  }, [data, yearFilter]);
+  }, [data, allData, yearFilter]);
+
+  // Detectar cambios de año para líneas de referencia verticales
+  const yearChanges = useMemo(() => {
+    if (yearFilter !== "all") return [];
+    const changes: string[] = [];
+    for (let i = 1; i < filtered.length; i++) {
+      if (filtered[i].year !== filtered[i - 1].year) {
+        changes.push(filtered[i].label);
+      }
+    }
+    return changes;
+  }, [filtered, yearFilter]);
 
   const currentValue = filtered.length > 0
     ? (filtered[filtered.length - 1][realKey] as number)
     : 0;
+
+  // Etiqueta del eje X para vista anual: solo el año
+  const xTickFormatter = yearFilter === "annual"
+    ? (label: string) => label.split(" ")[1] || label
+    : undefined;
 
   return (
     <Card className="shadow-sm">
@@ -305,7 +345,7 @@ function TrendChart({
             </CardTitle>
           </div>
           <span className="text-sm font-bold" style={{ color: realColor }}>
-            {currentValue.toFixed(1)}% actual
+            {currentValue.toFixed(1)}% {yearFilter === "annual" ? "último cierre" : "actual"}
           </span>
         </div>
       </CardHeader>
@@ -326,6 +366,7 @@ function TrendChart({
                 tick={{ fontSize: 11, fill: "#94a3b8" }}
                 tickLine={false}
                 axisLine={{ stroke: "#e2e8f0" }}
+                tickFormatter={xTickFormatter}
               />
               <YAxis
                 domain={[0, 100]}
@@ -341,6 +382,16 @@ function TrendChart({
                 iconType="circle"
                 iconSize={8}
               />
+              {/* Líneas verticales de cambio de año */}
+              {yearChanges.map((label) => (
+                <ReferenceLine
+                  key={label}
+                  x={label}
+                  stroke="#cbd5e1"
+                  strokeDasharray="4 2"
+                  label={{ value: label.split(" ")[1], position: "insideTopRight", fontSize: 10, fill: "#94a3b8" }}
+                />
+              ))}
               {/* Línea de meta */}
               <Line
                 type="monotone"
@@ -365,7 +416,6 @@ function TrendChart({
             </LineChart>
           </ResponsiveContainer>
         )}
-
       </CardContent>
     </Card>
   );
@@ -376,7 +426,7 @@ export default function StrategicTrends() {
   const [, setLocation] = useLocation();
   const { isManagerLogin, managerCompanyId } = useManagerAuth();
   const { session: processLeaderSession } = useProcessLeaderAuth();
-  const [yearFilter, setYearFilter] = useState<number | "all">("all");
+  const [yearFilter, setYearFilter] = useState<number | "all" | "annual">("all");
   const [showOteModal, setShowOteModal] = useState(false);
 
   const companyId = useMemo<number>(() => {
@@ -398,6 +448,15 @@ export default function StrategicTrends() {
   }, [data]);
 
   const latest = data.length > 0 ? data[data.length - 1] : null;
+
+  // Cierre del año anterior (diciembre o último mes disponible del año previo)
+  const prevYearData = useMemo(() => {
+    if (!latest) return null;
+    const prevYear = latest.year - 1;
+    const prevYearPoints = data.filter((d) => d.year === prevYear);
+    if (prevYearPoints.length === 0) return null;
+    return prevYearPoints.reduce((max, d) => d.month > max.month ? d : max, prevYearPoints[0]);
+  }, [data, latest]);
 
   return (
     <DashboardLayout>
@@ -433,7 +492,7 @@ export default function StrategicTrends() {
           </Card>
         ) : (
           <>
-            {/* KPI Cards */}
+            {/* KPI Cards con indicador interanual */}
             {latest && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 <KpiCard
@@ -442,6 +501,8 @@ export default function StrategicTrends() {
                   current={latest.otePercent}
                   meta={latest.oteMeta}
                   color="#3b82f6"
+                  prevYearClose={prevYearData?.otePercent}
+                  prevYear={prevYearData?.year}
                 />
                 <KpiCard
                   title="Objetivos Tácticos de Gestión"
@@ -449,6 +510,8 @@ export default function StrategicTrends() {
                   current={latest.otgPercent}
                   meta={latest.otgMeta}
                   color="#8b5cf6"
+                  prevYearClose={prevYearData?.otgPercent}
+                  prevYear={prevYearData?.year}
                 />
                 <KpiCard
                   title="Gestión con Partes Interesadas"
@@ -456,12 +519,14 @@ export default function StrategicTrends() {
                   current={latest.stakeholderPercent}
                   meta={latest.stakeholderMeta}
                   color="#10b981"
+                  prevYearClose={prevYearData?.stakeholderPercent}
+                  prevYear={prevYearData?.year}
                 />
               </div>
             )}
 
-            {/* Filtro por año */}
-            <div className="flex items-center gap-2 mb-6">
+            {/* Filtro por año + vista de cierre anual */}
+            <div className="flex items-center gap-2 mb-6 flex-wrap">
               <span className="text-sm text-slate-500 font-medium">Ver:</span>
               <button
                 onClick={() => setYearFilter("all")}
@@ -486,7 +551,27 @@ export default function StrategicTrends() {
                   {year}
                 </button>
               ))}
+              {/* Vista de cierre anual — solo si hay más de un año */}
+              {availableYears.length > 1 && (
+                <button
+                  onClick={() => setYearFilter("annual")}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors border ${
+                    yearFilter === "annual"
+                      ? "bg-amber-500 text-white border-amber-500"
+                      : "bg-white text-amber-600 border-amber-300 hover:bg-amber-50"
+                  }`}
+                >
+                  Cierre anual
+                </button>
+              )}
             </div>
+
+            {/* Nota explicativa para vista de cierre anual */}
+            {yearFilter === "annual" && (
+              <div className="mb-4 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                Mostrando el último valor registrado de cada año. Esta vista permite comparar el desempeño de la empresa año a año.
+              </div>
+            )}
 
             {/* Gráficos */}
             <div className="flex flex-col gap-6">
@@ -496,6 +581,7 @@ export default function StrategicTrends() {
                   title="Objetivos Tácticos Estratégicos"
                   badge="OTE"
                   data={data}
+                  allData={data}
                   realKey="otePercent"
                   metaKey="oteMeta"
                   realLabel="OTE — Avance real"
@@ -514,11 +600,12 @@ export default function StrategicTrends() {
                   </button>
                 </div>
               </div>
-              {/* OTG — sin desglose */}
+              {/* OTG */}
               <TrendChart
                 title="Objetivos Tácticos de Gestión"
                 badge="OTG"
                 data={data}
+                allData={data}
                 realKey="otgPercent"
                 metaKey="otgMeta"
                 realLabel="OTG — Avance real"
@@ -527,11 +614,12 @@ export default function StrategicTrends() {
                 metaColor="#ef4444"
                 yearFilter={yearFilter}
               />
-              {/* GPI — sin desglose */}
+              {/* GPI */}
               <TrendChart
                 title="Gestión con Partes Interesadas"
                 badge="GPI"
                 data={data}
+                allData={data}
                 realKey="stakeholderPercent"
                 metaKey="stakeholderMeta"
                 realLabel="GPI — Avance real"
@@ -550,7 +638,7 @@ export default function StrategicTrends() {
           </>
         )}
       </div>
-      {/* Modal de desglose OTE — renderizado via portal fuera del árbol de Recharts */}
+      {/* Modal de desglose OTE */}
       {showOteModal && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-16 px-4"
