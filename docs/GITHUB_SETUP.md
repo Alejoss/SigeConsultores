@@ -30,6 +30,8 @@ Los nombres van en **minúsculas** (requisito de GHCR).
    - **build-image** — imagen del mismo SHA que pasó CI
    - **Deploy to droplet** — solo con secretos configurados
 
+`infra/staging-cicd` es la rama de integración; **no dispara CD**. El CD solo queda habilitado cuando el cambio entra a `main`, preferiblemente mediante PR `infra/staging-cicd` → `main`; nunca por push directo a `main` sin autorización explícita.
+
 Sin secretos: tras CI verde, el CD termina con *Deploy skipped*; la imagen **sí** queda en GHCR.
 
 ## Secretos y variables para deploy al droplet

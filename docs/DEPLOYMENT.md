@@ -23,6 +23,15 @@ Cliente push → infra/staging-cicd → CI (check + build + tests)
 | **`infra/staging-cicd`** | Cliente / integración | Push libre; CI informativo (verde o rojo) |
 | **`main`** | Producción | Merge vía PR → **CI completo** → solo entonces CD (GHCR + droplet) |
 
+### Qué rama dispara el CD
+
+- **Pushear a `infra/staging-cicd` NO despliega producción.** Solo ejecuta CI para validar la integración.
+- **El CD se dispara únicamente cuando el cambio llega a `main`**, normalmente por merge de un PR `infra/staging-cicd` → `main`.
+- **No se debe pushear directo a `main`** salvo autorización explícita de emergencia. El flujo esperado es PR, revisión y merge.
+- Tras el merge a `main`, GitHub vuelve a correr CI completo. Solo si pasan `check-and-build`, `test-unit` y `test-integration`, el job `deploy-production` invoca el CD.
+
+Entonces sí: el flujo normal para publicar es **mergear `infra/staging-cicd` hacia `main` vía PR**. Ese merge es el evento que prepara el CD; las pruebas siguen siendo la compuerta antes del deploy.
+
 **Regla crítica:** CI y CD **no** corren en paralelo. En `ci.yml`, el job `deploy-production` tiene `needs: [check-and-build, test-unit, test-integration]`; GitHub solo llama al workflow reutilizable de CD cuando los tres jobs pasan en un push a `main`. Si fallan typecheck, build o tests, **no hay deploy**.
 
 Detalle de Actions y secretos: [GITHUB_SETUP.md](./GITHUB_SETUP.md).
