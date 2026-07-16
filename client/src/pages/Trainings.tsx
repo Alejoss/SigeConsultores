@@ -192,9 +192,11 @@ function GanttPanel({ trainings, onClose }: { trainings: Training[]; onClose: ()
               </tr>
             ) : null}
 
-            {withDate.map((training) => {
+            {withDate.map((training, rowIndex) => {
               const colors = TYPE_COLORS[training.type] ?? TYPE_COLORS["Sugerida"];
               const isCompleted = training.completed === "SI";
+              // Primeras 3 filas: tooltip hacia abajo; el resto: hacia arriba
+              const tooltipDown = rowIndex < 3;
               return (
                 <tr key={training.id} className="border-b hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-2 sticky left-0 bg-white z-10 border-r">
@@ -227,7 +229,7 @@ function GanttPanel({ trainings, onClose }: { trainings: Training[]; onClose: ()
                               {isCompleted ? "✓" : "●"}
                             </div>
                             {/* Tooltip enriquecido */}
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 hidden group-hover:block pointer-events-none">
+                            <div className={`absolute ${tooltipDown ? 'top-full mt-2' : 'bottom-full mb-2'} left-1/2 -translate-x-1/2 z-50 hidden group-hover:block pointer-events-none`}>
                               <div className="bg-gray-900 text-white text-xs rounded-lg shadow-xl p-3 min-w-[200px] max-w-[280px] whitespace-normal">
                                 <div className="font-semibold text-sm mb-1.5 leading-tight">{training.name}</div>
                                 <div className="space-y-1 text-gray-300">
@@ -264,7 +266,7 @@ function GanttPanel({ trainings, onClose }: { trainings: Training[]; onClose: ()
                                   )}
                                 </div>
                                 {/* Flecha del tooltip */}
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                                <div className={`absolute ${tooltipDown ? 'bottom-full border-b-gray-900 border-t-transparent' : 'top-full border-t-gray-900 border-b-transparent'} left-1/2 -translate-x-1/2 border-4 border-transparent`} />
                               </div>
                             </div>
                           </div>
