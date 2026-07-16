@@ -683,6 +683,36 @@ export default function Trainings() {
   const VALID_TYPES = ["Mandatoria", "Reglamentaria", "Sugerida"];
   const VALID_MODALITIES = ["Presencial", "Online", "Externa"];
 
+  // Convierte fecha serial de Excel o string a YYYY-MM-DD
+  const excelDateToISO = (val: unknown): string | undefined => {
+    if (!val && val !== 0) return undefined;
+    const str = String(val).trim();
+    if (!str) return undefined;
+    // Si es número serial de Excel (ej. 46034)
+    const num = Number(str);
+    if (!isNaN(num) && num > 1000 && num < 100000) {
+      // Excel serial: días desde 1900-01-01 (con bug del año bisiesto de Lotus)
+      const excelEpoch = new Date(1899, 11, 30);
+      const d = new Date(excelEpoch.getTime() + num * 86400000);
+      if (!isNaN(d.getTime())) {
+        return d.toISOString().split("T")[0];
+      }
+    }
+    // Si es string de fecha (YYYY-MM-DD, DD/MM/YYYY, etc.)
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
+    return undefined;
+  };
+
+  // Busca un valor en el row usando múltiples posibles nombres de columna
+  const getCol = (row: Record<string, unknown>, ...keys: string[]): string => {
+    for (const key of keys) {
+      const val = row[key];
+      if (val !== undefined && val !== null && String(val).trim() !== "") return String(val).trim();
+    }
+    return "";
+  };
+
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -691,35 +721,41 @@ export default function Trainings() {
     reader.onload = (evt) => {
       try {
         const data = new Uint8Array(evt.target!.result as ArrayBuffer);
-        const wb = XLSX.read(data, { type: "array" });
+        const wb = XLSX.read(data, { type: "array", cellDates: false });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
         if (rows.length === 0) { setImportError("El archivo está vacío o no tiene filas de datos."); return; }
         const parsed: ImportRow[] = rows.map((row, idx) => {
-          const name = String(row["Capacitación (Obligatorio)"] || "").trim();
-          const rawType = String(row["Tipo (Mandatoria/Reglamentaria/Sugerida)"] || "").trim();
-          const rawModality = String(row["Modalidad (Presencial/Online/Externa)"] || "").trim();
-          const rawDate = String(row["Fecha Planificada (YYYY-MM-DD)"] || "").trim();
+          // Nombres alternativos de columnas para mayor flexibilidad
+          const name = getCol(row,
+            "Capacitación (Obligatorio)", "Capacitacion (Obligatorio)",
+            "Capacitación", "Capacitacion", "Nombre", "name"
+          );
+          const rawType = getCol(row,
+            "Tipo (Mandatoria/Reglamentaria/Sugerida)", "Tipo", "type"
+          );
+          const rawModality = getCol(row,
+            "Modalidad (Presencial/Online/Externa)", "Modalidad", "modality"
+          );
+          const rawDate = getCol(row,
+            "Fecha Planificada (YYYY-MM-DD)", "Fecha Planificada", "Fecha", "plannedDate"
+          ) || row["Fecha Planificada (YYYY-MM-DD)"];
           const type = VALID_TYPES.includes(rawType) ? rawType as ImportRow["type"] : undefined;
           const modality = VALID_MODALITIES.includes(rawModality) ? rawModality as ImportRow["modality"] : undefined;
-          const plannedAttendees = parseInt(String(row["Asistentes Previstos"] || "0")) || undefined;
-          // Validar fecha
-          let plannedDate: string | undefined;
-          if (rawDate) {
-            const d = new Date(rawDate);
-            plannedDate = isNaN(d.getTime()) ? undefined : rawDate;
-          }
+          const rawAttendees = getCol(row, "Asistentes Previstos", "Asistentes", "plannedAttendees");
+          const plannedAttendees = parseInt(rawAttendees) || undefined;
+          const plannedDate = excelDateToISO(rawDate);
           const error = !name ? "Falta el nombre de la capacitación" :
             (rawType && !type) ? `Tipo inválido: "${rawType}"` :
             (rawModality && !modality) ? `Modalidad inválida: "${rawModality}"` : undefined;
           return {
             name,
             type,
-            objective: String(row["Objetivo"] || "").trim() || undefined,
-            audience: String(row["Destinatario"] || "").trim() || undefined,
+            objective: getCol(row, "Objetivo", "objective") || undefined,
+            audience: getCol(row, "Destinatario", "Audiencia", "audience") || undefined,
             plannedAttendees,
             modality,
-            responsible: String(row["Responsable"] || "").trim() || undefined,
+            responsible: getCol(row, "Responsable", "responsible") || undefined,
             plannedDate,
             _rowIndex: idx + 2,
             _error: error,
