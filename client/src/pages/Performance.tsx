@@ -304,7 +304,13 @@ export default function Performance() {
     if (activeModule) {
       setActiveModule(null);
     } else {
-      setLocation("/manager-dashboard");
+      // Si es manager → vuelve al manager-dashboard
+      // Si es usuario de empresa o process leader → vuelve al dashboard de empresa
+      if (isManagerLogin || localStorage.getItem('managerCompanyId') !== null) {
+        setLocation("/manager-dashboard");
+      } else {
+        setLocation("/dashboard");
+      }
     }
   };
 
