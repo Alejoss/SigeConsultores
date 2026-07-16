@@ -32,13 +32,16 @@ export default function ProcessMap() {
   
   // Back button handler
   const handleBack = () => {
-    console.log("[DEBUG] ProcessMap handleBack:", { isProcessLeader, isManagerAccess, isManagerLogin });
     if (isProcessLeader) {
       setLocation('/process-leader-dashboard');
     } else if (isManagerLogin || isManagerAccess) {
       setLocation(getAxisBackPath('/manager-dashboard'));
     } else {
-      setLocation('/dashboard');
+      // Para usuarios de empresa: respetar el eje de origen si existe
+      const axisOrigin = localStorage.getItem('axisOrigin');
+      if (axisOrigin === 'gestion') setLocation('/axis-gestion');
+      else if (axisOrigin === 'estrategia') setLocation('/axis-estrategia');
+      else setLocation('/dashboard');
     }
   };
   // Declare state variables

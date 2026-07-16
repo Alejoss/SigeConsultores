@@ -63,10 +63,13 @@ export default function OrganizationChart() {
     const isManagerAccess = localStorage.getItem('managerCompanyId') !== null;
     if (isManagerAccess || isManagerLogin) {
       setLocation(getAxisBackPath("/manager-dashboard"));
-    } else if (selectedCompanyId) {
-      setLocation(`/dashboard?companyId=${selectedCompanyId}`);
     } else {
-      setLocation("/dashboard");
+      // Para usuarios de empresa: respetar el eje de origen si existe
+      const axisOrigin = localStorage.getItem('axisOrigin');
+      if (axisOrigin === 'gestion') setLocation('/axis-gestion');
+      else if (axisOrigin === 'estrategia') setLocation('/axis-estrategia');
+      else if (selectedCompanyId) setLocation(`/dashboard?companyId=${selectedCompanyId}`);
+      else setLocation('/dashboard');
     }
   };
 
