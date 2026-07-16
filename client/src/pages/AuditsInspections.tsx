@@ -115,7 +115,8 @@ export default function AuditsInspections() {
                 } else if (isProcessLeader) {
                   setLocation("/process-leader-dashboard");
                 } else {
-                  setLocation("/dashboard");
+                  // Usuario de empresa: vuelve al eje de gestión si viene de ahí
+                  setLocation(getAxisBackPath("/dashboard"));
                 }
               }}
               className="flex items-center gap-2"

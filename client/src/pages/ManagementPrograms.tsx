@@ -132,7 +132,7 @@ export default function ManagementPrograms() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setLocation("/audits-inspections")}
+              onClick={() => setLocation(companyId ? `/audits-inspections?companyId=${companyId}` : "/audits-inspections")}
               className="flex items-center gap-2"
             >
               <ArrowLeft size={16} /> Volver

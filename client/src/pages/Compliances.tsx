@@ -140,7 +140,9 @@ export default function Compliances() {
   const storedCompanyId = localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId");
   const companyId = queryCompanyId ? parseInt(queryCompanyId) : storedCompanyId ? parseInt(storedCompanyId) : 0;
 
-  const backUrl = `/audits-inspections${queryCompanyId ? `?companyId=${queryCompanyId}` : ""}`;
+  // Siempre incluir companyId en la URL de retorno para mantener el contexto
+  const effectiveCompanyId = queryCompanyId || storedCompanyId;
+  const backUrl = `/audits-inspections${effectiveCompanyId ? `?companyId=${effectiveCompanyId}` : ""}`;
 
   const [compliances, setCompliances] = useState<Compliance[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);

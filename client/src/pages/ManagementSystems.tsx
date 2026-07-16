@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
+import { getAxisBackPath } from "@/lib/sessionScope";
 
 type ManagementSystemRow = {
   id: number;
@@ -234,7 +235,10 @@ export default function ManagementSystems() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setLocation(`/audits-inspections?companyId=${companyId}`)}
+              onClick={() => {
+                // Vuelve a Sistemas de Gestión (AuditsInspections) con el companyId
+                setLocation(`/audits-inspections?companyId=${companyId}`);
+              }}
             >
               <ArrowLeft size={16} className="mr-1" /> Volver
             </Button>

@@ -558,7 +558,13 @@ function TrainingScheduleButton({ companyId }: { companyId: number }) {
 export default function Trainings() {
   const [, navigate] = useLocation();
   const companyId = typeof window !== "undefined"
-    ? parseInt(localStorage.getItem("selectedCompanyId") || "0")
+    ? (() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlCid = urlParams.get("companyId");
+        if (urlCid) return parseInt(urlCid);
+        const stored = localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId");
+        return stored ? parseInt(stored) : 0;
+      })()
     : 0;
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -882,7 +888,10 @@ export default function Trainings() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-4xl font-bold text-gray-900">Capacitaciones</h1>
-          <Button variant="outline" onClick={() => navigate("/audits-inspections")}>
+          <Button variant="outline" onClick={() => {
+            const cid = localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId");
+            navigate(cid ? `/audits-inspections?companyId=${cid}` : "/audits-inspections");
+          }}>
             ← Volver
           </Button>
         </div>
