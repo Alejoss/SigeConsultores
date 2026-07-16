@@ -81,7 +81,15 @@ export default function AxisPage({ axisId, backPath }: AxisPageProps) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setLocation(backPath)}
+          onClick={() => {
+            // Si es manager → usa el backPath original (/manager-dashboard)
+            // Si es usuario de empresa → va al dashboard de empresa (/dashboard)
+            if (isManager) {
+              setLocation(backPath);
+            } else {
+              setLocation("/dashboard");
+            }
+          }}
           className="gap-2 text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft size={16} />
