@@ -97,7 +97,7 @@ Tests en un archivo: `pnpm test:unit -- server/__tests__/archivo.test.ts`. Ver [
 - **Imagen:** se construye en GitHub Actions y se publica en **GHCR** (`ghcr.io/alejoss/sigeconsultores`).
 - **Droplet:** `scripts/deploy-prod.sh` hace `docker pull` de esa imagen y `docker compose up` (sin `docker build` en el servidor en el flujo habitual).
 - **Compose:** `docker-compose.prod.yml` — MySQL + app en `127.0.0.1:3001`.
-- **Flujo:** cliente / Manus → `infra/staging-cicd` → PR → `main` → CI → (si pasa) Deploy Production.
+- **Flujo:** Manus → `infra/staging-cicd` → Manus abre y **mergea** PR a `main` → CI → (si pasa) Deploy Production.
 
 Guías: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md), [docs/BACKUP_SYSTEM.md](docs/BACKUP_SYSTEM.md).
 
@@ -111,7 +111,7 @@ Antes de tocar código, Manus **debe** leer en este orden:
 2. [docs/GUIA_MANUS.md](docs/GUIA_MANUS.md) — punto de entrada operativo (lista todos los docs obligatorios)  
 3. En especial [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — **único CI en `main`**; staging no dispara CI/CD  
 
-**Flujo de publicación:** push a `infra/staging-cicd` → PR/merge a `main` → CI → solo si pasa → CD.
+**Flujo de publicación:** Manus push a `infra/staging-cicd` → Manus abre PR a `main` → **Manus mergea el PR** (sin esperar al equipo) → CI en `main` → solo si pasa → CD.
 
 | Documento | Contenido |
 |-----------|-----------|

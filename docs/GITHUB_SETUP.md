@@ -20,17 +20,18 @@ ghcr.io/alejoss/sigeconsultores:<commit-sha>
 
 Los nombres van en **minúsculas** (requisito de GHCR).
 
-## Flujo del equipo
+## Flujo Manus / publicación
 
-1. Cliente / Manus pushea a **`infra/staging-cicd`** → sin CI ni CD.
-2. PR **`infra/staging-cicd` → `main`** → revisión y merge (ruleset en `main`).
-3. Merge a **`main`** → corre el **único CI** (check + build + tests).
-4. Solo si CI = **success** → **Deploy Production**:
+1. Manus pushea a **`infra/staging-cicd`** → sin CI ni CD.
+2. Manus abre PR **`infra/staging-cicd` → `main`**.
+3. **Manus mergea el PR** (ruleset: 0 aprobaciones). **No** espera revisión ni aprobación del equipo.
+4. Merge a **`main`** → corre el **único CI** (check + build + tests).
+5. Solo si CI = **success** → **Deploy Production**:
    - **needs** — GitHub solo invoca el CD cuando los tres jobs anteriores pasan
    - **build-image** — imagen del mismo SHA que pasó CI
    - **Deploy to droplet** — solo con secretos configurados
 
-`infra/staging-cicd` es la rama de integración; **no dispara CI ni CD**. CI + CD solo ocurren cuando el cambio entra a `main`, preferiblemente mediante PR `infra/staging-cicd` → `main`; nunca por push directo a `main` sin autorización explícita.
+`infra/staging-cicd` es la rama de integración; **no dispara CI ni CD**. CI + CD solo ocurren cuando Manus mergea el PR a `main`. Nunca push directo a `main` (salvo bypass admin de emergencia).
 
 Sin secretos: tras CI verde, el CD termina con *Deploy skipped*; la imagen **sí** queda en GHCR.
 
@@ -104,7 +105,7 @@ Aplica a **`refs/heads/main`**, enforcement **active**.
 |-------|----------|
 | **Restrict deletions** | Nadie (salvo bypass) puede borrar `main` |
 | **Block force pushes** (`non_fast_forward`) | No se permite `push --force` a `main` |
-| **Require a pull request before merging** | Los cambios normales deben entrar por PR; **0** aprobaciones requeridas; merge/squash/rebase permitidos |
+| **Require a pull request before merging** | Obliga a entrar por PR; **0** aprobaciones — **Manus puede mergear** sin espera humana; merge/squash/rebase permitidos |
 | **Require status checks** | **No** — se quitó `check-and-build` porque el CI ya no corre en el PR (solo tras el merge a `main`) |
 
 **Bypass:** rol **Repository admin** puede saltarse el ruleset (p. ej. push directo de emergencia del owner). Manus / colaboradores Write **no** bypassean: deben usar PR `infra/staging-cicd` → `main`.

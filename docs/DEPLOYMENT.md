@@ -9,7 +9,9 @@ En la mayoría de los casos la imagen de la app **ya está construida en GitHub 
 ```
 Cliente / Manus push → infra/staging-cicd   (sin CI, sin deploy)
                         ↓
-              PR → main (revisión + merge)
+              Manus abre PR → main
+                        ↓
+              Manus mergea el PR  (0 aprobaciones; no espera al equipo)
                         ↓
               CI en main (única compuerta)
                         ↓  solo si CI = success
@@ -21,16 +23,16 @@ Cliente / Manus push → infra/staging-cicd   (sin CI, sin deploy)
 | Rama | Quién | Qué pasa |
 |------|--------|----------|
 | **`infra/staging-cicd`** | Cliente / Manus / integración | Push libre; **no** corre CI ni CD |
-| **`main`** | Producción | Merge vía PR → **único CI** → solo entonces CD (GHCR + droplet) |
+| **`main`** | Producción | Manus mergea PR → **único CI** → solo entonces CD (GHCR + droplet) |
 
 ### Qué rama dispara CI y CD
 
 - **Pushear a `infra/staging-cicd` no dispara CI ni CD.** Es solo la rama de integración.
 - **Hay un solo CI:** el que corre al llegar el cambio a `main` (merge del PR `infra/staging-cicd` → `main`).
 - **El CD solo corre si ese CI pasa** (`check-and-build`, `test-unit`, `test-integration`). Si CI falla, producción no se actualiza.
-- **No se debe pushear directo a `main`** salvo autorización explícita de emergencia (bypass admin). El flujo esperado es PR, revisión y merge. El ruleset **MainProtection** exige PR; detalle en [GITHUB_SETUP.md](./GITHUB_SETUP.md).
+- **No se debe pushear directo a `main`.** El ruleset **MainProtection** exige PR. **Manus abre y mergea** ese PR (0 aprobaciones); no deja el merge pendiente del equipo. Detalle: [GITHUB_SETUP.md](./GITHUB_SETUP.md).
 
-Entonces sí: publicar es **mergear `infra/staging-cicd` hacia `main` vía PR**. Ese merge dispara el único CI; las pruebas son la compuerta del deploy.
+Entonces sí: publicar es **que Manus mergee `infra/staging-cicd` hacia `main` vía PR**. Ese merge dispara el único CI; las pruebas son la compuerta del deploy.
 
 **Regla crítica:** CI y CD **no** corren en paralelo. En `ci.yml`, el job `deploy-production` tiene `needs: [check-and-build, test-unit, test-integration]`; GitHub solo llama al workflow reutilizable de CD cuando los tres jobs pasan. Si fallan typecheck, build o tests, **no hay deploy**.
 

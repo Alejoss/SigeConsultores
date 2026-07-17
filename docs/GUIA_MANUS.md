@@ -46,18 +46,20 @@ Al empezar a trabajar, confirma al equipo que leíste **agents.md**, esta guía 
 | Rama | Uso | ¿Puedes pushear directo? |
 |------|-----|---------------------------|
 | **`infra/staging-cicd`** | Integración / trabajo del cliente | **Sí** — aquí van todos tus cambios |
-| **`main`** | Producción | **No** — solo entra vía Pull Request revisado |
-| **`feature/*`** | Ramas temporales (opcional) | Sí, pero el destino final sigue siendo `infra/staging-cicd` o PR hacia ella |
+| **`main`** | Producción | **No** push directo — entra vía PR que **Manus abre y mergea** (0 aprobaciones) |
+| **`feature/*`** | Ramas temporales (opcional) | Sí; el destino de integración es `infra/staging-cicd` |
 
 ```text
 Tu trabajo  →  push a infra/staging-cicd  (sin CI)
                       ↓
-              PR hacia main  →  revisión  →  merge
+              Manus abre PR hacia main
+                      ↓
+              Manus mergea el PR  (no espera al equipo)
                       ↓
               CI en main  →  si pasa  →  CD producción
 ```
 
-**Regla principal:** todo lo que hagas se sube a **`infra/staging-cicd`**. Nunca hagas push directo a `main`.
+**Regla principal:** todo lo que hagas se sube a **`infra/staging-cicd`**. Nunca hagas push directo a `main`. Para publicar, **tú** abres el PR y **tú** lo mergeas; no dejes el merge “a cargo del equipo”.
 
 ---
 
@@ -143,23 +145,37 @@ git commit -m "feat: descripción clara del cambio"
 git push origin infra/staging-cicd
 ```
 
-Tras el push a staging **no** corre CI. Cuando el trabajo esté listo:
+Tras el push a staging **no** corre CI. Cuando el trabajo esté listo para producción:
 
-### D. Pasar a producción
+### D. Pasar a producción (lo hace Manus, no el equipo)
 
-1. Abrir un **Pull Request** de `infra/staging-cicd` → `main`
-2. Esperar revisión del equipo (si aplica)
-3. Merge del PR → corre el **único CI** (en `main`); solo si pasa se dispara **Deploy Production** (CD). Un CI en rojo **no** despliega.
+El ruleset de `main` exige un PR con **0 aprobaciones**. Manus **debe** completar el ciclo; **no** digas que el siguiente paso es “esperar revisión del equipo”.
+
+1. Abrir un **Pull Request** de `infra/staging-cicd` → `main` (título y descripción claros).
+2. **Mergear el PR de inmediato** (merge/squash/rebase según lo permitido). No esperes aprobación humana.
+3. Tras el merge, corre el **único CI** en `main`. Supervisa Actions (estado y logs).
+4. Si CI = **success** → se dispara **Deploy Production**. Si CI falla → **no hay CD**; corrige en staging, push, nuevo PR (o actualiza el existente) y **vuelve a mergear**.
+
+Ejemplo con GitHub CLI (si está disponible):
+
+```bash
+gh pr create --base main --head infra/staging-cicd --title "feat: …" --body "…"
+gh pr merge --merge   # o --squash
+gh run watch          # opcional: seguir el CI en main
+```
+
+También puedes mergear desde la API/UI de GitHub con el PAT del colaborador Write.
 
 ---
 
 ## 6. Qué NO hacer
 
-- **No** pushear a `main` directamente.
+- **No** pushear a `main` directamente (el ruleset exige PR).
+- **No** dejar el PR abierto esperando que “el equipo” lo mergee: **Manus mergea**.
 - **No** commitear `.env`, `.env.local`, `.env.production` ni credenciales.
 - **No** hacer `git push --force` en `infra/staging-cicd` ni en `main`.
-- **No** desplegar al droplet de producción sin coordinación con el equipo (ver [DEPLOYMENT.md](./DEPLOYMENT.md)).
-- **No** ignorar CI en rojo en `main`: corrige en staging, vuelve a mergear. El CD solo corre tras CI verde.
+- **No** tocar el droplet ni secretos de deploy a mano; el CD lo hace Actions tras CI verde.
+- **No** ignorar CI en rojo en `main`: corrige en staging, vuelve a abrir/actualizar PR y mergear.
 
 ---
 
@@ -208,7 +224,7 @@ Pide al owner (**Alejoss**) invitación de colaborador con permiso de **write** 
 ## 9. Checklist antes de cada push (a staging)
 
 - [ ] Leí `agents.md`, esta guía y los docs operativos (DEPLOYMENT, TESTING, GITHUB_SETUP, INFRASTRUCTURE, BACKUP_SYSTEM, FILE_STORAGE)
-- [ ] Entiendo: staging **no** dispara CI; publicar = merge a `main` → CI → CD si pasa
+- [ ] Entiendo: staging **no** dispara CI; publicar = **Manus** mergea PR a `main` → CI → CD si pasa
 - [ ] `git merge origin/main` (staging al día con main)
 - [ ] `pnpm check` pasa en local
 - [ ] `pnpm build` pasa en local (recomendado)
@@ -218,10 +234,11 @@ Pide al owner (**Alejoss**) invitación de colaborador con permiso de **write** 
 - [ ] Push a **`infra/staging-cicd`**, no a `main`
 - [ ] Mensaje de commit claro en español o inglés
 
-### Tras merge a `main`
+### Tras publicar (checklist)
 
-- [ ] Revisar Actions: CI en verde (o corregir y volver a mergear)
-- [ ] Confirmar que CD solo corre si CI pasó
+- [ ] PR `infra/staging-cicd` → `main` **creado y mergeado por Manus** (sin esperar al equipo)
+- [ ] Actions en `main`: CI en verde (o fallo diagnosticado y corregido con nuevo merge)
+- [ ] Si CI pasó: confirmar que el job Deploy Production corrió (o *Deploy skipped* solo por secretos)
 
 ---
 

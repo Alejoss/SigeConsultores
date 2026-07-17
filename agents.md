@@ -30,15 +30,19 @@ Al empezar, confirma que leíste esa cadena. Si algo no está claro, pregunta **
 ```text
 Push → infra/staging-cicd     (sin CI, sin deploy)
               ↓
-PR → merge a main
+Manus abre PR staging → main
+              ↓
+Manus mergea el PR        ← NO esperar al equipo / aprobación humana
               ↓
 CI en main (única compuerta: check + build + tests)
               ↓  solo si CI = success
          Deploy Production (CD)
 ```
 
-- **Nunca** pushear directo a `main` sin autorización explícita.
+- **Nunca** pushear directo a `main` (el ruleset exige PR).
+- **Manus es quien mergea** el PR a `main`. El ruleset pide 0 aprobaciones; no hay que esperar revisión del equipo.
 - Staging es integración; **producción solo se actualiza** cuando el cambio llega a `main` y el CI pasa.
+- Tras mergear, **supervisa Actions**. Si CI falla, corrige y vuelve a mergear; no declares la tarea terminada con CI en rojo.
 
 ## Reglas obligatorias antes de cualquier cambio en el código
 
@@ -47,10 +51,11 @@ CI en main (única compuerta: check + build + tests)
 3. **No romper lo que funciona.** No modificar archivos no relacionados. Menor cambio posible.
 4. **Confirmar antes de cambios críticos.** Esquema de BD, autenticación, rutas principales o lógica de negocio central → pedir confirmación antes.
 5. **Actualizar las pruebas.** Tras cambios funcionales (sobre todo `drizzle/schema.ts`), actualizar tests y verificar con `pnpm test` / `pnpm test:integration` (ver [docs/TESTING.md](docs/TESTING.md)).
-6. **Trabajar vía staging.** Push a `infra/staging-cicd` (o `feature/*` que luego integre a staging). Publicar con PR `infra/staging-cicd` → `main`. Detalle: [docs/GUIA_MANUS.md](docs/GUIA_MANUS.md).
+6. **Trabajar vía staging y publicar tú mismo.** Push a `infra/staging-cicd`. Para producción: abrir PR `infra/staging-cicd` → `main` y **mergearlo** (no esperar al equipo). Detalle: [docs/GUIA_MANUS.md](docs/GUIA_MANUS.md).
 7. **Verificar después de cada cambio.** Servidor operativo (`pnpm dev` o `node dist/index.js`), funcionalidad afectada OK, pruebas relevantes en verde.
 8. **No eliminar ni reescribir lógica existente** salvo petición explícita. Preferir extensión sobre reemplazo.
-9. **Tras merge a `main`:** revisar Actions. Si CI falla, **no hay CD**; corregir en staging y volver a mergear. Leer logs de CI antes de declarar el trabajo terminado.
+9. **Tras merge a `main`:** revisar Actions. Si CI falla, **no hay CD**; corregir en staging, push, PR y **mergear de nuevo**. Leer logs de CI antes de declarar el trabajo terminado.
+10. **No dejar PRs “pendientes de revisión del equipo”** como cierre de la tarea de publicación: el merge a `main` forma parte del trabajo de Manus.
 
 ## Entorno de desarrollo local
 

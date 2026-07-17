@@ -8,7 +8,7 @@
 2. [GUIA_MANUS.md](./GUIA_MANUS.md) — **punto de entrada operativo:** Git, checklist; enlaza todos los docs que debes leer antes de codear.
 3. Los documentos operativos listados en GUIA_MANUS, en especial [DEPLOYMENT.md](./DEPLOYMENT.md) (CI solo en `main` → CD si pasa).
 
-> Push a `infra/staging-cicd` **no** corre CI ni CD. Publicar = merge a `main` → CI → CD solo si CI es verde.
+> Push a `infra/staging-cicd` **no** corre CI ni CD. Publicar = **Manus** abre y **mergea** el PR a `main` (sin esperar al equipo) → CI → CD solo si CI es verde.
 
 ## Documentos operativos
 
