@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
-import { Download, TrendingUp, AlertCircle } from "lucide-react";
+import { Download, TrendingUp, AlertCircle, BarChart2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import ExecutiveDashboard from "@/components/ExecutiveDashboard";
 
 interface IndicatorElement {
   id: string;
@@ -31,6 +32,8 @@ export default function ProcessIndicators() {
   const selectedProcessId = localStorage.getItem("selectedProcessId");
   const processId = selectedProcessId ? parseInt(selectedProcessId) : 0;
   
+  const [showExecutive, setShowExecutive] = useState(false);
+
   const [elements, setElements] = useState<IndicatorElement[]>([
     {
       id: "criticidad",
@@ -232,8 +235,15 @@ export default function ProcessIndicators() {
           </CardContent>
         </Card>
 
-        {/* Export Button */}
-        <div className="mb-6 flex justify-end">
+        {/* Action Buttons */}
+        <div className="mb-6 flex justify-end gap-3">
+          <Button
+            onClick={() => setShowExecutive(true)}
+            className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            <BarChart2 size={16} />
+            Vista Ejecutiva
+          </Button>
           <Button
             onClick={exportToExcel}
             variant="outline"
@@ -285,6 +295,15 @@ export default function ProcessIndicators() {
             ))
           )}
         </div>
+
+        {/* Executive Dashboard Modal */}
+        {showExecutive && (
+          <ExecutiveDashboard
+            elements={elements}
+            totalAverage={totalAverage}
+            onClose={() => setShowExecutive(false)}
+          />
+        )}
 
         {/* Info Box */}
         <Card className="mt-8 bg-blue-50 border-blue-200">
