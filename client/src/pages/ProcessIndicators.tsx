@@ -250,13 +250,13 @@ export default function ProcessIndicators() {
             elements.map(element => (
               <Card key={element.id} className="border-l-4 border-l-blue-500">
                 <CardHeader>
-                  <CardTitle className="text-lg text-gray-800">{element.name}</CardTitle>
+                  <CardTitle translate="no" className="text-lg text-gray-800">{element.name}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {element.indicators.map(indicator => (
                       <div key={indicator.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <span className="text-sm font-medium text-gray-700">{indicator.name}</span>
+                        <span translate="no" className="text-sm font-medium text-gray-700">{indicator.name}</span>
                         <div className="flex items-center gap-3">
                           <Input
                             type="number"

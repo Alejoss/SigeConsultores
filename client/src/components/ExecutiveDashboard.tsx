@@ -11,8 +11,8 @@ import {
   ResponsiveContainer,
   RadialBarChart,
   RadialBar,
-  Legend,
 } from "recharts";
+import { useRef } from "react";
 
 interface IndicatorElement {
   id: string;
@@ -64,9 +64,6 @@ function getStatusLabel(value: number): string {
 // Gauge component using RadialBarChart
 function GaugeChart({ value, label }: { value: number; label: string }) {
   const color = getStatusColor(value);
-  const data = [
-    { name: label, value, fill: color },
-  ];
 
   return (
     <div className="flex flex-col items-center">
@@ -89,8 +86,9 @@ function GaugeChart({ value, label }: { value: number; label: string }) {
           <span className="text-2xl font-bold" style={{ color }}>{value}%</span>
         </div>
       </div>
-      <span className="text-xs font-medium text-gray-500 text-center mt-1 max-w-[120px]">{label}</span>
+      <span translate="no" className="text-xs font-medium text-gray-500 text-center mt-1 max-w-[120px]">{label}</span>
       <span
+        translate="no"
         className="text-xs font-semibold mt-1 px-2 py-0.5 rounded-full"
         style={{ backgroundColor: `${color}22`, color }}
       >
@@ -140,7 +138,7 @@ function DonutChart({
           <span className="text-lg font-bold text-gray-800">{value}%</span>
         </div>
       </div>
-      <span className="text-xs font-medium text-gray-600 text-center mt-2 max-w-[110px] leading-tight">
+      <span translate="no" className="text-xs font-medium text-gray-600 text-center mt-2 max-w-[110px] leading-tight">
         {label}
       </span>
     </div>
@@ -152,7 +150,7 @@ function CustomBarTooltip({ active, payload, label }: any) {
   if (active && payload && payload.length) {
     const value = payload[0].value;
     return (
-      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+      <div translate="no" className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
         <p className="text-sm font-semibold text-gray-700 mb-1">{label}</p>
         <p className="text-lg font-bold" style={{ color: getStatusColor(value) }}>
           {value}%
@@ -170,6 +168,8 @@ export default function ExecutiveDashboard({
   processName,
   onClose,
 }: ExecutiveDashboardProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
+
   // Flatten all indicators for bar chart
   const allIndicators = elements.flatMap((el, elIdx) =>
     el.indicators.map((ind) => ({
@@ -182,7 +182,7 @@ export default function ExecutiveDashboard({
     }))
   );
 
-  // Summary donut data (one per element, using first indicator as representative)
+  // Summary donut data (one per element, using average of all indicators)
   const elementSummary = elements.map((el, idx) => {
     const avg =
       el.indicators.length > 0
@@ -198,18 +198,44 @@ export default function ExecutiveDashboard({
     };
   });
 
+  // Export as PNG using html2canvas
+  const handleExport = async () => {
+    if (!contentRef.current) return;
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(contentRef.current, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const link = document.createElement("a");
+      link.download = `vista-ejecutiva-${processName || "proceso"}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (e) {
+      console.error("Error al exportar:", e);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-4">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-t-2xl px-8 py-5 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white">Vista Ejecutiva</h2>
+            <h2 translate="no" className="text-2xl font-bold text-white">Vista Ejecutiva</h2>
             {processName && (
-              <p className="text-blue-200 text-sm mt-0.5">{processName}</p>
+              <p translate="no" className="text-blue-200 text-sm mt-0.5">{processName}</p>
             )}
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-1.5 text-white/80 hover:text-white text-sm font-medium border border-white/30 hover:border-white/60 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              ↓ Exportar imagen
+            </button>
             <button
               onClick={onClose}
               className="flex items-center gap-1.5 text-white/80 hover:text-white text-sm font-medium border border-white/30 hover:border-white/60 rounded-lg px-3 py-1.5 transition-colors"
@@ -226,10 +252,11 @@ export default function ExecutiveDashboard({
           </div>
         </div>
 
-        <div className="p-8 space-y-10">
+        {/* Exportable content */}
+        <div ref={contentRef} className="p-8 space-y-10 bg-white">
           {/* Avance Total Gauge */}
           <div className="flex flex-col items-center">
-            <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-2">
+            <p translate="no" className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-2">
               Avance Total del Proceso
             </p>
             <div className="relative w-56 h-40">
@@ -258,6 +285,7 @@ export default function ExecutiveDashboard({
                   {totalAverage}%
                 </span>
                 <span
+                  translate="no"
                   className="text-sm font-semibold mt-1 px-3 py-0.5 rounded-full"
                   style={{
                     backgroundColor: `${getStatusColor(totalAverage)}22`,
@@ -272,7 +300,7 @@ export default function ExecutiveDashboard({
 
           {/* Donut charts per element */}
           <div>
-            <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-5 text-center">
+            <p translate="no" className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-5 text-center">
               Resumen por Área
             </p>
             <div className="flex flex-wrap justify-center gap-8">
@@ -289,7 +317,7 @@ export default function ExecutiveDashboard({
 
           {/* Bar chart — all indicators */}
           <div>
-            <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-5 text-center">
+            <p translate="no" className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-5 text-center">
               Detalle de Indicadores
             </p>
             <ResponsiveContainer width="100%" height={260}>
@@ -312,7 +340,6 @@ export default function ExecutiveDashboard({
                   tickFormatter={(v) => `${v}%`}
                 />
                 <Tooltip content={<CustomBarTooltip />} />
-                {/* Reference lines for thresholds */}
                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                   {allIndicators.map((entry, index) => (
                     <Cell key={index} fill={getStatusColor(entry.value)} />
@@ -322,15 +349,15 @@ export default function ExecutiveDashboard({
             </ResponsiveContainer>
             {/* Legend */}
             <div className="flex justify-center gap-6 mt-2">
-              <span className="flex items-center gap-1.5 text-xs text-gray-500">
+              <span translate="no" className="flex items-center gap-1.5 text-xs text-gray-500">
                 <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: COLORS.green }} />
                 En Meta (≥80%)
               </span>
-              <span className="flex items-center gap-1.5 text-xs text-gray-500">
+              <span translate="no" className="flex items-center gap-1.5 text-xs text-gray-500">
                 <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: COLORS.yellow }} />
                 Alerta (60–79%)
               </span>
-              <span className="flex items-center gap-1.5 text-xs text-gray-500">
+              <span translate="no" className="flex items-center gap-1.5 text-xs text-gray-500">
                 <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: COLORS.red }} />
                 Crítico (&lt;60%)
               </span>
@@ -339,7 +366,7 @@ export default function ExecutiveDashboard({
 
           {/* Individual gauge per element */}
           <div>
-            <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-5 text-center">
+            <p translate="no" className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-5 text-center">
               Estado por Indicador
             </p>
             <div className="flex flex-wrap justify-center gap-6">
@@ -357,7 +384,13 @@ export default function ExecutiveDashboard({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-100 px-8 py-4 flex justify-end rounded-b-2xl">
+        <div className="border-t border-gray-100 px-8 py-4 flex justify-between items-center rounded-b-2xl">
+          <button
+            onClick={handleExport}
+            className="px-5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+          >
+            ↓ Exportar como imagen
+          </button>
           <button
             onClick={onClose}
             className="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
