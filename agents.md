@@ -8,18 +8,49 @@ Este proyecto es **SIGE Platform**, un Sistema Integrado de Gestión Empresarial
 - **Backend:** Express + tRPC + Drizzle ORM
 - **Base de datos:** MySQL 8
 - **Repositorio:** https://github.com/Alejoss/SigeConsultores
-- **Rama principal:** `main` (integración, CI y despliegue a producción)
-- **Ramas de trabajo:** `feature/nombre-del-cambio` (efímeras, merge vía PR a `main`)
+- **Rama de integración:** `infra/staging-cicd` (aquí van los pushes de trabajo; **sin CI ni CD**)
+- **Rama de producción:** `main` (único lugar donde corre CI; si pasa, se dispara CD)
+
+## Lectura obligatoria (antes de cualquier cambio)
+
+No basta con “leer la documentación” de forma genérica. Completa esta cadena **en orden**:
+
+1. **Esta guía** (`agents.md`) — reglas de alcance y verificación.
+2. **[docs/GUIA_MANUS.md](docs/GUIA_MANUS.md)** — punto de entrada operativo: Git, checklist y lista de docs obligatorios.
+3. Desde GUIA_MANUS, leer **todos** los documentos operativos enlazados, en especial:
+   - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — **quién dispara CI/CD** (solo merge a `main`)
+   - [docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md) — workflows y secretos
+   - [docs/TESTING.md](docs/TESTING.md) — pruebas y esquema de BD
+   - [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md), [docs/BACKUP_SYSTEM.md](docs/BACKUP_SYSTEM.md), [docs/FILE_STORAGE.md](docs/FILE_STORAGE.md)
+
+Al empezar, confirma que leíste esa cadena. Si algo no está claro, pregunta **antes** de pushear o mergear.
+
+## Flujo Git / CI / CD (resumen)
+
+```text
+Push → infra/staging-cicd     (sin CI, sin deploy)
+              ↓
+PR → merge a main
+              ↓
+CI en main (única compuerta: check + build + tests)
+              ↓  solo si CI = success
+         Deploy Production (CD)
+```
+
+- **Nunca** pushear directo a `main` sin autorización explícita.
+- Staging es integración; **producción solo se actualiza** cuando el cambio llega a `main` y el CI pasa.
 
 ## Reglas obligatorias antes de cualquier cambio en el código
 
-1. **Leer primero.** Antes de modificar cualquier archivo, leer el archivo `📋INSTRUCCIONESPARAMANUS—DesarrollodeSIGEPlatform.md` del repositorio y entender el contexto completo del cambio solicitado.
-2. **Respetar las instrucciones al pie de la letra.** No interpretar ni ampliar el alcance de un cambio sin confirmación explícita del usuario. Si algo no está claro, preguntar antes de actuar.
-3. **No romper lo que funciona.** Nunca modificar archivos no relacionados con el cambio solicitado. El principio es: el menor cambio posible para lograr el objetivo.
-4. **Confirmar antes de cambios críticos.** Si el cambio afecta el esquema de base de datos, autenticación, rutas principales o lógica de negocio central, pedir confirmación explícita antes de proceder.
-5. **Trabajar en ramas.** Todo cambio debe hacerse en una rama nueva (`git checkout -b feature/nombre-del-cambio`) y nunca directamente en `main` sin autorización.
-6. **Verificar después de cada cambio.** Confirmar que el servidor sigue corriendo (`pnpm dev` o `node dist/index.js`) y que la funcionalidad afectada sigue operativa antes de reportar el cambio como completado.
-7. **No eliminar ni reescribir lógica existente** a menos que el usuario lo solicite explícitamente. Preferir extensión sobre reemplazo.
+1. **Leer primero.** Completar la cadena de lectura de la sección anterior.
+2. **Respetar las instrucciones al pie de la letra.** No ampliar el alcance sin confirmación explícita. Si algo no está claro, preguntar antes de actuar.
+3. **No romper lo que funciona.** No modificar archivos no relacionados. Menor cambio posible.
+4. **Confirmar antes de cambios críticos.** Esquema de BD, autenticación, rutas principales o lógica de negocio central → pedir confirmación antes.
+5. **Actualizar las pruebas.** Tras cambios funcionales (sobre todo `drizzle/schema.ts`), actualizar tests y verificar con `pnpm test` / `pnpm test:integration` (ver [docs/TESTING.md](docs/TESTING.md)).
+6. **Trabajar vía staging.** Push a `infra/staging-cicd` (o `feature/*` que luego integre a staging). Publicar con PR `infra/staging-cicd` → `main`. Detalle: [docs/GUIA_MANUS.md](docs/GUIA_MANUS.md).
+7. **Verificar después de cada cambio.** Servidor operativo (`pnpm dev` o `node dist/index.js`), funcionalidad afectada OK, pruebas relevantes en verde.
+8. **No eliminar ni reescribir lógica existente** salvo petición explícita. Preferir extensión sobre reemplazo.
+9. **Tras merge a `main`:** revisar Actions. Si CI falla, **no hay CD**; corregir en staging y volver a mergear. Leer logs de CI antes de declarar el trabajo terminado.
 
 ## Entorno de desarrollo local
 
@@ -55,8 +86,11 @@ pnpm admin:create -- --email admin@empresa.com --password 'Password123!' --name 
 # Sembrar roles
 pnpm roles:seed
 
-# Correr tests
+# Correr tests (unit + client)
 pnpm test
+
+# Tests de integración (MySQL) — obligatorio tras cambios de esquema o routers
+pnpm test:integration
 
 # Verificar tipos TypeScript
 pnpm check
@@ -92,5 +126,16 @@ sige-app/
 ├── drizzle/         # Esquema de base de datos
 │   └── schema.ts
 ├── shared/          # Tipos y constantes compartidos
+├── docs/            # Documentación operativa (entrada: GUIA_MANUS.md)
 └── scripts/         # Scripts de utilidad (create-superuser, seed-roles)
 ```
+
+## Documentación vinculada
+
+| Documento | Uso |
+|-----------|-----|
+| [docs/GUIA_MANUS.md](docs/GUIA_MANUS.md) | Flujo Git, checklist, lectura obligatoria |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | CI solo en `main` → CD si pasa |
+| [docs/TESTING.md](docs/TESTING.md) | Cómo escribir y ejecutar pruebas |
+| [docs/README.md](docs/README.md) | Índice completo |
+| [README.md](README.md) | Instalación y comandos del repo |

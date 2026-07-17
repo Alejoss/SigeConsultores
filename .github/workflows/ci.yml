@@ -1,14 +1,11 @@
 name: CI
 
+# Single gate: CI (+ CD) only when code reaches main (merge from staging).
+# Push to infra/staging-cicd does not run CI or deploy.
 on:
-  pull_request:
-    branches:
-      - main
-      - infra/staging-cicd
   push:
     branches:
       - main
-      - infra/staging-cicd
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}

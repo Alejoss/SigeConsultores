@@ -6,10 +6,10 @@ Configuración de CI/CD: integración en `infra/staging-cicd`, producción en `m
 
 | Workflow | Cuándo corre | Qué hace |
 |----------|----------------|----------|
-| **CI** | Push/PR a `infra/staging-cicd` o `main` | `pnpm check` + `pnpm build` + tests (unit, client, integración con MySQL) |
-| **Deploy Production** | Job de `ci.yml` después de `check-and-build`, `test-unit` y `test-integration`, solo en push a `main` | Llama al workflow reutilizable → build imagen → **GHCR**; deploy al droplet si hay secretos |
+| **CI** | Solo push a `main` (tras merge desde staging) | `pnpm check` + `pnpm build` + tests (unit, client, integración con MySQL) |
+| **Deploy Production** | Job de `ci.yml` después de `check-and-build`, `test-unit` y `test-integration` | Llama al workflow reutilizable → build imagen → **GHCR**; deploy al droplet si hay secretos |
 
-**Importante:** el CD **no** corre en paralelo con las pruebas. El job `deploy-production` usa `needs: [check-and-build, test-unit, test-integration]`; si cualquier job falla, GitHub lo omite y **no se despliega**. El workflow reutilizable no admite ejecución manual.
+**Importante:** no hay CI en `infra/staging-cicd`. La única compuerta es el CI de `main`; el CD **no** corre en paralelo con las pruebas. El job `deploy-production` usa `needs: [check-and-build, test-unit, test-integration]`; si cualquier job falla, GitHub lo omite y **no se despliega**. El workflow reutilizable no admite ejecución manual.
 
 La imagen se publica en:
 
@@ -22,15 +22,15 @@ Los nombres van en **minúsculas** (requisito de GHCR).
 
 ## Flujo del equipo
 
-1. Cliente pushea a **`infra/staging-cicd`** → CI corre (no bloquea el push).
+1. Cliente / Manus pushea a **`infra/staging-cicd`** → sin CI ni CD.
 2. PR **`infra/staging-cicd` → `main`** → revisión y merge (ruleset en `main`).
-3. Merge a **`main`** → corre **CI** (check + build + tests).
+3. Merge a **`main`** → corre el **único CI** (check + build + tests).
 4. Solo si CI = **success** → **Deploy Production**:
    - **needs** — GitHub solo invoca el CD cuando los tres jobs anteriores pasan
    - **build-image** — imagen del mismo SHA que pasó CI
    - **Deploy to droplet** — solo con secretos configurados
 
-`infra/staging-cicd` es la rama de integración; **no dispara CD**. El CD solo queda habilitado cuando el cambio entra a `main`, preferiblemente mediante PR `infra/staging-cicd` → `main`; nunca por push directo a `main` sin autorización explícita.
+`infra/staging-cicd` es la rama de integración; **no dispara CI ni CD**. CI + CD solo ocurren cuando el cambio entra a `main`, preferiblemente mediante PR `infra/staging-cicd` → `main`; nunca por push directo a `main` sin autorización explícita.
 
 Sin secretos: tras CI verde, el CD termina con *Deploy skipped*; la imagen **sí** queda en GHCR.
 
@@ -98,8 +98,8 @@ export GHCR_TOKEN=<PAT>
 
 | Rama | Reglas típicas |
 |------|----------------|
-| `infra/staging-cicd` | Sin bloqueo de push; CI informativo |
-| `main` | PR + CI; **Repository admin** en bypass para push directo del owner |
+| `infra/staging-cicd` | Sin bloqueo de push; sin CI |
+| `main` | Preferir PR; CI + CD al recibir el merge; **Repository admin** en bypass para push directo del owner |
 
 ## CI: tests
 

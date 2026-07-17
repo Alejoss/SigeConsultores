@@ -57,13 +57,14 @@ pnpm test:integration -- server/__tests__/uniqueConstraintTest.test.ts
 
 ## CI (GitHub Actions)
 
-Workflow **CI** (`.github/workflows/ci.yml`):
+Workflow **CI** (`.github/workflows/ci.yml`) — corre **solo** en push a `main` (tras merge desde staging). Si pasa, dispara el CD.
 
 | Job | Pasos |
 |-----|--------|
 | `check-and-build` | `pnpm check`, `pnpm build` |
 | `test-unit` | `pnpm test:unit`, `pnpm test:client` |
 | `test-integration` | servicio MySQL 8 → `pnpm db:push` → `pnpm test:integration` |
+| `deploy-production` | Solo si los tres anteriores pasan |
 
 La BD del runner es efímera (`sige_platform_test`); los tests de integración deben crear y limpiar sus propios datos (IDs en rango alto, p. ej. `999xxx`).
 

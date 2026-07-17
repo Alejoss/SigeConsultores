@@ -1,25 +1,30 @@
-# Guía de trabajo con Git — Manus
+# Guía de trabajo — Manus
 
-Instrucciones para sincronizar el repositorio **SIGE Platform** y publicar cambios de forma segura.
+Instrucciones para sincronizar el repositorio **SIGE Platform**, publicar cambios y no romper producción.
 
 **Repositorio:** [Alejoss/SigeConsultores](https://github.com/Alejoss/SigeConsultores) (privado)
+
+**CI/CD:** solo corre CI al llegar a `main`. Si CI pasa → CD. Push a `infra/staging-cicd` no dispara ni CI ni deploy.
 
 ---
 
 ## 1. Lectura obligatoria
 
-Antes de tocar código, **lee la documentación completa del proyecto**. No es opcional: describe cómo se desarrolla, despliega y opera la plataforma.
+Antes de modificar cualquier archivo, **lee en este orden** (no es opcional):
 
-### Punto de entrada
+### Cadena de entrada
 
-1. [README.md](../README.md) — instalación local, comandos, stack y estructura del repo.
-2. [docs/README.md](./README.md) — índice de toda la documentación.
+1. [agents.md](../agents.md) — reglas de alcance, auth tRPC y verificación.
+2. Esta guía ([GUIA_MANUS.md](./GUIA_MANUS.md)) — flujo Git, checklist y qué no hacer.
+3. [README.md](../README.md) — instalación local, comandos, stack.
+4. [docs/README.md](./README.md) — índice (referencia).
 
-### Documentación operativa (leer completa)
+### Documentación operativa (leer completa, siempre)
 
 | Documento | Por qué importa |
 |-----------|-----------------|
-| [DEPLOYMENT.md](./DEPLOYMENT.md) | Flujo de ramas, CI/CD, deploy manual y automático |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | **Único CI en `main`**; staging sin CI; CD solo si CI pasa |
+| [TESTING.md](./TESTING.md) | Cómo correr y actualizar pruebas (crítico con cambios de esquema) |
 | [GITHUB_SETUP.md](./GITHUB_SETUP.md) | Workflows de GitHub Actions, secretos, permisos |
 | [INFRASTRUCTURE.md](./INFRASTRUCTURE.md) | Arquitectura: droplet, Docker, OAuth, S3, correo |
 | [BACKUP_SYSTEM.md](./BACKUP_SYSTEM.md) | Respaldos diarios y restauración |
@@ -32,7 +37,7 @@ Antes de tocar código, **lee la documentación completa del proyecto**. No es o
 
 ### Confirmación
 
-Al empezar a trabajar, confirma al equipo que leíste los documentos anteriores. Si algo no queda claro, pregunta **antes** de pushear.
+Al empezar a trabajar, confirma al equipo que leíste **agents.md**, esta guía y **todos** los documentos operativos de la tabla. Si algo no queda claro, pregunta **antes** de pushear o mergear.
 
 ---
 
@@ -45,9 +50,11 @@ Al empezar a trabajar, confirma al equipo que leíste los documentos anteriores.
 | **`feature/*`** | Ramas temporales (opcional) | Sí, pero el destino final sigue siendo `infra/staging-cicd` o PR hacia ella |
 
 ```text
-Tu trabajo  →  push a infra/staging-cicd  →  CI (check + build)
+Tu trabajo  →  push a infra/staging-cicd  (sin CI)
                       ↓
-              PR hacia main  →  revisión  →  merge  →  deploy producción
+              PR hacia main  →  revisión  →  merge
+                      ↓
+              CI en main  →  si pasa  →  CD producción
 ```
 
 **Regla principal:** todo lo que hagas se sube a **`infra/staging-cicd`**. Nunca hagas push directo a `main`.
@@ -136,15 +143,13 @@ git commit -m "feat: descripción clara del cambio"
 git push origin infra/staging-cicd
 ```
 
-Tras el push, GitHub Actions ejecuta **CI** (`pnpm check` + `pnpm build`). Revisa en **Actions** que el workflow quede en verde.
+Tras el push a staging **no** corre CI. Cuando el trabajo esté listo:
 
-### D. Pasar a producción (no lo hace Manus solo)
-
-Cuando el trabajo en `infra/staging-cicd` esté listo y CI en verde:
+### D. Pasar a producción
 
 1. Abrir un **Pull Request** de `infra/staging-cicd` → `main`
-2. Esperar revisión del equipo
-3. Merge del PR → corre **CI en `main`**; solo si CI pasa se dispara **Deploy Production** (CD). Un CI en rojo **no** despliega.
+2. Esperar revisión del equipo (si aplica)
+3. Merge del PR → corre el **único CI** (en `main`); solo si pasa se dispara **Deploy Production** (CD). Un CI en rojo **no** despliega.
 
 ---
 
@@ -154,7 +159,7 @@ Cuando el trabajo en `infra/staging-cicd` esté listo y CI en verde:
 - **No** commitear `.env`, `.env.local`, `.env.production` ni credenciales.
 - **No** hacer `git push --force` en `infra/staging-cicd` ni en `main`.
 - **No** desplegar al droplet de producción sin coordinación con el equipo (ver [DEPLOYMENT.md](./DEPLOYMENT.md)).
-- **No** ignorar CI en rojo: corrige o comenta en el PR qué falla. El CD solo corre tras CI verde en `main`.
+- **No** ignorar CI en rojo en `main`: corrige en staging, vuelve a mergear. El CD solo corre tras CI verde.
 
 ---
 
@@ -187,11 +192,12 @@ git pull origin infra/staging-cicd
 2. Resuelve manualmente (quita marcadores `<<<<<<<`, `=======`, `>>>>>>>`).
 3. `git add .` → `git commit`.
 
-### CI falla en GitHub
+### CI falla en GitHub (tras merge a `main`)
 
 1. Entra a **Actions** → run fallido → lee el log.
-2. Reproduce en local: `pnpm check` y `pnpm build`.
-3. Corrige, commit y push de nuevo a `infra/staging-cicd`.
+2. Reproduce en local: `pnpm check`, `pnpm build`, `pnpm test` / `pnpm test:integration`.
+3. Corrige en `infra/staging-cicd`, commit, push, y **vuelve a mergear** a `main`.
+4. Mientras CI esté en rojo, **no hay CD** (producción queda en la versión anterior).
 
 ### No tengo acceso al repo
 
@@ -199,16 +205,24 @@ Pide al owner (**Alejoss**) invitación de colaborador con permiso de **write** 
 
 ---
 
-## 9. Checklist antes de cada push
+## 9. Checklist antes de cada push (a staging)
 
-- [ ] Leí / repasé la documentación relevante para lo que toqué
+- [ ] Leí `agents.md`, esta guía y los docs operativos (DEPLOYMENT, TESTING, GITHUB_SETUP, INFRASTRUCTURE, BACKUP_SYSTEM, FILE_STORAGE)
+- [ ] Entiendo: staging **no** dispara CI; publicar = merge a `main` → CI → CD si pasa
 - [ ] `git merge origin/main` (staging al día con main)
 - [ ] `pnpm check` pasa en local
 - [ ] `pnpm build` pasa en local (recomendado)
+- [ ] `pnpm test` / `pnpm test:integration` si tocaste servidor o esquema
+- [ ] Pruebas actualizadas ante cambios de esquema o comportamiento
 - [ ] No hay secretos ni `.env` en el commit
 - [ ] Push a **`infra/staging-cicd`**, no a `main`
 - [ ] Mensaje de commit claro en español o inglés
 
+### Tras merge a `main`
+
+- [ ] Revisar Actions: CI en verde (o corregir y volver a mergear)
+- [ ] Confirmar que CD solo corre si CI pasó
+
 ---
 
-Última revisión: mayo 2026.
+Última revisión: julio 2026.
