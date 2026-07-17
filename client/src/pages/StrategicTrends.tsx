@@ -295,111 +295,101 @@ function OteDetailChart({ objectiveId, companyId }: { objectiveId: number; compa
 
 // ─── Desglose OTE colapsable con mini gráficas ───────────────────────────────
 function OteBreakdown({ companyId }: { companyId: number }) {
-  const [expandedProcess, setExpandedProcess] = useState<number | null>(null);
-  const [expandedObj, setExpandedObj] = useState<number | null>(null);
   const { data: breakdown = [], isLoading } = trpc.strategicTrends.getOteBreakdown.useQuery(
     { companyId },
     { enabled: companyId > 0 }
   );
+
+  // Aplanar todos los objetivos de todos los procesos
+  const allObjectives = useMemo(() => {
+    return (breakdown as OteProcess[]).flatMap((proc) =>
+      proc.objectives.map((obj) => ({
+        label: obj.name.length > 28 ? obj.name.slice(0, 26) + "…" : obj.name,
+        fullName: obj.name,
+        value: obj.percent,
+        process: proc.processName,
+      }))
+    );
+  }, [breakdown]);
+
+  const avgTotal = allObjectives.length > 0
+    ? Math.round(allObjectives.reduce((s, o) => s + o.value, 0) / allObjectives.length)
+    : 0;
+  const avgColor = avgTotal >= 80 ? "#16a34a" : avgTotal >= 60 ? "#ca8a04" : "#dc2626";
+
+  if (isLoading) return (
+    <div className="flex justify-center py-6">
+      <Loader2 className="animate-spin w-5 h-5 text-blue-400" />
+    </div>
+  );
+  if (allObjectives.length === 0) return (
+    <p className="text-slate-400 text-sm text-center py-4">No hay objetivos tácticos registrados.</p>
+  );
+
   return (
-    <div className="space-y-3">
-          {isLoading ? (
-            <div className="flex justify-center py-6">
-              <Loader2 className="animate-spin w-5 h-5 text-blue-400" />
+    <div>
+      {/* Resumen global */}
+      <div className="flex items-center justify-between mb-4 p-3 bg-slate-50 rounded-lg">
+        <span className="text-sm font-semibold text-slate-700">Promedio general OTE</span>
+        <span className="text-lg font-bold" style={{ color: avgColor }}>{avgTotal}%</span>
+      </div>
+
+      {/* Grid de gauges por objetivo */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">
+        {allObjectives.map((obj, i) => {
+          const statusColor = obj.value >= 80 ? "#16a34a" : obj.value >= 60 ? "#ca8a04" : "#dc2626";
+          const status = obj.value >= 80 ? "En meta" : obj.value >= 60 ? "Alerta" : "Crítico";
+          const chartData = [{ value: obj.value, fill: statusColor }];
+          return (
+            <div key={i} className="flex flex-col items-center gap-2 p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+              <div className="relative w-20 h-20">
+                <RadialBarChart
+                  width={80} height={80} cx={40} cy={40}
+                  innerRadius={28} outerRadius={38} barSize={8}
+                  data={chartData} startAngle={90} endAngle={-270}
+                >
+                  <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+                  <RadialBar background={{ fill: "#f1f5f9" }} dataKey="value" angleAxisId={0} cornerRadius={4} />
+                </RadialBarChart>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-sm font-bold" style={{ color: statusColor }}>{obj.value}%</span>
+                </div>
+              </div>
+              <span className="text-xs font-semibold text-slate-700 text-center leading-tight" translate="no">{obj.label}</span>
+              <span className="text-xs text-slate-400 text-center" translate="no">{obj.process}</span>
+              <span
+                className="text-xs font-medium px-2 py-0.5 rounded-full"
+                style={{ backgroundColor: statusColor + "20", color: statusColor }}
+              >
+                {status}
+              </span>
             </div>
-          ) : breakdown.length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-4">
-              No hay objetivos tácticos registrados.
-            </p>
-          ) : (
-            (breakdown as OteProcess[]).map((proc) => {
-              const isExpanded = expandedProcess === proc.processId;
-              const avgPercent = proc.objectives.length > 0
-                ? Math.round(proc.objectives.reduce((s, o) => s + o.percent, 0) / proc.objectives.length)
-                : 0;
-              const barColor =
-                avgPercent >= 80 ? "#16a34a" : avgPercent >= 50 ? "#ca8a04" : "#dc2626";
+          );
+        })}
+      </div>
 
-              return (
-                <Card key={proc.processId} className="border border-slate-200">
-                  <CardContent className="pt-3 pb-3">
-                    <div
-                      className="flex items-center justify-between cursor-pointer"
-                      onClick={() => setExpandedProcess(isExpanded ? null : proc.processId)}
-                    >
-                      <span className="font-semibold text-slate-700 text-sm">{proc.processName}</span>
-                      <div className="flex items-center gap-3">
-                        <span
-                          className="text-sm font-bold px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: barColor + "20", color: barColor }}
-                        >
-                          {avgPercent}%
-                        </span>
-                        {isExpanded
-                          ? <ChevronUp size={14} className="text-slate-400" />
-                          : <ChevronDown size={14} className="text-slate-400" />}
-                      </div>
-                    </div>
-
-                    {isExpanded && (
-                      <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-                        {proc.objectives.map((obj) => {
-                          const objColor =
-                            obj.percent >= 80 ? "#16a34a"
-                            : obj.percent >= 50 ? "#ca8a04"
-                            : "#dc2626";
-                          const isObjExpanded = expandedObj === obj.id;
-                          return (
-                            <div key={obj.id} className="bg-slate-50 rounded-lg p-3">
-                              <div
-                                className="flex items-start justify-between gap-3 mb-2 cursor-pointer"
-                                onClick={() => setExpandedObj(isObjExpanded ? null : obj.id)}
-                              >
-                                <div className="flex-1">
-                                  {obj.strategicObjective && obj.strategicObjective !== "Sin clasificar" && (
-                                    <p className="text-xs text-slate-400 mb-0.5 font-medium uppercase tracking-wide">
-                                      {obj.strategicObjective}
-                                    </p>
-                                  )}
-                                  <p className="text-sm text-slate-700 leading-snug">{obj.name}</p>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span
-                                    className="text-sm font-bold px-2 py-0.5 rounded-full"
-                                    style={{ backgroundColor: objColor + "20", color: objColor }}
-                                  >
-                                    {obj.percent}%
-                                  </span>
-                                  {isObjExpanded
-                                    ? <ChevronUp size={13} className="text-slate-400" />
-                                    : <ChevronDown size={13} className="text-slate-400" />}
-                                </div>
-                              </div>
-                              <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full rounded-full transition-all duration-500"
-                                  style={{ width: `${Math.min(100, obj.percent)}%`, backgroundColor: objColor }}
-                                />
-                              </div>
-                              {obj.ponderacion > 0 && (
-                                <p className="text-xs text-slate-400 mt-1">
-                                  Ponderación: {obj.ponderacion}%
-                                </p>
-                              )}
-                              {/* Mini gráfica desplegable */}
-                              {isObjExpanded && (
-                                <OteDetailChart objectiveId={obj.id} companyId={companyId} />
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
+      {/* Barra comparativa */}
+      <div className="mt-2">
+        <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-2">Comparativa</p>
+        <ResponsiveContainer width="100%" height={Math.max(160, allObjectives.length * 28)}>
+          <BarChart
+            data={allObjectives.map((o) => ({ name: o.label, value: o.value }))}
+            layout="vertical"
+            margin={{ top: 4, right: 40, left: 8, bottom: 4 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+            <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+            <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false} axisLine={false} width={120} />
+            <Tooltip formatter={(v: any) => [`${v}%`, "OTE"]} />
+            <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
+              {allObjectives.map((o, i) => {
+                const c = o.value >= 80 ? "#16a34a" : o.value >= 60 ? "#ca8a04" : "#dc2626";
+                return <Cell key={i} fill={c} />;
+              })}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
