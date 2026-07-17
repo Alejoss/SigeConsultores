@@ -12,6 +12,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { useRef } from "react";
+import { getAxisBackPathForRole } from "@/lib/sessionScope";
 import { toast } from "sonner";
 
 interface ProcessData {
@@ -277,7 +278,7 @@ export default function ProcessCharacterization() {
             </p>
             <Button
               className="w-full mt-4"
-                onClick={() => setLocation(isProcessLeader ? "/process-map" : (isManagerAccess ? "/axis-gestion" : "/process-map"))}
+                onClick={() => setLocation(getAxisBackPathForRole())}
              >
                 Volver al Mapa de Procesos
             </Button>

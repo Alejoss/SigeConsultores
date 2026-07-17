@@ -4,14 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
-import { Plus, Trash2, ChevronRight, AlertCircle, CheckCircle, Upload, Download, FileText, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, ChevronRight, AlertCircle, CheckCircle, Upload, Download } from 'lucide-react';
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { useSearch } from "wouter";
-import { getAxisBackPath } from "@/lib/sessionScope";
+import { getAxisBackPathForRole } from "@/lib/sessionScope";
 
 type ProcessType = "estrategico" | "misional" | "soporte";
 
@@ -32,17 +32,7 @@ export default function ProcessMap() {
   
   // Back button handler
   const handleBack = () => {
-    if (isProcessLeader) {
-      setLocation('/process-leader-dashboard');
-    } else if (isManagerLogin || isManagerAccess) {
-      setLocation(getAxisBackPath('/manager-dashboard'));
-    } else {
-      // Para usuarios de empresa: respetar el eje de origen si existe
-      const axisOrigin = localStorage.getItem('axisOrigin');
-      if (axisOrigin === 'gestion') setLocation('/axis-gestion');
-      else if (axisOrigin === 'estrategia') setLocation('/axis-estrategia');
-      else setLocation('/dashboard');
-    }
+    setLocation(getAxisBackPathForRole());
   };
   // Declare state variables
   const [companyId, setCompanyId] = useState<number | null>(null);
@@ -245,9 +235,9 @@ export default function ProcessMap() {
     }
   };
 
-  const isPdfFile = (fileName: string | null) => {
-    if (!fileName) return false;
-    return /\.pdf$/i.test(fileName);
+  const isDisplayableImage = (fileName: string | null) => {
+    if (!fileName) return true;
+    return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fileName);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -310,7 +300,7 @@ export default function ProcessMap() {
             </p>
             <Button
               className="w-full mt-4"
-              onClick={() => setLocation(isProcessLeader ? "/process-leader-dashboard" : (isManagerAccess ? "/manager-dashboard" : "/dashboard"))}
+              onClick={() => setLocation(getAxisBackPathForRole())}
             >
               Volver al Dashboard
             </Button>
@@ -339,70 +329,61 @@ export default function ProcessMap() {
         {/* Sección de Imagen del Mapa de Procesos */}
         <Card className="border-2 border-purple-200 bg-purple-50">
           <CardHeader>
-            <CardTitle className="text-lg">Mapa de Procesos (PDF)</CardTitle>
-            <CardDescription>Sube el mapa de procesos en formato PDF para visualizarlo directamente en esta página</CardDescription>
+            <CardTitle className="text-lg">Imagen del Mapa de Procesos</CardTitle>
+            <CardDescription>Sube una imagen o archivo Excel del mapa de procesos</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {isLoadingMapImage ? (
                 <p className="text-center text-slate-600 py-4">Cargando mapa de procesos...</p>
               ) : mapImage ? (
-                <div className="space-y-3">
-                  {/* Barra de acciones compacta */}
-                  <div className="flex items-center gap-3 bg-white border border-purple-200 rounded-lg px-4 py-3">
-                    <FileText className="w-5 h-5 text-purple-500 flex-shrink-0" />
-                    <span className="text-sm font-medium text-slate-700 flex-1 truncate">{mapImageFileName}</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (mapImage) {
-                          window.open(`/api/proxy/file?url=${encodeURIComponent(mapImage)}`, "_blank", "noopener,noreferrer");
-                        }
-                      }}
-                      className="gap-2 border-purple-300 text-purple-700 hover:bg-purple-50"
+                <div className="space-y-4">
+                  {isDisplayableImage(mapImageFileName) ? (
+                    <div
+                      onDoubleClick={handleDownloadImage}
+                      className="cursor-pointer hover:opacity-80 transition-opacity"
+                      title="Haz doble clic para descargar"
                     >
-                      <ExternalLink size={16} />
-                      Ver Mapa de Procesos
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDownloadImage}
-                      className="gap-2"
-                    >
-                      <Download size={16} />
-                      Descargar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDeleteMapImage}
-                      disabled={deleteMapImageMutation.isPending}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                    >
-                      Eliminar
-                    </Button>
-                  </div>
-                  {/* Vista previa de imagen (solo para imágenes, no PDF) */}
-                  {!isPdfFile(mapImageFileName) && mapImage && (
-                    <div className="p-6 text-center">
                       <img
                         src={mapImage}
                         alt="Mapa de Procesos"
-                        className="w-full max-h-[700px] object-contain"
+                        className="w-full max-h-96 object-contain border border-gray-300 rounded"
                       />
                     </div>
+                  ) : (
+                    <div className="border border-gray-300 rounded-lg p-6 text-center bg-white">
+                      <p className="font-medium text-slate-800">{mapImageFileName}</p>
+                      <p className="text-sm text-slate-500 mt-2">
+                        Archivo guardado en el servidor. Usa descargar para abrirlo.
+                      </p>
+                    </div>
                   )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleDownloadImage}
+                      className="flex-1 gap-2"
+                    >
+                      <Download size={16} />
+                      Descargar Archivo
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleDeleteMapImage}
+                      disabled={deleteMapImageMutation.isPending}
+                      className="flex-1"
+                    >
+                      Eliminar Imagen
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="border-2 border-dashed border-purple-300 rounded-lg p-8 text-center">
                   <Upload className="w-12 h-12 mx-auto text-purple-400 mb-4" />
-                  <p className="text-slate-700 font-medium mb-1">Sube el mapa de procesos en formato PDF</p>
-                  <p className="text-slate-500 text-sm mb-4">El archivo debe estar en formato <strong>PDF</strong> para visualizarse directamente en esta página</p>
+                  <p className="text-slate-600 mb-4">Arrastra una imagen o haz clic para seleccionar</p>
                   <input
                     type="file"
-                    accept=".pdf"
+                    accept="image/*,.xlsx,.xls"
                     onChange={handleImageUpload}
                     disabled={isUploadingImage}
                     className="hidden"
@@ -414,10 +395,10 @@ export default function ProcessMap() {
                       disabled={isUploadingImage || uploadMapImageMutation.isPending}
                     >
                       <label htmlFor="map-image-input" className="cursor-pointer">
-                        {isUploadingImage ? "Cargando..." : "Seleccionar PDF"}
+                        {isUploadingImage ? "Cargando..." : "Seleccionar Archivo"}
                       </label>
                     </Button>
-                    <p className="text-xs text-slate-400 text-center">Solo se aceptan archivos PDF (.pdf)</p>
+                    <p className="text-xs text-slate-500 text-center">Soporta imágenes (PNG, JPG, etc.)</p>
                   </div>
                 </div>
               )}

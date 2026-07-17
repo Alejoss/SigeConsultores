@@ -1,21 +1,21 @@
 name: Deploy Production
 
+# Reusable CD: ci.yml calls this workflow only after every CI job succeeds.
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  workflow_call:
 
 concurrency:
-  group: deploy-production-${{ github.ref }}
+  group: deploy-production-main
   cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   build-image:
+    name: Build and push image
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     timeout-minutes: 30
     outputs:
       image_name: ${{ steps.image.outputs.name }}

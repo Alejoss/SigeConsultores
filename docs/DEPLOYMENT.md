@@ -7,19 +7,32 @@ En la mayoría de los casos la imagen de la app **ya está construida en GitHub 
 ## Flujo habitual
 
 ```
-Cliente push → infra/staging-cicd → CI (check + build)
+Cliente / Manus push → infra/staging-cicd   (sin CI, sin deploy)
                         ↓
               PR → main (revisión + merge)
                         ↓
-         Deploy Production (Actions)
+              CI en main (única compuerta)
+                        ↓  solo si CI = success
+         Deploy Production (workflow reutilizable)
               ├─ build-image → ghcr.io/alejoss/sigeconsultores:<sha>
               └─ deploy-droplet → SSH + deploy-prod.sh (si hay secretos)
 ```
 
 | Rama | Quién | Qué pasa |
 |------|--------|----------|
-| **`infra/staging-cicd`** | Cliente / integración | Push libre; CI informativo (verde o rojo) |
-| **`main`** | Producción | Merge vía PR; build en GHCR + deploy al droplet |
+| **`infra/staging-cicd`** | Cliente / Manus / integración | Push libre; **no** corre CI ni CD |
+| **`main`** | Producción | Merge vía PR → **único CI** → solo entonces CD (GHCR + droplet) |
+
+### Qué rama dispara CI y CD
+
+- **Pushear a `infra/staging-cicd` no dispara CI ni CD.** Es solo la rama de integración.
+- **Hay un solo CI:** el que corre al llegar el cambio a `main` (merge del PR `infra/staging-cicd` → `main`).
+- **El CD solo corre si ese CI pasa** (`check-and-build`, `test-unit`, `test-integration`). Si CI falla, producción no se actualiza.
+- **No se debe pushear directo a `main`** salvo autorización explícita de emergencia (bypass admin). El flujo esperado es PR, revisión y merge. El ruleset **MainProtection** exige PR; detalle en [GITHUB_SETUP.md](./GITHUB_SETUP.md).
+
+Entonces sí: publicar es **mergear `infra/staging-cicd` hacia `main` vía PR**. Ese merge dispara el único CI; las pruebas son la compuerta del deploy.
+
+**Regla crítica:** CI y CD **no** corren en paralelo. En `ci.yml`, el job `deploy-production` tiene `needs: [check-and-build, test-unit, test-integration]`; GitHub solo llama al workflow reutilizable de CD cuando los tres jobs pasan. Si fallan typecheck, build o tests, **no hay deploy**.
 
 Detalle de Actions y secretos: [GITHUB_SETUP.md](./GITHUB_SETUP.md).
 
@@ -70,13 +83,14 @@ docker pull ghcr.io/alejoss/sigeconsultores:latest
 
 ## Deploy automático (recomendado)
 
-**Trigger:** push o merge a `main` → workflow `.github/workflows/deploy-production.yml`.
+**Trigger:** merge/push a `main` → `ci.yml` (única ejecución de CI) → si pasan todos los jobs, `deploy-production` llama a `.github/workflows/deploy-production.yml`. Este último solo admite `workflow_call`; no existe *Run workflow* para saltarse las pruebas.
 
 | Paso | Dónde | Qué hace |
 |------|--------|----------|
-| 1 | GitHub Actions | `docker build` + push a GHCR |
-| 2 | SSH al droplet | `git reset --hard` al commit + escribe `.env.production` + `deploy-prod.sh` |
-| 3 | Droplet | Escribe `.env.production` desde secreto `ENV_PRODUCTION` |
+| 0 | GitHub Actions (CI) | `pnpm check` + `pnpm build` + tests unitarios e integración — **debe pasar** |
+| 1 | GitHub Actions (CI) | `needs` impide invocar el CD si algún job previo no fue `success` |
+| 2 | GitHub Actions | `docker build` + push a GHCR del mismo SHA que pasó CI |
+| 3 | SSH al droplet | `git reset --hard` al commit + escribe `.env.production` + `deploy-prod.sh` |
 | 4 | Droplet | `deploy-prod.sh`: login GHCR, `pull`, `up -d` |
 
 **Secretos** en GitHub (Settings → Secrets → Actions):
@@ -193,8 +207,8 @@ Alternativa automatizada (mismo enfoque): `scripts/deploy-droplet-local.sh` con 
 | `docker-compose.prod.yml` | MySQL + app; app en `127.0.0.1:3001` |
 | `scripts/deploy-prod.sh` | **Deploy habitual:** pull GHCR + `compose up` |
 | `scripts/deploy-droplet-local.sh` | Fallback: `git` + `docker build` en servidor |
-| `.github/workflows/deploy-production.yml` | Build GHCR + deploy en push a `main` |
-| `.github/workflows/ci.yml` | `pnpm check` + `pnpm build` en PR/push |
+| `.github/workflows/deploy-production.yml` | Workflow reutilizable (`workflow_call`): build GHCR + deploy |
+| `.github/workflows/ci.yml` | Único CI: push a `main` (+ CD si pasa) |
 | `deploy/nginx/sige.conf.example` | Proxy Nginx → `127.0.0.1:3001` |
 
 ---

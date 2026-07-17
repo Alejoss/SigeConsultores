@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DASHBOARD_MODULES, MODULE_GROUPS, buildScopedModuleRoute } from "@shared/dashboardModules";
 import { useModuleLabels } from "@/hooks/useModuleLabels";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
+import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
+import { getAxisBackPathForRole } from "@/lib/sessionScope";
 
 type AxisId = "estrategia" | "gestion" | "desempeno";
 
@@ -35,25 +37,32 @@ const AXIS_STYLES: Record<AxisId, { bg: string; border: string; header: string; 
 
 interface AxisPageProps {
   axisId: AxisId;
-  backPath: string;
+  /** @deprecated — backPath is now computed dynamically from the session role. */
+  backPath?: string;
 }
 
-export default function AxisPage({ axisId, backPath }: AxisPageProps) {
+export default function AxisPage({ axisId }: AxisPageProps) {
   const [, setLocation] = useLocation();
   const [companyId, setCompanyId] = useState<number | null>(null);
   const [isManager, setIsManager] = useState(false);
   const { isManagerLogin, managerCompanyId: authCompanyId } = useManagerAuth();
+  const { session: processLeaderSession } = useProcessLeaderAuth();
 
   useEffect(() => {
     // Store axis origin so modules know where to go back
     localStorage.setItem("axisOrigin", axisId);
 
-    // Try managerCompanyId first (legacy token flow), then selectedCompanyId (isManagerLogin flow)
+    // Priority: Process Leader session > managerCompanyId > selectedCompanyId
+    if (processLeaderSession?.companyId) {
+      setCompanyId(processLeaderSession.companyId);
+      return;
+    }
+
     const cid = localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId");
     const mgr = localStorage.getItem("managerToken");
     if (cid) setCompanyId(parseInt(cid));
     if (mgr || isManagerLogin) setIsManager(true);
-  }, [axisId, isManagerLogin]);
+  }, [axisId, isManagerLogin, processLeaderSession]);
 
   // Also pick up companyId from useManagerAuth hook (reactive)
   useEffect(() => {
@@ -61,7 +70,7 @@ export default function AxisPage({ axisId, backPath }: AxisPageProps) {
       setCompanyId(authCompanyId);
       setIsManager(true);
     }
-  }, [authCompanyId]);
+  }, [authCompanyId, companyId]);
 
   const group = MODULE_GROUPS.find((g) => g.id === axisId)!;
   const modules = DASHBOARD_MODULES.filter((m) => m.group === axisId);
@@ -69,9 +78,31 @@ export default function AxisPage({ axisId, backPath }: AxisPageProps) {
   const { getLabel } = useModuleLabels(companyId);
 
   const handleNavigate = (moduleName: string) => {
-    if (!companyId) return;
+    if (!companyId) {
+      // Fallback: try to get companyId one more time from storage
+      const cid =
+        processLeaderSession?.companyId ||
+        parseInt(localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId") || "0");
+      if (!cid) return;
+      const path = buildScopedModuleRoute(moduleName, { companyId: cid, isManager });
+      if (path) setLocation(path);
+      return;
+    }
     const path = buildScopedModuleRoute(moduleName, { companyId, isManager });
     if (path) setLocation(path);
+  };
+
+  // Compute back path dynamically — clears axisOrigin so the back button goes to the right dashboard
+  const handleBack = () => {
+    localStorage.removeItem("axisOrigin");
+    const isManagerAccess = localStorage.getItem("managerCompanyId") !== null;
+    if (isManagerAccess || isManagerLogin) {
+      setLocation("/manager-dashboard");
+    } else if (processLeaderSession) {
+      setLocation("/process-leader-dashboard");
+    } else {
+      setLocation("/dashboard");
+    }
   };
 
   return (
@@ -81,15 +112,7 @@ export default function AxisPage({ axisId, backPath }: AxisPageProps) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => {
-            // Si es manager → usa el backPath original (/manager-dashboard)
-            // Si es usuario de empresa → va al dashboard de empresa (/dashboard)
-            if (isManager) {
-              setLocation(backPath);
-            } else {
-              setLocation("/dashboard");
-            }
-          }}
+          onClick={handleBack}
           className="gap-2 text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft size={16} />

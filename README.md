@@ -97,17 +97,32 @@ Tests en un archivo: `pnpm test:unit -- server/__tests__/archivo.test.ts`. Ver [
 - **Imagen:** se construye en GitHub Actions y se publica en **GHCR** (`ghcr.io/alejoss/sigeconsultores`).
 - **Droplet:** `scripts/deploy-prod.sh` hace `docker pull` de esa imagen y `docker compose up` (sin `docker build` en el servidor en el flujo habitual).
 - **Compose:** `docker-compose.prod.yml` — MySQL + app en `127.0.0.1:3001`.
-- **Flujo:** cliente → `infra/staging-cicd` → PR → `main` → Deploy Production.
+- **Flujo:** cliente / Manus → `infra/staging-cicd` → PR → `main` → CI → (si pasa) Deploy Production.
 
 Guías: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md), [docs/BACKUP_SYSTEM.md](docs/BACKUP_SYSTEM.md).
 
 ## Documentación
 
-- **Índice de docs:** [docs/README.md](docs/README.md)
-- **Infra y servicios:** [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md)
-- **Despliegue:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
-- **Respaldos:** [docs/BACKUP_SYSTEM.md](docs/BACKUP_SYSTEM.md)
-- **Archivos en S3:** [docs/FILE_STORAGE.md](docs/FILE_STORAGE.md)
+### Manus / agentes (lectura obligatoria)
+
+Antes de tocar código, Manus **debe** leer en este orden:
+
+1. [agents.md](agents.md) — reglas de alcance, ramas y verificación  
+2. [docs/GUIA_MANUS.md](docs/GUIA_MANUS.md) — punto de entrada operativo (lista todos los docs obligatorios)  
+3. En especial [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — **único CI en `main`**; staging no dispara CI/CD  
+
+**Flujo de publicación:** push a `infra/staging-cicd` → PR/merge a `main` → CI → solo si pasa → CD.
+
+| Documento | Contenido |
+|-----------|-----------|
+| [docs/GUIA_MANUS.md](docs/GUIA_MANUS.md) | **Guía Manus:** lectura obligatoria, Git, checklist |
+| [docs/README.md](docs/README.md) | Índice de toda la documentación |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | CI/CD, deploy automático y manual |
+| [docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md) | Workflows y secretos de Actions |
+| [docs/TESTING.md](docs/TESTING.md) | Vitest: unit, integración (MySQL), CI |
+| [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) | Droplet, Docker, OAuth, S3, correo |
+| [docs/BACKUP_SYSTEM.md](docs/BACKUP_SYSTEM.md) | Respaldos diarios y restauración |
+| [docs/FILE_STORAGE.md](docs/FILE_STORAGE.md) | Subidas a S3 y URLs firmadas |
 
 ## Contribución y licencia
 

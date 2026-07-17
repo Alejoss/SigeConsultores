@@ -63,9 +63,30 @@ export function getAxisBackPath(fallback: string = "/manager-dashboard"): string
   const axis = localStorage.getItem("axisOrigin");
   if (axis === "estrategia") return "/axis-estrategia";
   if (axis === "gestion") return "/axis-gestion";
-  // "desempeno" ya no tiene pantalla intermedia (AxisDesempeno redirige directo a /performance)
-  // por lo tanto el botón Volver debe ir al dashboard principal
+  if (axis === "desempeno") return "/axis-desempeno";
   return fallback;
+}
+
+/**
+ * Returns the correct back path for the current role.
+ * Detects the role from localStorage and returns the appropriate path.
+ * - If axisOrigin is set, always returns the axis page (works for all roles).
+ * - Otherwise falls back to the role-specific dashboard.
+ */
+export function getAxisBackPathForRole(): string {
+  const axis = localStorage.getItem("axisOrigin");
+  if (axis === "estrategia") return "/axis-estrategia";
+  if (axis === "gestion") return "/axis-gestion";
+  if (axis === "desempeno") return "/axis-desempeno";
+
+  // No axisOrigin set — fall back to role-specific dashboard
+  const plSession = getProcessLeaderSessionFromStorage();
+  if (plSession) return "/process-leader-dashboard";
+
+  const managerId = localStorage.getItem("managerCompanyId");
+  if (managerId) return "/manager-dashboard";
+
+  return "/dashboard";
 }
 
 export function getSessionScope(): SessionScope {

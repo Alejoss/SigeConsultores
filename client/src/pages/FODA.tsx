@@ -5,7 +5,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useLocation } from "wouter";
 import { ArrowLeft, MessageCircle } from "lucide-react";
-import { getAxisBackPath } from "@/lib/sessionScope";
+import { getAxisBackPathForRole } from "@/lib/sessionScope";
 import FODAConsolidation from "@/components/FODA/FODAConsolidation";
 import FODACompany from "@/components/FODA/FODACompany";
 import { AIChatPanel } from "@/components/AIChatPanel";
@@ -54,8 +54,7 @@ export default function FODA() {
   }, [enterpriseVersions, companyId]);
 
   // Check if user is a manager
-  const isManagerAccess = localStorage.getItem('managerCompanyId') !== null;
-  const dashboardRoute = (isManagerAccess || isManagerLogin) ? getAxisBackPath("/manager-dashboard") : "/dashboard";
+  const dashboardRoute = getAxisBackPathForRole();
 
   const handleAIQuery = async (query: string): Promise<string> => {
     try {

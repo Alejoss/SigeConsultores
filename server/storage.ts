@@ -8,14 +8,13 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { ENV } from "./_core/env";
 
 let _client: S3Client | null = null;
+let _publicClient: S3Client | null = null;
 
-function getClient(): S3Client {
-  if (_client) return _client;
-
-  const { s3AccessKeyId, s3SecretAccessKey, s3Region, s3Endpoint } = ENV;
+function buildClient(endpoint: string): S3Client {
+  const { s3AccessKeyId, s3SecretAccessKey, s3Region } = ENV;
   if (!s3AccessKeyId || !s3SecretAccessKey) {
     throw new Error(
-      "AWS credentials missing: set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
+      "AWS credentials missing: set AWS_ACCESS_KEY_ID / S3_ACCESS_KEY and AWS_SECRET_ACCESS_KEY / S3_SECRET_KEY"
     );
   }
 
@@ -27,14 +26,26 @@ function getClient(): S3Client {
     },
   };
 
-  // Use custom endpoint for MinIO or other S3-compatible storage
-  if (s3Endpoint) {
-    clientConfig.endpoint = s3Endpoint;
-    clientConfig.forcePathStyle = true;
+  if (endpoint) {
+    clientConfig.endpoint = endpoint;
+    clientConfig.forcePathStyle = true; // Required for MinIO / S3-compatible services
   }
 
-  _client = new S3Client(clientConfig);
+  return new S3Client(clientConfig);
+}
+
+/** Internal client — used for upload/delete operations (uses S3_ENDPOINT) */
+function getClient(): S3Client {
+  if (_client) return _client;
+  _client = buildClient(ENV.s3Endpoint);
   return _client;
+}
+
+/** Public client — used for presigned download URLs (uses S3_PUBLIC_ENDPOINT) */
+function getPublicClient(): S3Client {
+  if (_publicClient) return _publicClient;
+  _publicClient = buildClient(ENV.s3PublicEndpoint);
+  return _publicClient;
 }
 
 function getBucket(): string {
@@ -77,7 +88,7 @@ export async function storagePut(
     })
   );
 
-  const url = await getDownloadUrl(client, bucket, key);
+  const url = await getDownloadUrl(bucket, key);
   return { key, url };
 }
 
@@ -88,11 +99,10 @@ export async function storagePut(
 export async function storageGet(
   relKey: string
 ): Promise<{ key: string; url: string }> {
-  const client = getClient();
   const bucket = getBucket();
   const key = normalizeKey(relKey);
 
-  const url = await getDownloadUrl(client, bucket, key);
+  const url = await getDownloadUrl(bucket, key);
   return { key, url };
 }
 
@@ -112,17 +122,13 @@ export async function storageDelete(relKey: string): Promise<void> {
 const PRESIGNED_URL_EXPIRY = 604800; // 7 days
 
 async function getDownloadUrl(
-  client: S3Client,
   bucket: string,
   key: string
 ): Promise<string> {
-  // For MinIO/local S3-compatible storage, use public endpoint URL directly
-  const { s3PublicEndpoint } = ENV;
-  if (s3PublicEndpoint) {
-    return `${s3PublicEndpoint}/${bucket}/${key}`;
-  }
+  // Use the public client so presigned URLs point to the publicly-accessible endpoint
+  const publicClient = getPublicClient();
   return getSignedUrl(
-    client,
+    publicClient,
     new GetObjectCommand({ Bucket: bucket, Key: key }),
     { expiresIn: PRESIGNED_URL_EXPIRY }
   );

@@ -1,14 +1,11 @@
 name: CI
 
+# Single gate: CI (+ CD) only when code reaches main (merge from staging).
+# Push to infra/staging-cicd does not run CI or deploy.
 on:
-  pull_request:
-    branches:
-      - main
-      - infra/staging-cicd
   push:
     branches:
       - main
-      - infra/staging-cicd
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -114,3 +111,13 @@ jobs:
 
       - name: Integration tests (MySQL)
         run: pnpm test:integration
+
+  deploy-production:
+    name: Deploy Production
+    needs: [check-and-build, test-unit, test-integration]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/deploy-production.yml
+    secrets: inherit

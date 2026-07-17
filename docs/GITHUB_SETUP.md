@@ -6,8 +6,10 @@ Configuración de CI/CD: integración en `infra/staging-cicd`, producción en `m
 
 | Workflow | Cuándo corre | Qué hace |
 |----------|----------------|----------|
-| **CI** | Push/PR a `infra/staging-cicd` o `main` | `pnpm check` + `pnpm build` + tests (unit, client, integración con MySQL) |
-| **Deploy Production** | Push a `main` (y manual *Run workflow*) | Build imagen → **GHCR**; deploy al droplet si hay secretos |
+| **CI** | Solo push a `main` (tras merge desde staging) | `pnpm check` + `pnpm build` + tests (unit, client, integración con MySQL) |
+| **Deploy Production** | Job de `ci.yml` después de `check-and-build`, `test-unit` y `test-integration` | Llama al workflow reutilizable → build imagen → **GHCR**; deploy al droplet si hay secretos |
+
+**Importante:** no hay CI en `infra/staging-cicd`. La única compuerta es el CI de `main`; el CD **no** corre en paralelo con las pruebas. El job `deploy-production` usa `needs: [check-and-build, test-unit, test-integration]`; si cualquier job falla, GitHub lo omite y **no se despliega**. El workflow reutilizable no admite ejecución manual.
 
 La imagen se publica en:
 
@@ -20,13 +22,17 @@ Los nombres van en **minúsculas** (requisito de GHCR).
 
 ## Flujo del equipo
 
-1. Cliente pushea a **`infra/staging-cicd`** → CI corre (no bloquea el push).
+1. Cliente / Manus pushea a **`infra/staging-cicd`** → sin CI ni CD.
 2. PR **`infra/staging-cicd` → `main`** → revisión y merge (ruleset en `main`).
-3. Merge a **`main`** → **Deploy Production**:
-   - **build-image** — siempre (si el workflow pasa)
+3. Merge a **`main`** → corre el **único CI** (check + build + tests).
+4. Solo si CI = **success** → **Deploy Production**:
+   - **needs** — GitHub solo invoca el CD cuando los tres jobs anteriores pasan
+   - **build-image** — imagen del mismo SHA que pasó CI
    - **Deploy to droplet** — solo con secretos configurados
 
-Sin secretos: el workflow termina en verde con *Deploy skipped*; la imagen **sí** queda en GHCR.
+`infra/staging-cicd` es la rama de integración; **no dispara CI ni CD**. CI + CD solo ocurren cuando el cambio entra a `main`, preferiblemente mediante PR `infra/staging-cicd` → `main`; nunca por push directo a `main` sin autorización explícita.
+
+Sin secretos: tras CI verde, el CD termina con *Deploy skipped*; la imagen **sí** queda en GHCR.
 
 ## Secretos y variables para deploy al droplet
 
@@ -88,12 +94,27 @@ export GHCR_TOKEN=<PAT>
 ./scripts/deploy-prod.sh
 ```
 
-## Protección de ramas
+## Protección de ramas (ruleset `MainProtection`)
 
-| Rama | Reglas típicas |
+Configurado en GitHub: **Settings → Rules → Rulesets → [MainProtection](https://github.com/Alejoss/SigeConsultores/rules/16887475)** (edición: Settings → Rulesets).
+
+Aplica a **`refs/heads/main`**, enforcement **active**.
+
+| Regla | Qué hace |
+|-------|----------|
+| **Restrict deletions** | Nadie (salvo bypass) puede borrar `main` |
+| **Block force pushes** (`non_fast_forward`) | No se permite `push --force` a `main` |
+| **Require a pull request before merging** | Los cambios normales deben entrar por PR; **0** aprobaciones requeridas; merge/squash/rebase permitidos |
+| **Require status checks** | **No** — se quitó `check-and-build` porque el CI ya no corre en el PR (solo tras el merge a `main`) |
+
+**Bypass:** rol **Repository admin** puede saltarse el ruleset (p. ej. push directo de emergencia del owner). Manus / colaboradores Write **no** bypassean: deben usar PR `infra/staging-cicd` → `main`.
+
+**Compuerta de producción:** no es un status check del PR. Tras el merge, el workflow **CI** en `main` corre check/build/tests; solo si pasa se dispara el CD. Si CI falla, producción no se actualiza.
+
+| Rama | Comportamiento |
 |------|----------------|
-| `infra/staging-cicd` | Sin bloqueo de push; CI informativo |
-| `main` | PR + CI; **Repository admin** en bypass para push directo del owner |
+| `infra/staging-cicd` | Push libre; sin CI ni CD; sin este ruleset |
+| `main` | Ruleset arriba + CI/CD post-merge |
 
 ## CI: tests
 

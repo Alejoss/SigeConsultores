@@ -13,7 +13,7 @@ import { useState, useEffect } from "react";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
-import { getAxisBackPath } from "@/lib/sessionScope";
+import { getAxisBackPathForRole } from "@/lib/sessionScope";
 import { exportValuesToPDF } from "@/lib/exportValuesToPDF";
 
 const MAX_VALUES = 15;
@@ -77,7 +77,7 @@ export default function Values() {
   
   // Back button handler
   const handleBack = () => {
-    setLocation(isProcessLeader ? "/process-leader-dashboard" : ((isManagerAccess || isManagerLogin) ? getAxisBackPath("/manager-dashboard") : "/dashboard"));
+    setLocation(getAxisBackPathForRole());
   };
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);

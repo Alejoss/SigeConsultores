@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
+import { getAxisBackPathForRole } from "@/lib/sessionScope";
 
 type SubModule = "strategic" | "management" | "systems" | null;
 
@@ -224,10 +225,16 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
     return count > 0 ? Math.round(total / count) : 0;
   }, [inspections]);
 
-  // % Cumplimientos: promedio de todos los procesos
+  // % Cumplimientos y % Capacitaciones: promedio de todos los procesos
   const avgCompliances = useMemo(() => {
     if (!macroIndicators.length) return 0;
     const total = macroIndicators.reduce((sum: number, p: any) => sum + (p.compliancesPercentage || 0), 0);
+    return Math.round(total / macroIndicators.length);
+  }, [macroIndicators]);
+
+  const avgTrainings = useMemo(() => {
+    if (!macroIndicators.length) return 0;
+    const total = macroIndicators.reduce((sum: number, p: any) => sum + (p.trainingsPercentage || 0), 0);
     return Math.round(total / macroIndicators.length);
   }, [macroIndicators]);
 
@@ -236,6 +243,7 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
     { label: "Cumplimientos", value: avgCompliances, icon: "✅", count: null },
     { label: "Auditorías", value: auditsCompliance, icon: "🔍", count: (audits as any[]).length },
     { label: "Inspecciones", value: inspectionsCompliance, icon: "🔎", count: (inspections as any[]).length },
+    { label: "Capacitaciones", value: avgTrainings, icon: "🎓", count: null },
   ];
 
   const isLoading = programsLoading || indicatorsLoading || auditsLoading || inspectionsLoading;
@@ -293,24 +301,23 @@ export default function Performance() {
       key: "systems" as SubModule,
       icon: <Settings size={40} className="text-blue-500" />,
       title: "Sistemas de Gestión",
-      description: "% cumplimiento de Programas, Auditorías, Inspecciones y Cumplimientos.",
+      description: "% cumplimiento de Programas, Auditorías, Inspecciones, Capacitaciones y Cumplimientos.",
     },
   ];
 
   const handleGoToTrends = () => setLocation(companyId > 0 ? `/strategic-trends?companyId=${companyId}` : "/strategic-trends");
 
-  // Botón Volver: si hay submódulo activo, vuelve a la selección; si no, al dashboard
+  // Botón Volver: si hay submódulo activo, vuelve a la selección; si no, al dashboard del rol
   const handleBack = () => {
     if (activeModule) {
       setActiveModule(null);
     } else {
-      // Si es manager → vuelve al manager-dashboard
-      // Si es usuario de empresa o process leader → vuelve al dashboard de empresa
-      if (isManagerLogin || localStorage.getItem('managerCompanyId') !== null) {
-        setLocation("/manager-dashboard");
-      } else {
-        setLocation("/dashboard");
-      }
+      // Limpiar axisOrigin para evitar bucles al volver al dashboard
+      localStorage.removeItem("axisOrigin");
+      // Usar el dashboard guardado por AxisDesempeno, o detectar por rol como fallback
+      const savedDashboard = localStorage.getItem("axisBackDashboard");
+      localStorage.removeItem("axisBackDashboard");
+      setLocation(savedDashboard || getAxisBackPathForRole());
     }
   };
 
