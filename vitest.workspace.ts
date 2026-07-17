@@ -58,6 +58,8 @@ export default defineWorkspace([
       name: "integration",
       include: [...integrationTestFiles],
       environment: "node",
+      // Shared MySQL fixtures: avoid cross-file races on stakeholders/criticalityMatrix.
+      fileParallelism: false,
       hookTimeout: 30_000,
       testTimeout: 30_000,
     },
