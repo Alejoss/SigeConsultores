@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -26,7 +26,7 @@ import {
   RadialBar,
   PolarAngleAxis,
 } from "recharts";
-import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, X, Settings } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, X, Settings, Download } from "lucide-react";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type TrendPoint = {
@@ -729,6 +729,31 @@ export default function StrategicTrends() {
   const [yearFilter, setYearFilter] = useState<number | "all" | "annual">("all");
   const [showOteModal, setShowOteModal] = useState(false);
   const [showSystemsModal, setShowSystemsModal] = useState(false);
+  const [exportingPage, setExportingPage] = useState(false);
+  const [exportingOte, setExportingOte] = useState(false);
+  const [exportingSystems, setExportingSystems] = useState(false);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const oteModalRef = useRef<HTMLDivElement>(null);
+  const systemsModalRef = useRef<HTMLDivElement>(null);
+
+  const exportElement = useCallback(async (
+    ref: React.RefObject<HTMLDivElement | null>,
+    filename: string,
+    setSaving: (v: boolean) => void
+  ) => {
+    if (!ref.current) return;
+    setSaving(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(ref.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+      const link = document.createElement("a");
+      link.download = filename;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } finally {
+      setSaving(false);
+    }
+  }, []);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [urlCopied, setUrlCopied] = useState(false);
 
@@ -775,7 +800,7 @@ export default function StrategicTrends() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8" ref={pageRef}>
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <Button
@@ -879,6 +904,15 @@ export default function StrategicTrends() {
                   Cierre anual
                 </button>
               )}
+              {/* Botón Exportar página */}
+              <button
+                onClick={() => exportElement(pageRef, "tendencias-estrategicas.png", setExportingPage)}
+                disabled={exportingPage}
+                className="px-3 py-1 rounded-full text-sm font-medium transition-colors border bg-white text-emerald-600 border-emerald-300 hover:bg-emerald-50 flex items-center gap-1.5 disabled:opacity-60"
+              >
+                <Download size={13} />
+                {exportingPage ? "Exportando…" : "Exportar página"}
+              </button>
               {/* Botón Transferir URL para Power BI */}
               {companyId > 0 && (
                 <button
@@ -1007,14 +1041,24 @@ export default function StrategicTrends() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[75vh] overflow-y-auto">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-xl">
               <h2 className="text-lg font-bold text-slate-800">Desglose de Sistemas de Gestión</h2>
-              <button
-                onClick={() => setShowSystemsModal(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => exportElement(systemsModalRef, "sistemas-gestion.png", setExportingSystems)}
+                  disabled={exportingSystems}
+                  className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-800 border border-emerald-300 rounded-lg px-2.5 py-1 hover:bg-emerald-50 transition-colors disabled:opacity-60"
+                >
+                  <Download size={13} />
+                  {exportingSystems ? "Exportando…" : "Descargar"}
+                </button>
+                <button
+                  onClick={() => setShowSystemsModal(false)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
-            <div className="p-5">
+            <div className="p-5" ref={systemsModalRef}>
               <SystemsBreakdown companyId={companyId} />
             </div>
           </div>
@@ -1030,14 +1074,24 @@ export default function StrategicTrends() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[75vh] overflow-y-auto">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-xl">
               <h2 className="text-lg font-bold text-slate-800">Desglose de Objetivos Tácticos Estratégicos</h2>
-              <button
-                onClick={() => setShowOteModal(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => exportElement(oteModalRef, "desglose-ote.png", setExportingOte)}
+                  disabled={exportingOte}
+                  className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-800 border border-emerald-300 rounded-lg px-2.5 py-1 hover:bg-emerald-50 transition-colors disabled:opacity-60"
+                >
+                  <Download size={13} />
+                  {exportingOte ? "Exportando…" : "Descargar"}
+                </button>
+                <button
+                  onClick={() => setShowOteModal(false)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
-            <div className="p-5">
+            <div className="p-5" ref={oteModalRef}>
               <OteBreakdown companyId={companyId} />
             </div>
           </div>
