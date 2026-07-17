@@ -10,7 +10,6 @@ import { ChevronUp } from "lucide-react";
 
 const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"] as const;
 
-// Helpers para serializar/deserializar los meses seleccionados como string CSV "1,3,5"
 function parseMonths(value: string | null | undefined): number[] {
   if (!value) return [];
   return value.split(",").map(Number).filter((n) => n >= 1 && n <= 12);
@@ -20,13 +19,38 @@ function serializeMonths(months: number[]): string {
   return months.sort((a, b) => a - b).join(",");
 }
 
-function calcPercentage(planned: number[], completed: number[]): number {
+function calcPercentageMonths(planned: number[], completed: number[]): number {
   if (planned.length === 0) return 0;
   const fulfilled = completed.filter((m) => planned.includes(m)).length;
   return Math.round((fulfilled / planned.length) * 100);
 }
 
-// Componente de cuadritos de meses
+function calcVigencia(validUntil: string | null | undefined): {
+  pct: number;
+  status: "vigente" | "por_vencer" | "vencido" | "sin_fecha";
+  daysLeft: number;
+} {
+  if (!validUntil) return { pct: 0, status: "sin_fecha", daysLeft: 0 };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const until = new Date(validUntil);
+  until.setHours(0, 0, 0, 0);
+  const daysLeft = Math.ceil((until.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysLeft < 0) return { pct: 0, status: "vencido", daysLeft };
+  if (daysLeft <= 30) return { pct: 100, status: "por_vencer", daysLeft };
+  return { pct: 100, status: "vigente", daysLeft };
+}
+
+function VigenciaBadge({ status, daysLeft }: { status: string; daysLeft: number }) {
+  if (status === "vigente")
+    return <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-300">✓ Vigente</span>;
+  if (status === "por_vencer")
+    return <span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-300">⚠ Por vencer ({daysLeft}d)</span>;
+  if (status === "vencido")
+    return <span className="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-300">✗ Vencido</span>;
+  return <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-300">Sin fecha</span>;
+}
+
 function MonthGrid({
   label,
   selected,
@@ -87,6 +111,9 @@ interface Compliance {
   plannedMonths: string | null;
   completedMonths: string | null;
   observations: string | null;
+  evaluationMode: "meses" | "vigencia";
+  validFrom: string | null;
+  validUntil: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -100,12 +127,23 @@ interface FormData {
   plannedMonths: number[];
   completedMonths: number[];
   observations: string;
+  evaluationMode: "meses" | "vigencia";
+  validFrom: string;
+  validUntil: string;
 }
 
 export default function ProcessCompliances() {
   const [, navigate] = useLocation();
-  const selectedProcessId = localStorage.getItem("selectedProcessId");
+
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const queryProcessId = searchParams.get("processId");
+  const queryCompanyId = searchParams.get("companyId");
+  const selectedProcessId = queryProcessId || localStorage.getItem("selectedProcessId");
   const processId = selectedProcessId ? parseInt(selectedProcessId) : 0;
+
+  const backUrl = queryProcessId
+    ? `/process-characterization?processId=${queryProcessId}${queryCompanyId ? `&companyId=${queryCompanyId}` : ""}`
+    : "/process-characterization";
 
   const [compliances, setCompliances] = useState<Compliance[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -118,6 +156,9 @@ export default function ProcessCompliances() {
     plannedMonths: [],
     completedMonths: [],
     observations: "",
+    evaluationMode: "meses",
+    validFrom: "",
+    validUntil: "",
   });
   const [editingId, setEditingId] = useState<number | null>(null);
 
@@ -137,26 +178,28 @@ export default function ProcessCompliances() {
     }
   }, [compliancesData]);
 
-  // Guardado automático con debouncing para cambios en el formulario
+  // Guardado automático con debouncing
   useEffect(() => {
     if (!editingId || !formData.requirement) return;
-
     const timer = setTimeout(() => {
       handleUpdateCompliance(editingId);
     }, 1500);
-
     return () => clearTimeout(timer);
   }, [formData, editingId]);
 
-  // Estadísticas globales
+  function getCompliancePct(c: Compliance): number {
+    if (c.evaluationMode === "vigencia") {
+      return calcVigencia(c.validUntil).pct;
+    }
+    const planned = parseMonths(c.plannedMonths);
+    const completed = parseMonths(c.completedMonths);
+    return calcPercentageMonths(planned, completed);
+  }
+
   const { totalCompliances, averageCompliance } = useMemo(() => {
     const total = compliances.length;
     if (total === 0) return { totalCompliances: 0, averageCompliance: 0 };
-    const sum = compliances.reduce((acc, c) => {
-      const planned = parseMonths(c.plannedMonths);
-      const completed = parseMonths(c.completedMonths);
-      return acc + calcPercentage(planned, completed);
-    }, 0);
+    const sum = compliances.reduce((acc, c) => acc + getCompliancePct(c), 0);
     return { totalCompliances: total, averageCompliance: Math.round(sum / total) };
   }, [compliances]);
 
@@ -165,7 +208,6 @@ export default function ProcessCompliances() {
       toast.error("Por favor completa los campos requeridos");
       return;
     }
-
     try {
       await createMutation.mutateAsync({
         processId,
@@ -178,8 +220,10 @@ export default function ProcessCompliances() {
         plannedMonths: serializeMonths(formData.plannedMonths) || undefined,
         completedMonths: serializeMonths(formData.completedMonths) || undefined,
         observations: formData.observations || undefined,
+        evaluationMode: formData.evaluationMode,
+        validFrom: formData.validFrom || null,
+        validUntil: formData.validUntil || null,
       });
-
       toast.success("Obligación creada exitosamente");
       resetForm();
       await utils.processCompliances.list.invalidate({ processId });
@@ -190,7 +234,6 @@ export default function ProcessCompliances() {
 
   const handleUpdateCompliance = async (id: number) => {
     if (!formData.requirement || !formData.obligationType) return;
-
     try {
       await updateMutation.mutateAsync({
         id,
@@ -203,8 +246,10 @@ export default function ProcessCompliances() {
         plannedMonths: serializeMonths(formData.plannedMonths) || undefined,
         completedMonths: serializeMonths(formData.completedMonths) || undefined,
         observations: formData.observations || undefined,
+        evaluationMode: formData.evaluationMode,
+        validFrom: formData.validFrom || null,
+        validUntil: formData.validUntil || null,
       });
-
       await utils.processCompliances.list.invalidate({ processId });
     } catch {
       // silencioso en autosave
@@ -228,6 +273,9 @@ export default function ProcessCompliances() {
         plannedMonths: serializeMonths(formData.plannedMonths) || undefined,
         completedMonths: serializeMonths(formData.completedMonths) || undefined,
         observations: formData.observations || undefined,
+        evaluationMode: formData.evaluationMode,
+        validFrom: formData.validFrom || null,
+        validUntil: formData.validUntil || null,
       });
       toast.success("Obligación actualizada exitosamente");
       resetForm();
@@ -240,7 +288,6 @@ export default function ProcessCompliances() {
 
   const handleDeleteCompliance = async (id: number) => {
     if (!confirm("¿Estás seguro de que deseas eliminar esta obligación?")) return;
-
     try {
       await deleteMutation.mutateAsync({ id });
       toast.success("Obligación eliminada exitosamente");
@@ -260,6 +307,9 @@ export default function ProcessCompliances() {
       plannedMonths: parseMonths(compliance.plannedMonths),
       completedMonths: parseMonths(compliance.completedMonths),
       observations: compliance.observations || "",
+      evaluationMode: compliance.evaluationMode ?? "meses",
+      validFrom: compliance.validFrom ? String(compliance.validFrom).substring(0, 10) : "",
+      validUntil: compliance.validUntil ? String(compliance.validUntil).substring(0, 10) : "",
     });
     setEditingId(compliance.id);
     setExpandedId(null);
@@ -275,6 +325,9 @@ export default function ProcessCompliances() {
       plannedMonths: [],
       completedMonths: [],
       observations: "",
+      evaluationMode: "meses",
+      validFrom: "",
+      validUntil: "",
     });
   };
 
@@ -284,10 +337,7 @@ export default function ProcessCompliances() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-4xl font-bold text-gray-900">Cumplimientos del Proceso</h1>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/process-characterization")}
-            >
+            <Button variant="outline" onClick={() => navigate(backUrl)}>
               ← Volver
             </Button>
           </div>
@@ -321,9 +371,12 @@ export default function ProcessCompliances() {
             </Card>
           ) : (
             compliances.map((compliance) => {
+              const mode = compliance.evaluationMode ?? "meses";
               const planned = parseMonths(compliance.plannedMonths);
               const completed = parseMonths(compliance.completedMonths);
-              const pct = calcPercentage(planned, completed);
+              const pctMeses = calcPercentageMonths(planned, completed);
+              const vigInfo = calcVigencia(compliance.validUntil);
+              const pct = mode === "vigencia" ? vigInfo.pct : pctMeses;
 
               return (
                 <Card key={compliance.id} className="bg-white">
@@ -335,7 +388,14 @@ export default function ProcessCompliances() {
                       <h3 className="font-semibold text-gray-900 mb-2">{compliance.requirement}</h3>
                       <div className="flex flex-wrap gap-3 text-sm text-gray-600 items-center">
                         <span className="px-2 py-1 bg-gray-100 rounded">{compliance.obligationType}</span>
-                        {/* Barra de progreso compacta */}
+                        {mode === "vigencia" ? (
+                          <span className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-xs font-medium border border-indigo-200">Por Vigencia</span>
+                        ) : (
+                          <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs font-medium border border-blue-200">Por Meses</span>
+                        )}
+                        {mode === "vigencia" && (
+                          <VigenciaBadge status={vigInfo.status} daysLeft={vigInfo.daysLeft} />
+                        )}
                         <div className="flex items-center gap-2">
                           <div className="w-28 h-2 bg-gray-200 rounded-full overflow-hidden">
                             <div
@@ -369,14 +429,12 @@ export default function ProcessCompliances() {
                             <p className="text-gray-600 whitespace-pre-wrap">{compliance.description}</p>
                           </div>
                         )}
-
                         {compliance.obligationType === "Otros" && compliance.otherObligationType && (
                           <div>
                             <label className="text-sm font-semibold text-gray-700">Tipo Específico</label>
                             <p className="text-gray-600">{compliance.otherObligationType}</p>
                           </div>
                         )}
-
                         {compliance.responsible && (
                           <div>
                             <label className="text-sm font-semibold text-gray-700">Responsable</label>
@@ -384,52 +442,88 @@ export default function ProcessCompliances() {
                           </div>
                         )}
 
-                        {/* Cuadritos de meses - solo lectura en vista */}
-                        <div className="space-y-3">
-                          <div>
-                            <p className="text-xs font-semibold text-gray-600 mb-1">Planificado</p>
-                            <div className="flex flex-wrap gap-1">
-                              {MONTHS.map((name, i) => {
-                                const month = i + 1;
-                                const isPlanned = planned.includes(month);
-                                return (
-                                  <div
-                                    key={month}
-                                    className={`w-9 h-9 rounded text-xs font-semibold border flex items-center justify-center
-                                      ${isPlanned ? "bg-blue-500 text-white border-transparent" : "bg-gray-50 text-gray-400 border-gray-200"}`}
-                                  >
-                                    {name}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-gray-600 mb-1">Cumplimiento</p>
-                            <div className="flex flex-wrap gap-1">
-                              {MONTHS.map((name, i) => {
-                                const month = i + 1;
-                                const isDone = completed.includes(month);
-                                const wasPlanned = planned.includes(month);
-                                return (
-                                  <div
-                                    key={month}
-                                    className={`w-9 h-9 rounded text-xs font-semibold border flex items-center justify-center
-                                      ${isDone && wasPlanned
-                                        ? "bg-green-500 text-white border-transparent"
-                                        : isDone && !wasPlanned
-                                        ? "bg-yellow-400 text-white border-transparent"
-                                        : "bg-gray-50 text-gray-400 border-gray-200"}`}
-                                  >
-                                    {name}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-700">Modo de Evaluación:</span>
+                          {mode === "vigencia" ? (
+                            <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-semibold border border-indigo-200">Acciones por Vigencia</span>
+                          ) : (
+                            <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-semibold border border-blue-200">Acciones por Meses</span>
+                          )}
                         </div>
 
-                        {/* % Cumplimiento */}
+                        {mode === "meses" ? (
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 mb-1">Planificado</p>
+                              <div className="flex flex-wrap gap-1">
+                                {MONTHS.map((name, i) => {
+                                  const month = i + 1;
+                                  const isPlanned = planned.includes(month);
+                                  return (
+                                    <div
+                                      key={month}
+                                      className={`w-9 h-9 rounded text-xs font-semibold border flex items-center justify-center
+                                        ${isPlanned ? "bg-blue-500 text-white border-transparent" : "bg-gray-50 text-gray-400 border-gray-200"}`}
+                                    >
+                                      {name}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 mb-1">Cumplimiento</p>
+                              <div className="flex flex-wrap gap-1">
+                                {MONTHS.map((name, i) => {
+                                  const month = i + 1;
+                                  const isDone = completed.includes(month);
+                                  const wasPlanned = planned.includes(month);
+                                  return (
+                                    <div
+                                      key={month}
+                                      className={`w-9 h-9 rounded text-xs font-semibold border flex items-center justify-center
+                                        ${isDone && wasPlanned
+                                          ? "bg-green-500 text-white border-transparent"
+                                          : isDone && !wasPlanned
+                                          ? "bg-yellow-400 text-white border-transparent"
+                                          : "bg-gray-50 text-gray-400 border-gray-200"}`}
+                                    >
+                                      {name}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="border border-indigo-100 rounded-lg p-4 bg-indigo-50 space-y-3">
+                            <div className="grid grid-cols-2 gap-4">
+                              {compliance.validFrom && (
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-600 mb-1">Vigente desde</p>
+                                  <p className="text-sm text-gray-800 font-medium">
+                                    {new Date(compliance.validFrom).toLocaleDateString("es-EC", { day: "2-digit", month: "long", year: "numeric" })}
+                                  </p>
+                                </div>
+                              )}
+                              {compliance.validUntil && (
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-600 mb-1">Vigente hasta</p>
+                                  <p className="text-sm text-gray-800 font-medium">
+                                    {new Date(compliance.validUntil).toLocaleDateString("es-EC", { day: "2-digit", month: "long", year: "numeric" })}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <VigenciaBadge status={vigInfo.status} daysLeft={vigInfo.daysLeft} />
+                              {vigInfo.status === "vigente" && <span className="text-xs text-gray-500">Vence en {vigInfo.daysLeft} días</span>}
+                              {vigInfo.status === "por_vencer" && <span className="text-xs text-yellow-700 font-medium">¡Renovar pronto!</span>}
+                              {vigInfo.status === "vencido" && <span className="text-xs text-red-700 font-medium">Venció hace {Math.abs(vigInfo.daysLeft)} días</span>}
+                            </div>
+                          </div>
+                        )}
+
                         <div>
                           <label className="text-sm font-semibold text-gray-700">% Cumplimiento</label>
                           <div className="flex items-center gap-3 mt-1">
@@ -447,9 +541,18 @@ export default function ProcessCompliances() {
                               {pct}%
                             </span>
                           </div>
-                          {planned.length > 0 && (
+                          {mode === "meses" && planned.length > 0 && (
                             <p className="text-xs text-gray-500 mt-1">
                               {completed.filter((m) => planned.includes(m)).length} de {planned.length} meses planificados cumplidos
+                            </p>
+                          )}
+                          {mode === "vigencia" && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {vigInfo.status === "vigente" || vigInfo.status === "por_vencer"
+                                ? "Documento vigente — 100% de cumplimiento"
+                                : vigInfo.status === "vencido"
+                                ? "Documento vencido — 0% de cumplimiento"
+                                : "Sin fecha de vigencia registrada"}
                             </p>
                           )}
                         </div>
@@ -462,18 +565,10 @@ export default function ProcessCompliances() {
                         )}
 
                         <div className="flex gap-2 pt-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditCompliance(compliance)}
-                          >
+                          <Button variant="outline" size="sm" onClick={() => handleEditCompliance(compliance)}>
                             Editar
                           </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteCompliance(compliance.id)}
-                          >
+                          <Button variant="destructive" size="sm" onClick={() => handleDeleteCompliance(compliance.id)}>
                             Eliminar
                           </Button>
                         </div>
@@ -493,7 +588,6 @@ export default function ProcessCompliances() {
           </CardHeader>
           <CardContent className="pt-6 space-y-5">
 
-            {/* Obligación */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Obligación *</label>
               <Textarea
@@ -504,7 +598,6 @@ export default function ProcessCompliances() {
               />
             </div>
 
-            {/* Descripción de la obligación */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Descripción de la obligación</label>
               <Textarea
@@ -515,7 +608,6 @@ export default function ProcessCompliances() {
               />
             </div>
 
-            {/* Tipo de Obligación */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Obligación *</label>
               <select
@@ -543,7 +635,6 @@ export default function ProcessCompliances() {
               </div>
             )}
 
-            {/* Responsable */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Responsable</label>
               <Input
@@ -553,56 +644,123 @@ export default function ProcessCompliances() {
               />
             </div>
 
-            {/* Planificado - cuadritos de meses */}
-            <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50">
-              <MonthGrid
-                label="Planificado — marca los meses en que planificas cumplir"
-                selected={formData.plannedMonths}
-                onChange={(months) => setFormData({ ...formData, plannedMonths: months })}
-                colorClass="bg-blue-500"
-              />
-              <MonthGrid
-                label="Cumplimiento — marca los meses en que efectivamente cumpliste"
-                selected={formData.completedMonths}
-                onChange={(months) => setFormData({ ...formData, completedMonths: months })}
-                colorClass="bg-green-500"
-              />
-
-              {/* % Cumplimiento calculado */}
-              {formData.plannedMonths.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-600 mb-1">% Cumplimiento</p>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          calcPercentage(formData.plannedMonths, formData.completedMonths) >= 80
-                            ? "bg-green-500"
-                            : calcPercentage(formData.plannedMonths, formData.completedMonths) >= 50
-                            ? "bg-yellow-400"
-                            : "bg-red-400"
-                        }`}
-                        style={{ width: `${calcPercentage(formData.plannedMonths, formData.completedMonths)}%` }}
-                      />
-                    </div>
-                    <span className={`text-lg font-bold min-w-[3rem] text-right ${
-                      calcPercentage(formData.plannedMonths, formData.completedMonths) >= 80
-                        ? "text-green-700"
-                        : calcPercentage(formData.plannedMonths, formData.completedMonths) >= 50
-                        ? "text-yellow-600"
-                        : "text-red-600"
-                    }`}>
-                      {calcPercentage(formData.plannedMonths, formData.completedMonths)}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {formData.completedMonths.filter((m) => formData.plannedMonths.includes(m)).length} de {formData.plannedMonths.length} meses planificados cumplidos
-                  </p>
-                </div>
-              )}
+            {/* Selector de modo de evaluación */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Modo de Evaluación</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, evaluationMode: "meses" })}
+                  className={`flex-1 py-2 px-4 rounded-lg border text-sm font-semibold transition-colors ${
+                    formData.evaluationMode === "meses"
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-gray-600 border-gray-300 hover:border-blue-400"
+                  }`}
+                >
+                  📅 Acciones por Meses
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, evaluationMode: "vigencia" })}
+                  className={`flex-1 py-2 px-4 rounded-lg border text-sm font-semibold transition-colors ${
+                    formData.evaluationMode === "vigencia"
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-white text-gray-600 border-gray-300 hover:border-indigo-400"
+                  }`}
+                >
+                  🗓 Acciones por Vigencia
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {formData.evaluationMode === "meses"
+                  ? "Ideal para obligaciones recurrentes (reportes mensuales, inspecciones periódicas, etc.)"
+                  : "Ideal para permisos, licencias o documentos con fecha de vencimiento (Permiso IATA, nombramientos, etc.)"}
+              </p>
             </div>
 
-            {/* Observaciones */}
+            {formData.evaluationMode === "meses" ? (
+              <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50">
+                <MonthGrid
+                  label="Planificado — marca los meses en que planificas cumplir"
+                  selected={formData.plannedMonths}
+                  onChange={(months) => setFormData({ ...formData, plannedMonths: months })}
+                  colorClass="bg-blue-500"
+                />
+                <MonthGrid
+                  label="Cumplimiento — marca los meses en que efectivamente cumpliste"
+                  selected={formData.completedMonths}
+                  onChange={(months) => setFormData({ ...formData, completedMonths: months })}
+                  colorClass="bg-green-500"
+                />
+                {formData.plannedMonths.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-600 mb-1">% Cumplimiento</p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            calcPercentageMonths(formData.plannedMonths, formData.completedMonths) >= 80
+                              ? "bg-green-500"
+                              : calcPercentageMonths(formData.plannedMonths, formData.completedMonths) >= 50
+                              ? "bg-yellow-400"
+                              : "bg-red-400"
+                          }`}
+                          style={{ width: `${calcPercentageMonths(formData.plannedMonths, formData.completedMonths)}%` }}
+                        />
+                      </div>
+                      <span className={`text-lg font-bold min-w-[3rem] text-right ${
+                        calcPercentageMonths(formData.plannedMonths, formData.completedMonths) >= 80
+                          ? "text-green-700"
+                          : calcPercentageMonths(formData.plannedMonths, formData.completedMonths) >= 50
+                          ? "text-yellow-600"
+                          : "text-red-600"
+                      }`}>
+                        {calcPercentageMonths(formData.plannedMonths, formData.completedMonths)}%
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formData.completedMonths.filter((m) => formData.plannedMonths.includes(m)).length} de {formData.plannedMonths.length} meses planificados cumplidos
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="border border-indigo-200 rounded-lg p-4 space-y-4 bg-indigo-50">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Vigente desde</label>
+                    <Input
+                      type="date"
+                      value={formData.validFrom}
+                      onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
+                      className="bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Vigente hasta *</label>
+                    <Input
+                      type="date"
+                      value={formData.validUntil}
+                      onChange={(e) => setFormData({ ...formData, validUntil: e.target.value })}
+                      className="bg-white"
+                    />
+                  </div>
+                </div>
+                {formData.validUntil && (() => {
+                  const v = calcVigencia(formData.validUntil);
+                  return (
+                    <div className="flex items-center gap-3">
+                      <VigenciaBadge status={v.status} daysLeft={v.daysLeft} />
+                      <span className="text-sm font-bold">{v.pct}% de cumplimiento</span>
+                      {v.status === "vigente" && <span className="text-xs text-gray-500">Vence en {v.daysLeft} días</span>}
+                      {v.status === "por_vencer" && <span className="text-xs text-yellow-700 font-semibold">¡Renovar pronto!</span>}
+                      {v.status === "vencido" && <span className="text-xs text-red-700 font-semibold">Venció hace {Math.abs(v.daysLeft)} días</span>}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Observaciones</label>
               <Textarea
@@ -616,27 +774,15 @@ export default function ProcessCompliances() {
             <div className="flex gap-2 pt-2">
               {editingId ? (
                 <>
-                  <Button
-                    onClick={handleSaveEdit}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
+                  <Button onClick={handleSaveEdit} className="bg-blue-600 hover:bg-blue-700">
                     Actualizar
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      resetForm();
-                      setEditingId(null);
-                    }}
-                  >
+                  <Button variant="outline" onClick={() => { resetForm(); setEditingId(null); }}>
                     Cancelar
                   </Button>
                 </>
               ) : (
-                <Button
-                  onClick={handleAddCompliance}
-                  className="bg-green-600 hover:bg-green-700"
-                >
+                <Button onClick={handleAddCompliance} className="bg-green-600 hover:bg-green-700">
                   Agregar Obligación
                 </Button>
               )}

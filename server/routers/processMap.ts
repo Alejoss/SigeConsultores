@@ -22,6 +22,7 @@ const PROCESS_MAP_ALLOWED_TYPES = new Set([
   "image/webp",
   "image/bmp",
   "image/svg+xml",
+  "application/pdf",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel",
 ]);
@@ -45,6 +46,7 @@ function resolveProcessMapMime(fileName: string, fileType: string): string {
     svg: "image/svg+xml",
     xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     xls: "application/vnd.ms-excel",
+    pdf: "application/pdf",
   };
   return byExt[ext ?? ""] ?? "application/octet-stream";
 }

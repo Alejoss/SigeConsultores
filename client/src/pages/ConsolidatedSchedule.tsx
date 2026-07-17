@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Clock, CalendarDays, HelpCircle, BarChart2 } from "lucide-react";
+import { SimpleGanttChart, SimpleGanttActivity } from "@/components/SimpleGanttChart";
 
 interface ScheduleActivity {
   id: string;
@@ -24,6 +25,36 @@ const MONTHS = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
 ];
+
+function IcsHelpTooltip() {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="relative inline-block">
+      <button
+        type="button"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        className="text-gray-400 hover:text-gray-600 transition-colors"
+        aria-label="Cómo importar el archivo .ics"
+      >
+        <HelpCircle className="w-4 h-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-6 z-50 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs text-gray-700">
+          <p className="font-semibold text-gray-900 mb-2">¿Cómo importar?</p>
+          <ol className="space-y-1 list-decimal list-inside">
+            <li>Descarga el archivo <span className="font-medium">.ics</span></li>
+            <li>Abre <span className="font-medium">Google Calendar</span> → Configuración → Importar y exportar → Importar</li>
+            <li>Selecciona el archivo descargado y haz clic en <span className="font-medium">Importar</span></li>
+          </ol>
+          <p className="mt-2 text-gray-500">También funciona con Outlook, Apple Calendar y cualquier app de calendario estándar. Al reimportar, los eventos existentes se actualizan sin duplicarse.</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ConsolidatedSchedule() {
   const [, navigate] = useLocation();
@@ -53,22 +84,61 @@ export default function ConsolidatedSchedule() {
 
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  const [activities, setActivities] = useState<ScheduleActivity[]>([]);
+  const [showGantt, setShowGantt] = useState(false);
 
   const { data: consolidatedData, isLoading } = trpc.consolidatedSchedule.getConsolidatedSchedule.useQuery(
     { processId },
-    { enabled: processId > 0 }
+    { 
+      enabled: processId > 0,
+      staleTime: 0,
+      gcTime: 0,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+    }
   );
 
-  useEffect(() => {
-    if (consolidatedData) {
-      setActivities(consolidatedData as ScheduleActivity[]);
-    }
+  // Normalize badges directly from fresh server data
+  const activities = useMemo(() => {
+    if (!consolidatedData) return [];
+    return (consolidatedData as ScheduleActivity[]).map(a => ({
+      ...a,
+      badge: a.type === "objective" ? "OTE" :
+             a.type === "compliance" ? "Cumplimientos" :
+             a.type === "stakeholder" ? "Gestión con Partes Interesadas" :
+             a.badge,
+    }));
   }, [consolidatedData]);
 
-  // Filter activities by current month and year
+  // ─── Convertir actividades a SimpleGanttActivity ───────────────────────────
+  const ganttActivities: SimpleGanttActivity[] = useMemo(() => {
+    if (!activities || activities.length === 0) return [];
+    return activities.map(a => {
+      const raw = a.dueDate;
+      const date = typeof raw === 'string'
+        ? new Date(raw.includes('T') ? raw : raw + 'T12:00:00')
+        : new Date(raw);
+      const label = a.action.length > 50 ? a.action.slice(0, 47) + '…' : a.action;
+      return {
+        id: a.id,
+        label,
+        badge: a.badge,
+        badgeColor: a.badgeColor || '#6b7280',
+        dueDate: date,
+        completed: a.completed === 'SI',
+      } as SimpleGanttActivity;
+    }).sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+  }, [activities]);
+
+  // Filter activities by current month and year.
+  // Use UTC methods to avoid timezone-shift bugs: dates stored as "YYYY-MM-DD" are
+  // parsed as UTC midnight by JS, so comparing with local getMonth() shifts them
+  // one day back in UTC-N timezones (e.g. Ecuador UTC-5).
   const monthActivities = activities.filter(activity => {
-    const activityDate = new Date(activity.dueDate);
+    // Parse date string as local date to avoid UTC offset shifting the day
+    const raw = activity.dueDate;
+    const activityDate = typeof raw === 'string'
+      ? new Date(raw.includes('T') ? raw : raw + 'T12:00:00')
+      : new Date(raw);
     return activityDate.getMonth() === currentMonth && activityDate.getFullYear() === currentYear;
   });
 
@@ -100,6 +170,74 @@ export default function ConsolidatedSchedule() {
     }
   };
 
+  // ─── Exportar a .ics (iCalendar) ─────────────────────────────────────────────
+  const exportToICS = () => {
+    if (!activities || activities.length === 0) return;
+
+    const escapeICS = (str: string) =>
+      (str || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+
+    const formatDate = (d: Date | string) => {
+      const date = typeof d === 'string'
+        ? new Date(d.includes('T') ? d : d + 'T12:00:00')
+        : new Date(d);
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${y}${m}${day}`;
+    };
+
+    const now = new Date();
+    const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+    const lines: string[] = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//SIGE Consultores//Cronograma Consolidado//ES',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'X-WR-CALNAME:Cronograma SIGE',
+      'X-WR-TIMEZONE:America/Bogota',
+    ];
+
+    activities.forEach(activity => {
+      // UID estable basado en el id de la actividad — evita duplicados al reimportar
+      const uid = `${activity.id}@sige.consultores`;
+      const dateStr = formatDate(activity.dueDate);
+      const summary = escapeICS(`[${activity.badge}] ${activity.action}`);
+      const description = escapeICS(
+        `Módulo: ${activity.badge}\n` +
+        (activity.element ? `Elemento: ${activity.element}\n` : '') +
+        `Estado: ${activity.completed === 'SI' ? 'Completada' : 'Pendiente'}\n` +
+        `Seguimiento: ${activity.completionField}`
+      );
+
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:${uid}`);
+      lines.push(`DTSTAMP:${stamp}`);
+      lines.push(`DTSTART;VALUE=DATE:${dateStr}`);
+      lines.push(`DTEND;VALUE=DATE:${dateStr}`);
+      lines.push(`SUMMARY:${summary}`);
+      lines.push(`DESCRIPTION:${description}`);
+      lines.push(`STATUS:${activity.completed === 'SI' ? 'COMPLETED' : 'NEEDS-ACTION'}`);
+      if (activity.completed === 'SI') lines.push(`COMPLETED:${stamp}`);
+      lines.push('END:VEVENT');
+    });
+
+    lines.push('END:VCALENDAR');
+
+    const icsContent = lines.join('\r\n');
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cronograma-sige-proceso-${processId}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const getDaysStatus = (dueDate: Date | string): { days: number; status: "upcoming" | "overdue" | "today" } => {
     const date = new Date(dueDate);
     const today = new Date();
@@ -121,12 +259,32 @@ export default function ConsolidatedSchedule() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-4xl font-bold text-gray-900">Cronograma Consolidado</h1>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/process-characterization")}
-            >
-              ← Volver
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={exportToICS}
+                disabled={!activities || activities.length === 0}
+                title="Exportar todas las actividades a Google Calendar, Outlook o cualquier app de calendario"
+              >
+                <CalendarDays className="w-4 h-4 mr-2" />
+                Exportar a Calendario (.ics)
+              </Button>
+              <IcsHelpTooltip />
+              <Button
+                variant={showGantt ? "default" : "outline"}
+                onClick={() => setShowGantt(v => !v)}
+                title="Ver diagrama de Gantt con todas las actividades planificadas"
+              >
+                <BarChart2 className="w-4 h-4 mr-2" />
+                Diagrama de Gantt
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/process-characterization")}
+              >
+                ← Volver
+              </Button>
+            </div>
           </div>
 
           {/* Statistics Cards */}
@@ -158,6 +316,31 @@ export default function ConsolidatedSchedule() {
           </div>
         </div>
 
+        {/* Diagrama de Gantt */}
+        {showGantt && ganttActivities.length === 0 && (
+          <Card className="bg-white mb-6">
+            <CardContent className="pt-6 pb-6 text-center text-gray-500">
+              No hay actividades cargadas para mostrar en el diagrama. Asegúrate de acceder al Cronograma Consolidado desde la Caracterización de Procesos de un proceso específico.
+            </CardContent>
+          </Card>
+        )}
+        {showGantt && ganttActivities.length > 0 && (
+          <Card className="bg-white mb-6">
+            <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <BarChart2 className="w-5 h-5 text-blue-600" />
+                  Diagrama de Gantt — Todas las actividades
+                </CardTitle>
+                <span className="text-xs text-gray-500">{ganttActivities.length} actividades · Vista mensual</span>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 pb-2">
+              <SimpleGanttChart activities={ganttActivities} />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Main Schedule by Month */}
         <Card className="bg-white">
           <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b">
@@ -170,9 +353,9 @@ export default function ConsolidatedSchedule() {
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <CardTitle className="text-2xl min-w-[200px]">
-                  {MONTHS[currentMonth]} {currentYear}
-                </CardTitle>
+                <h2 key={`${currentYear}-${currentMonth}`} className="text-2xl font-semibold min-w-[200px]">
+                  {MONTHS[currentMonth]} de {currentYear}
+                </h2>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -194,7 +377,7 @@ export default function ConsolidatedSchedule() {
                 No hay actividades planificadas para {MONTHS[currentMonth].toLowerCase()} de {currentYear}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div key={`${currentYear}-${currentMonth}`} className="space-y-4">
                 {monthActivities.map((activity) => {
                   const { days, status } = getDaysStatus(activity.dueDate);
                   const isOverdue = activity.completed === "NO" && status === "overdue";
@@ -243,7 +426,7 @@ export default function ConsolidatedSchedule() {
                         <div className="flex-1">
                           {/* Module Badge - Prominently displayed */}
                           <div className="mb-3 flex items-center gap-2">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${activity.badgeColor}`}>
+                            <span translate="no" className={`px-3 py-1 rounded-full text-xs font-bold border ${activity.badgeColor}`}>
                               {activity.badge}
                             </span>
                             {activity.completionPercentage !== undefined && activity.type === "objective" && (
@@ -260,7 +443,7 @@ export default function ConsolidatedSchedule() {
 
                           {/* Element/Category */}
                           {activity.element && (
-                            <div className="text-xs text-gray-500 mb-1">
+                            <div translate="no" className="text-xs text-gray-500 mb-1">
                               {activity.element}
                             </div>
                           )}
@@ -311,9 +494,9 @@ export default function ConsolidatedSchedule() {
             <CardTitle className="text-lg">Elementos Consolidados</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div translate="no" className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="px-3 py-2 rounded border text-sm font-semibold text-center bg-blue-100 text-blue-700 border-blue-300">
-                Criticidad
+                Gestión con Partes Interesadas
               </div>
               <div className="px-3 py-2 rounded border text-sm font-semibold text-center bg-green-100 text-green-700 border-green-300">
                 Fortaleza
@@ -328,13 +511,10 @@ export default function ConsolidatedSchedule() {
                 Amenaza
               </div>
               <div className="px-3 py-2 rounded border text-sm font-semibold text-center bg-yellow-100 text-yellow-700 border-yellow-300">
-                Objetivo Táctico
+                OTE
               </div>
               <div className="px-3 py-2 rounded border text-sm font-semibold text-center bg-pink-100 text-pink-700 border-pink-300">
-                Cumplimiento
-              </div>
-              <div className="px-3 py-2 rounded border text-sm font-semibold text-center bg-indigo-100 text-indigo-700 border-indigo-300">
-                Capacitación
+                Cumplimientos
               </div>
             </div>
           </CardContent>
@@ -347,7 +527,9 @@ export default function ConsolidatedSchedule() {
               <strong>Nota:</strong> Este cronograma es una vista consolidada de todas tus planificaciones. 
               Los badges de color identifican el módulo de origen de cada actividad. 
               Para completar o actualizar la información de cada actividad, dirígete al módulo específico 
-              (Criticidad de Partes Interesadas, Matriz FODA, Objetivos Tácticos, Cumplimientos o Capacitaciones).
+              (Gestión de Partes Interesadas, Matriz FODA, Objetivos Tácticos de Gestión, Objetivos Tácticos Estratégicos o Cumplimientos).
+              El botón <strong>"Exportar a Calendario (.ics)"</strong> descarga un archivo compatible con Google Calendar, Outlook, Apple Calendar y cualquier aplicación de calendario estándar.
+              Al reimportar el archivo, los eventos existentes se actualizan sin duplicarse.
             </p>
           </CardContent>
         </Card>

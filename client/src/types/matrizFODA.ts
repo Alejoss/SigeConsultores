@@ -10,7 +10,7 @@ export type EstimacionType = 'Crítico' | 'Alto' | 'Medio' | 'Bajo';
 
 // ─── Tipos OTG ────────────────────────────────────────────────────────────────
 export type TrackingOTGType = 'puntual' | 'mensual_sumatoria' | 'mensual_promedio' | 'mensual_checklist';
-export const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+export const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'Mayo', 'Jun', 'Jul', 'Agos', 'Sep', 'Oct', 'Nov', 'Dic'];
 export interface AccionOTG {
   id: string;
   accion: string;

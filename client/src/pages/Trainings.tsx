@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,8 +7,21 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { ChevronUp, ChevronDown, Download } from "lucide-react";
+import { ChevronUp, ChevronDown, Download, Upload, FileText, Trash2, X, Paperclip, BarChart2 } from "lucide-react";
 import * as XLSX from "xlsx";
+
+interface ImportRow {
+  name: string;
+  type?: "Mandatoria" | "Reglamentaria" | "Sugerida";
+  objective?: string;
+  audience?: string;
+  plannedAttendees?: number;
+  modality?: "Presencial" | "Online" | "Externa";
+  responsible?: string;
+  plannedDate?: string;
+  _rowIndex: number;
+  _error?: string;
+}
 
 interface Training {
   id: number;
@@ -57,15 +70,512 @@ const emptyForm: FormData = {
   actualAttendees: "",
 };
 
+// ─── Constantes para Gantt ────────────────────────────────────────────────────
+const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+const TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  Mandatoria:    { bg: "bg-red-100",    text: "text-red-800",    border: "border-red-300" },
+  Reglamentaria: { bg: "bg-orange-100", text: "text-orange-800", border: "border-orange-300" },
+  Sugerida:      { bg: "bg-blue-100",   text: "text-blue-800",   border: "border-blue-300" },
+};
+
+// ─── Componente: Cronograma de Gantt ─────────────────────────────────────────
+function GanttPanel({ trainings, onClose }: { trainings: Training[]; onClose: () => void }) {
+  const currentYear = new Date().getFullYear();
+  const [year, setYear] = useState(currentYear);
+
+  // Años disponibles (de las fechas planificadas + año actual)
+  const years = Array.from(new Set([
+    currentYear,
+    ...trainings
+      .filter(t => t.plannedDate)
+      .map(t => new Date(t.plannedDate as Date | string).getFullYear()),
+  ])).sort();
+
+  // Capacitaciones con fecha en el año seleccionado
+  const withDate = trainings
+    .filter(t => t.plannedDate)
+    .map(t => ({
+      ...t,
+      month: new Date(t.plannedDate as Date | string).getMonth(),
+      planYear: new Date(t.plannedDate as Date | string).getFullYear(),
+    }))
+    .filter(t => t.planYear === year)
+    .sort((a, b) => a.month - b.month);
+
+  // Capacitaciones sin fecha planificada
+  const noDate = trainings.filter(t => !t.plannedDate);
+
+  const currentMonth = new Date().getMonth();
+
+  return (
+    <div className="mt-6 bg-white border rounded-xl shadow-sm overflow-hidden">
+      {/* Cabecera */}
+      <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-b">
+        <div className="flex items-center gap-3 flex-wrap">
+          <BarChart2 className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+          <h3 className="font-bold text-gray-800 text-lg">Cronograma de Gantt — Capacitaciones</h3>
+          {/* Selector de año */}
+          <div className="flex items-center gap-1 ml-2">
+            {years.map(y => (
+              <button
+                key={y}
+                onClick={() => setYear(y)}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  y === year
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white border text-gray-600 hover:bg-indigo-50"
+                }`}
+              >
+                {y}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors ml-4">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Leyenda */}
+      <div className="flex gap-4 px-5 py-2 bg-gray-50 border-b text-xs flex-wrap">
+        {Object.entries(TYPE_COLORS).map(([type, colors]) => (
+          <div key={type} className="flex items-center gap-1.5">
+            <span className={`w-3 h-3 rounded-sm border ${colors.bg} ${colors.border}`} />
+            <span className="text-gray-600">{type}</span>
+          </div>
+        ))}
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm border bg-green-100 border-green-300" />
+          <span className="text-gray-600">Impartida</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm border bg-gray-100 border-gray-300" />
+          <span className="text-gray-500">Sin fecha</span>
+        </div>
+      </div>
+
+      {/* Tabla */}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[900px] text-sm border-collapse">
+          <thead>
+            <tr className="bg-gray-50 border-b">
+              <th className="text-left px-4 py-2.5 font-semibold text-gray-700 w-56 sticky left-0 bg-gray-50 z-10 border-r">
+                Capacitación
+              </th>
+              {MONTHS.map((m, i) => (
+                <th
+                  key={i}
+                  className={`text-center py-2.5 font-medium text-xs w-16 ${
+                    i === currentMonth && year === currentYear
+                      ? "bg-indigo-100 text-indigo-700"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {m}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {withDate.length === 0 && noDate.length === 0 ? (
+              <tr>
+                <td colSpan={13} className="text-center py-10 text-gray-400 italic">
+                  No hay capacitaciones registradas
+                </td>
+              </tr>
+            ) : withDate.length === 0 ? (
+              <tr>
+                <td colSpan={13} className="text-center py-6 text-gray-400 italic">
+                  No hay capacitaciones con fecha planificada en {year}
+                </td>
+              </tr>
+            ) : null}
+
+            {withDate.map((training, rowIndex) => {
+              const colors = TYPE_COLORS[training.type] ?? TYPE_COLORS["Sugerida"];
+              const isCompleted = training.completed === "SI";
+              // Primeras 3 filas: tooltip hacia abajo; el resto: hacia arriba
+              const tooltipDown = rowIndex < 3;
+              return (
+                <tr key={training.id} className="border-b hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-2 sticky left-0 bg-white z-10 border-r">
+                    <div
+                      className="font-medium text-gray-800 truncate max-w-[200px]"
+                      title={training.name}
+                    >
+                      {training.name}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-0.5">{training.type}</div>
+                  </td>
+                  {MONTHS.map((_, colMonth) => {
+                    const isThisMonth = colMonth === training.month;
+                    const isCurrent = colMonth === currentMonth && year === currentYear;
+                    return (
+                      <td
+                        key={colMonth}
+                        className={`text-center py-2 ${isCurrent ? "bg-indigo-50" : ""}`}
+                      >
+                        {isThisMonth ? (
+                          <div className="relative group flex justify-center">
+                            {/* Marcador */}
+                            <div
+                              className={`mx-1 rounded px-1 py-1 text-xs font-bold border cursor-default ${
+                                isCompleted
+                                  ? "bg-green-100 text-green-800 border-green-300"
+                                  : `${colors.bg} ${colors.text} ${colors.border}`
+                              }`}
+                            >
+                              {isCompleted ? "✓" : "●"}
+                            </div>
+                            {/* Tooltip enriquecido */}
+                            <div className={`absolute ${tooltipDown ? 'top-full mt-2' : 'bottom-full mb-2'} left-1/2 -translate-x-1/2 z-50 hidden group-hover:block pointer-events-none`}>
+                              <div className="bg-gray-900 text-white text-xs rounded-lg shadow-xl p-3 min-w-[200px] max-w-[280px] whitespace-normal">
+                                <div className="font-semibold text-sm mb-1.5 leading-tight">{training.name}</div>
+                                <div className="space-y-1 text-gray-300">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-gray-400">Tipo:</span>
+                                    <span className={isCompleted ? "text-green-400" : "text-white"}>{training.type}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-gray-400">Fecha:</span>
+                                    <span>{MONTHS[training.month]} {year}</span>
+                                  </div>
+                                  {training.responsible && (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-gray-400">Responsable:</span>
+                                      <span>{training.responsible}</span>
+                                    </div>
+                                  )}
+                                  {training.modality && (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-gray-400">Modalidad:</span>
+                                      <span>{training.modality}</span>
+                                    </div>
+                                  )}
+                                  {training.objective && (
+                                    <div className="mt-1.5 pt-1.5 border-t border-gray-700">
+                                      <span className="text-gray-400">Objetivo:</span>
+                                      <div className="mt-0.5 text-gray-200 leading-snug line-clamp-3">{training.objective}</div>
+                                    </div>
+                                  )}
+                                  {isCompleted && (
+                                    <div className="mt-1.5 pt-1.5 border-t border-gray-700 text-green-400 font-medium">
+                                      ✓ Capacitación impartida
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Flecha del tooltip */}
+                                <div className={`absolute ${tooltipDown ? 'bottom-full border-b-gray-900 border-t-transparent' : 'top-full border-t-gray-900 border-b-transparent'} left-1/2 -translate-x-1/2 border-4 border-transparent`} />
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+
+            {/* Capacitaciones sin fecha — al final, atenuadas */}
+            {noDate.map((training) => (
+              <tr key={training.id} className="border-b opacity-50">
+                <td className="px-4 py-2 sticky left-0 bg-white z-10 border-r">
+                  <div
+                    className="font-medium text-gray-500 truncate max-w-[200px]"
+                    title={training.name}
+                  >
+                    {training.name}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-0.5">{training.type}</div>
+                </td>
+                {MONTHS.map((_, i) => (
+                  <td key={i} className="text-center py-2">
+                    {i === 0 ? (
+                      <span className="text-xs text-gray-400 italic whitespace-nowrap">Sin fecha</span>
+                    ) : null}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pie */}
+      <div className="px-5 py-3 bg-gray-50 border-t text-xs text-gray-500 flex gap-4 flex-wrap">
+        <span>
+          {withDate.length} capacitación{withDate.length !== 1 ? "es" : ""} planificada{withDate.length !== 1 ? "s" : ""} en {year}
+        </span>
+        {noDate.length > 0 && (
+          <span>{noDate.length} sin fecha planificada</span>
+        )}
+        <span className="ml-auto">✓ Se actualiza automáticamente al editar fechas</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Componente: Respaldos de una capacitación ───────────────────────────────
+function TrainingBackupsPanel({ trainingId, companyId, onClose }: {
+  trainingId: number;
+  companyId: number;
+  onClose: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const utils = trpc.useUtils();
+
+  const { data: backups = [], isLoading } = trpc.trainingBackups.list.useQuery(
+    { trainingId },
+    { enabled: trainingId > 0 }
+  );
+
+  const addMutation = trpc.trainingBackups.add.useMutation();
+  const deleteMutation = trpc.trainingBackups.delete.useMutation();
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload/procedure-file", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Error al subir el archivo");
+      const data = await res.json();
+      await addMutation.mutateAsync({
+        trainingId,
+        companyId,
+        fileName: file.name,
+        fileUrl: data.url,
+        fileKey: data.key || data.url,
+        fileSizeBytes: file.size,
+      });
+      toast.success("Respaldo subido exitosamente");
+      await utils.trainingBackups.list.invalidate({ trainingId });
+    } catch {
+      toast.error("Error al subir el respaldo");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDelete = async (backupId: number) => {
+    if (!confirm("¿Eliminar este respaldo?")) return;
+    try {
+      await deleteMutation.mutateAsync({ backupId });
+      toast.success("Respaldo eliminado");
+      await utils.trainingBackups.list.invalidate({ trainingId });
+    } catch {
+      toast.error("Error al eliminar el respaldo");
+    }
+  };
+
+  const formatSize = (bytes: number) => {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  return (
+    <div className="mt-4 border rounded-lg bg-gray-50 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+          <Paperclip className="w-4 h-4" />
+          Respaldos de la capacitación
+        </h4>
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          <X className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="text-sm text-gray-500 py-2">Cargando respaldos...</div>
+      ) : backups.length === 0 ? (
+        <div className="text-sm text-gray-500 py-2">No hay respaldos subidos aún.</div>
+      ) : (
+        <div className="space-y-2 mb-3">
+          {(backups as any[]).map((backup: any) => (
+            <div key={backup.id} className="flex items-center justify-between bg-white border rounded px-3 py-2 text-sm">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <a
+                  href={backup.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline truncate max-w-xs"
+                >
+                  {backup.fileName}
+                </a>
+                {backup.fileSizeBytes > 0 && (
+                  <span className="text-gray-400 flex-shrink-0">{formatSize(backup.fileSizeBytes)}</span>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-red-500 hover:text-red-700 flex-shrink-0"
+                onClick={() => handleDelete(backup.id)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={handleUpload}
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.zip"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-2"
+        >
+          <Upload className="w-4 h-4" />
+          {uploading ? "Subiendo..." : "Subir respaldo"}
+        </Button>
+        <p className="text-xs text-gray-400 mt-1">PDF, Word, Excel, PowerPoint, imágenes, ZIP</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Componente: Cronograma Anual (archivo) ───────────────────────────────────
+function TrainingScheduleButton({ companyId }: { companyId: number }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const utils = trpc.useUtils();
+
+  const { data: schedule } = trpc.trainingSchedules.get.useQuery(
+    { companyId },
+    { enabled: companyId > 0 }
+  );
+
+  const upsertMutation = trpc.trainingSchedules.upsert.useMutation();
+  const deleteMutation = trpc.trainingSchedules.delete.useMutation();
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload/procedure-file", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Error al subir el archivo");
+      const data = await res.json();
+      await upsertMutation.mutateAsync({
+        companyId,
+        year: new Date().getFullYear(),
+        fileName: file.name,
+        fileUrl: data.url,
+        fileKey: data.key || data.url,
+        fileSizeBytes: file.size,
+      });
+      toast.success("Cronograma anual subido exitosamente");
+      await utils.trainingSchedules.get.invalidate({ companyId });
+    } catch {
+      toast.error("Error al subir el cronograma");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("¿Eliminar el cronograma anual?")) return;
+    try {
+      await deleteMutation.mutateAsync({ companyId });
+      toast.success("Cronograma eliminado");
+      await utils.trainingSchedules.get.invalidate({ companyId });
+    } catch {
+      toast.error("Error al eliminar el cronograma");
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      {schedule ? (
+        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded px-3 py-1.5 text-sm">
+          <FileText className="w-4 h-4 text-green-600" />
+          <a
+            href={(schedule as any).fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-green-700 hover:underline font-medium"
+          >
+            {(schedule as any).fileName}
+          </a>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-5 w-5 p-0 text-red-400 hover:text-red-600"
+            onClick={handleDelete}
+          >
+            <X className="w-3 h-3" />
+          </Button>
+        </div>
+      ) : null}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleUpload}
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+      />
+      <Button
+        variant="outline"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={uploading}
+        className="flex items-center gap-2"
+      >
+        <Upload className="w-4 h-4" />
+        {uploading ? "Subiendo..." : schedule ? "Actualizar Cronograma" : "Subir Cronograma Anual"}
+      </Button>
+    </div>
+  );
+}
+
+// ─── Página principal ─────────────────────────────────────────────────────────
 export default function Trainings() {
   const [, navigate] = useLocation();
   const companyId = typeof window !== "undefined"
-    ? parseInt(localStorage.getItem("selectedCompanyId") || "0")
+    ? (() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlCid = urlParams.get("companyId");
+        if (urlCid) return parseInt(urlCid);
+        const stored = localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId");
+        return stored ? parseInt(stored) : 0;
+      })()
     : 0;
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [backupsPanelId, setBackupsPanelId] = useState<number | null>(null);
+  const [showGantt, setShowGantt] = useState(false);
   const [formData, setFormData] = useState<FormData>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importRows, setImportRows] = useState<ImportRow[]>([]);
+  const [importError, setImportError] = useState<string | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const { data: trainingsData, isLoading } = trpc.companyTrainings.list.useQuery(
     { companyId },
@@ -77,6 +587,7 @@ export default function Trainings() {
   const createMutation = trpc.companyTrainings.create.useMutation();
   const updateMutation = trpc.companyTrainings.update.useMutation();
   const deleteMutation = trpc.companyTrainings.delete.useMutation();
+  const importBulkMutation = trpc.companyTrainings.importBulk.useMutation();
   const utils = trpc.useUtils();
 
   const calcAttendancePercentage = (actual: string, planned: string) => {
@@ -187,6 +698,157 @@ export default function Trainings() {
     ? Math.round(trainingsWithAttendance.reduce((sum, t) => sum + t.attendancePercentage, 0) / trainingsWithAttendance.length)
     : 0;
 
+  // ─── Importación desde Excel ─────────────────────────────────────────────
+  const downloadTemplate = () => {
+    const templateData = [
+      {
+        "Capacitación (Obligatorio)": "Ejemplo: Primeros Auxilios",
+        "Tipo (Mandatoria/Reglamentaria/Sugerida)": "Mandatoria",
+        "Modalidad (Presencial/Online/Externa)": "Presencial",
+        "Objetivo": "Capacitar al personal en primeros auxilios básicos",
+        "Destinatario": "Todo el personal",
+        "Responsable": "Juan Pérez",
+        "Asistentes Previstos": 20,
+        "Fecha Planificada (YYYY-MM-DD)": "2026-03-15",
+      },
+      {
+        "Capacitación (Obligatorio)": "Ejemplo: Manejo de Residuos",
+        "Tipo (Mandatoria/Reglamentaria/Sugerida)": "Reglamentaria",
+        "Modalidad (Presencial/Online/Externa)": "Online",
+        "Objetivo": "Cumplir con normativa ambiental",
+        "Destinatario": "Área operativa",
+        "Responsable": "Ana López",
+        "Asistentes Previstos": 15,
+        "Fecha Planificada (YYYY-MM-DD)": "2026-05-20",
+      },
+    ];
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    // Ancho de columnas
+    ws["!cols"] = [{ wch: 35 }, { wch: 38 }, { wch: 35 }, { wch: 45 }, { wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 28 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
+    XLSX.writeFile(wb, "plantilla_cronograma_capacitaciones.xlsx");
+    toast.success("Plantilla descargada");
+  };
+
+  const VALID_TYPES = ["Mandatoria", "Reglamentaria", "Sugerida"];
+  const VALID_MODALITIES = ["Presencial", "Online", "Externa"];
+
+  // Convierte fecha serial de Excel o string a YYYY-MM-DD
+  const excelDateToISO = (val: unknown): string | undefined => {
+    if (!val && val !== 0) return undefined;
+    const str = String(val).trim();
+    if (!str) return undefined;
+    // Si es número serial de Excel (ej. 46034)
+    const num = Number(str);
+    if (!isNaN(num) && num > 1000 && num < 100000) {
+      // Excel serial: días desde 1900-01-01 (con bug del año bisiesto de Lotus)
+      const excelEpoch = new Date(1899, 11, 30);
+      const d = new Date(excelEpoch.getTime() + num * 86400000);
+      if (!isNaN(d.getTime())) {
+        return d.toISOString().split("T")[0];
+      }
+    }
+    // Si es string de fecha (YYYY-MM-DD, DD/MM/YYYY, etc.)
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
+    return undefined;
+  };
+
+  // Busca un valor en el row usando múltiples posibles nombres de columna
+  const getCol = (row: Record<string, unknown>, ...keys: string[]): string => {
+    for (const key of keys) {
+      const val = row[key];
+      if (val !== undefined && val !== null && String(val).trim() !== "") return String(val).trim();
+    }
+    return "";
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportError(null);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target!.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: "array", cellDates: false });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+        if (rows.length === 0) { setImportError("El archivo está vacío o no tiene filas de datos."); return; }
+        const parsed: ImportRow[] = rows.map((row, idx) => {
+          // Nombres alternativos de columnas para mayor flexibilidad
+          const name = getCol(row,
+            "Capacitación (Obligatorio)", "Capacitacion (Obligatorio)",
+            "Capacitación", "Capacitacion", "Nombre", "name"
+          );
+          const rawType = getCol(row,
+            "Tipo (Mandatoria/Reglamentaria/Sugerida)", "Tipo", "type"
+          );
+          const rawModality = getCol(row,
+            "Modalidad (Presencial/Online/Externa)", "Modalidad", "modality"
+          );
+          const rawDate = getCol(row,
+            "Fecha Planificada (YYYY-MM-DD)", "Fecha Planificada", "Fecha", "plannedDate"
+          ) || row["Fecha Planificada (YYYY-MM-DD)"];
+          const type = VALID_TYPES.includes(rawType) ? rawType as ImportRow["type"] : undefined;
+          const modality = VALID_MODALITIES.includes(rawModality) ? rawModality as ImportRow["modality"] : undefined;
+          const rawAttendees = getCol(row, "Asistentes Previstos", "Asistentes", "plannedAttendees");
+          const plannedAttendees = parseInt(rawAttendees) || undefined;
+          const plannedDate = excelDateToISO(rawDate);
+          const error = !name ? "Falta el nombre de la capacitación" :
+            (rawType && !type) ? `Tipo inválido: "${rawType}"` :
+            (rawModality && !modality) ? `Modalidad inválida: "${rawModality}"` : undefined;
+          return {
+            name,
+            type,
+            objective: getCol(row, "Objetivo", "objective") || undefined,
+            audience: getCol(row, "Destinatario", "Audiencia", "audience") || undefined,
+            plannedAttendees,
+            modality,
+            responsible: getCol(row, "Responsable", "responsible") || undefined,
+            plannedDate,
+            _rowIndex: idx + 2,
+            _error: error,
+          };
+        });
+        setImportRows(parsed);
+        setShowImportModal(true);
+      } catch {
+        setImportError("No se pudo leer el archivo. Asegúrate de que sea un Excel válido (.xlsx o .xls).");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    // Limpiar input para permitir subir el mismo archivo de nuevo
+    e.target.value = "";
+  };
+
+  const handleConfirmImport = async () => {
+    const validRows = importRows.filter(r => !r._error && r.name);
+    if (validRows.length === 0) { toast.error("No hay filas válidas para importar"); return; }
+    try {
+      const result = await importBulkMutation.mutateAsync({
+        companyId,
+        rows: validRows.map(r => ({
+          name: r.name,
+          type: r.type,
+          objective: r.objective,
+          audience: r.audience,
+          plannedAttendees: r.plannedAttendees,
+          modality: r.modality,
+          responsible: r.responsible,
+          plannedDate: r.plannedDate,
+        })),
+      });
+      toast.success(`Se importaron ${result.inserted} capacitaciones exitosamente`);
+      setShowImportModal(false);
+      setImportRows([]);
+      await utils.companyTrainings.list.invalidate({ companyId });
+    } catch {
+      toast.error("Error al importar las capacitaciones");
+    }
+  };
+
   const exportToExcel = () => {
     const toDateStr = (d: Date | null | string) => {
       if (!d) return "";
@@ -226,7 +888,10 @@ export default function Trainings() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-4xl font-bold text-gray-900">Capacitaciones</h1>
-          <Button variant="outline" onClick={() => navigate("/audits-inspections")}>
+          <Button variant="outline" onClick={() => {
+            const cid = localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId");
+            navigate(cid ? `/audits-inspections?companyId=${cid}` : "/audits-inspections");
+          }}>
             ← Volver
           </Button>
         </div>
@@ -255,29 +920,75 @@ export default function Trainings() {
 
         {/* Lista */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
             <h2 className="text-2xl font-bold text-gray-900">Capacitaciones Registradas</h2>
-            <Button onClick={exportToExcel} variant="outline" className="flex gap-2">
-              <Download className="w-4 h-4" />
-              Exportar a Excel
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Botón Gantt */}
+              <Button
+                variant={showGantt ? "default" : "outline"}
+                onClick={() => setShowGantt(!showGantt)}
+                className={`flex items-center gap-2 ${showGantt ? "bg-indigo-600 hover:bg-indigo-700" : ""}`}
+              >
+                <BarChart2 className="w-4 h-4" />
+                Cronograma de Gantt
+              </Button>
+              {/* Botón Cronograma Anual */}
+              <TrainingScheduleButton companyId={companyId} />
+              {/* Botón Descargar Plantilla */}
+              <Button onClick={downloadTemplate} variant="outline" className="flex gap-2 border-emerald-400 text-emerald-700 hover:bg-emerald-50">
+                <FileText className="w-4 h-4" />
+                Descargar Plantilla
+              </Button>
+              {/* Botón Importar desde Excel */}
+              <Button
+                onClick={() => importFileRef.current?.click()}
+                variant="outline"
+                className="flex gap-2 border-blue-400 text-blue-700 hover:bg-blue-50"
+              >
+                <Upload className="w-4 h-4" />
+                Importar desde Excel
+              </Button>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleImportFile}
+              />
+              {/* Botón Exportar Excel */}
+              <Button onClick={exportToExcel} variant="outline" className="flex gap-2">
+                <Download className="w-4 h-4" />
+                Exportar a Excel
+              </Button>
+            </div>
           </div>
+
+          {/* Panel Gantt */}
+          {showGantt && (
+            <GanttPanel
+              trainings={trainings}
+              onClose={() => setShowGantt(false)}
+            />
+          )}
 
           {isLoading ? (
             <div className="text-center py-8 text-gray-500">Cargando capacitaciones...</div>
           ) : trainings.length === 0 ? (
-            <Card className="bg-white">
+            <Card className="bg-white mt-4">
               <CardContent className="pt-6 text-center text-gray-500">
                 No hay capacitaciones registradas aún
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 mt-4">
               {trainings.map((training) => (
                 <Card key={training.id} className="bg-white">
                   <div
                     className="p-5 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between"
-                    onClick={() => setExpandedId(expandedId === training.id ? null : training.id)}
+                    onClick={() => {
+                      setExpandedId(expandedId === training.id ? null : training.id);
+                      if (backupsPanelId === training.id) setBackupsPanelId(null);
+                    }}
                   >
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 mb-2">{training.name}</h3>
@@ -348,14 +1059,37 @@ export default function Trainings() {
                           }`}>{Math.round(training.attendancePercentage)}%</span>
                         </div>
                       </div>
-                      <div className="flex gap-2 mt-4">
+
+                      {/* Botones de acción */}
+                      <div className="flex gap-2 mt-4 flex-wrap">
                         <Button variant="outline" size="sm" onClick={() => handleEditTraining(training)}>
                           Editar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-1 text-blue-600 border-blue-300 hover:bg-blue-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setBackupsPanelId(backupsPanelId === training.id ? null : training.id);
+                          }}
+                        >
+                          <Paperclip className="w-4 h-4" />
+                          Respaldos
                         </Button>
                         <Button variant="destructive" size="sm" onClick={() => handleDeleteTraining(training.id)}>
                           Eliminar
                         </Button>
                       </div>
+
+                      {/* Panel de respaldos */}
+                      {backupsPanelId === training.id && (
+                        <TrainingBackupsPanel
+                          trainingId={training.id}
+                          companyId={companyId}
+                          onClose={() => setBackupsPanelId(null)}
+                        />
+                      )}
                     </CardContent>
                   )}
                 </Card>
@@ -491,6 +1225,97 @@ export default function Trainings() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de Vista Previa de Importación */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+            {/* Cabecera del modal */}
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Vista previa de importación</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {importRows.filter(r => !r._error).length} filas válidas de {importRows.length} detectadas.
+                  {importRows.some(r => r._error) && (
+                    <span className="text-red-500 ml-2">{importRows.filter(r => r._error).length} con errores (no se importarán).</span>
+                  )}
+                </p>
+              </div>
+              <button onClick={() => { setShowImportModal(false); setImportRows([]); }} className="text-gray-400 hover:text-gray-600">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Tabla de vista previa */}
+            <div className="overflow-auto flex-1 p-4">
+              {importError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{importError}</div>
+              )}
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">#</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Capacitación</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Tipo</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Modalidad</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Responsable</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Fecha Planificada</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Asistentes</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importRows.map((row) => (
+                    <tr key={row._rowIndex} className={row._error ? "bg-red-50" : "hover:bg-gray-50"}>
+                      <td className="border px-3 py-2 text-gray-400 text-xs">{row._rowIndex}</td>
+                      <td className="border px-3 py-2 font-medium text-gray-900">{row.name || <span className="text-red-400 italic">Sin nombre</span>}</td>
+                      <td className="border px-3 py-2">
+                        {row.type ? (
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            row.type === "Mandatoria" ? "bg-red-100 text-red-700" :
+                            row.type === "Reglamentaria" ? "bg-orange-100 text-orange-700" :
+                            "bg-blue-100 text-blue-700"
+                          }`}>{row.type}</span>
+                        ) : <span className="text-gray-400 text-xs">—</span>}
+                      </td>
+                      <td className="border px-3 py-2 text-gray-700">{row.modality || <span className="text-gray-400 text-xs">—</span>}</td>
+                      <td className="border px-3 py-2 text-gray-700">{row.responsible || <span className="text-gray-400 text-xs">—</span>}</td>
+                      <td className="border px-3 py-2 text-gray-700">{row.plannedDate || <span className="text-gray-400 text-xs">—</span>}</td>
+                      <td className="border px-3 py-2 text-gray-700 text-center">{row.plannedAttendees || <span className="text-gray-400 text-xs">—</span>}</td>
+                      <td className="border px-3 py-2">
+                        {row._error ? (
+                          <span className="flex items-center gap-1 text-red-600 text-xs"><X className="w-3 h-3" />{row._error}</span>
+                        ) : (
+                          <span className="text-green-600 text-xs font-medium">✓ Válida</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pie del modal */}
+            <div className="flex items-center justify-between p-6 border-t bg-gray-50 rounded-b-xl">
+              <p className="text-sm text-gray-500">
+                Solo se importarán las filas marcadas como <span className="text-green-600 font-medium">✓ Válida</span>.
+              </p>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => { setShowImportModal(false); setImportRows([]); }}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleConfirmImport}
+                  disabled={importBulkMutation.isPending || importRows.filter(r => !r._error).length === 0}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {importBulkMutation.isPending ? "Importando..." : `Importar ${importRows.filter(r => !r._error).length} capacitaciones`}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

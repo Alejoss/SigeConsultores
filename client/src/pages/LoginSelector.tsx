@@ -114,11 +114,6 @@ export default function LoginSelector() {
           return;
         }
         if (kind === "platform_user") {
-          const user = data.user as { role?: string } | undefined;
-          if (user?.role === "admin") {
-            window.location.assign("/admin-dashboard");
-            return;
-          }
           window.location.assign("/dashboard");
           return;
         }
