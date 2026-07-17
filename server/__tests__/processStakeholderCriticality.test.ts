@@ -5,7 +5,7 @@ import { eq, and } from "drizzle-orm";
 
 describe("Stakeholder Criticality Persistence", () => {
   let db: Awaited<ReturnType<typeof getDb>>;
-  const processId = 1290002;
+  const processId = 129_010_3;
   const testStakeholderName = "Test Criticality Stakeholder";
 
   beforeAll(async () => {
