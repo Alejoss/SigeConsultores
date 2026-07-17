@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
-import { Download, TrendingUp, AlertCircle } from "lucide-react";
+import { Download, TrendingUp, AlertCircle, BarChart2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import ExecutiveDashboard from "@/components/ExecutiveDashboard";
 
 interface IndicatorElement {
   id: string;
@@ -31,6 +32,8 @@ export default function ProcessIndicators() {
   const selectedProcessId = localStorage.getItem("selectedProcessId");
   const processId = selectedProcessId ? parseInt(selectedProcessId) : 0;
   
+  const [showExecutive, setShowExecutive] = useState(false);
+
   const [elements, setElements] = useState<IndicatorElement[]>([
     {
       id: "criticidad",
@@ -55,10 +58,10 @@ export default function ProcessIndicators() {
       ]
     },
     {
-      id: "capacitaciones",
-      name: "Capacitaciones",
+      id: "cumplimientos",
+      name: "Cumplimientos",
       indicators: [
-        { id: "impartidas", name: "%Impartidas", value: 0 }
+        { id: "promedio_cumplimiento", name: "%Cumplidos", value: 0 }
       ]
     }
   ]);
@@ -71,29 +74,13 @@ export default function ProcessIndicators() {
 
   useEffect(() => {
     if (indicatorsData && Array.isArray(indicatorsData) && indicatorsData.length > 0) {
-      console.log("[ProcessIndicators] Received indicators data:", indicatorsData);
-      
-      // Map consolidated indicators to elements using name and indicator name matching
+      // Match by id field from server response
       const updatedElements = elements.map(element => {
         const updatedIndicators = element.indicators.map(indicator => {
-          // Find matching indicator from database by name and indicator name
-          const dbIndicator = indicatorsData.find((ind: any) => {
-            // Match by element name and indicator name
-            const nameMatch = ind.name === element.name;
-            const indicatorMatch = ind.indicator === indicator.name;
-            
-            if (nameMatch && indicatorMatch) {
-              console.log(`[ProcessIndicators] MATCH: ${element.name} / ${indicator.name} = ${ind.value}`);
-            }
-            
-            return nameMatch && indicatorMatch;
-          });
-          
-          console.log(`[ProcessIndicators] Indicator ${element.name}/${indicator.name}: found=${!!dbIndicator}, value=${dbIndicator?.value || 0}`);
-          
+          const dbIndicator = indicatorsData.find((ind: any) => ind.id === indicator.id);
           return {
             ...indicator,
-            value: dbIndicator?.value || 0
+            value: dbIndicator?.value ?? indicator.value
           };
         });
         return { ...element, indicators: updatedIndicators };
@@ -232,8 +219,15 @@ export default function ProcessIndicators() {
           </CardContent>
         </Card>
 
-        {/* Export Button */}
-        <div className="mb-6 flex justify-end">
+        {/* Action Buttons */}
+        <div className="mb-6 flex justify-end gap-3">
+          <Button
+            onClick={() => setShowExecutive(true)}
+            className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            <BarChart2 size={16} />
+            Vista Ejecutiva
+          </Button>
           <Button
             onClick={exportToExcel}
             variant="outline"
@@ -256,13 +250,13 @@ export default function ProcessIndicators() {
             elements.map(element => (
               <Card key={element.id} className="border-l-4 border-l-blue-500">
                 <CardHeader>
-                  <CardTitle className="text-lg text-gray-800">{element.name}</CardTitle>
+                  <CardTitle translate="no" className="text-lg text-gray-800">{element.name}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {element.indicators.map(indicator => (
                       <div key={indicator.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <span className="text-sm font-medium text-gray-700">{indicator.name}</span>
+                        <span translate="no" className="text-sm font-medium text-gray-700">{indicator.name}</span>
                         <div className="flex items-center gap-3">
                           <Input
                             type="number"
@@ -285,6 +279,15 @@ export default function ProcessIndicators() {
             ))
           )}
         </div>
+
+        {/* Executive Dashboard Modal */}
+        {showExecutive && (
+          <ExecutiveDashboard
+            elements={elements}
+            totalAverage={totalAverage}
+            onClose={() => setShowExecutive(false)}
+          />
+        )}
 
         {/* Info Box */}
         <Card className="mt-8 bg-blue-50 border-blue-200">

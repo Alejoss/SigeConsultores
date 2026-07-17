@@ -7,7 +7,7 @@ import { managerCreationRouter } from "./routers/managerCreation";
 import { aiRouter } from "./routers/ai";
 import { publicProcedure, router, protectedProcedure, adminProcedure, companyProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { companies, companyValues, processes, companyTrainings } from "../drizzle/schema";
+import { companies, companyValues, processes, companyTrainings, trainingSchedules, trainingBackups } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import {
   createCompany,
@@ -106,6 +106,7 @@ import { organizationChartRouter } from "./routers/organizationChart";
 import { auditsInspectionsRouter } from "./routers/auditsInspections";
 import { managementProgramsRouter } from "./routers/managementPrograms";
 import { stakeholderSurveysRouter } from "./routers/stakeholderSurveys";
+import { strategicTrendsRouter } from "./routers/strategicTrends";
 
 // Module Customization Router
 const moduleCustomizationRouter = router({
@@ -546,6 +547,9 @@ export const appRouter = router({
         observations: z.string().optional(),
         evidence: z.string().optional(),
         completionPercentage: z.number().optional(),
+        evaluationMode: z.enum(["meses", "vigencia"]).optional(),
+        validFrom: z.string().nullable().optional(),
+        validUntil: z.string().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
         await createProcessCompliance(input.processId, {
@@ -564,6 +568,9 @@ export const appRouter = router({
           observations: input.observations || null,
           evidence: input.evidence,
           completionPercentage: input.completionPercentage,
+          evaluationMode: input.evaluationMode,
+          validFrom: input.validFrom ?? null,
+          validUntil: input.validUntil ?? null,
         });
         return { success: true };
       }),
@@ -599,6 +606,9 @@ export const appRouter = router({
         observations: z.string().optional(),
         evidence: z.string().optional(),
         completionPercentage: z.number().optional(),
+        evaluationMode: z.enum(["meses", "vigencia"]).optional(),
+        validFrom: z.string().nullable().optional(),
+        validUntil: z.string().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
         await updateProcessCompliance(input.id, {
@@ -617,7 +627,96 @@ export const appRouter = router({
           observations: input.observations,
           evidence: input.evidence,
           completionPercentage: input.completionPercentage,
+          evaluationMode: input.evaluationMode,
+          validFrom: input.validFrom,
+          validUntil: input.validUntil,
         });
+        return { success: true };
+      }),
+  }),
+
+  // Company-level Compliances (Sistema de Gestión)
+  companyCompliances: router({
+    list: companyProcedure
+      .input(z.object({ companyId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        const { companyCompliances: tbl } = await import("../drizzle/schema");
+        return await db.select().from(tbl).where(eq(tbl.companyId, input.companyId));
+      }),
+    create: companyProcedure
+      .input(z.object({
+        companyId: z.number(),
+        requirement: z.string().min(1),
+        description: z.string().optional(),
+        obligationType: z.enum(["Legal", "Reglamentaria", "Concesion", "Sistema de Gestion", "Otros"]),
+        otherObligationType: z.string().optional(),
+        responsible: z.string().optional(),
+        plannedMonths: z.string().optional(),
+        completedMonths: z.string().optional(),
+        observations: z.string().optional(),
+        evaluationMode: z.enum(["meses", "vigencia"]).optional(),
+        validFrom: z.string().optional(),
+        validUntil: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("No DB");
+        const { companyCompliances: tbl } = await import("../drizzle/schema");
+        await db.insert(tbl).values({
+          companyId: input.companyId,
+          requirement: input.requirement,
+          description: input.description ?? null,
+          obligationType: input.obligationType,
+          otherObligationType: input.otherObligationType ?? null,
+          responsible: input.responsible ?? null,
+          completed: "NO",
+          plannedMonths: input.plannedMonths ?? null,
+          completedMonths: input.completedMonths ?? null,
+          observations: input.observations ?? null,
+          evaluationMode: input.evaluationMode ?? "meses",
+          validFrom: input.validFrom ? new Date(input.validFrom) : null,
+          validUntil: input.validUntil ? new Date(input.validUntil) : null,
+        });
+        return { success: true };
+      }),
+    update: companyProcedure
+      .input(z.object({
+        id: z.number(),
+        requirement: z.string().min(1).optional(),
+        description: z.string().optional(),
+        obligationType: z.enum(["Legal", "Reglamentaria", "Concesion", "Sistema de Gestion", "Otros"]).optional(),
+        otherObligationType: z.string().optional(),
+        responsible: z.string().optional(),
+        completed: z.enum(["SI", "NO"]).optional(),
+        plannedMonths: z.string().optional(),
+        completedMonths: z.string().optional(),
+        observations: z.string().optional(),
+        evaluationMode: z.enum(["meses", "vigencia"]).optional(),
+        validFrom: z.string().nullable().optional(),
+        validUntil: z.string().nullable().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("No DB");
+        const { companyCompliances: tbl } = await import("../drizzle/schema");
+        const { id, validFrom, validUntil, ...rest } = input;
+        await db.update(tbl).set({
+          ...rest,
+          updatedAt: new Date(),
+          validFrom: validFrom !== undefined ? (validFrom ? new Date(validFrom) : null) : undefined,
+          validUntil: validUntil !== undefined ? (validUntil ? new Date(validUntil) : null) : undefined,
+        }).where(eq(tbl.id, id));
+        return { success: true };
+      }),
+    delete: companyProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("No DB");
+        const { companyCompliances: tbl } = await import("../drizzle/schema");
+        await db.delete(tbl).where(eq(tbl.id, input.id));
         return { success: true };
       }),
   }),
@@ -862,6 +961,7 @@ export const appRouter = router({
   auditsInspections: auditsInspectionsRouter,
   managementPrograms: managementProgramsRouter,
   stakeholderSurveys: stakeholderSurveysRouter,
+  strategicTrends: strategicTrendsRouter,
 
   // Company Trainings (Capacitaciones a nivel empresa)
   companyTrainings: router({
@@ -958,6 +1058,136 @@ export const appRouter = router({
             updatedAt: new Date(),
           })
           .where(eq(companyTrainings.id, trainingId));
+        return { success: true };
+      }),
+
+    // Importación masiva desde Excel (filas ya parseadas en el cliente)
+    importBulk: companyProcedure
+      .input(z.object({
+        companyId: z.number(),
+        rows: z.array(z.object({
+          name: z.string(),
+          type: z.enum(["Mandatoria", "Reglamentaria", "Sugerida"]).optional(),
+          objective: z.string().optional(),
+          audience: z.string().optional(),
+          plannedAttendees: z.number().optional(),
+          modality: z.enum(["Presencial", "Online", "Externa"]).optional(),
+          responsible: z.string().optional(),
+          plannedDate: z.string().optional(),
+        }))
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        if (input.rows.length === 0) return { inserted: 0 };
+        await db.insert(companyTrainings).values(
+          input.rows.map(row => ({
+            companyId: input.companyId,
+            name: row.name,
+            type: row.type || "Mandatoria",
+            objective: row.objective || null,
+            audience: row.audience || null,
+            plannedAttendees: row.plannedAttendees || 0,
+            modality: row.modality || "Presencial",
+            responsible: row.responsible || null,
+            plannedDate: row.plannedDate ? new Date(row.plannedDate) : null,
+            conductedDate: null,
+            actualAttendees: 0,
+            attendancePercentage: 0,
+            completed: null,
+          }))
+        );
+        return { inserted: input.rows.length };
+      }),
+  }),
+
+  // Training Schedules (Cronograma Anual de Capacitación)
+  trainingSchedules: router({
+    upsert: companyProcedure
+      .input(z.object({
+        companyId: z.number(),
+        year: z.number(),
+        fileName: z.string(),
+        fileUrl: z.string(),
+        fileKey: z.string(),
+        fileSizeBytes: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        // Delete existing schedule for this company+year and insert new one
+        await db.delete(trainingSchedules)
+          .where(eq(trainingSchedules.companyId, input.companyId));
+        await db.insert(trainingSchedules).values({
+          companyId: input.companyId,
+          year: input.year,
+          fileName: input.fileName,
+          fileUrl: input.fileUrl,
+          fileKey: input.fileKey,
+          fileSizeBytes: input.fileSizeBytes || 0,
+        });
+        return { success: true };
+      }),
+    get: companyProcedure
+      .input(z.object({ companyId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return null;
+        const rows = await db.select().from(trainingSchedules)
+          .where(eq(trainingSchedules.companyId, input.companyId))
+          .limit(1);
+        return rows[0] || null;
+      }),
+    delete: companyProcedure
+      .input(z.object({ companyId: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.delete(trainingSchedules)
+          .where(eq(trainingSchedules.companyId, input.companyId));
+        return { success: true };
+      }),
+  }),
+
+  // Training Backups (Respaldos por capacitación)
+  trainingBackups: router({
+    add: companyProcedure
+      .input(z.object({
+        trainingId: z.number(),
+        companyId: z.number(),
+        fileName: z.string(),
+        fileUrl: z.string(),
+        fileKey: z.string(),
+        fileSizeBytes: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.insert(trainingBackups).values({
+          trainingId: input.trainingId,
+          companyId: input.companyId,
+          fileName: input.fileName,
+          fileUrl: input.fileUrl,
+          fileKey: input.fileKey,
+          fileSizeBytes: input.fileSizeBytes || 0,
+        });
+        return { success: true };
+      }),
+    list: companyProcedure
+      .input(z.object({ trainingId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        return db.select().from(trainingBackups)
+          .where(eq(trainingBackups.trainingId, input.trainingId));
+      }),
+    delete: companyProcedure
+      .input(z.object({ backupId: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.delete(trainingBackups)
+          .where(eq(trainingBackups.id, input.backupId));
         return { success: true };
       }),
   }),

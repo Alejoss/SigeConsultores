@@ -6,6 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes, validateOAuthConfig } from "./oauth";
 import { registerAuthSessionRoutes } from "./authSessionHttpRoutes";
 import { registerFileUploadRoutes } from "./fileUploadRoutes";
+import { registerPublicApiRoutes } from "./publicApiRoutes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -30,6 +31,7 @@ async function startServer() {
   registerOAuthRoutes(app);
   registerAuthSessionRoutes(app);
   registerFileUploadRoutes(app);
+  registerPublicApiRoutes(app);
   // tRPC API
   app.use(
     "/api/trpc",

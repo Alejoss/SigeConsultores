@@ -170,7 +170,7 @@ function AccionOTGRow({
           <label className="text-xs font-semibold text-slate-600 block">
             Valores Mensuales ({accion.tipoSeguimiento === 'mensual_sumatoria' ? 'Sumatoria' : 'Promedio'})
           </label>
-          <div className="grid grid-cols-6 md:grid-cols-12 gap-1">
+          <div className="grid grid-cols-6 md:grid-cols-12 gap-1" translate="no">
             {MONTHS_SHORT.map((mes, idx) => (
               <div key={idx} className="text-center">
                 <div className="text-xs text-slate-500 mb-1">{mes}</div>
@@ -196,7 +196,7 @@ function AccionOTGRow({
       {accion.tipoSeguimiento === 'mensual_checklist' && (
         <div className="space-y-3">
           <label className="text-xs font-semibold text-slate-600 block">Lista de Verificación Mensual</label>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap" translate="no">
             {MONTHS_SHORT.map((mes, idx) => {
               const checked = (accion.checklistValues || Array(12).fill(false))[idx];
               return (
@@ -246,6 +246,7 @@ export default function ProcessRiskMatrix() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const initialLoadDoneRef = useRef(false);
+  const fodaSyncDoneRef = useRef(false);
   const savingRef = useRef(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -260,9 +261,10 @@ export default function ProcessRiskMatrix() {
     { enabled: processId !== null }
   );
 
-  // Sync FODA → OTG rows (after initial load)
+  // Sync FODA → OTG rows (after initial load, only once)
   useEffect(() => {
-    if (!fodaData || !initialLoadDoneRef.current) return;
+    if (!fodaData || !initialLoadDoneRef.current || fodaSyncDoneRef.current) return;
+    fodaSyncDoneRef.current = true;
     try {
       const allFodaItems: Array<{ statement: string; type: FODAType; subprocess: string; policyObjective: string }> = [
         ...JSON.parse(fodaData.strengths || '[]').map((i: any) => ({ ...i, type: 'Fortaleza' as FODAType })),
@@ -363,7 +365,7 @@ export default function ProcessRiskMatrix() {
           addRows(weaknesses, 'Debilidad'); addRows(threats, 'Amenaza');
         }
         setRows(newRows);
-        setTimeout(() => { initialLoadDoneRef.current = true; }, 200);
+        initialLoadDoneRef.current = true;
       } catch (error) { console.error('Error loading FODA data:', error); }
     }
   }, [fodaData]);

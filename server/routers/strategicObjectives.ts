@@ -2,7 +2,7 @@ import { z } from "zod";
 import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { strategicObjectives } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 
 export const strategicObjectivesRouter = router({
   create: companyProcedure
@@ -43,7 +43,8 @@ export const strategicObjectivesRouter = router({
       if (!db) return [];
 
       const objectives = await db.select().from(strategicObjectives)
-        .where(eq(strategicObjectives.companyId, input.companyId));
+        .where(eq(strategicObjectives.companyId, input.companyId))
+        .orderBy(asc(strategicObjectives.orderIndex));
 
       return objectives.map(obj => ({
         id: obj.id,

@@ -672,6 +672,9 @@ export const processCompliances = mysqlTable("processCompliances", {
   completedMonths: varchar("completedMonths", { length: 50 }),
   observations: text("observations"),
   completionPercentage: int("completionPercentage").default(0),
+  evaluationMode: mysqlEnum("evaluationMode", ["meses", "vigencia"]).default("meses").notNull(),
+  validFrom: date("validFrom"),
+  validUntil: date("validUntil"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1444,3 +1447,71 @@ export const companyTrainings = mysqlTable("companyTrainings", {
 
 export type CompanyTraining = typeof companyTrainings.$inferSelect;
 export type InsertCompanyTraining = typeof companyTrainings.$inferInsert;
+
+// Company-level Compliances (Sistema de Gestión)
+export const companyCompliances = mysqlTable("companyCompliances", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  requirement: varchar("requirement", { length: 255 }).notNull(),
+  description: text("description"),
+  obligationType: mysqlEnum("obligationType", ["Legal", "Reglamentaria", "Concesion", "Sistema de Gestion", "Otros"]).notNull(),
+  otherObligationType: varchar("otherObligationType", { length: 255 }),
+  responsible: varchar("responsible", { length: 255 }),
+  completed: mysqlEnum("completed", ["SI", "NO"]).default("NO").notNull(),
+  plannedMonths: varchar("plannedMonths", { length: 50 }),
+  completedMonths: varchar("completedMonths", { length: 50 }),
+  observations: text("observations"),
+  evaluationMode: mysqlEnum("evaluationMode", ["meses", "vigencia"]).default("meses").notNull(),
+  validFrom: date("validFrom"),
+  validUntil: date("validUntil"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CompanyCompliance = typeof companyCompliances.$inferSelect;
+export type InsertCompanyCompliance = typeof companyCompliances.$inferInsert;
+
+// Company-level Strategic Trends (snapshots mensuales de % avance)
+export const companyTrends = mysqlTable("companyTrends", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  year: int("year").notNull(),
+  month: int("month").notNull(),
+  otePercent: decimal("otePercent", { precision: 6, scale: 2 }).notNull().default("0"),
+  otgPercent: decimal("otgPercent", { precision: 6, scale: 2 }).notNull().default("0"),
+  stakeholderPercent: decimal("stakeholderPercent", { precision: 6, scale: 2 }).notNull().default("0"),
+  oteMeta: decimal("oteMeta", { precision: 6, scale: 2 }).notNull().default("100"),
+  otgMeta: decimal("otgMeta", { precision: 6, scale: 2 }).notNull().default("100"),
+  stakeholderMeta: decimal("stakeholderMeta", { precision: 6, scale: 2 }).notNull().default("100"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CompanyTrend = typeof companyTrends.$inferSelect;
+export type InsertCompanyTrend = typeof companyTrends.$inferInsert;
+
+// ─── Training Schedules (Cronograma Anual de Capacitación) ────────────────────
+export const trainingSchedules = mysqlTable("trainingSchedules", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  year: int("year").notNull(),
+  fileName: varchar("fileName", { length: 500 }).notNull(),
+  fileUrl: varchar("fileUrl", { length: 1000 }).notNull(),
+  fileKey: varchar("fileKey", { length: 500 }).notNull(),
+  fileSizeBytes: int("fileSizeBytes").default(0),
+  uploadedAt: timestamp("uploadedAt").defaultNow(),
+});
+export type TrainingSchedule = typeof trainingSchedules.$inferSelect;
+export type InsertTrainingSchedule = typeof trainingSchedules.$inferInsert;
+
+// ─── Training Backups (Respaldos por capacitación) ────────────────────────────
+export const trainingBackups = mysqlTable("trainingBackups", {
+  id: int("id").autoincrement().primaryKey(),
+  trainingId: int("trainingId").notNull(),
+  companyId: int("companyId").notNull(),
+  fileName: varchar("fileName", { length: 500 }).notNull(),
+  fileUrl: varchar("fileUrl", { length: 1000 }).notNull(),
+  fileKey: varchar("fileKey", { length: 500 }).notNull(),
+  fileSizeBytes: int("fileSizeBytes").default(0),
+  uploadedAt: timestamp("uploadedAt").defaultNow(),
+});
+export type TrainingBackup = typeof trainingBackups.$inferSelect;
+export type InsertTrainingBackup = typeof trainingBackups.$inferInsert;

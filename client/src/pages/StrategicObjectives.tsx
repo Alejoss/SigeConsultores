@@ -103,6 +103,20 @@ export default function StrategicObjectives() {
     { enabled: companyId !== null }
   );
 
+  // Update objective mutation
+  const updateMutation = trpc.strategicObjectives.update.useMutation({
+    onSuccess: () => {
+      toast.success("Objetivo actualizado exitosamente");
+      setFormData({ name: "", description: "", target: "", responsible: "", deadline: "" });
+      setShowForm(false);
+      setEditingId(null);
+      refetch();
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Error al actualizar el objetivo");
+    },
+  });
+
   // Create objective mutation
   const createMutation = trpc.strategicObjectives.create.useMutation({
     onSuccess: () => {
@@ -141,18 +155,16 @@ export default function StrategicObjectives() {
     if (!companyId) return;
 
     if (editingId) {
-      // For now, delete and recreate (no update endpoint)
-      await deleteMutation.mutateAsync({ objectiveId: editingId });
-      await createMutation.mutateAsync({
-        companyId,
+      // Use update endpoint to preserve orderIndex (no delete+recreate)
+      await updateMutation.mutateAsync({
+        id: editingId,
         name: formData.name,
         description: formData.description,
         target: formData.target,
         responsible: formData.responsible,
         deadline: formData.deadline,
-        orderIndex: objectives.length - 1,
       });
-      setEditingId(null);
+      return;
     } else {
       await createMutation.mutateAsync({
         companyId,
@@ -309,7 +321,7 @@ export default function StrategicObjectives() {
               <div className="flex gap-2">
                 <Button
                   onClick={handleAddObjective}
-                  disabled={createMutation.isPending || deleteMutation.isPending}
+                  disabled={createMutation.isPending || deleteMutation.isPending || updateMutation.isPending}
                   className="flex-1 bg-blue-600 hover:bg-blue-700"
                 >
                   {editingId ? "Actualizar Objetivo" : "Agregar Objetivo"}
@@ -341,7 +353,7 @@ export default function StrategicObjectives() {
         {/* Objectives List */}
         <div className="space-y-4">
           <div>
-            <h2 className="text-xl font-bold mb-4">Objetivos ({objectives.length}/{MAX_OBJECTIVES})</h2>
+            <h2 className="text-xl font-bold mb-4">Objetivos ({isLoading ? "..." : objectives.length}/{MAX_OBJECTIVES})</h2>
             {isLoading ? (
               <Card>
                 <CardContent className="pt-6">

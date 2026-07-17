@@ -32,7 +32,7 @@ const CHARACTERIZATION_MODULES = [
   { id: "foda", label: "FODA", icon: "🎯" },
   { id: "matriz", label: "Objetivos Tácticos\nde Gestión", icon: "📋" },
   { id: "objetivos", label: "Objetivos Tácticos\nEstratégicos", icon: "🎪" },
-  { id: "capacitaciones", label: "Capacitaciones", icon: "📚" },
+  { id: "cumplimientos", label: "Cumplimientos", icon: "✅" },
   { id: "procedimientos", label: "Procedimientos", icon: "📄" },
   { id: "cronograma", label: "Cronograma\nConsolidado", icon: "📅" },
   { id: "indicadores", label: "Indicadores", icon: "📈" },
@@ -236,17 +236,22 @@ export default function ProcessCharacterization() {
   };
 
   const handleModuleClick = (moduleId: string) => {
+    // Build query string with processId and companyId so sub-modules can resolve context
+    const pid = selectedProcessId || (processId ? String(processId) : "");
+    const cid = companyId || "";
+    const qs = pid ? `?processId=${pid}${cid ? `&companyId=${cid}` : ""}` : "";
+
     const routes: { [key: string]: string } = {
-      "subprocesos": "/subprocess-map",
-      "criticidad": "/process-stakeholder-criticality",
-      "foda": "/process-foda",
-      "matriz": "/process-risk-matrix",
-      "objetivos": "/process-tactical-objectives",
-      "capacitaciones": "/process-trainings",
-      "cronograma": "/consolidated-schedule",
-      "indicadores": "/process-indicators",
-      "participantes": "/process-participants",
-      "recursos": "/process-resources",
+      "subprocesos": `/subprocess-map${qs}`,
+      "criticidad": `/process-stakeholder-criticality${qs}`,
+      "foda": `/process-foda${qs}`,
+      "matriz": `/process-risk-matrix${qs}`,
+      "objetivos": `/process-tactical-objectives${qs}`,
+      "cumplimientos": `/process-compliances${qs}`,
+      "cronograma": `/consolidated-schedule${qs}`,
+      "indicadores": `/process-indicators${qs}`,
+      "participantes": `/process-participants${qs}`,
+      "recursos": `/process-resources${qs}`,
     };
     
     if (routes[moduleId]) {

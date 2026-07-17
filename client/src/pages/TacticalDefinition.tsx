@@ -519,7 +519,7 @@ export default function TacticalDefinition() {
                   {/* Explanation */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Evaluación del Objetivo
+                      Justificación del Objetivo
                     </label>
                     <Textarea
                       value={obj.explanation}

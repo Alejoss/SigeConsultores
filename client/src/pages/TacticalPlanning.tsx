@@ -71,7 +71,7 @@ interface TacticalPlanning {
 }
 
 const CATEGORIES = ['Finanzas', 'Cliente', 'Procesos Internos', 'Aprendizaje', 'Crecimiento'];
-const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const MONTHS = ['Ene','Feb','Mar','Abr','Mayo','Jun','Jul','Agos','Sep','Oct','Nov','Dic'];
 
 /**
  * Input numérico sin estado local — usa ref para el DOM.
@@ -697,7 +697,7 @@ export default function TacticalPlanning() {
 
         {type === 'mensual_sumatoria' && (
           <div className="space-y-3">
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-6 gap-2" translate="no">
               {MONTHS.map((mes, idx) => {
                 const vals = planning.monthlyValues || Array(12).fill(0);
                 return (
@@ -735,7 +735,7 @@ export default function TacticalPlanning() {
 
         {type === 'mensual_promedio' && (
           <div className="space-y-3">
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-6 gap-2" translate="no">
               {MONTHS.map((mes, idx) => {
                 const vals = planning.monthlyValues || Array(12).fill(0);
                 return (
@@ -771,7 +771,7 @@ export default function TacticalPlanning() {
 
         {type === 'mensual_checklist' && (
           <div className="space-y-3">
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap" translate="no">
               {MONTHS.map((mes, idx) => {
                 const vals = planning.checklistValues || Array(12).fill(false);
                 const checked = vals[idx];
@@ -845,7 +845,7 @@ export default function TacticalPlanning() {
 
         {type === 'mensual_sumatoria' && (
           <div className="space-y-3">
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-6 gap-2" translate="no">
               {MONTHS.map((mes, idx) => {
                 const vals = resultKey.ooMonthlyValues || Array(12).fill(0);
                 return (
@@ -871,7 +871,7 @@ export default function TacticalPlanning() {
 
         {type === 'mensual_promedio' && (
           <div className="space-y-3">
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-6 gap-2" translate="no">
               {MONTHS.map((mes, idx) => {
                 const vals = resultKey.ooMonthlyValues || Array(12).fill(0);
                 return (
@@ -897,7 +897,7 @@ export default function TacticalPlanning() {
 
         {type === 'mensual_checklist' && (
           <div className="space-y-3">
-            <div className="flex gap-1 flex-wrap">
+            <div className="flex gap-1 flex-wrap" translate="no">
               {MONTHS.map((mes, idx) => {
                 const vals = resultKey.ooChecklistValues || Array(12).fill(false);
                 const checked = vals[idx];

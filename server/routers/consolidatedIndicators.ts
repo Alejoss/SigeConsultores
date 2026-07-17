@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { processFODA, processCompliances, processTrainings, criticalityMatrix, processTacticalObjectives } from "../../drizzle/schema";
+import { processFODA, processCompliances, criticalityMatrix, processTacticalObjectives } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export const consolidatedIndicatorsRouter = router({
@@ -117,41 +117,31 @@ export const consolidatedIndicatorsRouter = router({
           cumplimientosPromedio = Math.round((completed / compliances.length) * 100);
         }
 
-        // Get Capacitaciones - % Impartidas
-        const trainings = await db.select().from(processTrainings)
-          .where(eq(processTrainings.processId, input.processId));
-        
-        let capacitacionesImpartidas = 0;
-        if (trainings.length > 0) {
-          const conducted = trainings.filter(t => t.conductedDate !== null).length;
-          capacitacionesImpartidas = Math.round((conducted / trainings.length) * 100);
-        }
-
         return [
           {
             id: "cumplimiento",
-            name: "Criticidad Partes Interesadas",
+            name: "Gestión con Partes Interesadas",
             indicator: "Porcentaje de cumplimiento",
             value: criticalidadCumplimiento,
             performance: criticalidadCumplimiento
           },
           {
             id: "total_alcanzado",
-            name: "Matriz (FODA)",
+            name: "OTG",
             indicator: "Total alcanzado",
             value: matrizAlcanzado,
             performance: matrizAlcanzado
           },
           {
             id: "comunicado",
-            name: "Matriz (FODA)",
+            name: "OTG",
             indicator: "%Comunicado",
             value: matrizComunicado,
             performance: matrizComunicado
           },
           {
             id: "alcanzado",
-            name: "Objetivos tácticos (Planificación)",
+            name: "OTE",
             indicator: "% Meta alcanzada por Objetivos Tácticos",
             value: objetivosTacticosMetaAlcanzada,
             performance: objetivosTacticosMetaAlcanzada
@@ -159,16 +149,9 @@ export const consolidatedIndicatorsRouter = router({
           {
             id: "promedio_cumplimiento",
             name: "Cumplimientos",
-            indicator: "%Promedio de cumplimiento",
+            indicator: "%Cumplidos",
             value: cumplimientosPromedio,
             performance: cumplimientosPromedio
-          },
-          {
-            id: "impartidas",
-            name: "Capacitaciones",
-            indicator: "%Impartidas",
-            value: capacitacionesImpartidas,
-            performance: capacitacionesImpartidas
           }
         ];
       } catch (error) {
