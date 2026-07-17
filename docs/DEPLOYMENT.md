@@ -28,7 +28,7 @@ Cliente / Manus push → infra/staging-cicd   (sin CI, sin deploy)
 - **Pushear a `infra/staging-cicd` no dispara CI ni CD.** Es solo la rama de integración.
 - **Hay un solo CI:** el que corre al llegar el cambio a `main` (merge del PR `infra/staging-cicd` → `main`).
 - **El CD solo corre si ese CI pasa** (`check-and-build`, `test-unit`, `test-integration`). Si CI falla, producción no se actualiza.
-- **No se debe pushear directo a `main`** salvo autorización explícita de emergencia. El flujo esperado es PR, revisión y merge.
+- **No se debe pushear directo a `main`** salvo autorización explícita de emergencia (bypass admin). El flujo esperado es PR, revisión y merge. El ruleset **MainProtection** exige PR; detalle en [GITHUB_SETUP.md](./GITHUB_SETUP.md).
 
 Entonces sí: publicar es **mergear `infra/staging-cicd` hacia `main` vía PR**. Ese merge dispara el único CI; las pruebas son la compuerta del deploy.
 

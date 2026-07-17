@@ -94,12 +94,27 @@ export GHCR_TOKEN=<PAT>
 ./scripts/deploy-prod.sh
 ```
 
-## Protección de ramas
+## Protección de ramas (ruleset `MainProtection`)
 
-| Rama | Reglas típicas |
+Configurado en GitHub: **Settings → Rules → Rulesets → [MainProtection](https://github.com/Alejoss/SigeConsultores/rules/16887475)** (edición: Settings → Rulesets).
+
+Aplica a **`refs/heads/main`**, enforcement **active**.
+
+| Regla | Qué hace |
+|-------|----------|
+| **Restrict deletions** | Nadie (salvo bypass) puede borrar `main` |
+| **Block force pushes** (`non_fast_forward`) | No se permite `push --force` a `main` |
+| **Require a pull request before merging** | Los cambios normales deben entrar por PR; **0** aprobaciones requeridas; merge/squash/rebase permitidos |
+| **Require status checks** | **No** — se quitó `check-and-build` porque el CI ya no corre en el PR (solo tras el merge a `main`) |
+
+**Bypass:** rol **Repository admin** puede saltarse el ruleset (p. ej. push directo de emergencia del owner). Manus / colaboradores Write **no** bypassean: deben usar PR `infra/staging-cicd` → `main`.
+
+**Compuerta de producción:** no es un status check del PR. Tras el merge, el workflow **CI** en `main` corre check/build/tests; solo si pasa se dispara el CD. Si CI falla, producción no se actualiza.
+
+| Rama | Comportamiento |
 |------|----------------|
-| `infra/staging-cicd` | Sin bloqueo de push; sin CI |
-| `main` | Preferir PR; CI + CD al recibir el merge; **Repository admin** en bypass para push directo del owner |
+| `infra/staging-cicd` | Push libre; sin CI ni CD; sin este ruleset |
+| `main` | Ruleset arriba + CI/CD post-merge |
 
 ## CI: tests
 
