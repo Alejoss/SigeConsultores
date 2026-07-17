@@ -676,8 +676,8 @@ export const appRouter = router({
           completedMonths: input.completedMonths ?? null,
           observations: input.observations ?? null,
           evaluationMode: input.evaluationMode ?? "meses",
-          validFrom: input.validFrom ?? null,
-          validUntil: input.validUntil ?? null,
+          validFrom: input.validFrom ? new Date(input.validFrom) : null,
+          validUntil: input.validUntil ? new Date(input.validUntil) : null,
         });
         return { success: true };
       }),
@@ -701,8 +701,13 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new Error("No DB");
         const { companyCompliances: tbl } = await import("../drizzle/schema");
-        const { id, ...rest } = input;
-        await db.update(tbl).set({ ...rest, updatedAt: new Date() }).where(eq(tbl.id, id));
+        const { id, validFrom, validUntil, ...rest } = input;
+        await db.update(tbl).set({
+          ...rest,
+          updatedAt: new Date(),
+          validFrom: validFrom !== undefined ? (validFrom ? new Date(validFrom) : null) : undefined,
+          validUntil: validUntil !== undefined ? (validUntil ? new Date(validUntil) : null) : undefined,
+        }).where(eq(tbl.id, id));
         return { success: true };
       }),
     delete: companyProcedure

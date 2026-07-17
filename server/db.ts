@@ -837,7 +837,13 @@ export async function createProcessCompliance(processId: number, data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.insert(processCompliances).values({ processId, ...data });
+  const { validFrom, validUntil, ...rest } = data;
+  return db.insert(processCompliances).values({
+    processId,
+    ...rest,
+    validFrom: validFrom ? new Date(validFrom) : null,
+    validUntil: validUntil ? new Date(validUntil) : null,
+  });
 }
 
 export async function getProcessCompliancesList(processId: number) {
@@ -874,7 +880,12 @@ export async function updateProcessCompliance(complianceId: number, data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.update(processCompliances).set(data).where(eq(processCompliances.id, complianceId));
+  const { validFrom, validUntil, ...rest } = data;
+  return db.update(processCompliances).set({
+    ...rest,
+    validFrom: validFrom !== undefined ? (validFrom ? new Date(validFrom) : null) : undefined,
+    validUntil: validUntil !== undefined ? (validUntil ? new Date(validUntil) : null) : undefined,
+  }).where(eq(processCompliances.id, complianceId));
 }
 
 // Process Trainings queries

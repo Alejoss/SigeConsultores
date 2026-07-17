@@ -783,7 +783,7 @@ export default function StrategicTrends() {
   const data: TrendPoint[] = trendsResult?.data ?? [];
 
   const availableYears = useMemo(() => {
-    const years = [...new Set(data.map((d) => d.year))].sort();
+    const years = Array.from(new Set(data.map((d) => d.year))).sort();
     return years;
   }, [data]);
 

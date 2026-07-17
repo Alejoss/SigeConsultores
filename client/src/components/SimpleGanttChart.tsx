@@ -36,7 +36,7 @@ export const SimpleGanttChart: React.FC<SimpleGanttChartProps> = ({ activities }
   // Determine year range from activities
   const years = useMemo(() => {
     if (activities.length === 0) return [new Date().getFullYear()];
-    const ys = new Set(activities.map(a => a.dueDate.getFullYear()));
+    const ys = Array.from(new Set(activities.map(a => a.dueDate.getFullYear())));
     const min = Math.min(...ys);
     const max = Math.max(...ys);
     const result: number[] = [];
