@@ -22,8 +22,11 @@ import {
   ResponsiveContainer,
   ReferenceLine,
   TooltipProps,
+  RadialBarChart,
+  RadialBar,
+  PolarAngleAxis,
 } from "recharts";
-import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, X, Settings } from "lucide-react";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type TrendPoint = {
@@ -558,6 +561,176 @@ function TrendChart({
   );
 }
 
+// ─── KPI Card para Sistemas de Gestión (sin meta, solo valor) ───────────────
+function SystemsKpiCard({
+  label,
+  value,
+  icon,
+  count,
+  color,
+}: {
+  label: string;
+  value: number;
+  icon: string;
+  count: number | null;
+  color: string;
+}) {
+  const status = value >= 80 ? "En meta" : value >= 60 ? "Alerta" : "Crítico";
+  const statusColor = value >= 80 ? "#16a34a" : value >= 60 ? "#ca8a04" : "#dc2626";
+  const chartData = [{ value, fill: statusColor }];
+  return (
+    <div className="flex flex-col items-center gap-2 p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div className="relative w-20 h-20">
+        <RadialBarChart
+          width={80}
+          height={80}
+          cx={40}
+          cy={40}
+          innerRadius={28}
+          outerRadius={38}
+          barSize={8}
+          data={chartData}
+          startAngle={90}
+          endAngle={-270}
+        >
+          <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+          <RadialBar
+            background={{ fill: "#f1f5f9" }}
+            dataKey="value"
+            angleAxisId={0}
+            cornerRadius={4}
+          />
+        </RadialBarChart>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-sm font-bold" style={{ color: statusColor }}>{value}%</span>
+        </div>
+      </div>
+      <span className="text-xs font-semibold text-slate-700 text-center" translate="no">{label}</span>
+      {count !== null && (
+        <span className="text-xs text-slate-400">{count} registros</span>
+      )}
+      <span
+        className="text-xs font-medium px-2 py-0.5 rounded-full"
+        style={{ backgroundColor: statusColor + "20", color: statusColor }}
+      >
+        {status}
+      </span>
+    </div>
+  );
+}
+
+// ─── Panel desplegable de Sistemas de Gestión ─────────────────────────────────
+function SystemsBreakdown({ companyId }: { companyId: number }) {
+  const { data: programs = [] } = trpc.managementPrograms.list.useQuery(
+    { companyId },
+    { enabled: companyId > 0 }
+  );
+  const { data: audits = [] } = trpc.auditsInspections.listAudits.useQuery(
+    { companyId },
+    { enabled: companyId > 0 }
+  );
+  const { data: inspections = [] } = trpc.auditsInspections.listInspections.useQuery(
+    { companyId },
+    { enabled: companyId > 0 }
+  );
+  const { data: macroIndicators = [] } = trpc.macroIndicators.getMacroIndicators.useQuery(
+    { companyId },
+    { enabled: companyId > 0 }
+  );
+
+  const programsCompliance = useMemo(() => {
+    if (!programs.length) return 0;
+    const total = (programs as any[]).reduce((sum: number, p: any) => {
+      return sum + (p.plannedActions > 0 ? Math.min(100, Math.round((p.completedActions / p.plannedActions) * 100)) : 0);
+    }, 0);
+    return Math.round(total / programs.length);
+  }, [programs]);
+
+  const auditsCompliance = useMemo(() => {
+    if (!audits.length) return 0;
+    let count = 0;
+    const total = (audits as any[]).reduce((sum: number, a: any) => {
+      const findings = (a.findingsMajorNC || 0) + (a.findingsMinorNC || 0) + (a.findingsObservations || 0) + (a.findingsOM || 0);
+      if (findings === 0) return sum;
+      const closures = (a.closuresMajorNC || 0) + (a.closuresMinorNC || 0) + (a.closuresObservations || 0) + (a.closuresOM || 0);
+      count++;
+      return sum + Math.min(100, Math.round((closures / findings) * 100));
+    }, 0);
+    return count > 0 ? Math.round(total / count) : 0;
+  }, [audits]);
+
+  const inspectionsCompliance = useMemo(() => {
+    if (!inspections.length) return 0;
+    let count = 0;
+    const total = (inspections as any[]).reduce((sum: number, i: any) => {
+      if (!i.findings || i.findings === 0) return sum;
+      count++;
+      return sum + Math.min(100, Math.round(((i.closures || 0) / i.findings) * 100));
+    }, 0);
+    return count > 0 ? Math.round(total / count) : 0;
+  }, [inspections]);
+
+  const avgCompliances = useMemo(() => {
+    if (!macroIndicators.length) return 0;
+    const total = (macroIndicators as any[]).reduce((sum: number, p: any) => sum + (p.compliancesPercentage || 0), 0);
+    return Math.round(total / macroIndicators.length);
+  }, [macroIndicators]);
+
+  const metrics = [
+    { label: "Programas", value: programsCompliance, icon: "📋", count: (programs as any[]).length, color: "#3b82f6" },
+    { label: "Cumplimientos", value: avgCompliances, icon: "✅", count: null, color: "#10b981" },
+    { label: "Auditorías", value: auditsCompliance, icon: "🔍", count: (audits as any[]).length, color: "#8b5cf6" },
+    { label: "Inspecciones", value: inspectionsCompliance, icon: "🔎", count: (inspections as any[]).length, color: "#f59e0b" },
+  ];
+
+  const avgTotal = Math.round(metrics.reduce((s, m) => s + m.value, 0) / metrics.length);
+  const avgColor = avgTotal >= 80 ? "#16a34a" : avgTotal >= 60 ? "#ca8a04" : "#dc2626";
+
+  return (
+    <div>
+      {/* Resumen global */}
+      <div className="flex items-center justify-between mb-4 p-3 bg-slate-50 rounded-lg">
+        <span className="text-sm font-semibold text-slate-700">Promedio general Sistemas de Gestión</span>
+        <span className="text-lg font-bold" style={{ color: avgColor }}>{avgTotal}%</span>
+      </div>
+      {/* Grid de 4 indicadores */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {metrics.map((m) => (
+          <SystemsKpiCard
+            key={m.label}
+            label={m.label}
+            value={m.value}
+            icon={m.icon}
+            count={m.count}
+            color={m.color}
+          />
+        ))}
+      </div>
+      {/* Barra comparativa */}
+      <div className="mt-4">
+        <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-2">Comparativa</p>
+        <ResponsiveContainer width="100%" height={160}>
+          <BarChart
+            data={metrics.map((m) => ({ name: m.label, value: m.value }))}
+            margin={{ top: 8, right: 8, left: 0, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
+            <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} width={35} />
+            <Tooltip formatter={(v: any) => [`${v}%`, "Cumplimiento"]} />
+            <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
+              {metrics.map((m, i) => {
+                const c = m.value >= 80 ? "#16a34a" : m.value >= 60 ? "#ca8a04" : "#dc2626";
+                return <Cell key={i} fill={c} />;
+              })}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function StrategicTrends() {
   const [, setLocation] = useLocation();
@@ -565,6 +738,7 @@ export default function StrategicTrends() {
   const { session: processLeaderSession } = useProcessLeaderAuth();
   const [yearFilter, setYearFilter] = useState<number | "all" | "annual">("all");
   const [showOteModal, setShowOteModal] = useState(false);
+  const [showSystemsModal, setShowSystemsModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [urlCopied, setUrlCopied] = useState(false);
 
@@ -792,6 +966,38 @@ export default function StrategicTrends() {
                 metaColor="#ef4444"
                 yearFilter={yearFilter}
               />
+              {/* Sistemas de Gestión */}
+              <Card className="shadow-sm">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="text-xs font-bold px-2 py-1 rounded-md"
+                        style={{ backgroundColor: "#0ea5e920", color: "#0ea5e9" }}
+                        translate="no"
+                      >
+                        SGI
+                      </span>
+                      <CardTitle className="text-base font-semibold text-slate-700">
+                        Sistemas de Gestión
+                      </CardTitle>
+                    </div>
+                    <Settings size={16} className="text-slate-400" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-slate-500 mb-3">
+                    % de cumplimiento de Programas, Cumplimientos, Auditorías e Inspecciones.
+                  </p>
+                  <button
+                    onClick={() => setShowSystemsModal(true)}
+                    className="flex items-center gap-2 text-sm font-medium text-sky-600 hover:text-sky-800 transition-colors"
+                  >
+                    <ChevronDown size={16} />
+                    Desplegar Sistemas de Gestión
+                  </button>
+                </CardContent>
+              </Card>
             </div>
 
             {trendsResult?.hasSavedData === false && (
@@ -802,6 +1008,29 @@ export default function StrategicTrends() {
           </>
         )}
       </div>
+      {/* Modal de desglose Sistemas de Gestión */}
+      {showSystemsModal && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-16 px-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSystemsModal(false); }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[75vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-xl">
+              <h2 className="text-lg font-bold text-slate-800">Desglose de Sistemas de Gestión</h2>
+              <button
+                onClick={() => setShowSystemsModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-5">
+              <SystemsBreakdown companyId={companyId} />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
       {/* Modal de desglose OTE */}
       {showOteModal && createPortal(
         <div
