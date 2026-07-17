@@ -209,13 +209,21 @@ export default function ExecutiveDashboard({
               <p className="text-blue-200 text-sm mt-0.5">{processName}</p>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="text-white/70 hover:text-white text-2xl font-light leading-none transition-colors"
-            aria-label="Cerrar"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="flex items-center gap-1.5 text-white/80 hover:text-white text-sm font-medium border border-white/30 hover:border-white/60 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              ← Volver
+            </button>
+            <button
+              onClick={onClose}
+              className="text-white/70 hover:text-white text-2xl font-light leading-none transition-colors"
+              aria-label="Cerrar"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <div className="p-8 space-y-10">

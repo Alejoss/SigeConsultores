@@ -74,29 +74,13 @@ export default function ProcessIndicators() {
 
   useEffect(() => {
     if (indicatorsData && Array.isArray(indicatorsData) && indicatorsData.length > 0) {
-      console.log("[ProcessIndicators] Received indicators data:", indicatorsData);
-      
-      // Map consolidated indicators to elements using name and indicator name matching
+      // Match by id field from server response
       const updatedElements = elements.map(element => {
         const updatedIndicators = element.indicators.map(indicator => {
-          // Find matching indicator from database by name and indicator name
-          const dbIndicator = indicatorsData.find((ind: any) => {
-            // Match by element name and indicator name
-            const nameMatch = ind.name === element.name;
-            const indicatorMatch = ind.indicator === indicator.name;
-            
-            if (nameMatch && indicatorMatch) {
-              console.log(`[ProcessIndicators] MATCH: ${element.name} / ${indicator.name} = ${ind.value}`);
-            }
-            
-            return nameMatch && indicatorMatch;
-          });
-          
-          console.log(`[ProcessIndicators] Indicator ${element.name}/${indicator.name}: found=${!!dbIndicator}, value=${dbIndicator?.value || 0}`);
-          
+          const dbIndicator = indicatorsData.find((ind: any) => ind.id === indicator.id);
           return {
             ...indicator,
-            value: dbIndicator?.value || 0
+            value: dbIndicator?.value ?? indicator.value
           };
         });
         return { ...element, indicators: updatedIndicators };
