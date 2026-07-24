@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { companyTrends, processes, processTacticalObjectives, criticalityMatrix } from "../../drizzle/schema";
+import { companyTrends, processes, processTacticalObjectives, criticalityMatrix, strategicObjectives, stakeholders, processFODA } from "../../drizzle/schema";
 import { eq, asc } from "drizzle-orm";
 
 const MONTH_NAMES = [
@@ -454,4 +454,258 @@ export const strategicTrendsRouter = router({
         return null;
       }
     }),
+
+  /**
+   * Devuelve el avance de OTE agrupado por Objetivo Estratégico.
+   * Para cada OE: % total de cumplimiento y desglose por proceso/área.
+   */
+  getStrategicObjectivesBreakdown: companyProcedure
+    .input(z.object({ companyId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { globalPercent: 0, objectives: [], totalOTE: 0 };
+
+      const oeList = await db
+        .select()
+        .from(strategicObjectives)
+        .where(eq(strategicObjectives.companyId, input.companyId))
+        .orderBy(asc(strategicObjectives.orderIndex));
+
+      const companyProcesses = await db
+        .select()
+        .from(processes)
+        .where(eq(processes.companyId, input.companyId));
+
+      const allOTE: Array<{ processId: number; processName: string; strategicObjective: string; percent: number; ponderacion: number }> = [];
+      for (const proc of companyProcesses) {
+        const oteRows = await db
+          .select()
+          .from(processTacticalObjectives)
+          .where(eq(processTacticalObjectives.processId, proc.id));
+
+        for (const obj of oteRows) {
+          try {
+            const pd = JSON.parse((obj as any).planningData || "{}");
+            const ponderacion = parseFloat(pd.ponderacion) || 0;
+            const puntoPartida = parseFloat(pd.puntoPartida) || 0;
+            const metaLlegada = parseFloat(pd.metaLlegada) || 0;
+            const avanceMeta = parseFloat(pd.avanceMeta) || 0;
+            let percent = 0;
+            if (metaLlegada !== puntoPartida && metaLlegada !== 0) {
+              percent = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
+              percent = Math.max(0, Math.min(100, Math.round(percent)));
+            } else if (pd.resultKeys && Array.isArray(pd.resultKeys)) {
+              const totalW = pd.resultKeys.reduce((s: number, rk: any) => s + (parseFloat(rk.ponderacion) || 0), 0);
+              if (totalW > 0) {
+                percent = pd.resultKeys.reduce((s: number, rk: any) => {
+                  const w = parseFloat(rk.ponderacion) || 0;
+                  const p = parseFloat(rk.porcentajeAlcanzado) || 0;
+                  return s + p * (w / totalW);
+                }, 0);
+              } else {
+                const vals = pd.resultKeys.map((rk: any) => parseFloat(rk.porcentajeAlcanzado) || 0);
+                percent = vals.length > 0 ? vals.reduce((a: number, b: number) => a + b, 0) / vals.length : 0;
+              }
+              percent = Math.max(0, Math.min(100, Math.round(percent)));
+            }
+            allOTE.push({
+              processId: proc.id,
+              processName: proc.name,
+              strategicObjective: (obj as any).strategicObjective || "",
+              percent,
+              ponderacion,
+            });
+          } catch { /* skip */ }
+        }
+      }
+
+      const totalWeight = allOTE.reduce((s, o) => s + o.ponderacion, 0);
+      const globalPercent = totalWeight > 0
+        ? Math.round(allOTE.reduce((s, o) => s + o.percent * (o.ponderacion / totalWeight), 0))
+        : (allOTE.length > 0 ? Math.round(allOTE.reduce((s, o) => s + o.percent, 0) / allOTE.length) : 0);
+
+      const result = oeList.map((oe, idx) => {
+        const oeLabel = oe.objective || `OE ${idx + 1}`;
+        const matchingOTE = allOTE.filter((o) => {
+          const so = (o.strategicObjective || "").toLowerCase().trim();
+          const oel = oeLabel.toLowerCase().trim();
+          return so === oel || so.includes(oel.slice(0, 20)) || oel.includes(so.slice(0, 20));
+        });
+
+        const oeWeight = matchingOTE.reduce((s, o) => s + o.ponderacion, 0);
+        const oePercent = oeWeight > 0
+          ? Math.round(matchingOTE.reduce((s, o) => s + o.percent * (o.ponderacion / oeWeight), 0))
+          : (matchingOTE.length > 0 ? Math.round(matchingOTE.reduce((s, o) => s + o.percent, 0) / matchingOTE.length) : 0);
+
+        const processSummary: Record<number, { processId: number; processName: string; percent: number; oteCount: number }> = {};
+        for (const o of matchingOTE) {
+          if (!processSummary[o.processId]) {
+            processSummary[o.processId] = { processId: o.processId, processName: o.processName, percent: 0, oteCount: 0 };
+          }
+          processSummary[o.processId].percent += o.percent;
+          processSummary[o.processId].oteCount++;
+        }
+        const contributions = Object.values(processSummary).map((p) => ({
+          ...p,
+          percent: Math.round(p.percent / p.oteCount),
+        }));
+
+        return {
+          id: oe.id,
+          orderIndex: oe.orderIndex,
+          name: oeLabel,
+          description: oe.description || "",
+          percent: oePercent,
+          contributions,
+          oteCount: matchingOTE.length,
+        };
+      });
+
+      return { globalPercent, objectives: result, totalOTE: allOTE.length };
+    }),
+
+  /**
+   * Devuelve el resumen de OTG por proceso/área para Tendencias Estratégicas.
+   */
+  getOtgByArea: companyProcedure
+    .input(z.object({ companyId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const companyProcesses = await db
+        .select()
+        .from(processes)
+        .where(eq(processes.companyId, input.companyId));
+
+      const result: Array<{
+        processId: number;
+        processName: string;
+        totalOTG: number;
+        logrados: number;
+        comunicados: number;
+        percent: number;
+      }> = [];
+
+      for (const proc of companyProcesses) {
+        // Valor por defecto: proceso sin OTG
+        let totalOTG = 0;
+        let logrados = 0;
+        let comunicados = 0;
+        let percent = 0;
+
+        const fodaRows = await db
+          .select()
+          .from(processFODA)
+          .where(eq(processFODA.processId, proc.id));
+
+        if (fodaRows.length > 0) {
+          const latestFoda = fodaRows.reduce((latest: any, current: any) =>
+            new Date(current.createdAt || 0).getTime() > new Date(latest.createdAt || 0).getTime() ? current : latest
+          );
+
+          if (latestFoda?.matrixData) {
+            try {
+              const matrixRows = JSON.parse(latestFoda.matrixData);
+              if (Array.isArray(matrixRows) && matrixRows.length > 0) {
+                totalOTG = matrixRows.length;
+                logrados = matrixRows.filter((r: any) => r.objetivoLogrado === "SI").length;
+                comunicados = matrixRows.filter((r: any) => r.comunicado === "SI").length;
+
+                let totalPct = 0;
+                let countWithActions = 0;
+                for (const row of matrixRows) {
+                  const acciones: any[] = Array.isArray(row.acciones) ? row.acciones : [];
+                  if (acciones.length === 0) continue;
+                  const totalPond = acciones.reduce((s: number, a: any) => s + (a.ponderacion || 0), 0);
+                  let pct = 0;
+                  if (totalPond > 0) {
+                    pct = acciones.reduce((s: number, a: any) => {
+                      const alc = parseFloat(a.alcanzado) || 0;
+                      return s + alc * (a.ponderacion / totalPond);
+                    }, 0);
+                  } else {
+                    pct = acciones.reduce((s: number, a: any) => s + (parseFloat(a.alcanzado) || 0), 0) / acciones.length;
+                  }
+                  totalPct += Math.min(100, Math.max(0, pct));
+                  countWithActions++;
+                }
+                percent = countWithActions > 0 ? Math.round(totalPct / countWithActions) : 0;
+              }
+            } catch { /* skip */ }
+          }
+        }
+
+        result.push({
+          processId: proc.id,
+          processName: proc.name,
+          totalOTG,
+          logrados,
+          comunicados,
+          percent,
+        });
+      }
+
+      return result;
+    }),
+
+  /**
+   * Devuelve el resumen de Partes Interesadas por proceso/área.
+   */
+  getStakeholdersByArea: companyProcedure
+    .input(z.object({ companyId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const companyProcesses = await db
+        .select()
+        .from(processes)
+        .where(eq(processes.companyId, input.companyId));
+
+      const result: Array<{
+        processId: number;
+        processName: string;
+        totalStakeholders: number;
+        implemented: number;
+        percentImplemented: number;
+        internalCount: number;
+        externalCount: number;
+      }> = [];
+
+      for (const proc of companyProcesses) {
+        const stRows = await db
+          .select()
+          .from(stakeholders)
+          .where(eq(stakeholders.processId, proc.id));
+
+        const critRows = stRows.length > 0
+          ? await db
+              .select()
+              .from(criticalityMatrix)
+              .where(eq(criticalityMatrix.processId, proc.id))
+          : [];
+
+        const implemented = critRows.filter((c: any) => c.implementationStatus === true).length;
+        const percentImplemented = critRows.length > 0
+          ? Math.round((implemented / critRows.length) * 100)
+          : 0;
+
+        const internalCount = (stRows as any[]).filter((s: any) => s.isInternal === true || s.isInternal === 1).length;
+        const externalCount = stRows.length - internalCount;
+
+        result.push({
+          processId: proc.id,
+          processName: proc.name,
+          totalStakeholders: stRows.length,
+          implemented,
+          percentImplemented,
+          internalCount,
+          externalCount,
+        });
+      }
+
+      return result;
+    }),
 });
+

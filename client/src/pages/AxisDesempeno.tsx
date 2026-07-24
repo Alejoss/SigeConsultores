@@ -37,7 +37,7 @@ export default function AxisDesempeno() {
     if (companyId) query.set("companyId", companyId);
     if (isManager) query.set("isManager", isManager);
 
-    const target = query.toString() ? `/performance?${query.toString()}` : "/performance";
+    const target = query.toString() ? `/strategic-trends?${query.toString()}` : "/strategic-trends";
     setLocation(target);
   }, [setLocation]);
 
