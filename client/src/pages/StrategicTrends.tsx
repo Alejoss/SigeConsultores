@@ -21,623 +21,618 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
-  TooltipProps,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis as RadarAngleAxis,
   RadialBarChart,
   RadialBar,
   PolarAngleAxis,
 } from "recharts";
-import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, X, Settings, Download } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, X, Settings, Download, Target, BarChart2, Users, Shield } from "lucide-react";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-type TrendPoint = {
-  year: number;
-  month: number;
-  label: string;
-  otePercent: number;
-  otgPercent: number;
-  stakeholderPercent: number;
-  oteMeta: number;
-  otgMeta: number;
-  stakeholderMeta: number;
-};
+// ─── Utilidades ───────────────────────────────────────────────────────────────
+function getColor(pct: number) {
+  return pct >= 80 ? "#16a34a" : pct >= 60 ? "#ca8a04" : "#dc2626";
+}
+function getStatus(pct: number) {
+  return pct >= 80 ? "En meta" : pct >= 60 ? "Alerta" : "Crítico";
+}
+function getCompanyId(isManagerLogin: boolean, managerCompanyId: number | null, processLeaderSession: any) {
+  if (isManagerLogin && managerCompanyId) return managerCompanyId;
+  if (processLeaderSession?.companyId) return processLeaderSession.companyId;
+  return getCompanyIdFromLocationOrStorage() || 0;
+}
 
-type OteObjective = {
-  id: number;
-  name: string;
-  strategicObjective: string;
-  percent: number;
-  ponderacion: number;
-};
-
-type OteProcess = {
-  processId: number;
-  processName: string;
-  objectives: OteObjective[];
-};
-
-// ─── Tooltip personalizado ────────────────────────────────────────────────────
-function CustomTooltip({ active, payload, label }: any) {
-  if (!active || !payload || !payload.length) return null;
+// ─── Gráfico circular pequeño ─────────────────────────────────────────────────
+function DonutKpi({ value, size = 80 }: { value: number; size?: number }) {
+  const color = getColor(value);
+  const data = [{ value, fill: color }];
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-sm">
-      <p className="font-bold text-slate-700 mb-2">{label}</p>
-      {payload.map((entry: any) => (
-        <div key={entry.dataKey} className="flex items-center gap-2 mb-1">
-          <span
-            className="inline-block w-3 h-3 rounded-full"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span className="text-slate-600">{entry.name}:</span>
-          <span className="font-semibold" style={{ color: entry.color }}>
-            {typeof entry.value === "number" ? `${entry.value.toFixed(1)}%` : entry.value}
-          </span>
-        </div>
-      ))}
+    <div className="relative" style={{ width: size, height: size }}>
+      <RadialBarChart
+        width={size} height={size}
+        cx={size / 2} cy={size / 2}
+        innerRadius={size * 0.32} outerRadius={size * 0.46}
+        barSize={size * 0.1}
+        data={data} startAngle={90} endAngle={-270}
+      >
+        <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+        <RadialBar background={{ fill: "#f1f5f9" }} dataKey="value" angleAxisId={0} cornerRadius={4} />
+      </RadialBarChart>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="font-bold" style={{ fontSize: size * 0.18, color }}>{value}%</span>
+      </div>
     </div>
   );
 }
 
-// ─── Dot personalizado que muestra el valor ───────────────────────────────────
-function LabelDot(props: any) {
-  const { cx, cy, value, fill } = props;
-  if (value === undefined || value === null) return null;
+// ─── Exportar como imagen ─────────────────────────────────────────────────────
+async function exportAsImage(ref: React.RefObject<HTMLDivElement | null>, filename: string, setSaving: (v: boolean) => void) {
+  if (!ref.current) return;
+  setSaving(true);
+  try {
+    const html2canvas = (await import("html2canvas")).default;
+    const canvas = await html2canvas(ref.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+    const link = document.createElement("a");
+    link.download = filename;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  } finally {
+    setSaving(false);
+  }
+}
+
+// ─── Botón de exportar ────────────────────────────────────────────────────────
+function ExportBtn({ onClick, loading }: { onClick: () => void; loading: boolean }) {
   return (
-    <g>
-      <circle cx={cx} cy={cy} r={5} fill={fill} stroke="white" strokeWidth={2} />
-      <text
-        x={cx}
-        y={cy - 10}
-        textAnchor="middle"
-        fill={fill}
-        fontSize={11}
-        fontWeight="600"
-      >
-        {value.toFixed(1)}
-      </text>
-    </g>
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-800 border border-emerald-300 rounded-lg px-3 py-1.5 hover:bg-emerald-50 transition-colors disabled:opacity-60"
+    >
+      <Download size={13} />
+      {loading ? "Exportando…" : "Exportar imagen"}
+    </button>
   );
 }
 
-// ─── Tarjeta de KPI con indicador interanual ──────────────────────────────────
-function KpiCard({
+// ─── Ventana de acceso principal ──────────────────────────────────────────────
+function AccessCard({
+  icon,
   title,
-  current,
-  meta,
+  description,
   color,
+  onClick,
   badge,
-  prevYearClose,
-  prevYear,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  color: string;
+  onClick: () => void;
+  badge?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left p-6 rounded-2xl border-2 hover:shadow-lg transition-all duration-200 bg-white group"
+      style={{ borderColor: color + "30" }}
+    >
+      <div className="flex items-start gap-4">
+        <div className="p-3 rounded-xl flex-shrink-0" style={{ backgroundColor: color + "15" }}>
+          <div style={{ color }}>{icon}</div>
+        </div>
+        <div className="flex-1 min-w-0">
+          {badge && (
+            <span className="text-xs font-bold px-2 py-0.5 rounded-md mb-1 inline-block" style={{ backgroundColor: color + "20", color }}>
+              {badge}
+            </span>
+          )}
+          <h3 className="text-base font-bold text-slate-800 group-hover:text-slate-900">{title}</h3>
+          <p className="text-sm text-slate-500 mt-1 leading-relaxed">{description}</p>
+        </div>
+        <ChevronDown size={18} className="text-slate-400 group-hover:text-slate-600 flex-shrink-0 mt-1 rotate-[-90deg]" />
+      </div>
+    </button>
+  );
+}
+
+// ─── Header de sub-vista ──────────────────────────────────────────────────────
+function SubViewHeader({
+  title,
+  onBack,
+  onExport,
+  exporting,
 }: {
   title: string;
-  current: number;
-  meta: number;
-  color: string;
-  badge: string;
-  prevYearClose?: number;
-  prevYear?: number;
+  onBack: () => void;
+  onExport: () => void;
+  exporting: boolean;
 }) {
-  const diff = current - meta;
-  const isAbove = diff >= 0;
-  const isClose = Math.abs(diff) < 5;
-
-  // Diferencia vs cierre del año anterior
-  const yoyDiff = prevYearClose !== undefined ? current - prevYearClose : null;
-
   return (
-    <Card className="border-2" style={{ borderColor: color + "40" }}>
-      <CardContent className="pt-4 pb-4">
-        <div className="flex items-start justify-between mb-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1" translate="no">
-              {badge}
-            </p>
-            <p className="text-sm font-medium text-slate-700">{title}</p>
-          </div>
-          <div
-            className="flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full"
-            style={{
-              backgroundColor: isAbove ? "#dcfce7" : isClose ? "#fef9c3" : "#fee2e2",
-              color: isAbove ? "#16a34a" : isClose ? "#ca8a04" : "#dc2626",
-            }}
-          >
-            {isAbove ? <TrendingUp size={12} /> : isClose ? <Minus size={12} /> : <TrendingDown size={12} />}
-            {isAbove ? "En meta" : isClose ? "Cerca" : "Bajo meta"}
-          </div>
-        </div>
-        <div className="flex items-end gap-2">
-          <span className="text-4xl font-bold" style={{ color }}>
-            {current.toFixed(1)}%
-          </span>
-          <span className="text-slate-400 text-sm mb-1">/ {meta}% meta</span>
-        </div>
-        <div className="mt-3 h-2 bg-slate-100 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${Math.min(100, current)}%`, backgroundColor: color }}
-          />
-        </div>
-        {/* Indicador interanual */}
-        {yoyDiff !== null && prevYear !== undefined && (
-          <div className="mt-3 flex items-center gap-1.5 text-xs">
-            <span className="text-slate-400">vs. cierre {prevYear}:</span>
-            <span
-              className="font-bold flex items-center gap-0.5"
-              style={{ color: yoyDiff >= 0 ? "#16a34a" : "#dc2626" }}
-            >
-              {yoyDiff >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-              {yoyDiff >= 0 ? "+" : ""}{yoyDiff.toFixed(1)}%
-            </span>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Tooltip para mini gráfica de OTE ────────────────────────────────────────
-function OteChartTooltip({ active, payload }: any) {
-  if (!active || !payload || !payload.length) return null;
-  const d = payload[0]?.payload;
-  if (!d) return null;
-  return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs max-w-xs">
-      <p className="font-bold text-slate-700 mb-1 leading-snug">{d.fullDescription || d.label}</p>
-      {d.responsible && <p className="text-slate-400 mb-1">Responsable: {d.responsible}</p>}
-      {d.endDate && <p className="text-slate-400 mb-1">Fecha: {d.endDate}</p>}
-      <div className="flex gap-3 mt-1">
-        <span className="text-blue-600 font-semibold">Avance: {d.avance}%</span>
-        <span className="text-red-400 font-semibold">Meta: {d.meta}%</span>
+    <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center gap-3">
+        <Button variant="outline" size="sm" onClick={onBack} className="flex items-center gap-2">
+          ← Volver
+        </Button>
+        <h2 className="text-xl font-bold text-slate-800">{title}</h2>
       </div>
-      {d.ponderacion > 0 && <p className="text-slate-400 mt-1">Ponderación: {d.ponderacion}%</p>}
+      <ExportBtn onClick={onExport} loading={exporting} />
     </div>
   );
 }
 
-// ─── Mini gráfica de un OTE individual ───────────────────────────────────────
-function OteDetailChart({ objectiveId, companyId }: { objectiveId: number; companyId: number }) {
-  const { data, isLoading } = trpc.strategicTrends.getOteDetail.useQuery(
-    { objectiveId, companyId },
-    { enabled: objectiveId > 0 && companyId > 0 }
+// ═══════════════════════════════════════════════════════════════════════════════
+// VISTA 1: OBJETIVOS ESTRATÉGICOS
+// ═══════════════════════════════════════════════════════════════════════════════
+function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+  const [activeSubView, setActiveSubView] = useState<"overview" | "timeline" | "heatmap">("overview");
+
+  const { data: oeData, isLoading } = trpc.strategicTrends.getStrategicObjectivesBreakdown.useQuery(
+    { companyId },
+    { enabled: companyId > 0 }
   );
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-32">
-        <Loader2 className="animate-spin w-4 h-4 text-blue-400" />
-      </div>
-    );
-  }
-  if (!data || !data.chartPoints || data.chartPoints.length === 0) {
-    return (
-      <p className="text-slate-400 text-xs text-center py-4">Sin resultados clave registrados.</p>
-    );
-  }
-
-  const globalColor = data.globalPercent >= data.globalMeta ? "#16a34a"
-    : data.globalPercent >= data.globalMeta * 0.7 ? "#ca8a04"
-    : "#dc2626";
-
-  return (
-    <div className="mt-3 border-t border-slate-100 pt-3">
-      {/* Resumen global del OTE */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-slate-500 font-medium">Avance global del objetivo</span>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">Meta: {data.globalMeta}%</span>
-          <span
-            className="text-sm font-bold px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: globalColor + "20", color: globalColor }}
-          >
-            {data.globalPercent}%
-          </span>
-        </div>
-      </div>
-      <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden mb-4">
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${Math.min(100, data.globalPercent)}%`, backgroundColor: globalColor }}
-        />
-      </div>
-
-      {/* Gráfica de barras por resultado clave */}
-      <p className="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wide">
-        Resultados clave ({data.chartPoints.length})
-      </p>
-      <ResponsiveContainer width="100%" height={data.chartPoints.length > 4 ? 220 : 160}>
-        <BarChart
-          data={data.chartPoints}
-          margin={{ top: 8, right: 8, left: 0, bottom: 5 }}
-          layout="vertical"
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-          <XAxis
-            type="number"
-            domain={[0, 100]}
-            tick={{ fontSize: 10, fill: "#94a3b8" }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(v) => `${v}%`}
-          />
-          <YAxis
-            type="category"
-            dataKey="label"
-            tick={{ fontSize: 10, fill: "#64748b" }}
-            tickLine={false}
-            axisLine={false}
-            width={110}
-          />
-          <Tooltip content={<OteChartTooltip />} />
-          {/* Barra de meta (fondo) */}
-          <Bar dataKey="meta" name="Meta" fill="#fca5a5" radius={[0, 3, 3, 0]} barSize={10}>
-            {data.chartPoints.map((_: any, i: number) => (
-              <Cell key={`meta-${i}`} fill="#fca5a5" />
-            ))}
-          </Bar>
-          {/* Barra de avance (encima) */}
-          <Bar dataKey="avance" name="Avance" radius={[0, 3, 3, 0]} barSize={10}>
-            {data.chartPoints.map((pt: any, i: number) => {
-              const c = pt.avance >= pt.meta ? "#16a34a"
-                : pt.avance >= pt.meta * 0.7 ? "#ca8a04"
-                : "#3b82f6";
-              return <Cell key={`avance-${i}`} fill={c} />;
-            })}
-          </Bar>
-          <Legend
-            wrapperStyle={{ fontSize: 11, paddingTop: 4 }}
-            iconType="circle"
-            iconSize={7}
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-// ─── Desglose OTE colapsable con mini gráficas ───────────────────────────────
-function OteBreakdown({ companyId }: { companyId: number }) {
-  const { data: breakdown = [], isLoading } = trpc.strategicTrends.getOteBreakdown.useQuery(
+  const { data: trendsResult } = trpc.strategicTrends.getTrends.useQuery(
     { companyId },
     { enabled: companyId > 0 }
   );
 
-  // Aplanar todos los objetivos de todos los procesos
-  const allObjectives = useMemo(() => {
-    return (breakdown as OteProcess[]).flatMap((proc) =>
-      proc.objectives.map((obj) => ({
-        label: obj.name.length > 28 ? obj.name.slice(0, 26) + "…" : obj.name,
-        fullName: obj.name,
-        value: obj.percent,
-        process: proc.processName,
-      }))
-    );
-  }, [breakdown]);
+  const trendData = trendsResult?.data ?? [];
 
-  const avgTotal = allObjectives.length > 0
-    ? Math.round(allObjectives.reduce((s, o) => s + o.value, 0) / allObjectives.length)
-    : 0;
-  const avgColor = avgTotal >= 80 ? "#16a34a" : avgTotal >= 60 ? "#ca8a04" : "#dc2626";
+  const objectives = oeData?.objectives ?? [];
+  const globalPercent = oeData?.globalPercent ?? 0;
 
-  if (isLoading) return (
-    <div className="flex justify-center py-6">
-      <Loader2 className="animate-spin w-5 h-5 text-blue-400" />
-    </div>
-  );
-  if (allObjectives.length === 0) return (
-    <p className="text-slate-400 text-sm text-center py-4">No hay objetivos tácticos registrados.</p>
-  );
+  // Recopilar todos los procesos únicos para el heatmap
+  const allProcesses = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const oe of objectives) {
+      for (const c of oe.contributions) {
+        map.set(c.processId, c.processName);
+      }
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [objectives]);
+
+  if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="animate-spin w-8 h-8 text-blue-500" /></div>;
 
   return (
     <div>
-      {/* Resumen global */}
-      <div className="flex items-center justify-between mb-4 p-3 bg-slate-50 rounded-lg">
-        <span className="text-sm font-semibold text-slate-700">Promedio general OTE</span>
-        <span className="text-lg font-bold" style={{ color: avgColor }}>{avgTotal}%</span>
-      </div>
+      <SubViewHeader
+        title="Objetivos Estratégicos"
+        onBack={onBack}
+        onExport={() => exportAsImage(ref, "objetivos-estrategicos.png", setExporting)}
+        exporting={exporting}
+      />
 
-      {/* Grid de gauges por objetivo */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">
-        {allObjectives.map((obj, i) => {
-          const statusColor = obj.value >= 80 ? "#16a34a" : obj.value >= 60 ? "#ca8a04" : "#dc2626";
-          const status = obj.value >= 80 ? "En meta" : obj.value >= 60 ? "Alerta" : "Crítico";
-          const chartData = [{ value: obj.value, fill: statusColor }];
-          return (
-            <div key={i} className="flex flex-col items-center gap-2 p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
-              <div className="relative w-20 h-20">
-                <RadialBarChart
-                  width={80} height={80} cx={40} cy={40}
-                  innerRadius={28} outerRadius={38} barSize={8}
-                  data={chartData} startAngle={90} endAngle={-270}
-                >
-                  <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
-                  <RadialBar background={{ fill: "#f1f5f9" }} dataKey="value" angleAxisId={0} cornerRadius={4} />
-                </RadialBarChart>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-sm font-bold" style={{ color: statusColor }}>{obj.value}%</span>
-                </div>
-              </div>
-              <span className="text-xs font-semibold text-slate-700 text-center leading-tight" translate="no">{obj.label}</span>
-              <span className="text-xs text-slate-400 text-center" translate="no">{obj.process}</span>
-              <span
-                className="text-xs font-medium px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: statusColor + "20", color: statusColor }}
-              >
-                {status}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Barra comparativa */}
-      <div className="mt-2">
-        <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-2">Comparativa</p>
-        <ResponsiveContainer width="100%" height={Math.max(160, allObjectives.length * 28)}>
-          <BarChart
-            data={allObjectives.map((o) => ({ name: o.label, value: o.value }))}
-            layout="vertical"
-            margin={{ top: 4, right: 40, left: 8, bottom: 4 }}
+      {/* Sub-navegación */}
+      <div className="flex gap-2 mb-6">
+        {(["overview", "heatmap", "timeline"] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setActiveSubView(v)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              activeSubView === v ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-            <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
-            <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false} axisLine={false} width={120} />
-            <Tooltip formatter={(v: any) => [`${v}%`, "OTE"]} />
-            <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
-              {allObjectives.map((o, i) => {
-                const c = o.value >= 80 ? "#16a34a" : o.value >= 60 ? "#ca8a04" : "#dc2626";
-                return <Cell key={i} fill={c} />;
-              })}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+            {v === "overview" ? "Avance por OE" : v === "heatmap" ? "Contribución por Área" : "Línea de Tiempo"}
+          </button>
+        ))}
+      </div>
+
+      <div ref={ref}>
+        {activeSubView === "overview" && (
+          <div className="space-y-4">
+            {/* KPI global */}
+            <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-blue-100 bg-blue-50">
+              <DonutKpi value={globalPercent} size={72} />
+              <div>
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Avance Total en Objetivos Estratégicos</p>
+                <p className="text-3xl font-bold text-slate-800">{globalPercent}%</p>
+                <p className="text-sm text-slate-500">{oeData?.totalOTE ?? 0} OTE en {objectives.length} Objetivos Estratégicos</p>
+              </div>
+            </div>
+
+            {/* Barras por OE */}
+            {objectives.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">No hay Objetivos Estratégicos registrados</div>
+            ) : (
+              <div className="space-y-3">
+                {objectives.map((oe, idx) => {
+                  const color = getColor(oe.percent);
+                  return (
+                    <div key={oe.id} className="p-4 rounded-xl border border-slate-200 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-md flex-shrink-0" style={{ backgroundColor: color + "20", color }}>
+                            OE {idx + 1}
+                          </span>
+                          <span className="text-sm font-semibold text-slate-700 truncate">{oe.name}</span>
+                        </div>
+                        <span className="text-lg font-bold flex-shrink-0 ml-3" style={{ color }}>{oe.percent}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-3">
+                        <div
+                          className="h-3 rounded-full transition-all duration-500"
+                          style={{ width: `${oe.percent}%`, backgroundColor: color }}
+                        />
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1">{oe.oteCount} OTE · {getStatus(oe.percent)}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeSubView === "heatmap" && (
+          <div>
+            <p className="text-sm text-slate-500 mb-4">
+              Cada celda muestra el % de cumplimiento promedio de los OTE de ese proceso que apuntan al Objetivo Estratégico correspondiente.
+            </p>
+            {objectives.length === 0 || allProcesses.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">No hay datos suficientes para mostrar la matriz</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="text-left p-2 font-semibold text-slate-600 bg-slate-50 border border-slate-200 min-w-[140px]">Proceso / Área</th>
+                      {objectives.map((oe: any, idx: number) => (
+                        <th
+                          key={oe.id}
+                          className="p-2 font-semibold text-slate-600 bg-slate-50 border border-slate-200 min-w-[80px] text-center relative group cursor-help"
+                          title={oe.name}
+                        >
+                          OE {idx + 1}
+                          {/* Tooltip con enunciado completo */}
+                          <div className="absolute z-50 hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white text-xs rounded-lg p-2 shadow-xl pointer-events-none">
+                            <span className="font-bold text-slate-300">OE {idx + 1}:</span> {oe.name}
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allProcesses.map((proc: any) => (
+                      <tr key={proc.id}>
+                        <td className="p-2 font-medium text-slate-700 border border-slate-200 bg-white">{proc.name}</td>
+                        {objectives.map((oe: any) => {
+                          const contrib = oe.contributions.find((c: any) => c.processId === proc.id);
+                          if (!contrib) {
+                            return <td key={oe.id} className="p-2 border border-slate-200 bg-slate-50 text-center text-slate-300">—</td>;
+                          }
+                          const bg = contrib.percent >= 80 ? "#dcfce7" : contrib.percent >= 60 ? "#fef9c3" : "#fee2e2";
+                          const fg = getColor(contrib.percent);
+                          return (
+                            <td key={oe.id} className="p-2 border border-slate-200 text-center font-bold" style={{ backgroundColor: bg, color: fg }}>
+                              {contrib.percent}%
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeSubView === "timeline" && (
+          <div>
+            <p className="text-sm text-slate-500 mb-2">
+              Evolución mensual del % de cumplimiento de los Objetivos Estratégicos. Un gráfico por cada OE.
+            </p>
+            {objectives.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">
+                <TrendingUp size={40} className="mx-auto mb-3 opacity-30" />
+                <p>No hay Objetivos Estratégicos registrados.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {objectives.map((oe: any, idx: number) => {
+                  const color = getColor(oe.percent);
+                  // Construir datos del gráfico: punto actual + meta 100%
+                  const chartData = [
+                    { label: new Date().toLocaleDateString("es-EC", { month: "short", year: "numeric" }), avance: oe.percent, meta: 100 },
+                  ];
+                  return (
+                    <div key={oe.id} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                      {/* Cabecera del OE */}
+                      <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: color + "12" }}>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-md" style={{ backgroundColor: color + "25", color }}>
+                            OE {idx + 1}
+                          </span>
+                          <span className="text-sm font-semibold text-slate-700">{oe.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-bold" style={{ color }}>{oe.percent}%</span>
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: color + "20", color }}>
+                            {getStatus(oe.percent)}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Gráfico de línea */}
+                      <div className="px-4 pt-3 pb-2">
+                        <p className="text-xs text-slate-400 mb-2">{oe.oteCount} OTE contribuyen a este objetivo</p>
+                        <ResponsiveContainer width="100%" height={140}>
+                          <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={{ stroke: "#e2e8f0" }} />
+                            <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} width={36} />
+                            <Tooltip formatter={(v: any, name: string) => [`${Number(v).toFixed(1)}%`, name === "meta" ? "Meta" : "Avance actual"]} />
+                            <ReferenceLine y={100} stroke="#94a3b8" strokeDasharray="4 2" label={{ value: "Meta 100%", position: "right", fontSize: 9, fill: "#94a3b8" }} />
+                            <Line type="monotone" dataKey="meta" name="Meta" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="5 3" dot={false} />
+                            <Line type="monotone" dataKey="avance" name="Avance" stroke={color} strokeWidth={2.5} dot={{ r: 5, fill: color, strokeWidth: 2, stroke: "#fff" }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// ─── Gráfico individual ───────────────────────────────────────────────────────
-function TrendChart({
-  title,
-  badge,
-  data,
-  allData,
-  realKey,
-  metaKey,
-  realLabel,
-  metaLabel,
-  realColor,
-  metaColor,
-  yearFilter,
-}: {
-  title: string;
-  badge: string;
-  data: TrendPoint[];
-  allData: TrendPoint[];
-  realKey: keyof TrendPoint;
-  metaKey: keyof TrendPoint;
-  realLabel: string;
-  metaLabel: string;
-  realColor: string;
-  metaColor: string;
-  yearFilter: number | "all" | "annual";
-}) {
-  // Vista "Cierre Anual": solo diciembre de cada año (o el último mes disponible del año)
-  const filtered = useMemo(() => {
-    if (yearFilter === "all") return data;
-    if (yearFilter === "annual") {
-      // Agrupar por año y tomar el último mes disponible
-      const byYear = new Map<number, TrendPoint>();
-      for (const d of allData) {
-        const existing = byYear.get(d.year);
-        if (!existing || d.month > existing.month) {
-          byYear.set(d.year, d);
-        }
-      }
-      return Array.from(byYear.values()).sort((a, b) => a.year - b.year);
-    }
-    return data.filter((d) => d.year === yearFilter);
-  }, [data, allData, yearFilter]);
+// ═══════════════════════════════════════════════════════════════════════════════
+// VISTA 2: OBJETIVOS DE GESTIÓN (OTG)
+// ═══════════════════════════════════════════════════════════════════════════════
+function OTGView({ companyId, onBack }: { companyId: number; onBack: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
 
-  // Detectar cambios de año para líneas de referencia verticales
-  const yearChanges = useMemo(() => {
-    if (yearFilter !== "all") return [];
-    const changes: string[] = [];
-    for (let i = 1; i < filtered.length; i++) {
-      if (filtered[i].year !== filtered[i - 1].year) {
-        changes.push(filtered[i].label);
-      }
-    }
-    return changes;
-  }, [filtered, yearFilter]);
+  const { data: otgData = [], isLoading } = trpc.strategicTrends.getOtgByArea.useQuery(
+    { companyId },
+    { enabled: companyId > 0 }
+  );
 
-  const currentValue = filtered.length > 0
-    ? (filtered[filtered.length - 1][realKey] as number)
+  if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="animate-spin w-8 h-8 text-purple-500" /></div>;
+
+  const totalOTG = otgData.reduce((s: number, p: any) => s + p.totalOTG, 0);
+  const totalLogrados = otgData.reduce((s: number, p: any) => s + p.logrados, 0);
+  const globalPct = totalOTG > 0 ? Math.round((totalLogrados / totalOTG) * 100) : 0;
+  const avgPct = otgData.length > 0
+    ? Math.round(otgData.reduce((s: number, p: any) => s + p.percent, 0) / otgData.length)
     : 0;
 
-  // Etiqueta del eje X para vista anual: solo el año
-  const xTickFormatter = yearFilter === "annual"
-    ? (label: string) => label.split(" ")[1] || label
-    : undefined;
-
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span
-              className="text-xs font-bold px-2 py-1 rounded-md"
-              style={{ backgroundColor: realColor + "20", color: realColor }}
-              translate="no"
-            >
-              {badge}
-            </span>
-            <CardTitle className="text-base font-semibold text-slate-700">
-              {title}
-            </CardTitle>
+    <div>
+      <SubViewHeader
+        title="Objetivos Tácticos de Gestión"
+        onBack={onBack}
+        onExport={() => exportAsImage(ref, "objetivos-gestion.png", setExporting)}
+        exporting={exporting}
+      />
+      <div ref={ref}>
+        {/* KPI global */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="p-4 rounded-xl bg-purple-50 border border-purple-100 text-center">
+            <p className="text-xs text-purple-600 font-semibold uppercase tracking-wide">Total OTG</p>
+            <p className="text-3xl font-bold text-slate-800">{totalOTG}</p>
           </div>
-          <span className="text-sm font-bold" style={{ color: realColor }}>
-            {currentValue.toFixed(1)}% {yearFilter === "annual" ? "último cierre" : "actual"}
-          </span>
+          <div className="p-4 rounded-xl bg-green-50 border border-green-100 text-center">
+            <p className="text-xs text-green-600 font-semibold uppercase tracking-wide">OTG Logrados</p>
+            <p className="text-3xl font-bold text-green-700">{totalLogrados}</p>
+          </div>
+          <div className="p-4 rounded-xl border-2 text-center" style={{ borderColor: getColor(globalPct) + "40", backgroundColor: getColor(globalPct) + "10" }}>
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: getColor(globalPct) }}>% Logrado</p>
+            <p className="text-3xl font-bold" style={{ color: getColor(globalPct) }}>{globalPct}%</p>
+          </div>
         </div>
-      </CardHeader>
-      <CardContent>
-        {filtered.length === 0 ? (
-          <div className="flex items-center justify-center h-40 text-slate-400 text-sm">
-            Sin datos para el período seleccionado
-          </div>
+
+        {otgData.length === 0 ? (
+          <div className="text-center py-12 text-slate-400">No hay OTG registrados en ningún proceso</div>
         ) : (
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart
-              data={filtered}
-              margin={{ top: 20, right: 20, left: 0, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 11, fill: "#94a3b8" }}
-                tickLine={false}
-                axisLine={{ stroke: "#e2e8f0" }}
-                tickFormatter={xTickFormatter}
-              />
-              <YAxis
-                domain={[0, 100]}
-                tick={{ fontSize: 11, fill: "#94a3b8" }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v) => `${v}%`}
-                width={40}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend
-                wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
-                iconType="circle"
-                iconSize={8}
-              />
-              {/* Líneas verticales de cambio de año */}
-              {yearChanges.map((label) => (
-                <ReferenceLine
-                  key={label}
-                  x={label}
-                  stroke="#cbd5e1"
-                  strokeDasharray="4 2"
-                  label={{ value: label.split(" ")[1], position: "insideTopRight", fontSize: 10, fill: "#94a3b8" }}
-                />
-              ))}
-              {/* Línea de meta */}
-              <Line
-                type="monotone"
-                dataKey={metaKey as string}
-                name={metaLabel}
-                stroke={metaColor}
-                strokeWidth={2}
-                strokeDasharray="6 3"
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-              {/* Línea real */}
-              <Line
-                type="monotone"
-                dataKey={realKey as string}
-                name={realLabel}
-                stroke={realColor}
-                strokeWidth={2.5}
-                dot={<LabelDot fill={realColor} />}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(otgData as any[]).map((proc: any) => (
+              <div key={proc.processId} className="p-4 rounded-xl border border-slate-200 bg-white flex flex-col items-center gap-3">
+                <DonutKpi value={proc.percent} size={88} />
+                <div className="text-center">
+                  <p className="text-sm font-bold text-slate-800 leading-tight">{proc.processName}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{proc.logrados}/{proc.totalOTG} OTG logrados</p>
+                  <p className="text-xs text-slate-400">{proc.comunicados} comunicados</p>
+                </div>
+                <span
+                  className="text-xs font-medium px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: getColor(proc.percent) + "20", color: getColor(proc.percent) }}
+                >
+                  {getStatus(proc.percent)}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
-      </CardContent>
-    </Card>
-  );
-}
 
-// ─── KPI Card para Sistemas de Gestión (sin meta, solo valor) ───────────────
-function SystemsKpiCard({
-  label,
-  value,
-  icon,
-  count,
-  color,
-}: {
-  label: string;
-  value: number;
-  icon: string;
-  count: number | null;
-  color: string;
-}) {
-  const status = value >= 80 ? "En meta" : value >= 60 ? "Alerta" : "Crítico";
-  const statusColor = value >= 80 ? "#16a34a" : value >= 60 ? "#ca8a04" : "#dc2626";
-  const chartData = [{ value, fill: statusColor }];
-  return (
-    <div className="flex flex-col items-center gap-2 p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
-      <div className="relative w-20 h-20">
-        <RadialBarChart
-          width={80}
-          height={80}
-          cx={40}
-          cy={40}
-          innerRadius={28}
-          outerRadius={38}
-          barSize={8}
-          data={chartData}
-          startAngle={90}
-          endAngle={-270}
-        >
-          <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
-          <RadialBar
-            background={{ fill: "#f1f5f9" }}
-            dataKey="value"
-            angleAxisId={0}
-            cornerRadius={4}
-          />
-        </RadialBarChart>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-sm font-bold" style={{ color: statusColor }}>{value}%</span>
-        </div>
+        {otgData.length > 0 && (
+          <div className="mt-6">
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-3">Comparativa por área</p>
+            <ResponsiveContainer width="100%" height={Math.max(160, otgData.length * 36)}>
+              <BarChart
+                data={(otgData as any[]).map((p: any) => ({ name: p.processName.length > 18 ? p.processName.slice(0, 16) + "…" : p.processName, value: p.percent }))}
+                layout="vertical"
+                margin={{ top: 4, right: 40, left: 8, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false} axisLine={false} width={110} />
+                <Tooltip formatter={(v: any) => [`${v}%`, "% Avance OTG"]} />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
+                  {(otgData as any[]).map((p: any, i: number) => (
+                    <Cell key={i} fill={getColor(p.percent)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
-      <span className="text-xs font-semibold text-slate-700 text-center" translate="no">{label}</span>
-      {count !== null && (
-        <span className="text-xs text-slate-400">{count} registros</span>
-      )}
-      <span
-        className="text-xs font-medium px-2 py-0.5 rounded-full"
-        style={{ backgroundColor: statusColor + "20", color: statusColor }}
-      >
-        {status}
-      </span>
     </div>
   );
 }
 
-// ─── Panel desplegable de Sistemas de Gestión ─────────────────────────────────
-function SystemsBreakdown({ companyId }: { companyId: number }) {
-  const { data: programs = [] } = trpc.managementPrograms.list.useQuery(
-    { companyId },
-    { enabled: companyId > 0 }
-  );
-  const { data: audits = [] } = trpc.auditsInspections.listAudits.useQuery(
-    { companyId },
-    { enabled: companyId > 0 }
-  );
-  const { data: inspections = [] } = trpc.auditsInspections.listInspections.useQuery(
-    { companyId },
-    { enabled: companyId > 0 }
-  );
-  const { data: macroIndicators = [] } = trpc.macroIndicators.getMacroIndicators.useQuery(
+// ═══════════════════════════════════════════════════════════════════════════════
+// VISTA 3: GESTIÓN CON PARTES INTERESADAS
+// ═══════════════════════════════════════════════════════════════════════════════
+function GPIView({ companyId, onBack }: { companyId: number; onBack: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const { data: gpiData = [], isLoading } = trpc.strategicTrends.getStakeholdersByArea.useQuery(
     { companyId },
     { enabled: companyId > 0 }
   );
 
+  if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="animate-spin w-8 h-8 text-teal-500" /></div>;
+
+  const totalSt = (gpiData as any[]).reduce((s: number, p: any) => s + p.totalStakeholders, 0);
+  const totalImpl = (gpiData as any[]).reduce((s: number, p: any) => s + p.implemented, 0);
+  const globalPct = totalSt > 0 ? Math.round((totalImpl / totalSt) * 100) : 0;
+  const totalInternal = (gpiData as any[]).reduce((s: number, p: any) => s + p.internalCount, 0);
+  const totalExternal = (gpiData as any[]).reduce((s: number, p: any) => s + p.externalCount, 0);
+
+  // Datos para el radar global
+  const radarData = [
+    { subject: "Identificación", value: totalSt > 0 ? 100 : 0 },
+    { subject: "Implementación", value: globalPct },
+    { subject: "Internas", value: totalSt > 0 ? Math.round((totalInternal / totalSt) * 100) : 0 },
+    { subject: "Externas", value: totalSt > 0 ? Math.round((totalExternal / totalSt) * 100) : 0 },
+    { subject: "Cobertura", value: (gpiData as any[]).length > 0 ? Math.round(((gpiData as any[]).filter((p: any) => p.totalStakeholders > 0).length / (gpiData as any[]).length) * 100) : 0 },
+  ];
+
+  return (
+    <div>
+      <SubViewHeader
+        title="Gestión con Partes Interesadas"
+        onBack={onBack}
+        onExport={() => exportAsImage(ref, "partes-interesadas.png", setExporting)}
+        exporting={exporting}
+      />
+      <div ref={ref}>
+        {/* KPI global */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="p-4 rounded-xl bg-teal-50 border border-teal-100 text-center">
+            <p className="text-xs text-teal-600 font-semibold uppercase tracking-wide">Total PI</p>
+            <p className="text-3xl font-bold text-slate-800">{totalSt}</p>
+          </div>
+          <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 text-center">
+            <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide">Internas</p>
+            <p className="text-3xl font-bold text-blue-700">{totalInternal}</p>
+          </div>
+          <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-100 text-center">
+            <p className="text-xs text-indigo-600 font-semibold uppercase tracking-wide">Externas</p>
+            <p className="text-3xl font-bold text-indigo-700">{totalExternal}</p>
+          </div>
+          <div className="p-4 rounded-xl border-2 text-center" style={{ borderColor: getColor(globalPct) + "40", backgroundColor: getColor(globalPct) + "10" }}>
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: getColor(globalPct) }}>% Implementado</p>
+            <p className="text-3xl font-bold" style={{ color: getColor(globalPct) }}>{globalPct}%</p>
+          </div>
+        </div>
+
+        {gpiData.length === 0 ? (
+          <div className="text-center py-16 text-slate-400">
+            <Users size={48} className="mx-auto mb-4 opacity-30" />
+            <p className="text-lg font-medium">Aún no hay partes interesadas registradas</p>
+            <p className="text-sm mt-2">Registra las partes interesadas en cada proceso para ver los indicadores aquí.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Radar global */}
+            <div className="p-4 rounded-xl border border-slate-200 bg-white">
+              <p className="text-sm font-semibold text-slate-700 mb-3">Radar de Gestión Global</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <RadarChart data={radarData}>
+                  <PolarGrid stroke="#e2e8f0" />
+                  <RadarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#64748b" }} />
+                  <Radar name="GPI" dataKey="value" stroke="#0d9488" fill="#0d9488" fillOpacity={0.25} strokeWidth={2} />
+                  <Tooltip formatter={(v: any) => [`${v}%`]} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Cards por área */}
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {(gpiData as any[]).map((proc: any) => (
+                <div key={proc.processId} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white">
+                  <DonutKpi value={proc.percentImplemented} size={56} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-800 truncate">{proc.processName}</p>
+                    <p className="text-xs text-slate-500">{proc.totalStakeholders} PI · {proc.implemented} implementadas</p>
+                    <div className="flex gap-2 mt-1">
+                      <span className="text-xs text-blue-600">{proc.internalCount} int.</span>
+                      <span className="text-xs text-indigo-600">{proc.externalCount} ext.</span>
+                    </div>
+                  </div>
+                  <span
+                    className="text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: getColor(proc.percentImplemented) + "20", color: getColor(proc.percentImplemented) }}
+                  >
+                    {getStatus(proc.percentImplemented)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Barra comparativa */}
+        {(gpiData as any[]).length > 0 && (
+          <div className="mt-6">
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-3">% Implementación por área</p>
+            <ResponsiveContainer width="100%" height={Math.max(140, (gpiData as any[]).length * 32)}>
+              <BarChart
+                data={(gpiData as any[]).map((p: any) => ({ name: p.processName.length > 18 ? p.processName.slice(0, 16) + "…" : p.processName, value: p.percentImplemented }))}
+                layout="vertical"
+                margin={{ top: 4, right: 40, left: 8, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false} axisLine={false} width={110} />
+                <Tooltip formatter={(v: any) => [`${v}%`, "% Implementado"]} />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={14}>
+                  {(gpiData as any[]).map((p: any, i: number) => (
+                    <Cell key={i} fill={getColor(p.percentImplemented)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VISTA 4: SISTEMAS DE GESTIÓN (sin cambios, reutiliza la lógica existente)
+// ═══════════════════════════════════════════════════════════════════════════════
+function SGIView({ companyId, onBack }: { companyId: number; onBack: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const { data: programs = [] } = trpc.managementPrograms.list.useQuery({ companyId }, { enabled: companyId > 0 });
+  const { data: audits = [] } = trpc.auditsInspections.listAudits.useQuery({ companyId }, { enabled: companyId > 0 });
+  const { data: inspections = [] } = trpc.auditsInspections.listInspections.useQuery({ companyId }, { enabled: companyId > 0 });
+  const { data: macroIndicators = [] } = trpc.macroIndicators.getMacroIndicators.useQuery({ companyId }, { enabled: companyId > 0 });
+
   const programsCompliance = useMemo(() => {
-    if (!programs.length) return 0;
-    const total = (programs as any[]).reduce((sum: number, p: any) => {
-      return sum + (p.plannedActions > 0 ? Math.min(100, Math.round((p.completedActions / p.plannedActions) * 100)) : 0);
-    }, 0);
-    return Math.round(total / programs.length);
+    if (!(programs as any[]).length) return 0;
+    const total = (programs as any[]).reduce((sum: number, p: any) => sum + (p.plannedActions > 0 ? Math.min(100, Math.round((p.completedActions / p.plannedActions) * 100)) : 0), 0);
+    return Math.round(total / (programs as any[]).length);
   }, [programs]);
 
   const auditsCompliance = useMemo(() => {
-    if (!audits.length) return 0;
+    if (!(audits as any[]).length) return 0;
     let count = 0;
     const total = (audits as any[]).reduce((sum: number, a: any) => {
       const findings = (a.findingsMajorNC || 0) + (a.findingsMinorNC || 0) + (a.findingsObservations || 0) + (a.findingsOM || 0);
@@ -650,7 +645,7 @@ function SystemsBreakdown({ companyId }: { companyId: number }) {
   }, [audits]);
 
   const inspectionsCompliance = useMemo(() => {
-    if (!inspections.length) return 0;
+    if (!(inspections as any[]).length) return 0;
     let count = 0;
     const total = (inspections as any[]).reduce((sum: number, i: any) => {
       if (!i.findings || i.findings === 0) return sum;
@@ -661,58 +656,68 @@ function SystemsBreakdown({ companyId }: { companyId: number }) {
   }, [inspections]);
 
   const avgCompliances = useMemo(() => {
-    if (!macroIndicators.length) return 0;
+    if (!(macroIndicators as any[]).length) return 0;
     const total = (macroIndicators as any[]).reduce((sum: number, p: any) => sum + (p.compliancesPercentage || 0), 0);
-    return Math.round(total / macroIndicators.length);
+    return Math.round(total / (macroIndicators as any[]).length);
+  }, [macroIndicators]);
+
+  const avgTrainings = useMemo(() => {
+    if (!(macroIndicators as any[]).length) return 0;
+    const total = (macroIndicators as any[]).reduce((sum: number, p: any) => sum + (p.trainingsPercentage || 0), 0);
+    return Math.round(total / (macroIndicators as any[]).length);
   }, [macroIndicators]);
 
   const metrics = [
-    { label: "Programas", value: programsCompliance, icon: "📋", count: (programs as any[]).length, color: "#3b82f6" },
-    { label: "Cumplimientos", value: avgCompliances, icon: "✅", count: null, color: "#10b981" },
-    { label: "Auditorías", value: auditsCompliance, icon: "🔍", count: (audits as any[]).length, color: "#8b5cf6" },
-    { label: "Inspecciones", value: inspectionsCompliance, icon: "🔎", count: (inspections as any[]).length, color: "#f59e0b" },
+    { label: "Programas", value: programsCompliance, count: (programs as any[]).length, color: "#3b82f6" },
+    { label: "Cumplimientos", value: avgCompliances, count: null, color: "#10b981" },
+    { label: "Auditorías", value: auditsCompliance, count: (audits as any[]).length, color: "#8b5cf6" },
+    { label: "Inspecciones", value: inspectionsCompliance, count: (inspections as any[]).length, color: "#f59e0b" },
+    { label: "Capacitaciones", value: avgTrainings, count: null, color: "#ec4899" },
   ];
 
   const avgTotal = Math.round(metrics.reduce((s, m) => s + m.value, 0) / metrics.length);
-  const avgColor = avgTotal >= 80 ? "#16a34a" : avgTotal >= 60 ? "#ca8a04" : "#dc2626";
 
   return (
     <div>
-      {/* Resumen global */}
-      <div className="flex items-center justify-between mb-4 p-3 bg-slate-50 rounded-lg">
-        <span className="text-sm font-semibold text-slate-700">Promedio general Sistemas de Gestión</span>
-        <span className="text-lg font-bold" style={{ color: avgColor }}>{avgTotal}%</span>
-      </div>
-      {/* Grid de 4 indicadores */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {metrics.map((m) => (
-          <SystemsKpiCard
-            key={m.label}
-            label={m.label}
-            value={m.value}
-            icon={m.icon}
-            count={m.count}
-            color={m.color}
-          />
-        ))}
-      </div>
-      {/* Barra comparativa */}
-      <div className="mt-4">
-        <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-2">Comparativa</p>
+      <SubViewHeader
+        title="Sistemas de Gestión"
+        onBack={onBack}
+        onExport={() => exportAsImage(ref, "sistemas-gestion.png", setExporting)}
+        exporting={exporting}
+      />
+      <div ref={ref}>
+        {/* KPI global */}
+        <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-sky-100 bg-sky-50 mb-6">
+          <DonutKpi value={avgTotal} size={72} />
+          <div>
+            <p className="text-xs font-semibold text-sky-600 uppercase tracking-wide">Promedio General Sistemas de Gestión</p>
+            <p className="text-3xl font-bold text-slate-800">{avgTotal}%</p>
+          </div>
+        </div>
+
+        {/* Grid de 5 indicadores */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+          {metrics.map((m) => (
+            <div key={m.label} className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+              <DonutKpi value={m.value} size={80} />
+              <span className="text-sm font-semibold text-slate-700">{m.label}</span>
+              {m.count !== null && <span className="text-xs text-slate-400">{m.count} registros</span>}
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: getColor(m.value) + "20", color: getColor(m.value) }}>
+                {getStatus(m.value)}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Barra comparativa */}
         <ResponsiveContainer width="100%" height={160}>
-          <BarChart
-            data={metrics.map((m) => ({ name: m.label, value: m.value }))}
-            margin={{ top: 8, right: 8, left: 0, bottom: 5 }}
-          >
+          <BarChart data={metrics.map((m) => ({ name: m.label, value: m.value }))} margin={{ top: 8, right: 8, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
             <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
             <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} width={35} />
             <Tooltip formatter={(v: any) => [`${v}%`, "Cumplimiento"]} />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
-              {metrics.map((m, i) => {
-                const c = m.value >= 80 ? "#16a34a" : m.value >= 60 ? "#ca8a04" : "#dc2626";
-                return <Cell key={i} fill={c} />;
-              })}
+              {metrics.map((m, i) => <Cell key={i} fill={getColor(m.value)} />)}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -721,476 +726,108 @@ function SystemsBreakdown({ companyId }: { companyId: number }) {
   );
 }
 
-// ─── Página principal ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// PÁGINA PRINCIPAL
+// ═══════════════════════════════════════════════════════════════════════════════
+type ActiveView = null | "oe" | "otg" | "gpi" | "sgi";
+
 export default function StrategicTrends() {
   const [, setLocation] = useLocation();
   const { isManagerLogin, managerCompanyId } = useManagerAuth();
   const { session: processLeaderSession } = useProcessLeaderAuth();
-  const [yearFilter, setYearFilter] = useState<number | "all" | "annual">("all");
-  const [showOteModal, setShowOteModal] = useState(false);
-  const [showSystemsModal, setShowSystemsModal] = useState(false);
-  const [exportingPage, setExportingPage] = useState(false);
-  const [exportingOte, setExportingOte] = useState(false);
-  const [exportingSystems, setExportingSystems] = useState(false);
-  const pageRef = useRef<HTMLDivElement>(null);
-  const oteModalRef = useRef<HTMLDivElement>(null);
-  const systemsModalRef = useRef<HTMLDivElement>(null);
+  const [activeView, setActiveView] = useState<ActiveView>(null);
 
-  const exportElement = useCallback(async (
-    ref: React.RefObject<HTMLDivElement | null>,
-    filename: string,
-    setSaving: (v: boolean) => void
-  ) => {
-    if (!ref.current) return;
-    setSaving(true);
-    try {
-      const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(ref.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
-      const link = document.createElement("a");
-      link.download = filename;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-    } finally {
-      setSaving(false);
-    }
-  }, []);
-  const [showTransferModal, setShowTransferModal] = useState(false);
-  const [urlCopied, setUrlCopied] = useState(false);
-
-  const companyId = useMemo<number>(() => {
-    if (isManagerLogin && managerCompanyId) return managerCompanyId;
-    if (processLeaderSession?.companyId) return processLeaderSession.companyId;
-    return getCompanyIdFromLocationOrStorage() || 0;
-  }, [isManagerLogin, managerCompanyId, processLeaderSession]);
-
-  const publicApiUrl = companyId > 0
-    ? `${window.location.origin}/api/public/strategic-trends/${companyId}`
-    : "";
-
-  const handleCopyUrl = () => {
-    if (!publicApiUrl) return;
-    navigator.clipboard.writeText(publicApiUrl).then(() => {
-      setUrlCopied(true);
-      setTimeout(() => setUrlCopied(false), 2500);
-    });
-  };
-
-  const { data: trendsResult, isLoading } = trpc.strategicTrends.getTrends.useQuery(
-    { companyId },
-    { enabled: companyId > 0 }
+  const companyId = useMemo<number>(
+    () => getCompanyId(isManagerLogin, managerCompanyId, processLeaderSession),
+    [isManagerLogin, managerCompanyId, processLeaderSession]
   );
-
-  const data: TrendPoint[] = trendsResult?.data ?? [];
-
-  const availableYears = useMemo(() => {
-    const years = Array.from(new Set(data.map((d) => d.year))).sort();
-    return years;
-  }, [data]);
-
-  const latest = data.length > 0 ? data[data.length - 1] : null;
-
-  // Cierre del año anterior (diciembre o último mes disponible del año previo)
-  const prevYearData = useMemo(() => {
-    if (!latest) return null;
-    const prevYear = latest.year - 1;
-    const prevYearPoints = data.filter((d) => d.year === prevYear);
-    if (prevYearPoints.length === 0) return null;
-    return prevYearPoints.reduce((max, d) => d.month > max.month ? d : max, prevYearPoints[0]);
-  }, [data, latest]);
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto px-4 py-8" ref={pageRef}>
+      <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-4 mb-8">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setLocation("/performance")}
+            onClick={() => {
+              if (activeView) {
+                setActiveView(null);
+              } else {
+                // Volver al dashboard del rol
+                const savedDashboard = localStorage.getItem("axisBackDashboard");
+                localStorage.removeItem("axisBackDashboard");
+                localStorage.removeItem("axisOrigin");
+                const plSession = (() => {
+                  try {
+                    const raw = localStorage.getItem("processLeaderSession") || sessionStorage.getItem("processLeaderSession");
+                    return raw ? JSON.parse(raw) : null;
+                  } catch { return null; }
+                })();
+                const backPath = savedDashboard || (plSession ? "/process-leader-dashboard" : localStorage.getItem("managerCompanyId") ? "/manager-dashboard" : "/dashboard");
+                setLocation(backPath);
+              }
+            }}
             className="flex items-center gap-2"
           >
             ← Volver
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Tendencias Estratégicas</h1>
+            <h1 className="text-2xl font-bold text-slate-800">Desempeño</h1>
             <p className="text-slate-500 text-sm mt-0.5">
-              Evolución mensual del % de cumplimiento de OTE, OTG y Gestión con Partes Interesadas
+              {activeView
+                ? activeView === "oe" ? "Objetivos Estratégicos"
+                  : activeView === "otg" ? "Objetivos Tácticos de Gestión"
+                  : activeView === "gpi" ? "Gestión con Partes Interesadas"
+                  : "Sistemas de Gestión"
+                : "Indicadores consolidados de desempeño de la empresa"}
             </p>
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="animate-spin w-8 h-8 text-blue-500" />
+        {/* Contenido */}
+        {activeView === null && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <AccessCard
+              icon={<Target size={24} />}
+              title="Objetivos Estratégicos"
+              description="% avance total, por OE individual, contribución por área (heatmap) y línea de desarrollo en el tiempo."
+              color="#3b82f6"
+              badge="OE"
+              onClick={() => setActiveView("oe")}
+            />
+            <AccessCard
+              icon={<BarChart2 size={24} />}
+              title="Objetivos de Gestión"
+              description="Resumen del avance general de OTG por área, con gráfico circular de cumplimiento por proceso."
+              color="#8b5cf6"
+              badge="OTG"
+              onClick={() => setActiveView("otg")}
+            />
+            <AccessCard
+              icon={<Users size={24} />}
+              title="Gestión con Partes Interesadas"
+              description="Panel de comunicación, radar de gestión y resumen de implementación por proceso."
+              color="#0d9488"
+              badge="GPI"
+              onClick={() => setActiveView("gpi")}
+            />
+            <AccessCard
+              icon={<Shield size={24} />}
+              title="Sistemas de Gestión"
+              description="% cumplimiento de Programas, Auditorías, Inspecciones y Cumplimientos."
+              color="#0ea5e9"
+              badge="SGI"
+              onClick={() => setActiveView("sgi")}
+            />
           </div>
-        ) : data.length === 0 ? (
-          <Card className="p-12 text-center">
-            <p className="text-slate-400 text-lg">No hay datos de tendencias disponibles.</p>
-            <p className="text-slate-400 text-sm mt-2">
-              Los datos se registran automáticamente al cierre de cada mes.
-            </p>
-          </Card>
-        ) : (
-          <>
-            {/* KPI Cards con indicador interanual */}
-            {latest && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <KpiCard
-                  title="Objetivos Tácticos Estratégicos"
-                  badge="OTE"
-                  current={latest.otePercent}
-                  meta={latest.oteMeta}
-                  color="#3b82f6"
-                  prevYearClose={prevYearData?.otePercent}
-                  prevYear={prevYearData?.year}
-                />
-                <KpiCard
-                  title="Objetivos Tácticos de Gestión"
-                  badge="OTG"
-                  current={latest.otgPercent}
-                  meta={latest.otgMeta}
-                  color="#8b5cf6"
-                  prevYearClose={prevYearData?.otgPercent}
-                  prevYear={prevYearData?.year}
-                />
-                <KpiCard
-                  title="Gestión con Partes Interesadas"
-                  badge="GPI"
-                  current={latest.stakeholderPercent}
-                  meta={latest.stakeholderMeta}
-                  color="#10b981"
-                  prevYearClose={prevYearData?.stakeholderPercent}
-                  prevYear={prevYearData?.year}
-                />
-              </div>
-            )}
-
-            {/* Filtro por año + vista de cierre anual */}
-            <div className="flex items-center gap-2 mb-6 flex-wrap">
-              <span className="text-sm text-slate-500 font-medium">Ver:</span>
-              <button
-                onClick={() => setYearFilter("all")}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                  yearFilter === "all"
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                Todos los años
-              </button>
-              {availableYears.map((year) => (
-                <button
-                  key={year}
-                  onClick={() => setYearFilter(year)}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                    yearFilter === year
-                      ? "bg-blue-600 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  {year}
-                </button>
-              ))}
-              {/* Vista de cierre anual — solo si hay más de un año */}
-              {availableYears.length > 1 && (
-                <button
-                  onClick={() => setYearFilter("annual")}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors border ${
-                    yearFilter === "annual"
-                      ? "bg-amber-500 text-white border-amber-500"
-                      : "bg-white text-amber-600 border-amber-300 hover:bg-amber-50"
-                  }`}
-                >
-                  Cierre anual
-                </button>
-              )}
-              {/* Botón Exportar página */}
-              <button
-                onClick={() => exportElement(pageRef, "tendencias-estrategicas.png", setExportingPage)}
-                disabled={exportingPage}
-                className="px-3 py-1 rounded-full text-sm font-medium transition-colors border bg-white text-emerald-600 border-emerald-300 hover:bg-emerald-50 flex items-center gap-1.5 disabled:opacity-60"
-              >
-                <Download size={13} />
-                {exportingPage ? "Exportando…" : "Exportar página"}
-              </button>
-              {/* Botón Transferir URL para Power BI */}
-              {companyId > 0 && (
-                <button
-                  onClick={() => setShowTransferModal(true)}
-                  className="px-3 py-1 rounded-full text-sm font-medium transition-colors border bg-white text-indigo-600 border-indigo-300 hover:bg-indigo-50 flex items-center gap-1.5"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                  </svg>
-                  Transferir URL
-                </button>
-              )}
-            </div>
-
-            {/* Nota explicativa para vista de cierre anual */}
-            {yearFilter === "annual" && (
-              <div className="mb-4 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
-                Mostrando el último valor registrado de cada año. Esta vista permite comparar el desempeño de la empresa año a año.
-              </div>
-            )}
-
-            {/* Gráficos */}
-            <div className="flex flex-col gap-6">
-              {/* OTE — con botón de desglose que abre modal */}
-              <div className="relative">
-                <TrendChart
-                  title="Objetivos Tácticos Estratégicos"
-                  badge="OTE"
-                  data={data}
-                  allData={data}
-                  realKey="otePercent"
-                  metaKey="oteMeta"
-                  realLabel="OTE — Avance real"
-                  metaLabel="Meta OTE"
-                  realColor="#3b82f6"
-                  metaColor="#ef4444"
-                  yearFilter={yearFilter}
-                />
-                <div className="px-4 pb-3">
-                  <button
-                    onClick={() => setShowOteModal(true)}
-                    className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
-                  >
-                    <ChevronDown size={16} />
-                    Desplegar OTE
-                  </button>
-                </div>
-              </div>
-              {/* OTG */}
-              <TrendChart
-                title="Objetivos Tácticos de Gestión"
-                badge="OTG"
-                data={data}
-                allData={data}
-                realKey="otgPercent"
-                metaKey="otgMeta"
-                realLabel="OTG — Avance real"
-                metaLabel="Meta OTG"
-                realColor="#8b5cf6"
-                metaColor="#ef4444"
-                yearFilter={yearFilter}
-              />
-              {/* GPI */}
-              <TrendChart
-                title="Gestión con Partes Interesadas"
-                badge="GPI"
-                data={data}
-                allData={data}
-                realKey="stakeholderPercent"
-                metaKey="stakeholderMeta"
-                realLabel="GPI — Avance real"
-                metaLabel="Meta GPI"
-                realColor="#10b981"
-                metaColor="#ef4444"
-                yearFilter={yearFilter}
-              />
-              {/* Sistemas de Gestión */}
-              <Card className="shadow-sm">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="text-xs font-bold px-2 py-1 rounded-md"
-                        style={{ backgroundColor: "#0ea5e920", color: "#0ea5e9" }}
-                        translate="no"
-                      >
-                        SGI
-                      </span>
-                      <CardTitle className="text-base font-semibold text-slate-700">
-                        Sistemas de Gestión
-                      </CardTitle>
-                    </div>
-                    <Settings size={16} className="text-slate-400" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-slate-500 mb-3">
-                    % de cumplimiento de Programas, Cumplimientos, Auditorías e Inspecciones.
-                  </p>
-                  <button
-                    onClick={() => setShowSystemsModal(true)}
-                    className="flex items-center gap-2 text-sm font-medium text-sky-600 hover:text-sky-800 transition-colors"
-                  >
-                    <ChevronDown size={16} />
-                    Desplegar Sistemas de Gestión
-                  </button>
-                </CardContent>
-              </Card>
-            </div>
-
-            {trendsResult?.hasSavedData === false && (
-              <p className="text-xs text-slate-400 text-center mt-6">
-                Mostrando datos calculados en tiempo real. Los snapshots históricos se registran al cierre de cada mes.
-              </p>
-            )}
-          </>
         )}
+
+        {activeView === "oe" && <OEView companyId={companyId} onBack={() => setActiveView(null)} />}
+        {activeView === "otg" && <OTGView companyId={companyId} onBack={() => setActiveView(null)} />}
+        {activeView === "gpi" && <GPIView companyId={companyId} onBack={() => setActiveView(null)} />}
+        {activeView === "sgi" && <SGIView companyId={companyId} onBack={() => setActiveView(null)} />}
       </div>
-      {/* Modal de desglose Sistemas de Gestión */}
-      {showSystemsModal && createPortal(
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-16 px-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowSystemsModal(false); }}
-        >
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[75vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-xl">
-              <h2 className="text-lg font-bold text-slate-800">Desglose de Sistemas de Gestión</h2>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => exportElement(systemsModalRef, "sistemas-gestion.png", setExportingSystems)}
-                  disabled={exportingSystems}
-                  className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-800 border border-emerald-300 rounded-lg px-2.5 py-1 hover:bg-emerald-50 transition-colors disabled:opacity-60"
-                >
-                  <Download size={13} />
-                  {exportingSystems ? "Exportando…" : "Descargar"}
-                </button>
-                <button
-                  onClick={() => setShowSystemsModal(false)}
-                  className="text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-            <div className="p-5" ref={systemsModalRef}>
-              <SystemsBreakdown companyId={companyId} />
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-      {/* Modal de desglose OTE */}
-      {showOteModal && createPortal(
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-16 px-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowOteModal(false); }}
-        >
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[75vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-xl">
-              <h2 className="text-lg font-bold text-slate-800">Desglose de Objetivos Tácticos Estratégicos</h2>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => exportElement(oteModalRef, "desglose-ote.png", setExportingOte)}
-                  disabled={exportingOte}
-                  className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-800 border border-emerald-300 rounded-lg px-2.5 py-1 hover:bg-emerald-50 transition-colors disabled:opacity-60"
-                >
-                  <Download size={13} />
-                  {exportingOte ? "Exportando…" : "Descargar"}
-                </button>
-                <button
-                  onClick={() => setShowOteModal(false)}
-                  className="text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-            <div className="p-5" ref={oteModalRef}>
-              <OteBreakdown companyId={companyId} />
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-      {/* Modal Transferir URL para Power BI */}
-      {showTransferModal && createPortal(
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowTransferModal(false); }}
-        >
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                  </svg>
-                </div>
-                <h2 className="text-base font-bold text-slate-800">Transferir URL — Power BI</h2>
-              </div>
-              <button onClick={() => setShowTransferModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <p className="text-sm text-slate-600">
-                Usa esta URL para conectar los datos de Tendencias Estratégicas directamente en <strong>Power BI</strong>, Excel u otras herramientas de análisis. Los datos se actualizan automáticamente cada vez que se consulta la URL.
-              </p>
-
-              {/* URL copiable */}
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-                <p className="text-xs text-slate-400 mb-1 font-medium uppercase tracking-wide">URL del endpoint JSON</p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-xs text-indigo-700 break-all font-mono">{publicApiUrl}</code>
-                  <button
-                    onClick={handleCopyUrl}
-                    className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                      urlCopied
-                        ? "bg-green-100 text-green-700 border border-green-200"
-                        : "bg-indigo-600 text-white hover:bg-indigo-700"
-                    }`}
-                  >
-                    {urlCopied ? "✓ Copiado" : "Copiar"}
-                  </button>
-                </div>
-              </div>
-
-              {/* Estructura del JSON */}
-              <div>
-                <p className="text-xs font-semibold text-slate-600 mb-2">Estructura de los datos devueltos:</p>
-                <div className="bg-slate-900 rounded-lg p-3 text-xs font-mono text-green-300 overflow-x-auto">
-                  <pre>{`{
-  "empresa_id": ${companyId},
-  "total_registros": N,
-  "datos": [
-    {
-      "a\u00f1o": 2026,
-      "mes": 7,
-      "periodo": "Jul 2026",
-      "ote_avance": 78.0,
-      "ote_meta": 82.0,
-      "otg_avance": 74.0,
-      "otg_meta": 100.0,
-      "gpi_avance": 80.0,
-      "gpi_meta": 100.0
-    }
-  ]
-}`}</pre>
-                </div>
-              </div>
-
-              {/* Instrucciones Power BI */}
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
-                <p className="text-xs font-semibold text-blue-700 mb-1">Cómo conectar en Power BI:</p>
-                <ol className="text-xs text-blue-600 space-y-1 list-decimal list-inside">
-                  <li>Abre Power BI Desktop → <strong>Obtener datos</strong> → <strong>Web</strong></li>
-                  <li>Pega la URL copiada y haz clic en <strong>Aceptar</strong></li>
-                  <li>En el navegador de datos, selecciona <strong>datos</strong> (lista de registros)</li>
-                  <li>Haz clic en <strong>Transformar datos</strong> para expandir las columnas</li>
-                  <li>Cierra y aplica — los datos quedarán disponibles para tus gráficas</li>
-                </ol>
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowTransferModal(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
-                >
-                  Cerrar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
     </DashboardLayout>
   );
 }

@@ -510,8 +510,9 @@ export default function TacticalPlanning() {
 
   // ─── Cálculos de avance ─────────────────────────────────────────────────────
 
-  const calculateTasksAverage = (resultKey: ResultKey): number => {
-    if (!resultKey.tasks || resultKey.tasks.length === 0) return 0;
+  // Retorna null si no hay tareas (para mostrar 'Sin tareas' en lugar de 0%)
+  const calculateTasksAverage = (resultKey: ResultKey): number | null => {
+    if (!resultKey.tasks || resultKey.tasks.length === 0) return null;
     const totalWeightedCompletion = resultKey.tasks.reduce((sum, task) => sum + (task.percentageCompleted || 0) * (task.weighting || 0), 0);
     const totalWeighting = resultKey.tasks.reduce((sum, task) => sum + (task.weighting || 0), 0);
     if (totalWeighting === 0) {
@@ -520,14 +521,16 @@ export default function TacticalPlanning() {
     return totalWeightedCompletion / totalWeighting;
   };
 
-  const calculateOTTasksAverage = (planning: TacticalPlanning): number => {
-    if (!planning.resultKeys || planning.resultKeys.length === 0) return 0;
-    const totalWeightedAvance = planning.resultKeys.reduce((sum, rk) => sum + calculateTasksAverage(rk) * (rk.ponderacion || 0), 0);
-    const totalPonderacion = planning.resultKeys.reduce((sum, rk) => sum + (rk.ponderacion || 0), 0);
+  // Retorna null si ningún OO tiene tareas
+  const calculateOTTasksAverage = (planning: TacticalPlanning): number | null => {
+    if (!planning.resultKeys || planning.resultKeys.length === 0) return null;
+    const rkConTareas = planning.resultKeys.filter(rk => rk.tasks && rk.tasks.length > 0);
+    if (rkConTareas.length === 0) return null;
+    const totalPonderacion = rkConTareas.reduce((sum, rk) => sum + (rk.ponderacion || 0), 0);
     if (totalPonderacion === 0) {
-      return planning.resultKeys.reduce((sum, rk) => sum + calculateTasksAverage(rk), 0) / planning.resultKeys.length;
+      return rkConTareas.reduce((sum, rk) => sum + (calculateTasksAverage(rk) ?? 0), 0) / rkConTareas.length;
     }
-    return totalWeightedAvance / totalPonderacion;
+    return rkConTareas.reduce((sum, rk) => sum + (calculateTasksAverage(rk) ?? 0) * (rk.ponderacion || 0), 0) / totalPonderacion;
   };
 
   const calculateObjectiveCompletion = (planning: TacticalPlanning) => {
@@ -556,8 +559,9 @@ export default function TacticalPlanning() {
   };
 
   const indicators = useMemo(() => {
-    if (plannings.length === 0) return { metaAlcanzada: 0, alcanzadoPorOO: 0, alcanzadoPorTareas: 0, isEfficient: false };
-    let totalMetaAlcanzada = 0, totalAlcanzadoPorOO = 0, totalAlcanzadoPorTareas = 0;
+    if (plannings.length === 0) return { metaAlcanzada: 0, alcanzadoPorOO: 0, alcanzadoPorTareas: null as number | null, isEfficient: false };
+    let totalMetaAlcanzada = 0, totalAlcanzadoPorOO = 0;
+    let totalTareasWeighted = 0, totalTareasPond = 0;
     plannings.forEach(planning => {
       const ponderacion = planning.ponderacion || 0;
       const { porcentajeMetaAlcanzado } = calcOTMetrics(planning);
@@ -565,11 +569,14 @@ export default function TacticalPlanning() {
       const avanceTareas = calculateOTTasksAverage(planning);
       totalMetaAlcanzada += porcentajeMetaAlcanzado * (ponderacion / 100);
       totalAlcanzadoPorOO += avanceOO * (ponderacion / 100);
-      totalAlcanzadoPorTareas += avanceTareas * (ponderacion / 100);
+      if (avanceTareas !== null) {
+        totalTareasWeighted += avanceTareas * (ponderacion || 1);
+        totalTareasPond += (ponderacion || 1);
+      }
     });
     const metaAlcanzada = Math.round(totalMetaAlcanzada);
     const alcanzadoPorOO = Math.round(totalAlcanzadoPorOO);
-    const alcanzadoPorTareas = Math.round(totalAlcanzadoPorTareas);
+    const alcanzadoPorTareas: number | null = totalTareasPond > 0 ? Math.round(totalTareasWeighted / totalTareasPond) : null;
     return { metaAlcanzada, alcanzadoPorOO, alcanzadoPorTareas, isEfficient: alcanzadoPorOO < metaAlcanzada };
   }, [plannings]);
 
@@ -981,7 +988,12 @@ export default function TacticalPlanning() {
               </div>
               <div className="text-center p-4 bg-white rounded-lg border-2 border-purple-300">
                 <p className="text-sm font-semibold text-gray-600 mb-2">Avance de Tareas</p>
-                {plannings.length === 0 ? <p className="text-4xl font-bold text-gray-400">...</p> : <p className="text-4xl font-bold text-purple-600">{indicators.alcanzadoPorTareas}%</p>}
+                {plannings.length === 0
+                  ? <p className="text-4xl font-bold text-gray-400">...</p>
+                  : indicators.alcanzadoPorTareas !== null
+                    ? <p className="text-4xl font-bold text-purple-600">{indicators.alcanzadoPorTareas}%</p>
+                    : <p className="text-sm font-semibold text-gray-400 mt-2">Sin tareas definidas</p>
+                }
               </div>
             </div>
           </CardContent>
@@ -1010,7 +1022,10 @@ export default function TacticalPlanning() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-gray-600">Avance de Tareas</p>
-                      <p className="text-2xl font-bold text-blue-600">{calculateOTTasksAverage(planning).toFixed(0)}%</p>
+                      {calculateOTTasksAverage(planning) !== null
+                        ? <p className="text-2xl font-bold text-blue-600">{calculateOTTasksAverage(planning)!.toFixed(0)}%</p>
+                        : <p className="text-sm font-semibold text-gray-400">Sin tareas</p>
+                      }
                     </div>
                   </div>
                 </div>
@@ -1073,7 +1088,10 @@ export default function TacticalPlanning() {
                             </div>
                             <div className="text-right">
                               <p className="text-xs font-semibold text-gray-600">Avance de Tareas</p>
-                              <p className="text-lg font-bold text-blue-600">{calculateTasksAverage(resultKey).toFixed(0)}%</p>
+                              {calculateTasksAverage(resultKey) !== null
+                                ? <p className="text-lg font-bold text-blue-600">{calculateTasksAverage(resultKey)!.toFixed(0)}%</p>
+                                : <p className="text-sm font-semibold text-gray-400">Sin tareas</p>
+                              }
                             </div>
                           </div>
 

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
-import { Plus, Trash2, ChevronRight, AlertCircle, CheckCircle, Upload, Download } from 'lucide-react';
+import { Plus, Trash2, ChevronRight, AlertCircle, CheckCircle, Upload, Download, Eye, EyeOff } from 'lucide-react';
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -42,6 +42,7 @@ export default function ProcessMap() {
   const [mapImage, setMapImage] = useState<string | null>(null);
   const [mapImageFileName, setMapImageFileName] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   // Fetch user's companies (only if not manager login)
   const userCompaniesQuery = trpc.adminOperations.getUserCompanies.useQuery(
@@ -326,85 +327,88 @@ export default function ProcessMap() {
             </Button>
         </div>
 
-        {/* Sección de Imagen del Mapa de Procesos */}
-        <Card className="border-2 border-purple-200 bg-purple-50">
-          <CardHeader>
-            <CardTitle className="text-lg">Imagen del Mapa de Procesos</CardTitle>
-            <CardDescription>Sube una imagen o archivo Excel del mapa de procesos</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {isLoadingMapImage ? (
-                <p className="text-center text-slate-600 py-4">Cargando mapa de procesos...</p>
-              ) : mapImage ? (
-                <div className="space-y-4">
-                  {isDisplayableImage(mapImageFileName) ? (
-                    <div
-                      onDoubleClick={handleDownloadImage}
-                      className="cursor-pointer hover:opacity-80 transition-opacity"
-                      title="Haz doble clic para descargar"
-                    >
-                      <img
-                        src={mapImage}
-                        alt="Mapa de Procesos"
-                        className="w-full max-h-96 object-contain border border-gray-300 rounded"
-                      />
-                    </div>
-                  ) : (
-                    <div className="border border-gray-300 rounded-lg p-6 text-center bg-white">
-                      <p className="font-medium text-slate-800">{mapImageFileName}</p>
-                      <p className="text-sm text-slate-500 mt-2">
-                        Archivo guardado en el servidor. Usa descargar para abrirlo.
-                      </p>
-                    </div>
-                  )}
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={handleDownloadImage}
-                      className="flex-1 gap-2"
-                    >
-                      <Download size={16} />
-                      Descargar Archivo
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleDeleteMapImage}
-                      disabled={deleteMapImageMutation.isPending}
-                      className="flex-1"
-                    >
-                      Eliminar Imagen
-                    </Button>
-                  </div>
-                </div>
+        {/* Sección de Imagen del Mapa de Procesos — diseño compacto */}
+        <div className="border border-purple-200 bg-purple-50 rounded-xl px-4 py-3">
+          {/* Fila compacta: título + 3 botones */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                <Upload size={16} className="text-purple-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800">Imagen del Mapa de Procesos</p>
+                {mapImageFileName ? (
+                  <p className="text-xs text-slate-500 truncate max-w-xs">{mapImageFileName}</p>
+                ) : (
+                  <p className="text-xs text-slate-400">Sin archivo subido</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Input oculto para subir */}
+              <input
+                type="file"
+                accept="image/*,.xlsx,.xls"
+                onChange={handleImageUpload}
+                disabled={isUploadingImage}
+                className="hidden"
+                id="map-image-input"
+              />
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                disabled={isUploadingImage || uploadMapImageMutation.isPending}
+                className="gap-1.5 border-purple-300 text-purple-700 hover:bg-purple-100"
+              >
+                <label htmlFor="map-image-input" className="cursor-pointer">
+                  <Upload size={14} />
+                  {isUploadingImage ? "Subiendo..." : "Subir Mapa"}
+                </label>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMap(!showMap)}
+                disabled={!mapImage}
+                className="gap-1.5 border-purple-300 text-purple-700 hover:bg-purple-100 disabled:opacity-40"
+              >
+                {showMap ? <EyeOff size={14} /> : <Eye size={14} />}
+                {showMap ? "Ocultar Mapa" : "Ver Mapa"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDeleteMapImage}
+                disabled={!mapImage || deleteMapImageMutation.isPending}
+                className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-40"
+              >
+                <Trash2 size={14} />
+                Eliminar Mapa
+              </Button>
+            </div>
+          </div>
+          {/* Visor expandible — solo cuando showMap=true y hay archivo */}
+          {showMap && mapImage && (
+            <div className="mt-3 rounded-xl border border-purple-200 bg-white overflow-hidden shadow-sm">
+              {isDisplayableImage(mapImageFileName) ? (
+                <img
+                  src={mapImage}
+                  alt="Mapa de Procesos"
+                  className="w-full object-contain max-h-[70vh]"
+                />
               ) : (
-                <div className="border-2 border-dashed border-purple-300 rounded-lg p-8 text-center">
-                  <Upload className="w-12 h-12 mx-auto text-purple-400 mb-4" />
-                  <p className="text-slate-600 mb-4">Arrastra una imagen o haz clic para seleccionar</p>
-                  <input
-                    type="file"
-                    accept="image/*,.xlsx,.xls"
-                    onChange={handleImageUpload}
-                    disabled={isUploadingImage}
-                    className="hidden"
-                    id="map-image-input"
-                  />
-                  <div className="space-y-2">
-                    <Button
-                      asChild
-                      disabled={isUploadingImage || uploadMapImageMutation.isPending}
-                    >
-                      <label htmlFor="map-image-input" className="cursor-pointer">
-                        {isUploadingImage ? "Cargando..." : "Seleccionar Archivo"}
-                      </label>
-                    </Button>
-                    <p className="text-xs text-slate-500 text-center">Soporta imágenes (PNG, JPG, etc.)</p>
-                  </div>
+                <div className="p-6 text-center">
+                  <p className="font-medium text-slate-700 mb-1">{mapImageFileName}</p>
+                  <p className="text-sm text-slate-400">Archivo no visualizable directamente. Usa el botón Subir Mapa para reemplazarlo por una imagen, o descárgalo.</p>
+                  <Button variant="outline" size="sm" onClick={handleDownloadImage} className="mt-3 gap-1.5">
+                    <Download size={14} /> Descargar
+                  </Button>
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </div>
 
         {isLoading ? (
           <Card>

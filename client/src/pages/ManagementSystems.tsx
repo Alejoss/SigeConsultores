@@ -251,7 +251,7 @@ export default function ManagementSystems() {
         ) : (
           <div className="space-y-4">
             {rows.map((row) => (
-              <Card key={row.id} className="border-2 border-blue-100">
+              <Card key={row.id} className="border-2 border-teal-200 bg-teal-50">
                 <CardContent className="pt-5 pb-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
@@ -262,7 +262,7 @@ export default function ManagementSystems() {
                         value={row.systemName}
                         onChange={(e) => handleFieldChange(row.id, "systemName", e.target.value)}
                         placeholder="Nombre del sistema..."
-                        className="border-blue-200 focus:border-blue-400"
+                        className="border-teal-200 focus:border-teal-400"
                       />
                     </div>
                     <div>
@@ -273,7 +273,7 @@ export default function ManagementSystems() {
                         value={row.certification}
                         onChange={(e) => handleFieldChange(row.id, "certification", e.target.value)}
                         placeholder="Nombre de la certificación..."
-                        className="border-blue-200 focus:border-blue-400"
+                        className="border-teal-200 focus:border-teal-400"
                       />
                     </div>
                   </div>
@@ -282,7 +282,7 @@ export default function ManagementSystems() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-blue-300 text-blue-700 hover:bg-blue-50 text-xs"
+                      className="border-teal-300 text-teal-700 hover:bg-teal-50 text-xs"
                       onClick={() => handleUploadClick(row.id, "certification")}
                       disabled={isUploading}
                     >
@@ -291,7 +291,7 @@ export default function ManagementSystems() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-blue-300 text-blue-700 hover:bg-blue-50 text-xs"
+                      className="border-teal-300 text-teal-700 hover:bg-teal-50 text-xs"
                       onClick={() => handleViewClick(row.id, "certification")}
                     >
                       <Eye size={13} className="mr-1" /> Ver Archivos de Certificación
@@ -299,7 +299,7 @@ export default function ManagementSystems() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-blue-300 text-blue-700 hover:bg-blue-50 text-xs"
+                      className="border-teal-300 text-teal-700 hover:bg-teal-50 text-xs"
                       onClick={() => handleUploadClick(row.id, "checklist")}
                       disabled={isUploading}
                     >
@@ -308,7 +308,7 @@ export default function ManagementSystems() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-blue-300 text-blue-700 hover:bg-blue-50 text-xs"
+                      className="border-teal-300 text-teal-700 hover:bg-teal-50 text-xs"
                       onClick={() => handleViewClick(row.id, "checklist")}
                     >
                       <Eye size={13} className="mr-1" /> Ver Check List de Auditoría
@@ -331,7 +331,7 @@ export default function ManagementSystems() {
 
             <Button
               variant="outline"
-              className="w-full border-dashed border-blue-300 text-blue-600 hover:bg-blue-50"
+              className="w-full border-dashed border-teal-300 text-teal-600 hover:bg-teal-50"
               onClick={handleAdd}
               disabled={createMutation.isPending}
             >
