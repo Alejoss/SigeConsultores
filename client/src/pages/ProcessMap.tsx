@@ -398,11 +398,13 @@ export default function ProcessMap() {
                   className="w-full object-contain max-h-[70vh]"
                 />
               ) : (
-                <div className="p-6 text-center">
-                  <p className="font-medium text-slate-700 mb-1">{mapImageFileName}</p>
-                  <p className="text-sm text-slate-400">Archivo no visualizable directamente. Usa el botón Subir Mapa para reemplazarlo por una imagen, o descárgalo.</p>
-                  <Button variant="outline" size="sm" onClick={handleDownloadImage} className="mt-3 gap-1.5">
-                    <Download size={14} /> Descargar
+                <div className="p-8 text-center bg-purple-50 rounded-xl border-2 border-dashed border-purple-200">
+                  <div className="text-4xl mb-3">📊</div>
+                  <p className="font-semibold text-slate-800 mb-1 text-lg">Archivo Excel cargado</p>
+                  <p className="font-medium text-slate-600 mb-2 text-sm">{mapImageFileName}</p>
+                  <p className="text-sm text-slate-500 mb-4">Los archivos Excel no se pueden previsualizar directamente.<br/>Usa el botón de descarga para abrirlo en tu computadora.</p>
+                  <Button onClick={handleDownloadImage} className="gap-2 bg-purple-600 hover:bg-purple-700 text-white">
+                    <Download size={16} /> Descargar Mapa de Procesos
                   </Button>
                 </div>
               )}

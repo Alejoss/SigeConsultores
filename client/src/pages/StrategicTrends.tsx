@@ -624,6 +624,7 @@ function SGIView({ companyId, onBack }: { companyId: number; onBack: () => void 
   const { data: audits = [] } = trpc.auditsInspections.listAudits.useQuery({ companyId }, { enabled: companyId > 0 });
   const { data: inspections = [] } = trpc.auditsInspections.listInspections.useQuery({ companyId }, { enabled: companyId > 0 });
   const { data: macroIndicators = [] } = trpc.macroIndicators.getMacroIndicators.useQuery({ companyId }, { enabled: companyId > 0 });
+  const { data: companyTrainingsList = [] } = trpc.companyTrainings.list.useQuery({ companyId }, { enabled: companyId > 0 });
 
   const programsCompliance = useMemo(() => {
     if (!(programs as any[]).length) return 0;
@@ -662,10 +663,11 @@ function SGIView({ companyId, onBack }: { companyId: number; onBack: () => void 
   }, [macroIndicators]);
 
   const avgTrainings = useMemo(() => {
-    if (!(macroIndicators as any[]).length) return 0;
-    const total = (macroIndicators as any[]).reduce((sum: number, p: any) => sum + (p.trainingsPercentage || 0), 0);
-    return Math.round(total / (macroIndicators as any[]).length);
-  }, [macroIndicators]);
+    const list = companyTrainingsList as any[];
+    if (!list.length) return 0;
+    const conducted = list.filter((t: any) => t.completed === "SI").length;
+    return Math.round((conducted / list.length) * 100);
+  }, [companyTrainingsList]);
 
   const metrics = [
     { label: "Programas", value: programsCompliance, count: (programs as any[]).length, color: "#3b82f6" },
