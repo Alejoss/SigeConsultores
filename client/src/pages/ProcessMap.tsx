@@ -388,29 +388,30 @@ export default function ProcessMap() {
               </Button>
             </div>
           </div>
-          {/* Visor expandible — solo cuando showMap=true y hay archivo */}
-          {showMap && mapImage && (
-            <div className="mt-3 rounded-xl border border-purple-200 bg-white overflow-hidden shadow-sm">
-              {isDisplayableImage(mapImageFileName) ? (
-                <img
-                  src={mapImage}
-                  alt="Mapa de Procesos"
-                  className="w-full object-contain max-h-[70vh]"
-                />
-              ) : (
-                <div className="p-8 text-center bg-purple-50 rounded-xl border-2 border-dashed border-purple-200">
-                  <div className="text-4xl mb-3">📊</div>
-                  <p className="font-semibold text-slate-800 mb-1 text-lg">Archivo Excel cargado</p>
-                  <p className="font-medium text-slate-600 mb-2 text-sm">{mapImageFileName}</p>
-                  <p className="text-sm text-slate-500 mb-4">Los archivos Excel no se pueden previsualizar directamente.<br/>Usa el botón de descarga para abrirlo en tu computadora.</p>
-                  <Button onClick={handleDownloadImage} className="gap-2 bg-purple-600 hover:bg-purple-700 text-white">
-                    <Download size={16} /> Descargar Mapa de Procesos
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
         </div>
+
+        {/* Visor expandible — fuera del div compacto para evitar error React DOM */}
+        {showMap && mapImage && (
+          <div className="rounded-xl border border-purple-200 bg-white overflow-hidden shadow-sm">
+            {isDisplayableImage(mapImageFileName) ? (
+              <img
+                src={mapImage}
+                alt="Mapa de Procesos"
+                className="w-full object-contain max-h-[70vh]"
+              />
+            ) : (
+              <div className="p-8 text-center bg-purple-50 rounded-xl border-2 border-dashed border-purple-200">
+                <div className="text-4xl mb-3">📊</div>
+                <p className="font-semibold text-slate-800 mb-1 text-lg">Archivo Excel cargado</p>
+                <p className="font-medium text-slate-600 mb-2 text-sm">{mapImageFileName}</p>
+                <p className="text-sm text-slate-500 mb-4">Los archivos Excel no se pueden previsualizar directamente.<br/>Descárgalo para abrirlo en tu computadora.</p>
+                <Button onClick={handleDownloadImage} className="gap-2 bg-purple-600 hover:bg-purple-700 text-white">
+                  <Download size={16} /> Descargar Mapa de Procesos
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
 
         {isLoading ? (
           <Card>

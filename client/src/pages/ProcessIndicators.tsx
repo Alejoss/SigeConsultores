@@ -102,6 +102,14 @@ const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "O
 function OTECard({ ote, index }: { ote: any; index: number }) {
   const [expanded, setExpanded] = useState(false);
 
+  // Sanitización defensiva: asegurar que los valores numéricos sean siempre números
+  // (en producción pueden llegar como strings si el usuario escribió texto en el campo)
+  const pctMeta = Math.round(parseFloat(String(ote.porcentajeMetaAlcanzado)) || 0);
+  const pctOO = Math.round(parseFloat(String(ote.pctOO)) || 0);
+  const tasksAvg = ote.tasksGlobalAvg !== null && ote.tasksGlobalAvg !== undefined
+    ? Math.round(parseFloat(String(ote.tasksGlobalAvg)) || 0)
+    : null;
+
   // Datos de seguimiento según el método
   const renderTrackingData = () => {
     if (!ote.trackingType || ote.trackingType === "puntual") return null;
@@ -191,25 +199,25 @@ function OTECard({ ote, index }: { ote: any; index: number }) {
             % Meta Alcanzada (OTE)
           </p>
           {/* % grande */}
-          <p className="text-6xl font-extrabold mb-1 leading-none">{ote.porcentajeMetaAlcanzado}%</p>
+          <p className="text-6xl font-extrabold mb-1 leading-none">{pctMeta}%</p>
           <p className="text-xs mb-2" style={{ color: C.lightGreenBg }}>
             Punto partida: {ote.puntoPartida} → Meta: {ote.metaLlegada} {ote.unidadMedida}
           </p>
 
           {/* Gráfico circular más grande */}
           <div className="my-2 flex justify-center">
-            <CircularProgress value={ote.porcentajeMetaAlcanzado} size={96} />
+            <CircularProgress value={pctMeta} size={96} />
           </div>
 
           <div className="border-t pt-3 space-y-2" style={{ borderColor: "#1B7A3D" }}>
             <div>
               <p className="text-xs font-semibold" style={{ color: C.lightGreenText }}>Avance Obj. Operativos</p>
-              <p className="text-2xl font-bold">{ote.hasOO ? `${ote.pctOO}%` : <span className="text-sm text-gray-300">Sin OO</span>}</p>
+              <p className="text-2xl font-bold">{ote.hasOO ? `${pctOO}%` : <span className="text-sm text-gray-300">Sin OO</span>}</p>
             </div>
             <div>
               <p className="text-xs font-semibold" style={{ color: C.lightGreenText }}>Avance Tareas</p>
               {ote.tasksGlobalAvg !== null
-                ? <p className="text-2xl font-bold">{ote.tasksGlobalAvg}%</p>
+                ? <p className="text-2xl font-bold">{tasksAvg}%</p>
                 : <p className="text-sm" style={{ color: C.grayGreen }}>Sin tareas</p>
               }
             </div>
