@@ -368,12 +368,18 @@ export default function ProcessMap() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowMap(!showMap)}
+                onClick={() => {
+                  if (mapImage && isPdf(mapImageFileName)) {
+                    window.open(mapImage, "_blank", "noopener,noreferrer");
+                  } else {
+                    setShowMap(!showMap);
+                  }
+                }}
                 disabled={!mapImage}
                 className="gap-1.5 border-purple-300 text-purple-700 hover:bg-purple-100 disabled:opacity-40"
               >
-                {showMap ? <EyeOff size={14} /> : <Eye size={14} />}
-                {showMap ? "Ocultar Mapa" : "Ver Mapa"}
+                {(!isPdf(mapImageFileName) && showMap) ? <EyeOff size={14} /> : <Eye size={14} />}
+                {(!isPdf(mapImageFileName) && showMap) ? "Ocultar Mapa" : "Ver Mapa"}
               </Button>
               <Button
                 variant="outline"
