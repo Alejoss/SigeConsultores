@@ -241,6 +241,11 @@ export default function ProcessMap() {
     return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fileName);
   };
 
+  const isPdf = (fileName: string | null) => {
+    if (!fileName) return false;
+    return /\.pdf$/i.test(fileName);
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !companyId) return;
@@ -341,7 +346,7 @@ export default function ProcessMap() {
               {/* Input oculto para subir */}
               <input
                 type="file"
-                accept="image/*,.xlsx,.xls"
+                accept="image/*,application/pdf"
                 onChange={handleImageUpload}
                 disabled={isUploadingImage}
                 className="hidden"
@@ -359,6 +364,7 @@ export default function ProcessMap() {
                   {isUploadingImage ? "Subiendo..." : "Subir Mapa"}
                 </label>
               </Button>
+              <span className="text-xs text-slate-400 hidden sm:inline">PDF, PNG o JPG</span>
               <Button
                 variant="outline"
                 size="sm"
@@ -392,12 +398,19 @@ export default function ProcessMap() {
                 alt="Mapa de Procesos"
                 className="w-full object-contain max-h-[70vh]"
               />
+            ) : isPdf(mapImageFileName) ? (
+              <iframe
+                src={mapImage}
+                title="Mapa de Procesos PDF"
+                className="w-full"
+                style={{ height: '75vh', border: 'none' }}
+              />
             ) : (
               <div className="p-8 text-center bg-purple-50 rounded-xl border-2 border-dashed border-purple-200">
                 <div className="text-4xl mb-3">📊</div>
-                <p className="font-semibold text-slate-800 mb-1 text-lg">Archivo Excel cargado</p>
+                <p className="font-semibold text-slate-800 mb-1 text-lg">Archivo cargado</p>
                 <p className="font-medium text-slate-600 mb-2 text-sm">{mapImageFileName}</p>
-                <p className="text-sm text-slate-500 mb-4">Los archivos Excel no se pueden previsualizar directamente en el navegador.<br/>Haz clic en el botón para abrirlo o descargarlo.</p>
+                <p className="text-sm text-slate-500 mb-4">Este tipo de archivo no se puede previsualizar directamente en el navegador.<br/>Haz clic en el botón para abrirlo o descargarlo.</p>
                 <Button onClick={handleDownloadImage} className="gap-2 bg-purple-600 hover:bg-purple-700 text-white">
                   <Download size={16} /> Abrir Mapa de Procesos
                 </Button>
