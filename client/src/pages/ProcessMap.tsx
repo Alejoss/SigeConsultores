@@ -265,16 +265,9 @@ export default function ProcessMap() {
 
   const handleDownloadImage = () => {
     if (!mapImage) return;
-
-    const link = document.createElement("a");
-    link.href = mapImage;
-    link.download = mapImageFileName || "mapa-procesos";
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Descargando archivo...");
+    // Open in new tab — browser will display images inline and download Excel/PDF
+    window.open(mapImage, "_blank", "noopener,noreferrer");
+    toast.success("Abriendo archivo...");
   };
 
   const handleDeleteMapImage = async () => {
@@ -404,9 +397,9 @@ export default function ProcessMap() {
                 <div className="text-4xl mb-3">📊</div>
                 <p className="font-semibold text-slate-800 mb-1 text-lg">Archivo Excel cargado</p>
                 <p className="font-medium text-slate-600 mb-2 text-sm">{mapImageFileName}</p>
-                <p className="text-sm text-slate-500 mb-4">Los archivos Excel no se pueden previsualizar directamente.<br/>Descárgalo para abrirlo en tu computadora.</p>
+                <p className="text-sm text-slate-500 mb-4">Los archivos Excel no se pueden previsualizar directamente en el navegador.<br/>Haz clic en el botón para abrirlo o descargarlo.</p>
                 <Button onClick={handleDownloadImage} className="gap-2 bg-purple-600 hover:bg-purple-700 text-white">
-                  <Download size={16} /> Descargar Mapa de Procesos
+                  <Download size={16} /> Abrir Mapa de Procesos
                 </Button>
               </div>
             )}
