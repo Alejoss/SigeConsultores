@@ -1074,6 +1074,9 @@ export const appRouter = router({
           modality: z.enum(["Presencial", "Online", "Externa"]).optional(),
           responsible: z.string().optional(),
           plannedDate: z.string().optional(),
+          completed: z.enum(["SI", "NO"]).optional(),
+          conductedDate: z.string().optional(),
+          actualAttendees: z.number().optional(),
         }))
       }))
       .mutation(async ({ input }) => {
@@ -1081,21 +1084,26 @@ export const appRouter = router({
         if (!db) throw new Error("Database not available");
         if (input.rows.length === 0) return { inserted: 0 };
         await db.insert(companyTrainings).values(
-          input.rows.map(row => ({
-            companyId: input.companyId,
-            name: row.name,
-            type: row.type || "Mandatoria",
-            objective: row.objective || null,
-            audience: row.audience || null,
-            plannedAttendees: row.plannedAttendees || 0,
-            modality: row.modality || "Presencial",
-            responsible: row.responsible || null,
-            plannedDate: row.plannedDate ? new Date(row.plannedDate) : null,
-            conductedDate: null,
-            actualAttendees: 0,
-            attendancePercentage: 0,
-            completed: null,
-          }))
+          input.rows.map(row => {
+            const planned = row.plannedAttendees || 0;
+            const actual = row.actualAttendees || 0;
+            const attendance = planned > 0 ? Math.round((actual / planned) * 100) : 0;
+            return {
+              companyId: input.companyId,
+              name: row.name,
+              type: row.type || "Mandatoria",
+              objective: row.objective || null,
+              audience: row.audience || null,
+              plannedAttendees: planned,
+              modality: row.modality || "Presencial",
+              responsible: row.responsible || null,
+              plannedDate: row.plannedDate ? new Date(row.plannedDate) : null,
+              completed: row.completed || null,
+              conductedDate: row.conductedDate ? new Date(row.conductedDate) : null,
+              actualAttendees: actual,
+              attendancePercentage: attendance,
+            };
+          })
         );
         return { inserted: input.rows.length };
       }),
