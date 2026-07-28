@@ -692,7 +692,7 @@ export default function Trainings() {
       actualAttendees: training.actualAttendees ? training.actualAttendees.toString() : "",
     });
     setEditingId(training.id);
-    setExpandedId(null);
+    setExpandedId(training.id); // Asegurar que la tarjeta esté expandida para mostrar el formulario inline
   };
 
   const totalTrainings = trainings.length;
@@ -984,6 +984,21 @@ export default function Trainings() {
                 <Download className="w-4 h-4" />
                 Exportar a Excel
               </Button>
+              {/* Botón Eliminar todas */}
+              {trainings.length > 0 && (
+                <Button
+                  variant="destructive"
+                  className="flex gap-2"
+                  onClick={() => {
+                    if (window.confirm(`¿Eliminar las ${trainings.length} capacitaciones? Esta acción no se puede deshacer.`)) {
+                      clearByCompanyMutation.mutate({ companyId });
+                    }
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Eliminar todas
+                </Button>
+              )}
             </div>
           </div>
 
@@ -1035,6 +1050,78 @@ export default function Trainings() {
 
                   {expandedId === training.id && (
                     <CardContent className="pt-0 pb-6 border-t">
+                      {/* Formulario inline de edición */}
+                      {editingId === training.id ? (
+                        <div className="mt-4 space-y-4">
+                          <h3 className="text-sm font-bold text-blue-700 mb-2">Editando capacitación</h3>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="col-span-2">
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">Capacitación *</label>
+                              <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Nombre de la capacitación" />
+                            </div>
+                            <div className="col-span-2">
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">Objetivo</label>
+                              <Textarea value={formData.objective} onChange={(e) => setFormData({ ...formData, objective: e.target.value })} placeholder="Objetivo" className="min-h-[60px]" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">Tipo *</label>
+                              <NativeSelect value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value as FormData["type"] })}>
+                                <option value="">Selecciona el tipo</option>
+                                <option value="Mandatoria">Mandatoria</option>
+                                <option value="Reglamentaria">Reglamentaria</option>
+                                <option value="Sugerida">Sugerida</option>
+                              </NativeSelect>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">Modalidad</label>
+                              <NativeSelect value={formData.modality} onChange={(e) => setFormData({ ...formData, modality: e.target.value as FormData["modality"] })}>
+                                <option value="">Selecciona la modalidad</option>
+                                <option value="Presencial">Presencial</option>
+                                <option value="Online">Online</option>
+                                <option value="Externa">Externa</option>
+                              </NativeSelect>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">Destinatario</label>
+                              <Input value={formData.audience} onChange={(e) => setFormData({ ...formData, audience: e.target.value })} placeholder="Destinatario" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">Responsable</label>
+                              <Input value={formData.responsible} onChange={(e) => setFormData({ ...formData, responsible: e.target.value })} placeholder="Responsable" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">Asistentes Previstos</label>
+                              <Input type="number" value={formData.plannedAttendees} onChange={(e) => setFormData({ ...formData, plannedAttendees: e.target.value })} placeholder="0" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">Fecha Planificada</label>
+                              <Input type="date" value={formData.plannedDate} onChange={(e) => setFormData({ ...formData, plannedDate: e.target.value })} />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">¿Fue Impartida?</label>
+                              <NativeSelect value={formData.completed} onChange={(e) => setFormData({ ...formData, completed: e.target.value as FormData["completed"] })}>
+                                <option value="">¿Fue impartida?</option>
+                                <option value="SI">Sí</option>
+                                <option value="NO">No</option>
+                              </NativeSelect>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">Fecha en que se Impartió</label>
+                              <Input type="date" value={formData.conductedDate} onChange={(e) => setFormData({ ...formData, conductedDate: e.target.value })} />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">Número de Asistentes</label>
+                              <Input type="number" value={formData.actualAttendees} onChange={(e) => setFormData({ ...formData, actualAttendees: e.target.value })} placeholder="0" />
+                            </div>
+                          </div>
+                          <div className="flex gap-2 pt-2">
+                            <Button onClick={() => handleUpdateTraining(training.id)} className="bg-blue-600 hover:bg-blue-700">Actualizar</Button>
+                            <Button variant="outline" onClick={() => { setFormData(emptyForm); setEditingId(null); }}>Cancelar</Button>
+                            <Button variant="destructive" onClick={() => { if (window.confirm('¿Eliminar esta capacitación?')) { handleDeleteTraining(training.id); setEditingId(null); } }}>Eliminar</Button>
+                          </div>
+                        </div>
+                      ) : (
+                      <>
                       <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
                         {training.objective && (
                           <div className="col-span-2">
@@ -1114,6 +1201,8 @@ export default function Trainings() {
                           onClose={() => setBackupsPanelId(null)}
                         />
                       )}
+                      </>
+                      )}
                     </CardContent>
                   )}
                 </Card>
@@ -1122,10 +1211,10 @@ export default function Trainings() {
           )}
         </div>
 
-        {/* Formulario */}
+        {/* Formulario de nueva capacitación (solo visible cuando NO se está editando inline) */}
         <Card className="bg-white">
           <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50 border-b">
-            <CardTitle>{editingId ? "Editar Capacitación" : "Nueva Capacitación"}</CardTitle>
+            <CardTitle>Nueva Capacitación</CardTitle>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
             <div>
