@@ -1061,6 +1061,17 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    // Borrar todas las capacitaciones de una empresa (para reimportación limpia)
+    clearByCompany: companyProcedure
+      .input(z.object({ companyId: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.delete(companyTrainings)
+          .where(eq(companyTrainings.companyId, input.companyId));
+        return { success: true };
+      }),
+
     // Importación masiva desde Excel (filas ya parseadas en el cliente)
     importBulk: companyProcedure
       .input(z.object({

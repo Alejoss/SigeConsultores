@@ -578,6 +578,7 @@ export default function Trainings() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importRows, setImportRows] = useState<ImportRow[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
+  const [replaceMode, setReplaceMode] = useState(false);
   const importFileRef = useRef<HTMLInputElement>(null);
 
   const { data: trainingsData, isLoading } = trpc.companyTrainings.list.useQuery(
@@ -591,6 +592,7 @@ export default function Trainings() {
   const updateMutation = trpc.companyTrainings.update.useMutation();
   const deleteMutation = trpc.companyTrainings.delete.useMutation();
   const importBulkMutation = trpc.companyTrainings.importBulk.useMutation();
+  const clearByCompanyMutation = trpc.companyTrainings.clearByCompany.useMutation();
   const utils = trpc.useUtils();
 
   const calcAttendancePercentage = (actual: string, planned: string) => {
@@ -840,6 +842,10 @@ export default function Trainings() {
     const validRows = importRows.filter(r => !r._error && r.name);
     if (validRows.length === 0) { toast.error("No hay filas válidas para importar"); return; }
     try {
+      // Si modo reemplazar: borrar todas las capacitaciones existentes primero
+      if (replaceMode) {
+        await clearByCompanyMutation.mutateAsync({ companyId });
+      }
       const result = await importBulkMutation.mutateAsync({
         companyId,
         rows: validRows.map(r => ({
@@ -856,9 +862,11 @@ export default function Trainings() {
           actualAttendees: r.actualAttendees,
         })),
       });
-      toast.success(`Se importaron ${result.inserted} capacitaciones exitosamente`);
+      const action = replaceMode ? "reemplazaron" : "importaron";
+      toast.success(`Se ${action} ${result.inserted} capacitaciones exitosamente`);
       setShowImportModal(false);
       setImportRows([]);
+      setReplaceMode(false);
       await utils.companyTrainings.list.invalidate({ companyId });
     } catch {
       toast.error("Error al importar las capacitaciones");
@@ -1312,21 +1320,42 @@ export default function Trainings() {
             </div>
 
             {/* Pie del modal */}
-            <div className="flex items-center justify-between p-6 border-t bg-gray-50 rounded-b-xl">
-              <p className="text-sm text-gray-500">
-                Solo se importarán las filas marcadas como <span className="text-green-600 font-medium">✓ Válida</span>.
-              </p>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => { setShowImportModal(false); setImportRows([]); }}>
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handleConfirmImport}
-                  disabled={importBulkMutation.isPending || importRows.filter(r => !r._error).length === 0}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {importBulkMutation.isPending ? "Importando..." : `Importar ${importRows.filter(r => !r._error).length} capacitaciones`}
-                </Button>
+            <div className="p-6 border-t bg-gray-50 rounded-b-xl">
+              {/* Toggle reemplazar */}
+              <div className="flex items-center gap-3 mb-4 p-3 rounded-lg border border-orange-200 bg-orange-50">
+                <input
+                  type="checkbox"
+                  id="replaceMode"
+                  checked={replaceMode}
+                  onChange={(e) => setReplaceMode(e.target.checked)}
+                  className="w-4 h-4 accent-orange-500 cursor-pointer"
+                />
+                <label htmlFor="replaceMode" className="text-sm cursor-pointer">
+                  <span className="font-semibold text-orange-700">Reemplazar todo</span>
+                  <span className="text-orange-600 ml-1">— elimina las capacitaciones existentes e importa las del Excel (evita duplicados)</span>
+                </label>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-500">
+                  Solo se importarán las filas marcadas como <span className="text-green-600 font-medium">✓ Válida</span>.
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => { setShowImportModal(false); setImportRows([]); setReplaceMode(false); }}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleConfirmImport}
+                    disabled={importBulkMutation.isPending || clearByCompanyMutation.isPending || importRows.filter(r => !r._error).length === 0}
+                    className={replaceMode ? "bg-orange-600 hover:bg-orange-700" : "bg-blue-600 hover:bg-blue-700"}
+                  >
+                    {(importBulkMutation.isPending || clearByCompanyMutation.isPending)
+                      ? (replaceMode ? "Reemplazando..." : "Importando...")
+                      : replaceMode
+                        ? `Reemplazar con ${importRows.filter(r => !r._error).length} capacitaciones`
+                        : `Importar ${importRows.filter(r => !r._error).length} capacitaciones`
+                    }
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
