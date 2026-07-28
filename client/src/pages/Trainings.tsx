@@ -19,6 +19,9 @@ interface ImportRow {
   modality?: "Presencial" | "Online" | "Externa";
   responsible?: string;
   plannedDate?: string;
+  completed?: "SI" | "NO";
+  conductedDate?: string;
+  actualAttendees?: number;
   _rowIndex: number;
   _error?: string;
 }
@@ -796,6 +799,13 @@ export default function Trainings() {
           const rawAttendees = getCol(row, "Asistentes Previstos", "Asistentes", "plannedAttendees");
           const plannedAttendees = parseInt(rawAttendees) || undefined;
           const plannedDate = excelDateToISO(rawDate);
+          // Columnas de seguimiento post-capacitación (I, J, K)
+          const rawCompleted = getCol(row, "Capacitación Impartida (SI/NO)", "Capacitacion Impartida (SI/NO)", "Impartida", "completed").toUpperCase();
+          const completed: "SI" | "NO" | undefined = rawCompleted === "SI" ? "SI" : rawCompleted === "NO" ? "NO" : undefined;
+          const rawConductedDate = getCol(row, "Fecha en la que se Impartió (YYYY-MM-DD)", "Fecha en la que se Impartio (YYYY-MM-DD)", "Fecha Impartida", "conductedDate") || row["Fecha en la que se Impartió (YYYY-MM-DD)"];
+          const conductedDate = excelDateToISO(rawConductedDate);
+          const rawActualAttendees = getCol(row, "Numero de Asistentes", "Número de Asistentes", "Asistentes Reales", "actualAttendees");
+          const actualAttendees = parseInt(rawActualAttendees) || undefined;
           const error = !name ? "Falta el nombre de la capacitación" :
             (rawType && !type) ? `Tipo inválido: "${rawType}"` :
             (rawModality && !modality) ? `Modalidad inválida: "${rawModality}"` : undefined;
@@ -808,6 +818,9 @@ export default function Trainings() {
             modality,
             responsible: getCol(row, "Responsable", "responsible") || undefined,
             plannedDate,
+            completed,
+            conductedDate,
+            actualAttendees,
             _rowIndex: idx + 2,
             _error: error,
           };
@@ -838,6 +851,9 @@ export default function Trainings() {
           modality: r.modality,
           responsible: r.responsible,
           plannedDate: r.plannedDate,
+          completed: r.completed,
+          conductedDate: r.conductedDate,
+          actualAttendees: r.actualAttendees,
         })),
       });
       toast.success(`Se importaron ${result.inserted} capacitaciones exitosamente`);
