@@ -560,7 +560,7 @@ export default function ProcessIndicators() {
             >
               <ChevronLeft size={16} /> Volver
             </button>
-            <h2 className="text-xl font-bold text-gray-800">{panelTitle[activePanel]}</h2>
+            <h2 className="text-xl font-bold text-gray-800" translate="no">{panelTitle[activePanel]}</h2>
             <Button
               onClick={handleExportImage}
               className="flex items-center gap-2 text-sm"
@@ -574,7 +574,7 @@ export default function ProcessIndicators() {
           <div ref={exportRef} className="bg-white rounded-2xl p-6 shadow-sm">
             {/* Título del panel */}
             <div className="mb-5 pb-3 border-b" style={{ borderColor: C.lightGreenBg }}>
-              <h3 className="text-lg font-bold" style={{ color: C.darkGreen }}>{panelTitle[activePanel]}</h3>
+              <h3 className="text-lg font-bold" style={{ color: C.darkGreen }} translate="no">{panelTitle[activePanel]}</h3>
               <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>
                 Indicadores del proceso · {new Date().toLocaleDateString("es-EC", { year: "numeric", month: "long", day: "numeric" })}
               </p>
@@ -759,8 +759,8 @@ export default function ProcessIndicators() {
                     {pctLabel(panel.value)}
                   </span>
                 </div>
-                <h3 className="text-lg font-bold text-gray-800 mb-0.5">{panel.title}</h3>
-                <p className="text-xs font-semibold mb-2" style={{ color: C.medGreen }}>{panel.subtitle}</p>
+                <h3 className="text-lg font-bold text-gray-800 mb-0.5" translate="no">{panel.title}</h3>
+                <p className="text-xs font-semibold mb-2" style={{ color: C.medGreen }} translate="no">{panel.subtitle}</p>
                 <p className="text-xs text-gray-500 mb-4 leading-snug">{panel.description}</p>
                 <div className="flex items-end justify-between">
                   <div>
