@@ -115,14 +115,16 @@ function OTECard({ ote, index }: { ote: any; index: number }) {
     if (!ote.trackingType || ote.trackingType === "puntual") return null;
 
     if (ote.trackingType === "mensual_sumatoria" || ote.trackingType === "mensual_promedio") {
-      const mv = ote.monthlyValues || {};
+      const mv = ote.monthlyValues;
+      // monthlyValues puede ser array [v0..v11] (índice 0=Ene) o un objeto {"1":v,...}
+      const isArray = Array.isArray(mv);
       return (
         <div className="mt-3 pt-2 border-t" style={{ borderColor: "#1B7A3D" }}>
           <p className="text-xs font-semibold mb-2" style={{ color: C.lightGreenText }}>Valores mensuales</p>
           <div className="grid grid-cols-4 gap-1">
             {MESES.map((mes, i) => {
-              const key = String(i + 1);
-              const val = mv[key] ?? mv[mes] ?? mv[mes.toLowerCase()] ?? null;
+              // Si es array: índice i (0-based). Si es objeto: clave String(i+1) (1-based)
+              const val = isArray ? ((mv as number[])[i] ?? null) : ((mv as any)?.[String(i + 1)] ?? (mv as any)?.[mes] ?? null);
               return (
                 <div key={mes} className="text-center">
                   <p className="text-xs" style={{ color: C.lightGreenText }}>{mes}</p>
