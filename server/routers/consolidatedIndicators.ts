@@ -174,12 +174,38 @@ export const consolidatedIndicatorsRouter = router({
               const puntoPartida = parseFloat(pd.puntoPartida) || 0;
               const metaLlegada = parseFloat(pd.metaLlegada) || 0;
               const avanceMeta = parseFloat(pd.avanceMeta) || 0;
+              const trackingTypeOTE = pd.trackingType || 'puntual';
 
-              // % Meta Alcanzada del OTE
+              // % Meta Alcanzada del OTE — replicar exactamente la lógica de calcOTMetrics del frontend
               let porcentajeMetaAlcanzado = 0;
-              if (metaLlegada !== puntoPartida) {
-                porcentajeMetaAlcanzado = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
-                porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
+              if (trackingTypeOTE === 'mensual_checklist') {
+                // Para checklist: % = meses_cumplidos / 12 * 100 (independiente de puntoPartida/metaLlegada)
+                const clVals: boolean[] = Array.isArray(pd.checklistValues)
+                  ? pd.checklistValues
+                  : Array(12).fill(false);
+                const cumplidos = clVals.filter(Boolean).length;
+                porcentajeMetaAlcanzado = Math.round((cumplidos / 12) * 100);
+              } else if (trackingTypeOTE === 'mensual_sumatoria') {
+                const mvVals: number[] = Array.isArray(pd.monthlyValues) ? pd.monthlyValues : Array(12).fill(0);
+                const suma = mvVals.reduce((s: number, v: number) => s + (v || 0), 0);
+                if (metaLlegada !== puntoPartida) {
+                  porcentajeMetaAlcanzado = ((suma - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
+                  porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
+                }
+              } else if (trackingTypeOTE === 'mensual_promedio') {
+                const mvVals: number[] = Array.isArray(pd.monthlyValues) ? pd.monthlyValues : Array(12).fill(0);
+                const nonZero = mvVals.filter((v: number) => v !== 0);
+                const promedio = nonZero.length > 0 ? nonZero.reduce((s: number, v: number) => s + v, 0) / nonZero.length : 0;
+                if (metaLlegada !== puntoPartida) {
+                  porcentajeMetaAlcanzado = ((promedio - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
+                  porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
+                }
+              } else {
+                // puntual (y cualquier otro tipo)
+                if (metaLlegada !== puntoPartida) {
+                  porcentajeMetaAlcanzado = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
+                  porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
+                }
               }
               totalPonderado += porcentajeMetaAlcanzado * (ponderacion / 100);
 
