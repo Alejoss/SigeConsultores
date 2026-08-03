@@ -20,6 +20,7 @@ export const processCharacterizationRouter = router({
       processId: z.number(),
       macroProcess: z.string().optional(),
       responsible: z.string().optional(),
+      responsibleEmail: z.string().email().optional().or(z.literal('')),
       participants: z.string().optional(),
       objective: z.string().optional(),
       scope: z.string().optional(),
@@ -41,6 +42,7 @@ export const processCharacterizationRouter = router({
         // Only update fields that are provided (not undefined)
         if (input.macroProcess !== undefined) updateData.macroProcess = input.macroProcess;
         if (input.responsible !== undefined) updateData.responsible = input.responsible;
+        if (input.responsibleEmail !== undefined) updateData.responsibleEmail = input.responsibleEmail;
         if (input.participants !== undefined) updateData.participants = input.participants;
         if (input.objective !== undefined) updateData.objective = input.objective;
         if (input.scope !== undefined) updateData.scope = input.scope;
@@ -57,6 +59,7 @@ export const processCharacterizationRouter = router({
           processId: input.processId,
           macroProcess: input.macroProcess || null,
           responsible: input.responsible || null,
+          responsibleEmail: input.responsibleEmail || null,
           participants: input.participants || null,
           objective: input.objective || null,
           scope: input.scope || null,

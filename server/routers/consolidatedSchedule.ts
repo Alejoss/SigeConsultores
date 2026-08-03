@@ -262,17 +262,19 @@ export const consolidatedScheduleRouter = router({
 
               // planningData is an object with resultKeys array
               if (planningData && planningData.resultKeys && Array.isArray(planningData.resultKeys)) {
-                planningData.resultKeys.forEach((resultKey: any) => {
-                  // Add task activities from each result key
-                  if (resultKey.tasks && Array.isArray(resultKey.tasks)) {
+                planningData.resultKeys.forEach((resultKey: any, rkIndex: number) => {
+                  const hasTasks = resultKey.tasks && Array.isArray(resultKey.tasks) && resultKey.tasks.length > 0;
+
+                  if (hasTasks) {
+                    // OO tiene tareas: agregar cada tarea al cronograma
                     resultKey.tasks.forEach((task: any, taskIndex: number) => {
                       if (task.description && task.date) {
                         const dueDate = new Date(task.date);
                         const badgeInfo = getBadgeInfo("objective");
                         const completionPercentage = task.percentageCompleted || 0;
-                        
+
                         activities.push({
-                          id: `objective-task-${o.id}-${taskIndex}`,
+                          id: `objective-task-${o.id}-${rkIndex}-${taskIndex}`,
                           type: "objective",
                           element: "OTE",
                           action: task.description,
@@ -286,6 +288,29 @@ export const consolidatedScheduleRouter = router({
                         });
                       }
                     });
+                  } else {
+                    // OO sin tareas: el propio OO actúa como tarea en el cronograma
+                    // Usar endDate o implementationDate como fecha de vencimiento
+                    const dateStr = resultKey.endDate || resultKey.implementationDate || resultKey.startDate;
+                    if (resultKey.description && dateStr) {
+                      const dueDate = new Date(dateStr);
+                      const badgeInfo = getBadgeInfo("objective");
+                      const completionPercentage = resultKey.porcentajeAlcanzado || 0;
+
+                      activities.push({
+                        id: `objective-oo-${o.id}-${rkIndex}`,
+                        type: "objective",
+                        element: "OTE",
+                        action: resultKey.description,
+                        dueDate: dueDate,
+                        completed: completionPercentage === 100 ? "SI" : "NO",
+                        completionField: `${completionPercentage}%`,
+                        badge: badgeInfo.badge,
+                        badgeColor: badgeInfo.color,
+                        daysRemaining: calculateDaysRemaining(dueDate),
+                        completionPercentage: completionPercentage,
+                      });
+                    }
                   }
                 });
               }

@@ -11,6 +11,42 @@ import {
 } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
+// ─── Helper: calcula % meta alcanzada de un OTE según su tipo de seguimiento ──
+// Replica exactamente la lógica de calcOTMetrics del frontend (TacticalPlanning.tsx)
+function calcOTEPorcentaje(planData: any): number {
+  const pp = parseFloat(planData.puntoPartida) || 0;
+  const meta = parseFloat(planData.metaLlegada) || 0;
+  const avanceMeta = parseFloat(planData.avanceMeta) || 0;
+  const trackingType = planData.trackingType || 'puntual';
+
+  if (trackingType === 'mensual_checklist') {
+    const vals: boolean[] = Array.isArray(planData.checklistValues)
+      ? planData.checklistValues
+      : Array(12).fill(false);
+    const cumplidos = vals.filter(Boolean).length;
+    return Math.round((cumplidos / 12) * 100);
+  }
+
+  if (trackingType === 'mensual_sumatoria') {
+    const vals: number[] = Array.isArray(planData.monthlyValues) ? planData.monthlyValues : Array(12).fill(0);
+    const suma = vals.reduce((s: number, v: number) => s + (v || 0), 0);
+    if (meta === pp) return 0;
+    return Math.max(-100, Math.min(100, ((suma - pp) / (meta - pp)) * 100));
+  }
+
+  if (trackingType === 'mensual_promedio') {
+    const vals: number[] = Array.isArray(planData.monthlyValues) ? planData.monthlyValues : Array(12).fill(0);
+    const nonZero = vals.filter((v: number) => v !== 0);
+    const promedio = nonZero.length > 0 ? nonZero.reduce((s: number, v: number) => s + v, 0) / nonZero.length : 0;
+    if (meta === pp) return 0;
+    return Math.max(-100, Math.min(100, ((promedio - pp) / (meta - pp)) * 100));
+  }
+
+  // puntual (y cualquier otro tipo)
+  if (meta === pp) return 0;
+  return Math.max(-100, Math.min(100, ((avanceMeta - pp) / (meta - pp)) * 100));
+}
+
 export const macroIndicatorsRouter = router({
   getMacroIndicators: companyProcedure
     .input(z.object({ companyId: z.number() }))
@@ -117,14 +153,7 @@ export const macroIndicatorsRouter = router({
                   try {
                     const planData = JSON.parse(obj.planningData);
                     const ponderacion = parseFloat(planData.ponderacion) || 0;
-                    const puntoPartida = parseFloat(planData.puntoPartida) || 0;
-                    const metaLlegada = parseFloat(planData.metaLlegada) || 0;
-                    const avanceMeta = parseFloat(planData.avanceMeta) || 0;
-                    let porcentajeMetaAlcanzado = 0;
-                    if (metaLlegada !== puntoPartida) {
-                      porcentajeMetaAlcanzado = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
-                      porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
-                    }
+                    const porcentajeMetaAlcanzado = calcOTEPorcentaje(planData);
                     totalPonderado += porcentajeMetaAlcanzado * (ponderacion / 100);
                   } catch (e) {
                     console.error("Error parsing planning data:", e);
@@ -272,14 +301,7 @@ export const macroIndicatorsRouter = router({
             try {
               const planData = JSON.parse(obj.planningData);
               const ponderacion = parseFloat(planData.ponderacion) || 0;
-              const puntoPartida = parseFloat(planData.puntoPartida) || 0;
-              const metaLlegada = parseFloat(planData.metaLlegada) || 0;
-              const avanceMeta = parseFloat(planData.avanceMeta) || 0;
-              let porcentajeMetaAlcanzado = 0;
-              if (metaLlegada !== puntoPartida) {
-                porcentajeMetaAlcanzado = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
-                porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
-              }
+              const porcentajeMetaAlcanzado = calcOTEPorcentaje(planData);
               totalPonderadoOT += porcentajeMetaAlcanzado * (ponderacion / 100);
             } catch (e) {
               console.error("Error parsing planning data:", e);
