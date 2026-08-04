@@ -18,6 +18,7 @@ import { toast } from "sonner";
 interface ProcessData {
   macroProcess: string;
   responsible: string;
+  responsibleEmail: string;
   participants: string;
   objective: string;
   scope: string;
@@ -57,6 +58,7 @@ export default function ProcessCharacterization() {
   const [data, setData] = useState<ProcessData>({
     macroProcess: "",
     responsible: "",
+    responsibleEmail: "",
     participants: "",
     objective: "",
     scope: "",
@@ -95,6 +97,7 @@ export default function ProcessCharacterization() {
         setData({
           macroProcess: result.macroProcess || "",
           responsible: result.responsible || "",
+          responsibleEmail: (result as any).responsibleEmail || "",
           participants: result.participants || "",
           objective: result.objective || "",
           scope: result.scope || "",
@@ -142,6 +145,7 @@ export default function ProcessCharacterization() {
       const newData = {
         macroProcess: characterization.macroProcess || "",
         responsible: characterization.responsible || "",
+        responsibleEmail: (characterization as any).responsibleEmail || "",
         participants: characterization.participants || "",
         objective: characterization.objective || "",
         scope: characterization.scope || "",
@@ -164,6 +168,7 @@ export default function ProcessCharacterization() {
     const currentData = {
       macroProcess: macroProcessEditable,
       responsible: data.responsible,
+      responsibleEmail: data.responsibleEmail,
       participants: data.participants,
       objective: data.objective,
       scope: data.scope,
@@ -188,6 +193,7 @@ export default function ProcessCharacterization() {
           processId,
           macroProcess: macroProcessEditable,
           responsible: data.responsible,
+          responsibleEmail: data.responsibleEmail,
           participants: data.participants,
           objective: data.objective,
           scope: data.scope,
@@ -218,6 +224,7 @@ export default function ProcessCharacterization() {
         processId,
         macroProcess: macroProcessEditable,
         responsible: data.responsible,
+        responsibleEmail: data.responsibleEmail,
         participants: data.participants,
         objective: data.objective,
         scope: data.scope,
@@ -406,6 +413,18 @@ export default function ProcessCharacterization() {
                             <Input
                               value={data.responsible}
                               onChange={(e) => setData({ ...data, responsible: e.target.value })}
+                              className="border-0 p-0"
+                            />
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border border-slate-300 bg-blue-50 font-bold p-3">CORREO DEL RESPONSABLE:</td>
+                          <td className="border border-slate-300 p-3">
+                            <Input
+                              type="email"
+                              value={data.responsibleEmail}
+                              onChange={(e) => setData({ ...data, responsibleEmail: e.target.value })}
+                              placeholder="correo@empresa.com"
                               className="border-0 p-0"
                             />
                           </td>

@@ -135,6 +135,7 @@ export const companyInfo = mysqlTable("companyInfo", {
   proposito: text("proposito"),
   mision: text("mision"),
   vision: text("vision"),
+  adminAlertEmail: varchar("adminAlertEmail", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -486,6 +487,7 @@ export const processCharacterizations = mysqlTable("processCharacterizations", {
   processId: int("processId").notNull(),
   macroProcess: varchar("macroProcess", { length: 255 }),
   responsible: varchar("responsible", { length: 255 }),
+  responsibleEmail: varchar("responsibleEmail", { length: 255 }),
   participants: text("participants"),
   objective: text("objective"),
   scope: text("scope"),

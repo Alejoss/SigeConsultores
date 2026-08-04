@@ -44,6 +44,7 @@ export default function CompanyInfo() {
   const [proposito, setProposito] = useState("");
   const [mision, setMision] = useState("");
   const [vision, setVision] = useState("");
+  const [adminAlertEmail, setAdminAlertEmail] = useState("");
   const [activeTab, setActiveTab] = useState("golden-circle");
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -119,13 +120,14 @@ export default function CompanyInfo() {
       setProposito(companyInfo.proposito || "");
       setMision(companyInfo.mision || "");
       setVision(companyInfo.vision || "");
+      setAdminAlertEmail((companyInfo as any).adminAlertEmail || "");
     }
   }, [companyInfo]);
 
   // Guardado automático con debounce.
   // Se pasan los valores actuales como parámetros para evitar el problema de closure stale.
   // isEditingRef se activa al empezar a editar y se desactiva cuando el guardado confirma éxito.
-  const autoSave = (currentProposito: string, currentMision: string, currentVision: string) => {
+  const autoSave = (currentProposito: string, currentMision: string, currentVision: string, currentAdminEmail?: string) => {
     // Marcar que el usuario está editando para bloquear la sincronización del servidor
     isEditingRef.current = true;
 
@@ -134,7 +136,7 @@ export default function CompanyInfo() {
     }
 
     autoSaveTimeoutRef.current = setTimeout(() => {
-      if (companyId && (currentProposito.trim() || currentMision.trim() || currentVision.trim())) {
+      if (companyId) {
         setIsSaving(true);
         updateMutation.mutate(
           {
@@ -142,6 +144,7 @@ export default function CompanyInfo() {
             proposito: currentProposito || undefined,
             mision: currentMision || undefined,
             vision: currentVision || undefined,
+            adminAlertEmail: currentAdminEmail !== undefined ? currentAdminEmail : adminAlertEmail,
           },
           {
             onSuccess: () => {
@@ -166,6 +169,7 @@ export default function CompanyInfo() {
       proposito: proposito || undefined,
       mision: mision || undefined,
       vision: vision || undefined,
+      adminAlertEmail: adminAlertEmail || undefined,
     });
   };
 
@@ -410,6 +414,33 @@ export default function CompanyInfo() {
                 </Card>
               </TabsContent>
             </Tabs>
+
+            {/* Configuración de Alertas por Correo */}
+            <Card className="border-l-4 border-l-orange-500">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <span>🔔</span> Alertas de Cronograma
+                </CardTitle>
+                <p className="text-sm text-slate-500 mt-1">
+                  Correo del Gerente General o Administrador que recibirá el resumen semanal de todas las actividades próximas a vencer en todos los procesos.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="email"
+                    value={adminAlertEmail}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setAdminAlertEmail(val);
+                      autoSave(proposito, mision, vision, val);
+                    }}
+                    placeholder="gerente@empresa.com"
+                    className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Status and Save Button */}
             <div className="flex items-center justify-between bg-slate-50 p-4 rounded-lg border border-slate-200">

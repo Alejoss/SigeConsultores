@@ -9,6 +9,37 @@ const MONTH_NAMES = [
   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
 ];
 
+// ─── Helper: calcula % meta alcanzada de un OTE según su tipo de seguimiento ──
+// Replica exactamente la lógica de calcOTMetrics del frontend (TacticalPlanning.tsx)
+function calcOTEPorcentaje(pd: any): number {
+  const pp = parseFloat(pd.puntoPartida) || 0;
+  const meta = parseFloat(pd.metaLlegada) || 0;
+  const avanceMeta = parseFloat(pd.avanceMeta) || 0;
+  const trackingType = pd.trackingType || 'puntual';
+
+  if (trackingType === 'mensual_checklist') {
+    const vals: boolean[] = Array.isArray(pd.checklistValues) ? pd.checklistValues : Array(12).fill(false);
+    const cumplidos = vals.filter(Boolean).length;
+    return Math.round((cumplidos / 12) * 100);
+  }
+  if (trackingType === 'mensual_sumatoria') {
+    const vals: number[] = Array.isArray(pd.monthlyValues) ? pd.monthlyValues : Array(12).fill(0);
+    const suma = vals.reduce((s: number, v: number) => s + (v || 0), 0);
+    if (meta === pp) return 0;
+    return Math.max(0, Math.min(100, Math.round(((suma - pp) / (meta - pp)) * 100)));
+  }
+  if (trackingType === 'mensual_promedio') {
+    const vals: number[] = Array.isArray(pd.monthlyValues) ? pd.monthlyValues : Array(12).fill(0);
+    const nonZero = vals.filter((v: number) => v !== 0);
+    const promedio = nonZero.length > 0 ? nonZero.reduce((s: number, v: number) => s + v, 0) / nonZero.length : 0;
+    if (meta === pp) return 0;
+    return Math.max(0, Math.min(100, Math.round(((promedio - pp) / (meta - pp)) * 100)));
+  }
+  // puntual
+  if (meta === pp) return 0;
+  return Math.max(0, Math.min(100, Math.round(((avanceMeta - pp) / (meta - pp)) * 100)));
+}
+
 export const strategicTrendsRouter = router({
   /**
    * Devuelve todos los snapshots de tendencias para una empresa,
@@ -331,13 +362,9 @@ export const strategicTrendsRouter = router({
           try {
             const pd = JSON.parse(obj.planningData || "{}");
             ponderacion = parseFloat(pd.ponderacion) || 0;
-            const puntoPartida = parseFloat(pd.puntoPartida) || 0;
-            const metaLlegada = parseFloat(pd.metaLlegada) || 0;
-            const avanceMeta = parseFloat(pd.avanceMeta) || 0;
-            // Calcular desde resultKeys si no hay puntoPartida/metaLlegada directos
-            if (metaLlegada !== puntoPartida && metaLlegada !== 0) {
-              percent = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
-              percent = Math.max(0, Math.min(100, Math.round(percent)));
+            // Calcular % usando el tipo de seguimiento correcto
+            if (pd.trackingType || pd.puntoPartida !== undefined || pd.metaLlegada !== undefined) {
+              percent = calcOTEPorcentaje(pd);
             } else if (pd.resultKeys && Array.isArray(pd.resultKeys)) {
               // Promedio de porcentajeAlcanzado de los resultKeys
               const vals = pd.resultKeys
@@ -413,13 +440,11 @@ export const strategicTrendsRouter = router({
         // Calcular % global del objetivo y su meta global
         let globalPercent = 0;
         let globalMeta = 100;
-        const puntoPartida = parseFloat(pd.puntoPartida) || 0;
         const metaLlegada = parseFloat(pd.metaLlegada) || 0;
-        const avanceMeta = parseFloat(pd.avanceMeta) || 0;
-        if (metaLlegada !== puntoPartida && metaLlegada !== 0) {
-          globalPercent = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
-          globalPercent = Math.max(0, Math.min(100, Math.round(globalPercent)));
-          globalMeta = metaLlegada;
+        if (pd.trackingType || pd.puntoPartida !== undefined || metaLlegada !== 0) {
+          globalPercent = calcOTEPorcentaje(pd);
+          globalPercent = Math.max(0, Math.min(100, globalPercent));
+          globalMeta = metaLlegada || 100;
         } else if (resultKeys.length > 0) {
           const totalWeight = resultKeys.reduce((s: number, rk: any) => s + (parseFloat(rk.ponderacion) || 0), 0);
           if (totalWeight > 0) {
@@ -487,13 +512,9 @@ export const strategicTrendsRouter = router({
           try {
             const pd = JSON.parse((obj as any).planningData || "{}");
             const ponderacion = parseFloat(pd.ponderacion) || 0;
-            const puntoPartida = parseFloat(pd.puntoPartida) || 0;
-            const metaLlegada = parseFloat(pd.metaLlegada) || 0;
-            const avanceMeta = parseFloat(pd.avanceMeta) || 0;
             let percent = 0;
-            if (metaLlegada !== puntoPartida && metaLlegada !== 0) {
-              percent = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
-              percent = Math.max(0, Math.min(100, Math.round(percent)));
+            if (pd.trackingType || pd.puntoPartida !== undefined || pd.metaLlegada !== undefined) {
+              percent = calcOTEPorcentaje(pd);
             } else if (pd.resultKeys && Array.isArray(pd.resultKeys)) {
               const totalW = pd.resultKeys.reduce((s: number, rk: any) => s + (parseFloat(rk.ponderacion) || 0), 0);
               if (totalW > 0) {
