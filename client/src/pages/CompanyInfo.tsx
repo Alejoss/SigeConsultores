@@ -144,8 +144,10 @@ export default function CompanyInfo() {
             proposito: currentProposito || undefined,
             mision: currentMision || undefined,
             vision: currentVision || undefined,
-            adminAlertEmail: currentAdminEmail !== undefined ? currentAdminEmail : adminAlertEmail,
-          },
+            ...({
+              adminAlertEmail: currentAdminEmail !== undefined ? currentAdminEmail : adminAlertEmail,
+            } as any),
+          } as any,
           {
             onSuccess: () => {
               // Solo desactivar el flag después de que el guardado se confirme
@@ -169,8 +171,8 @@ export default function CompanyInfo() {
       proposito: proposito || undefined,
       mision: mision || undefined,
       vision: vision || undefined,
-      adminAlertEmail: adminAlertEmail || undefined,
-    });
+      ...({ adminAlertEmail: adminAlertEmail || undefined } as any),
+    } as any);
   };
 
   if (!companyId) {
