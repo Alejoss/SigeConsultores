@@ -1484,6 +1484,8 @@ export const companyTrends = mysqlTable("companyTrends", {
   oteMeta: decimal("oteMeta", { precision: 6, scale: 2 }).notNull().default("100"),
   otgMeta: decimal("otgMeta", { precision: 6, scale: 2 }).notNull().default("100"),
   stakeholderMeta: decimal("stakeholderMeta", { precision: 6, scale: 2 }).notNull().default("100"),
+  // JSON: { [oeName: string]: number } — porcentaje de cada OE en este snapshot
+  oePercentsJson: text("oePercentsJson").default("{}" ),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

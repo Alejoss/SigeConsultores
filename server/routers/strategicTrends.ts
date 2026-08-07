@@ -63,17 +63,22 @@ export const strategicTrendsRouter = router({
         .orderBy(asc(companyTrends.year), asc(companyTrends.month));
 
       if (rows.length > 0) {
-        const data = rows.map((r) => ({
-          year: r.year,
-          month: r.month,
-          label: `${MONTH_NAMES[r.month - 1]} ${r.year}`,
-          otePercent: parseFloat(r.otePercent as string),
-          otgPercent: parseFloat(r.otgPercent as string),
-          stakeholderPercent: parseFloat(r.stakeholderPercent as string),
-          oteMeta: parseFloat(r.oteMeta as string),
-          otgMeta: parseFloat(r.otgMeta as string),
-          stakeholderMeta: parseFloat(r.stakeholderMeta as string),
-        }));
+        const data = rows.map((r) => {
+          let oePercents: Record<string, number> = {};
+          try { oePercents = JSON.parse((r as any).oePercentsJson || "{}"); } catch { /* skip */ }
+          return {
+            year: r.year,
+            month: r.month,
+            label: `${MONTH_NAMES[r.month - 1]} ${r.year}`,
+            otePercent: parseFloat(r.otePercent as string),
+            otgPercent: parseFloat(r.otgPercent as string),
+            stakeholderPercent: parseFloat(r.stakeholderPercent as string),
+            oteMeta: parseFloat(r.oteMeta as string),
+            otgMeta: parseFloat(r.otgMeta as string),
+            stakeholderMeta: parseFloat(r.stakeholderMeta as string),
+            oePercents,
+          };
+        });
         return { data, hasSavedData: true };
       }
 
@@ -98,6 +103,9 @@ export const strategicTrendsRouter = router({
       let processCount = 0;
       let oteMetaCount = 0;
 
+      // Acumular % por OE (clave = nombre del OE)
+      const oeAccum: Record<string, { sum: number; count: number }> = {};
+
       for (const proc of companyProcesses) {
         // OTE
         const oteRows = await db
@@ -111,20 +119,30 @@ export const strategicTrendsRouter = router({
         let procOteMetaWeight = 0;
         for (const obj of oteRows) {
           try {
-            const pd = JSON.parse(obj.planningData as string || "{}");
+            const pd = JSON.parse((obj as any).planningData as string || "{}");
             const resultKeys = pd.resultKeys || [];
+            const soName: string = (obj as any).strategicObjective || "Sin OE";
+            let rkPct = 0;
+            let rkWeight = 0;
             for (const rk of resultKeys) {
               const ponderacion = parseFloat(rk.ponderacion) || 0;
               const pct = parseFloat(rk.porcentajeAlcanzado) || 0;
               const meta = parseFloat(rk.meta);
               procOte += pct * (ponderacion / 100);
               procOteWeight += ponderacion;
+              rkPct += pct * (ponderacion || 1);
+              rkWeight += (ponderacion || 1);
               // Acumular meta ponderada si está definida
               if (!isNaN(meta) && ponderacion > 0) {
                 procOteMeta += meta * (ponderacion / 100);
                 procOteMetaWeight += ponderacion;
               }
             }
+            // Acumular % de este OTE al OE correspondiente
+            const objPct = rkWeight > 0 ? Math.round(rkPct / rkWeight) : 0;
+            if (!oeAccum[soName]) oeAccum[soName] = { sum: 0, count: 0 };
+            oeAccum[soName].sum += objPct;
+            oeAccum[soName].count++;
           } catch { /* skip */ }
         }
         if (procOteWeight > 0) {
@@ -155,6 +173,12 @@ export const strategicTrendsRouter = router({
         ? Math.round(totalStakeholder / companyProcesses.length)
         : 0;
 
+      // Construir oePercents: promedio de % por OE
+      const oePercents: Record<string, number> = {};
+      for (const [oeName, acc] of Object.entries(oeAccum)) {
+        oePercents[oeName] = acc.count > 0 ? Math.round(acc.sum / acc.count) : 0;
+      }
+
       const snapshot = {
         year: currentYear,
         month: currentMonth,
@@ -165,6 +189,7 @@ export const strategicTrendsRouter = router({
         oteMeta: avgOteMeta,
         otgMeta: 100,
         stakeholderMeta: 100,
+        oePercents,
       };
 
       return { data: [snapshot], hasSavedData: false };
@@ -242,6 +267,7 @@ export const strategicTrendsRouter = router({
       let totalStakeholder = 0;
       let oteProcessCount = 0;
       let oteMetaCount = 0;
+      const oeAccumSnap: Record<string, { sum: number; count: number }> = {};
 
       for (const proc of companyProcesses) {
         const oteRows = await db
@@ -255,19 +281,28 @@ export const strategicTrendsRouter = router({
         let procOteMetaWeight = 0;
         for (const obj of oteRows) {
           try {
-            const pd = JSON.parse(obj.planningData as string || "{}");
+            const pd = JSON.parse((obj as any).planningData as string || "{}");
             const resultKeys = pd.resultKeys || [];
+            const soName: string = (obj as any).strategicObjective || "Sin OE";
+            let rkPct = 0;
+            let rkWeight = 0;
             for (const rk of resultKeys) {
               const ponderacion = parseFloat(rk.ponderacion) || 0;
               const pct = parseFloat(rk.porcentajeAlcanzado) || 0;
               const meta = parseFloat(rk.meta);
               procOte += pct * (ponderacion / 100);
               procOteWeight += ponderacion;
+              rkPct += pct * (ponderacion || 1);
+              rkWeight += (ponderacion || 1);
               if (!isNaN(meta) && ponderacion > 0) {
                 procOteMeta += meta * (ponderacion / 100);
                 procOteMetaWeight += ponderacion;
               }
             }
+            const objPct = rkWeight > 0 ? Math.round(rkPct / rkWeight) : 0;
+            if (!oeAccumSnap[soName]) oeAccumSnap[soName] = { sum: 0, count: 0 };
+            oeAccumSnap[soName].sum += objPct;
+            oeAccumSnap[soName].count++;
           } catch { /* skip */ }
         }
         if (procOteWeight > 0) {
@@ -296,6 +331,11 @@ export const strategicTrendsRouter = router({
         ? Math.round(totalStakeholder / companyProcesses.length)
         : 0;
 
+      const oePercentsSnap: Record<string, number> = {};
+      for (const [oeName, acc] of Object.entries(oeAccumSnap)) {
+        oePercentsSnap[oeName] = acc.count > 0 ? Math.round(acc.sum / acc.count) : 0;
+      }
+
       await db
         .insert(companyTrends)
         .values({
@@ -308,14 +348,16 @@ export const strategicTrendsRouter = router({
           oteMeta: String(avgOteMeta),
           otgMeta: "100",
           stakeholderMeta: "100",
-        })
+          oePercentsJson: JSON.stringify(oePercentsSnap),
+        } as any)
         .onDuplicateKeyUpdate({
           set: {
             otePercent: String(avgOte),
             oteMeta: String(avgOteMeta),
             stakeholderPercent: String(avgStakeholder),
+            oePercentsJson: JSON.stringify(oePercentsSnap),
             updatedAt: new Date(),
-          },
+          } as any,
         });
 
       return { success: true, otePercent: avgOte, oteMeta: avgOteMeta, stakeholderPercent: avgStakeholder };

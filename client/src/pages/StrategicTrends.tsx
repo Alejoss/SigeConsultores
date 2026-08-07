@@ -175,10 +175,13 @@ function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }
     { companyId },
     { enabled: companyId > 0 }
   );
-  const { data: trendsResult } = trpc.strategicTrends.getTrends.useQuery(
+  const { data: trendsResult, refetch: refetchTrends } = trpc.strategicTrends.getTrends.useQuery(
     { companyId },
     { enabled: companyId > 0 }
   );
+  const snapshotMutation = trpc.strategicTrends.snapshotCurrentMonth.useMutation({
+    onSuccess: () => { refetchTrends(); },
+  });
 
   const trendData = trendsResult?.data ?? [];
 
@@ -325,9 +328,22 @@ function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }
 
         {activeSubView === "timeline" && (
           <div>
-            <p className="text-sm text-slate-500 mb-2">
-              Evolución mensual del % de cumplimiento de los Objetivos Estratégicos. Un gráfico por cada OE.
-            </p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-slate-500">
+                Evolución mensual del % de cumplimiento de los Objetivos Estratégicos. Un gráfico por cada OE.
+              </p>
+              <button
+                onClick={() => snapshotMutation.mutate({ companyId })}
+                disabled={snapshotMutation.isPending}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors flex-shrink-0 ml-4"
+              >
+                {snapshotMutation.isPending ? (
+                  <><Loader2 size={12} className="animate-spin" /> Guardando...</>
+                ) : (
+                  <>📸 Guardar snapshot del mes</>
+                )}
+              </button>
+            </div>
             {objectives.length === 0 ? (
               <div className="text-center py-12 text-slate-400">
                 <TrendingUp size={40} className="mx-auto mb-3 opacity-30" />
@@ -337,10 +353,40 @@ function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }
               <div className="space-y-6">
                 {objectives.map((oe: any, idx: number) => {
                   const color = getColor(oe.percent);
-                  // Construir datos del gráfico: punto actual + meta 100%
-                  const chartData = [
-                    { label: new Date().toLocaleDateString("es-EC", { month: "short", year: "numeric" }), avance: oe.percent, meta: 100 },
-                  ];
+
+                  // Construir datos históricos usando trendData.
+                  // Cada snapshot puede tener oePercents[oeName] con el % de ese OE en ese mes.
+                  // Si no hay datos históricos, usar solo el punto actual.
+                  let chartData: { label: string; avance: number; meta: number }[];
+
+                  if (trendData.length > 0) {
+                    chartData = trendData.map((snap: any) => {
+                      // Buscar el % de este OE en el snapshot por nombre exacto o parcial
+                      let avance = snap.otePercent; // fallback: % global
+                      if (snap.oePercents && typeof snap.oePercents === "object") {
+                        const oeKey = Object.keys(snap.oePercents).find((k: string) => {
+                          const kl = k.toLowerCase().trim();
+                          const nl = (oe.name || "").toLowerCase().trim();
+                          return kl === nl || kl.includes(nl.slice(0, 20)) || nl.includes(kl.slice(0, 20));
+                        });
+                        if (oeKey !== undefined) avance = snap.oePercents[oeKey];
+                      }
+                      return { label: snap.label, avance, meta: 100 };
+                    });
+                    // Agregar el punto actual si el último snapshot no es del mes en curso
+                    const now = new Date();
+                    const currentLabel = now.toLocaleDateString("es-EC", { month: "short", year: "numeric" });
+                    const lastSnap = trendData[trendData.length - 1];
+                    const isCurrentMonthSaved = lastSnap && lastSnap.year === now.getFullYear() && lastSnap.month === (now.getMonth() + 1);
+                    if (!isCurrentMonthSaved) {
+                      chartData.push({ label: currentLabel, avance: oe.percent, meta: 100 });
+                    }
+                  } else {
+                    chartData = [
+                      { label: new Date().toLocaleDateString("es-EC", { month: "short", year: "numeric" }), avance: oe.percent, meta: 100 },
+                    ];
+                  }
+
                   return (
                     <div key={oe.id} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
                       {/* Cabecera del OE */}
@@ -360,7 +406,7 @@ function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }
                       </div>
                       {/* Gráfico de línea */}
                       <div className="px-4 pt-3 pb-2">
-                        <p className="text-xs text-slate-400 mb-2">{oe.oteCount} OTE contribuyen a este objetivo</p>
+                        <p className="text-xs text-slate-400 mb-2">{oe.oteCount} OTE contribuyen a este objetivo · {chartData.length} punto{chartData.length !== 1 ? "s" : ""} histórico{chartData.length !== 1 ? "s" : ""}</p>
                         <ResponsiveContainer width="100%" height={140}>
                           <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -369,7 +415,7 @@ function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }
                             <Tooltip formatter={(v: any, name: string) => [`${Number(v).toFixed(1)}%`, name === "meta" ? "Meta" : "Avance actual"]} />
                             <ReferenceLine y={100} stroke="#94a3b8" strokeDasharray="4 2" label={{ value: "Meta 100%", position: "right", fontSize: 9, fill: "#94a3b8" }} />
                             <Line type="monotone" dataKey="meta" name="Meta" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="5 3" dot={false} />
-                            <Line type="monotone" dataKey="avance" name="Avance" stroke={color} strokeWidth={2.5} dot={{ r: 5, fill: color, strokeWidth: 2, stroke: "#fff" }} />
+                            <Line type="monotone" dataKey="avance" name="Avance" stroke={color} strokeWidth={2.5} dot={{ r: 5, fill: color, strokeWidth: 2, stroke: "#fff" }} activeDot={{ r: 7 }} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
