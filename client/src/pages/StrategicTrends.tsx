@@ -194,12 +194,12 @@ function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }
   // Al entrar a la vista, el mes vigente queda registrado automáticamente si todavía no existe.
   // Así los datos de los meses anteriores nunca se reemplazan ni se pierden.
   useEffect(() => {
-    if (companyId <= 0 || !trendsResult || hasCurrentMonthSnapshot || snapshotRequestRef.current === currentSnapshotKey) return;
+    if (activeSubView !== "timeline" || companyId <= 0 || !trendsResult || hasCurrentMonthSnapshot || snapshotRequestRef.current === currentSnapshotKey) return;
     snapshotRequestRef.current = currentSnapshotKey;
     snapshotMutation.mutate({ companyId }, {
       onSettled: () => { snapshotRequestRef.current = null; },
     });
-  }, [companyId, currentSnapshotKey, hasCurrentMonthSnapshot, trendsResult, snapshotMutation]);
+  }, [activeSubView, companyId, currentSnapshotKey, hasCurrentMonthSnapshot, trendsResult, snapshotMutation]);
 
   const objectives = oeData?.objectives ?? [];
   const globalPercent = oeData?.globalPercent ?? 0;
