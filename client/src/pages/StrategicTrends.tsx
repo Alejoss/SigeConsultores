@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -184,6 +184,22 @@ function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }
   });
 
   const trendData = trendsResult?.data ?? [];
+  const snapshotRequestRef = useRef<string | null>(null);
+  const now = new Date();
+  const currentSnapshotKey = `${companyId}-${now.getFullYear()}-${now.getMonth() + 1}`;
+  const hasCurrentMonthSnapshot = trendData.some((snapshot: any) =>
+    snapshot.year === now.getFullYear() && snapshot.month === now.getMonth() + 1
+  );
+
+  // Al entrar a la vista, el mes vigente queda registrado automáticamente si todavía no existe.
+  // Así los datos de los meses anteriores nunca se reemplazan ni se pierden.
+  useEffect(() => {
+    if (companyId <= 0 || !trendsResult || hasCurrentMonthSnapshot || snapshotRequestRef.current === currentSnapshotKey) return;
+    snapshotRequestRef.current = currentSnapshotKey;
+    snapshotMutation.mutate({ companyId }, {
+      onSettled: () => { snapshotRequestRef.current = null; },
+    });
+  }, [companyId, currentSnapshotKey, hasCurrentMonthSnapshot, trendsResult, snapshotMutation]);
 
   const objectives = oeData?.objectives ?? [];
   const globalPercent = oeData?.globalPercent ?? 0;
@@ -332,17 +348,9 @@ function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }
               <p className="text-sm text-slate-500">
                 Evolución mensual del % de cumplimiento de los Objetivos Estratégicos. Un gráfico por cada OE.
               </p>
-              <button
-                onClick={() => snapshotMutation.mutate({ companyId })}
-                disabled={snapshotMutation.isPending}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors flex-shrink-0 ml-4"
-              >
-                {snapshotMutation.isPending ? (
-                  <><Loader2 size={12} className="animate-spin" /> Guardando...</>
-                ) : (
-                  <>📸 Guardar snapshot del mes</>
-                )}
-              </button>
+              <span className="text-xs text-slate-400 ml-4 flex-shrink-0">
+                {snapshotMutation.isPending ? "Guardando mes actual…" : "Registro mensual automático"}
+              </span>
             </div>
             {objectives.length === 0 ? (
               <div className="text-center py-12 text-slate-400">
