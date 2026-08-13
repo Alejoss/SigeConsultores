@@ -187,19 +187,13 @@ function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }
   const snapshotRequestRef = useRef<string | null>(null);
   const now = new Date();
   const currentSnapshotKey = `${companyId}-${now.getFullYear()}-${now.getMonth() + 1}`;
-  const hasCurrentMonthSnapshot = trendData.some((snapshot: any) =>
-    snapshot.year === now.getFullYear() && snapshot.month === now.getMonth() + 1
-  );
-
-  // Al entrar a la vista, el mes vigente queda registrado automáticamente si todavía no existe.
-  // Así los datos de los meses anteriores nunca se reemplazan ni se pierden.
+  // Al entrar a la vista, se actualiza el punto del mes vigente una sola vez.
+  // Al iniciar un nuevo mes, la clave cambia: el mes anterior queda congelado como histórico.
   useEffect(() => {
-    if (activeSubView !== "timeline" || companyId <= 0 || !trendsResult || hasCurrentMonthSnapshot || snapshotRequestRef.current === currentSnapshotKey) return;
+    if (activeSubView !== "timeline" || companyId <= 0 || !trendsResult || snapshotRequestRef.current === currentSnapshotKey) return;
     snapshotRequestRef.current = currentSnapshotKey;
-    snapshotMutation.mutate({ companyId }, {
-      onSettled: () => { snapshotRequestRef.current = null; },
-    });
-  }, [activeSubView, companyId, currentSnapshotKey, hasCurrentMonthSnapshot, trendsResult, snapshotMutation]);
+    snapshotMutation.mutate({ companyId });
+  }, [activeSubView, companyId, currentSnapshotKey, trendsResult, snapshotMutation]);
 
   const objectives = oeData?.objectives ?? [];
   const globalPercent = oeData?.globalPercent ?? 0;
