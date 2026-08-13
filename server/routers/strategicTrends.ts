@@ -389,6 +389,8 @@ export const strategicTrendsRouter = router({
         const matchingOTE = allOTE.filter((o) => {
           const so = (o.strategicObjective || "").toLowerCase().trim();
           const oel = oeLabel.toLowerCase().trim();
+          // Un OTE sin OE asignado no debe aparecer en todas las columnas ni alterar sus porcentajes.
+          if (!so) return false;
           return so === oel || so.includes(oel.slice(0, 20)) || oel.includes(so.slice(0, 20));
         });
 

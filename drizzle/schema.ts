@@ -1488,7 +1488,10 @@ export const companyTrends = mysqlTable("companyTrends", {
   oePercentsJson: text("oePercentsJson").default("{}" ),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  // Un solo snapshot por empresa y período; los cierres posteriores actualizan el mismo mes.
+  uniqueCompanyTrendPeriod: unique("company_trends_company_year_month").on(table.companyId, table.year, table.month),
+}));
 export type CompanyTrend = typeof companyTrends.$inferSelect;
 export type InsertCompanyTrend = typeof companyTrends.$inferInsert;
 

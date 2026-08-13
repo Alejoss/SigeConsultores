@@ -6,6 +6,7 @@ import {
   criticalityMatrix,
   processes,
   processTacticalObjectives,
+  strategicObjectives,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 
@@ -31,9 +32,8 @@ function clampPercent(value: number): number {
 }
 
 function monthlyValues(values: unknown): number[] {
-  if (Array.isArray(values)) return values.map(toNumber);
-  if (values && typeof values === "object") return Object.values(values as Record<string, unknown>).map(toNumber);
-  return [];
+  // Desempeño interpreta los seguimientos mensuales modernos como arrays 0-based.
+  return Array.isArray(values) ? values.map(toNumber) : [];
 }
 
 /** Misma regla de cálculo utilizada por los módulos de Indicadores y Desempeño. */
@@ -93,8 +93,9 @@ export async function calculateCompanyStrategicSnapshot(companyId: number, date 
   if (!db) throw new Error("Database not available");
 
   const companyProcesses = await db.select().from(processes).where(eq(processes.companyId, companyId));
-  const oeGroups: Record<string, { weightedSum: number; weight: number; total: number; count: number }> = {};
-  const allOTE: Array<{ percent: number; weight: number }> = [];
+  // Cada OTE se conserva con su OE textual; el agrupamiento final replica exactamente
+  // la coincidencia flexible usada por Desempeño → Avance por OE.
+  const allOTE: Array<{ percent: number; weight: number; strategicObjective: string }> = [];
   let stakeholderTotal = 0;
 
   for (const process of companyProcesses as any[]) {
@@ -112,12 +113,7 @@ export async function calculateCompanyStrategicSnapshot(companyId: number, date 
         const weight = toNumber(planningData.ponderacion);
         const oeName = String(objective.strategicObjective || "Sin OE").trim() || "Sin OE";
 
-        allOTE.push({ percent, weight });
-        if (!oeGroups[oeName]) oeGroups[oeName] = { weightedSum: 0, weight: 0, total: 0, count: 0 };
-        oeGroups[oeName].weightedSum += percent * weight;
-        oeGroups[oeName].weight += weight;
-        oeGroups[oeName].total += percent;
-        oeGroups[oeName].count += 1;
+        allOTE.push({ percent, weight, strategicObjective: oeName });
       } catch {
         // Se omite únicamente el OTE con datos no legibles; los demás siguen contabilizándose.
       }
@@ -138,11 +134,25 @@ export async function calculateCompanyStrategicSnapshot(companyId: number, date 
     ? clampPercent(allOTE.reduce((sum, item) => sum + item.percent * (item.weight / totalWeight), 0))
     : (allOTE.length > 0 ? clampPercent(allOTE.reduce((sum, item) => sum + item.percent, 0) / allOTE.length) : 0);
 
+  const oeList = await db
+    .select()
+    .from(strategicObjectives)
+    .where(eq(strategicObjectives.companyId, companyId));
   const oePercents: Record<string, number> = {};
-  for (const [oeName, group] of Object.entries(oeGroups)) {
-    oePercents[oeName] = group.weight > 0
-      ? clampPercent(group.weightedSum / group.weight)
-      : (group.count > 0 ? clampPercent(group.total / group.count) : 0);
+
+  for (const [index, oe] of oeList.entries()) {
+    const oeLabel = oe.objective || `OE ${index + 1}`;
+    const normalizedLabel = oeLabel.toLowerCase().trim();
+    const matchingOTE = allOTE.filter((item) => {
+      const normalizedObjective = (item.strategicObjective || "").toLowerCase().trim();
+      return normalizedObjective === normalizedLabel
+        || normalizedObjective.includes(normalizedLabel.slice(0, 20))
+        || normalizedLabel.includes(normalizedObjective.slice(0, 20));
+    });
+    const oeWeight = matchingOTE.reduce((sum, item) => sum + item.weight, 0);
+    oePercents[oeLabel] = oeWeight > 0
+      ? clampPercent(matchingOTE.reduce((sum, item) => sum + item.percent * (item.weight / oeWeight), 0))
+      : (matchingOTE.length > 0 ? clampPercent(matchingOTE.reduce((sum, item) => sum + item.percent, 0) / matchingOTE.length) : 0);
   }
 
   return {
