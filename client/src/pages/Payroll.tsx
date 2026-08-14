@@ -123,6 +123,9 @@ export default function Payroll() {
 
     let isSynchronizing = false;
     const syncWidth = () => {
+      const tableBounds = tableScroller.getBoundingClientRect();
+      fixedScroller.style.width = `${tableScroller.clientWidth}px`;
+      fixedScroller.style.marginLeft = `${Math.max(0, tableBounds.left)}px`;
       fixedContent.style.width = `${tableScroller.scrollWidth}px`;
     };
     const syncFromTable = () => {
@@ -390,7 +393,7 @@ export default function Payroll() {
             {isLoading ? <div className="flex items-center justify-center gap-2 py-12 text-slate-600"><Loader2 className="h-5 w-5 animate-spin" />Cargando nómina...</div> : employees.length === 0 ? (
               <div className="rounded-lg border border-dashed py-12 text-center text-slate-500">No hay personal activo registrado. Añade un trabajador o importa la Planilla de Nómina.</div>
             ) : (
-                  <div ref={registerPayrollTableScroller} className="overflow-x-auto rounded-lg border">
+                  <div ref={registerPayrollTableScroller} className="overflow-x-auto rounded-lg border [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <table className="min-w-[1450px] w-full text-sm">
                   <thead className="bg-slate-50 text-left text-slate-600">
                     <tr>
@@ -402,7 +405,7 @@ export default function Payroll() {
                       <th className="min-w-48 px-3 py-3">Área</th>
                       <th className="min-w-56 px-3 py-3">Cargo</th>
                       <th className="min-w-32 px-3 py-3">Desempeño</th>
-                      <th className="min-w-40 px-3 py-3" />
+                      <th className="min-w-44 px-4 py-3" />
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -416,7 +419,7 @@ export default function Payroll() {
                         <td className="px-3 py-2"><Input className="min-w-44" value={employee.area} onChange={(e) => updateLocalEmployee(employee.id, "area", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
                         <td className="px-3 py-2"><Input className="min-w-52" value={employee.position} onChange={(e) => updateLocalEmployee(employee.id, "position", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
                         <td className="px-3 py-2 text-center">{employee.performance == null ? <span className="text-xs font-medium text-slate-400">Pendiente</span> : <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700">{formatPerformance(employee.performance)}</span>}</td>
-                        <td className="px-3 py-2"><Button variant="outline" size="sm" onClick={() => { setInactiveTarget(employee); setTerminationDate(new Date().toISOString().slice(0, 10)); }}>Pasa a Pasivo</Button></td>
+                        <td className="px-4 py-2"><Button variant="outline" size="sm" className="whitespace-nowrap" onClick={() => { setInactiveTarget(employee); setTerminationDate(new Date().toISOString().slice(0, 10)); }}>Pasa a Pasivo</Button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -427,11 +430,9 @@ export default function Payroll() {
         </Card>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-300 bg-white/95 px-3 py-1.5 shadow-[0_-3px_10px_rgba(15,23,42,0.12)] backdrop-blur">
-        <div className="mx-auto max-w-[1600px]">
-          <div ref={registerFixedPayrollScrollbar} className="h-4 overflow-x-auto overflow-y-hidden" aria-label="Desplazamiento horizontal de Nómina">
-            <div ref={registerFixedPayrollScrollbarContent} className="h-px" />
-          </div>
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-300 bg-white/95 py-1.5 shadow-[0_-3px_10px_rgba(15,23,42,0.12)] backdrop-blur">
+        <div ref={registerFixedPayrollScrollbar} className="h-4 overflow-x-auto overflow-y-hidden" aria-label="Desplazamiento horizontal de Nómina">
+          <div ref={registerFixedPayrollScrollbarContent} className="h-px" />
         </div>
       </div>
 
