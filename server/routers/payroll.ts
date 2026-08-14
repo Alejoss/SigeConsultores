@@ -177,7 +177,16 @@ export const payrollRouter = router({
       const activeCount = allEmployees.filter((employee) => employee.status === "activo").length;
       const inactiveCount = allEmployees.filter((employee) => employee.status === "pasivo").length;
       const filteredEmployees = input.area ? allEmployees.filter((employee) => employee.area === input.area) : allEmployees;
-      const asDate = (value: Date | string | null) => value ? new Date(`${String(value).slice(0, 10)}T12:00:00`) : null;
+      // MySQL devuelve los campos DATE como objetos Date; convertirlos con String(Date)
+      // produce valores como "Wed Jul 15" que no son fechas válidas. Normalizamos ambos formatos.
+      const asDate = (value: Date | string | null) => {
+        if (!value) return null;
+        if (value instanceof Date) {
+          return new Date(value.getFullYear(), value.getMonth(), value.getDate(), 12, 0, 0, 0);
+        }
+        const isoDate = String(value).match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+        return isoDate ? new Date(`${isoDate}T12:00:00`) : null;
+      };
       const today = new Date();
       const months: Array<{ month: string; exits: number; averageHeadcount: number; rotationRate: number }> = [];
 
