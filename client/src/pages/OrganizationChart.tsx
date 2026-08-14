@@ -1,146 +1,47 @@
-import { useAuth } from "@/_core/hooks/useAuth";
-import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
-import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
-import { useMemo, useState } from "react";
-import { getAxisBackPathForRole } from "@/lib/sessionScope";
-import DashboardLayout from "@/components/DashboardLayout";
-import OrganizationChartModule from "@/components/OrganizationChartModule";
+import { useMemo } from "react";
 import { useLocation } from "wouter";
+import { ArrowLeft, Building2, UsersRound } from "lucide-react";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Download, Save, ArrowLeft, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAxisBackPathForRole, getCompanyIdFromSession } from "@/lib/sessionScope";
 
 export default function OrganizationChart() {
-  const { user } = useAuth();
-  const { isManagerLogin, managerCompanyId, isLoading: managerLoading } = useManagerAuth();
-  const { session: processLeaderSession, isLoading: plLoading } = useProcessLeaderAuth();
   const [, setLocation] = useLocation();
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Check if companyId is in URL parameters
-  const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
-  const companyIdFromUrl = urlParams.get('companyId');
-
-  // Wait for auth to finish loading before resolving companyId
-  const isAuthLoading = managerLoading || plLoading;
-
-  // Use manager company if logged in as manager, process leader company, URL param, or localStorage
-  const selectedCompanyId = useMemo(() => {
-    if (isManagerLogin && managerCompanyId) {
-      return managerCompanyId;
-    }
-    if (processLeaderSession?.companyId) {
-      return processLeaderSession.companyId;
-    }
-    if (companyIdFromUrl) return parseInt(companyIdFromUrl);
-    const stored = localStorage.getItem("selectedCompanyId") || localStorage.getItem("managerCompanyId");
-    return stored ? parseInt(stored) : 0;
-  }, [isManagerLogin, managerCompanyId, processLeaderSession, companyIdFromUrl]);
-
-  const handleExportPDF = (type: "basic" | "extended") => {
-    toast.info(`Exportando versión ${type === "basic" ? "básica" : "extendida"}...`);
-    console.log("Export PDF as", type);
-  };
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      toast.success("Organigrama guardado exitosamente");
-    } catch (error) {
-      toast.error("Error al guardar el organigrama");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleBack = () => {
-    setLocation(getAxisBackPathForRole());
-  };
-
-  // Show loading spinner while auth is resolving
-  if (isAuthLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center py-16 gap-2 text-slate-600">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span>Cargando organigrama...</span>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (!selectedCompanyId) {
-    return (
-      <DashboardLayout>
-        <div className="text-center py-8">
-          <p className="text-gray-600">Por favor, selecciona una empresa primero.</p>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const companyId = useMemo(() => getCompanyIdFromSession() || 0, []);
+  const scopedPath = (path: string) => `${path}?companyId=${companyId}`;
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header with Title and Action Buttons */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="mx-auto max-w-5xl space-y-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Organigrama</h1>
-            <p className="text-gray-600 mt-2">
-              Gestiona la estructura organizacional de tu empresa
-            </p>
+            <h1 className="text-3xl font-bold text-slate-900">Nómina y Organigrama</h1>
+            <p className="mt-2 text-slate-600">Gestiona la estructura organizacional y la información de personal de tu empresa.</p>
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
-            {/* Export PDF Button */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Download className="w-4 h-4" />
-                  Exportar a PDF
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleExportPDF("basic")}>
-                  Versión Básica
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExportPDF("extended")}>
-                  Versión Extendida
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Save Button */}
-            <Button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="gap-2 bg-blue-600 hover:bg-blue-700"
-            >
-              <Save className="w-4 h-4" />
-              {isSaving ? "Guardando..." : "Guardar"}
-            </Button>
-
-            {/* Back Button */}
-            <Button
-              onClick={handleBack}
-              variant="outline"
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Volver
-            </Button>
-          </div>
+          <Button variant="outline" onClick={() => setLocation(getAxisBackPathForRole())} className="gap-2"><ArrowLeft className="h-4 w-4" />Volver</Button>
         </div>
 
-        {/* Organization Chart Module */}
-        <OrganizationChartModule companyId={selectedCompanyId} />
+        {!companyId ? <p className="rounded-lg border border-dashed py-12 text-center text-slate-600">Selecciona una empresa antes de ingresar a Nómina y Organigrama.</p> : (
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="cursor-pointer border-blue-200 bg-blue-50 transition-shadow hover:shadow-lg" onClick={() => setLocation(scopedPath("/organization-chart/view"))}>
+              <CardHeader>
+                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><Building2 className="h-6 w-6" /></div>
+                <CardTitle>Ver organigrama</CardTitle>
+                <CardDescription>Visualiza y administra la estructura organizacional de la empresa.</CardDescription>
+              </CardHeader>
+              <CardContent><Button variant="outline" className="w-full border-blue-300 text-blue-700">Acceder</Button></CardContent>
+            </Card>
+            <Card className="cursor-pointer border-emerald-200 bg-emerald-50 transition-shadow hover:shadow-lg" onClick={() => setLocation(scopedPath("/payroll"))}>
+              <CardHeader>
+                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700"><UsersRound className="h-6 w-6" /></div>
+                <CardTitle>Nómina</CardTitle>
+                <CardDescription>Registra el personal activo y conserva el historial de personal pasivo.</CardDescription>
+              </CardHeader>
+              <CardContent><Button variant="outline" className="w-full border-emerald-300 text-emerald-700">Acceder</Button></CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

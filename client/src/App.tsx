@@ -75,6 +75,9 @@ import ProcessLeaderAccessSuccess from "./pages/ProcessLeaderAccessSuccess";
 import ProcessLeaderInvitationLink from "./pages/ProcessLeaderInvitationLink";
 import ManagerEditProfile from "./pages/ManagerEditProfile";
 import OrganizationChart from "./pages/OrganizationChart";
+import OrganizationChartView from "./pages/OrganizationChartView";
+import Payroll from "./pages/Payroll";
+import PayrollInactive from "./pages/PayrollInactive";
 import AuditsInspections from "./pages/AuditsInspections";
 import Performance from "./pages/Performance";
 import StrategicTrends from "./pages/StrategicTrends";
@@ -219,6 +222,9 @@ function Router() {
       <Route path={"/process-leader-invitation-link"} component={ProcessLeaderInvitationLink} />
       <Route path={"/manager-edit-profile"} component={ManagerEditProfile} />
       <Route path={"/organization-chart"} component={OrganizationChart} />
+      <Route path={"/organization-chart/view"} component={OrganizationChartView} />
+      <Route path={"/payroll"} component={Payroll} />
+      <Route path={"/payroll-inactive"} component={PayrollInactive} />
       <Route path={"/performance"} component={Performance} />
       <Route path={"/strategic-trends"} component={StrategicTrends} />
       <Route path={"/axis-estrategia"} component={AxisEstrategia} />

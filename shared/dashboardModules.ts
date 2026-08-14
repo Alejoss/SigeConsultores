@@ -87,9 +87,9 @@ export const DASHBOARD_MODULES: DashboardModuleDefinition[] = [
   {
     moduleName: "organizationChart",
     path: "/organization-chart",
-    labelKey: "sige_organization_chart",
-    defaultTitle: "Organigrama",
-    description: "Gestiona la estructura organizacional de tu empresa",
+    labelKey: "isge_payroll_organization",
+    defaultTitle: "Nómina y Organigrama",
+    description: "Gestiona la nómina del personal y la estructura organizacional de tu empresa",
     icon: "🏢",
     group: "gestion",
   },

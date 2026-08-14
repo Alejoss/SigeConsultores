@@ -1192,6 +1192,29 @@ export type InsertRecoveryAudit = typeof recoveryAudit.$inferInsert;
 
 
 /**
+ * Payroll employees - Master personnel roster for performance evaluation.
+ * Active employees are managed in Nómina; inactive employees retain their employment history.
+ */
+export const payrollEmployees = mysqlTable("payrollEmployees", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  fullName: varchar("fullName", { length: 255 }).notNull(),
+  identityCard: varchar("identityCard", { length: 20 }).notNull(),
+  hireDate: date("hireDate").notNull(),
+  area: varchar("area", { length: 255 }).notNull(),
+  position: varchar("position", { length: 255 }).notNull(),
+  status: mysqlEnum("status", ["activo", "pasivo"]).default("activo").notNull(),
+  terminationDate: date("terminationDate"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  companyIdentityUnique: unique("payrollEmployees_company_identity_unique").on(table.companyId, table.identityCard),
+}));
+
+export type PayrollEmployee = typeof payrollEmployees.$inferSelect;
+export type InsertPayrollEmployee = typeof payrollEmployees.$inferInsert;
+
+/**
  * Organization Chart - Stores organization structure for each company
  */
 export const organizationChart = mysqlTable("organizationChart", {
