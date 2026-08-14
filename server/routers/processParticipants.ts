@@ -14,8 +14,42 @@ const normalizePosition = (value: string | null | undefined) => (value || "")
   .normalize("NFD")
   .replace(/[\u0300-\u036f]/g, "")
   .toLocaleLowerCase()
+  .replace(/[^a-z0-9]+/g, " ")
   .trim()
   .replace(/\s+/g, " ");
+
+/**
+ * Trata como equivalentes los cargos iguales tras normalizarlos y también
+ * pequeños errores tipográficos dentro de una misma denominación, por ejemplo
+ * «Custome Service» frente a «Customer Service». No asocia cargos distintos.
+ */
+const positionMatches = (participantPosition: string | null | undefined, employeePosition: string | null | undefined) => {
+  const participantKey = normalizePosition(participantPosition);
+  const employeeKey = normalizePosition(employeePosition);
+  if (!participantKey || !employeeKey) return false;
+  if (participantKey === employeeKey) return true;
+
+  const distance = (left: string, right: string) => {
+    const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+    for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+      const current = [leftIndex];
+      for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+        current[rightIndex] = Math.min(
+          current[rightIndex - 1] + 1,
+          previous[rightIndex] + 1,
+          previous[rightIndex - 1] + (left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1),
+        );
+      }
+      for (let index = 0; index < current.length; index += 1) previous[index] = current[index];
+    }
+    return previous[right.length];
+  };
+
+  const participantWords = participantKey.split(" ");
+  const employeeWords = employeeKey.split(" ");
+  return participantWords.length === employeeWords.length
+    && participantWords.every((word, index) => word === employeeWords[index] || (word.length >= 5 && employeeWords[index].length >= 5 && distance(word, employeeWords[index]) <= 1));
+};
 
 const toNumber = (value: unknown) => {
   const number = Number(value);
@@ -180,8 +214,7 @@ export const processParticipantsRouter = router({
 
       const processWorkerIds = new Set<number>();
       const participantRows = participants.map((participant) => {
-        const positionKey = normalizePosition(participant.position);
-        const availableWorkers = activeEmployees.filter((employee) => normalizePosition(employee.position) === positionKey);
+        const availableWorkers = activeEmployees.filter((employee) => positionMatches(participant.position, employee.position));
         availableWorkers.forEach((employee) => processWorkerIds.add(employee.id));
         const linkedAssignments = (assignmentsByParticipant.get(participant.id) || [])
           .filter((assignment) => employeeById.has(assignment.payrollEmployeeId));
@@ -224,7 +257,7 @@ export const processParticipantsRouter = router({
         eq(payrollEmployees.status, "activo"),
       ));
       if (!participant || !employee) throw new Error("No se encontró el cargo o trabajador activo seleccionado");
-      if (normalizePosition(participant.position) !== normalizePosition(employee.position)) {
+      if (!positionMatches(participant.position, employee.position)) {
         throw new Error("El cargo del trabajador no coincide con el cargo del participante");
       }
       const existing = await db.select().from(participantWorkerAssignments).where(and(

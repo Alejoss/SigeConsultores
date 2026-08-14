@@ -1,0 +1,11 @@
+Verificación local de la segunda etapa de Participantes (2026-08-14):
+- La ruta /process-participants?processId=90005&companyId=60001 carga correctamente el proceso usando el parámetro URL.
+- Se muestran los indicadores superiores: Número de trabajadores en el área y % de desempeño total.
+- Cada participante conserva Objetivo, Responsabilidades y Autoridad.
+- El panel Trabajadores y KPI permanece plegado inicialmente y se abre con el botón correspondiente.
+- Al abrirse, muestra Año de evaluación, Añadir trabajador y el estado vacío cuando aún no hay trabajadores de Nómina con cargo coincidente en la base local.
+- Tras el ajuste de coincidencia tolerante, el participante «Custome Service» reconoce correctamente a los dos trabajadores activos de Nómina registrados como «Customer Service».
+- El indicador superior y el recuadro del cargo reflejan 2 trabajadores; el panel Trabajadores y KPI continúa habilitado para seleccionarlos y crear KPI.
+- Al abrir «Añadir trabajador» en «Custome Service», se muestran correctamente FREILE CHIRIBOGA ANA MARIA y MONTENEGRO LEON FREDDY NICOLAS. La prueba se cerró sin vincularlos, para no alterar datos de revisión.
+- Objetivo, Responsabilidades y Autoridad están plegados de forma predeterminada con el control «Ver detalles del cargo» y su contenido persistido no fue modificado.
+- Build, TypeScript y la suite de 542 pruebas finalizaron correctamente antes de esta verificación.
