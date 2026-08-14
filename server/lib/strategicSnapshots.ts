@@ -140,7 +140,8 @@ export async function calculateCompanyStrategicSnapshot(companyId: number, date 
     .where(eq(strategicObjectives.companyId, companyId));
   const oePercents: Record<string, number> = {};
 
-  for (const [index, oe] of oeList.entries()) {
+  for (let index = 0; index < oeList.length; index++) {
+    const oe = oeList[index];
     const oeLabel = oe.objective || `OE ${index + 1}`;
     const normalizedLabel = oeLabel.toLowerCase().trim();
     const matchingOTE = allOTE.filter((item) => {
