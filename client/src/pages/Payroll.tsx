@@ -2,7 +2,7 @@ import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useLocation } from "wouter";
 import * as XLSX from "xlsx";
-import { ArrowLeft, ChartNoAxesCombined, Download, FileDown, FileUp, Gauge, Loader2, Plus, Trash2, UserRoundX, UsersRound } from "lucide-react";
+import { ArrowLeft, ChartNoAxesCombined, Download, FileDown, FileText, FileUp, Gauge, Loader2, Plus, Trash2, UserRoundX, UsersRound } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { getCompanyIdFromSession } from "@/lib/sessionScope";
+import { exportPayrollExcel, exportPayrollPdf, formatPayrollTenure } from "@/lib/payrollExports";
 import { toast } from "sonner";
 
 type Employee = {
@@ -45,14 +46,6 @@ const formatDateInput = (value: string | Date | null | undefined) => {
   if (!value) return "";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? String(value).slice(0, 10) : date.toISOString().slice(0, 10);
-};
-
-const getElapsedDays = (hireDate: string | Date) => {
-  const date = new Date(`${formatDateInput(hireDate)}T12:00:00`);
-  if (Number.isNaN(date.getTime())) return 0;
-  const today = new Date();
-  today.setHours(12, 0, 0, 0);
-  return Math.max(0, Math.floor((today.getTime() - date.getTime()) / 86_400_000));
 };
 
 const readColumn = (row: Record<string, unknown>, ...columns: string[]) => {
@@ -231,6 +224,16 @@ export default function Payroll() {
     }
   };
 
+  const exportActiveExcel = () => {
+    exportPayrollExcel(employees, "activo");
+    toast.success("Nómina Activa exportada a Excel.");
+  };
+
+  const exportActivePdf = () => {
+    exportPayrollPdf(employees, "activo");
+    toast.success("Nómina Activa exportada a PDF.");
+  };
+
   const downloadTemplate = () => {
     const worksheet = XLSX.utils.aoa_to_sheet([
       ["Nombre", "Cédula C.I.", "Fecha de ingreso (YYYY-MM-DD)", "Área", "Cargo"],
@@ -302,6 +305,8 @@ export default function Payroll() {
             <Button variant="destructive" onClick={clearEmployees} disabled={clearMutation.isPending || employees.length === 0} className="gap-2"><Trash2 className="h-4 w-4" />Borrar todas</Button>
             <Button variant="outline" onClick={downloadTemplate} className="gap-2 border-emerald-300 text-emerald-700"><FileDown className="h-4 w-4" />Descargar Planilla</Button>
             <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="gap-2 border-blue-300 text-blue-700"><FileUp className="h-4 w-4" />{isImporting ? "Importando..." : "Importar desde Excel"}</Button>
+            <Button variant="outline" onClick={exportActiveExcel} disabled={employees.length === 0} className="gap-2 border-emerald-300 text-emerald-700"><FileDown className="h-4 w-4" />Exportar Excel</Button>
+            <Button variant="outline" onClick={exportActivePdf} disabled={employees.length === 0} className="gap-2 border-rose-300 text-rose-700"><FileText className="h-4 w-4" />Exportar PDF</Button>
             <Button variant="outline" onClick={() => setLocation(`/payroll-inactive?companyId=${companyId}`)} className="gap-2"><UserRoundX className="h-4 w-4" />Personal Pasivo</Button>
             <Button variant="outline" onClick={goBack} className="gap-2"><ArrowLeft className="h-4 w-4" />Volver</Button>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
@@ -327,17 +332,17 @@ export default function Payroll() {
             {isLoading ? <div className="flex items-center justify-center gap-2 py-12 text-slate-600"><Loader2 className="h-5 w-5 animate-spin" />Cargando nómina...</div> : employees.length === 0 ? (
               <div className="rounded-lg border border-dashed py-12 text-center text-slate-500">No hay personal activo registrado. Añade un trabajador o importa la Planilla de Nómina.</div>
             ) : (
-              <div className="overflow-x-auto rounded-lg border">
-                <table className="min-w-[1200px] w-full text-sm">
+                  <div className="overflow-x-auto rounded-lg border">
+                <table className="min-w-[1450px] w-full text-sm">
                   <thead className="bg-slate-50 text-left text-slate-600">
                     <tr>
                       <th className="w-14 px-3 py-3 text-center" aria-label="Eliminar" />
-                      <th className="min-w-52 px-3 py-3">Nombre</th>
-                      <th className="min-w-36 px-3 py-3">Cédula C.I.</th>
+                      <th className="min-w-[310px] px-3 py-3">Nombre completo</th>
+                      <th className="min-w-32 px-3 py-3">Cédula C.I.</th>
                       <th className="min-w-40 px-3 py-3">Fecha de ingreso</th>
-                      <th className="min-w-40 px-3 py-3">Tiempo en la empresa</th>
-                      <th className="min-w-44 px-3 py-3">Área</th>
-                      <th className="min-w-44 px-3 py-3">Cargo</th>
+                      <th className="min-w-44 px-3 py-3">Tiempo en la empresa</th>
+                      <th className="min-w-48 px-3 py-3">Área</th>
+                      <th className="min-w-56 px-3 py-3">Cargo</th>
                       <th className="min-w-32 px-3 py-3">Desempeño</th>
                       <th className="min-w-40 px-3 py-3" />
                     </tr>
@@ -346,12 +351,12 @@ export default function Payroll() {
                     {employees.map((employee) => (
                       <tr key={employee.id} className="bg-white hover:bg-slate-50">
                         <td className="px-3 py-2 text-center"><Button variant="ghost" size="icon" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => removeEmployee(employee)} aria-label={`Eliminar ${employee.fullName}`}><Trash2 className="h-4 w-4" /></Button></td>
-                        <td className="px-3 py-2"><Input value={employee.fullName} onChange={(e) => updateLocalEmployee(employee.id, "fullName", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
-                        <td className="px-3 py-2"><Input value={employee.identityCard} onChange={(e) => updateLocalEmployee(employee.id, "identityCard", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
-                        <td className="px-3 py-2"><Input type="date" value={formatDateInput(employee.hireDate)} onChange={(e) => updateLocalEmployee(employee.id, "hireDate", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
-                        <td className="px-3 py-2 font-medium text-slate-700">{getElapsedDays(employee.hireDate).toLocaleString("es-EC")} días</td>
-                        <td className="px-3 py-2"><Input value={employee.area} onChange={(e) => updateLocalEmployee(employee.id, "area", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
-                        <td className="px-3 py-2"><Input value={employee.position} onChange={(e) => updateLocalEmployee(employee.id, "position", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
+                        <td className="px-3 py-2"><Input className="min-w-[280px]" value={employee.fullName} onChange={(e) => updateLocalEmployee(employee.id, "fullName", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
+                        <td className="px-3 py-2"><Input className="min-w-28" value={employee.identityCard} onChange={(e) => updateLocalEmployee(employee.id, "identityCard", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
+                        <td className="px-3 py-2"><Input className="min-w-36" type="date" value={formatDateInput(employee.hireDate)} onChange={(e) => updateLocalEmployee(employee.id, "hireDate", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
+                        <td className="px-3 py-2 font-medium text-slate-700 whitespace-nowrap">{formatPayrollTenure(employee.hireDate)}</td>
+                        <td className="px-3 py-2"><Input className="min-w-44" value={employee.area} onChange={(e) => updateLocalEmployee(employee.id, "area", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
+                        <td className="px-3 py-2"><Input className="min-w-52" value={employee.position} onChange={(e) => updateLocalEmployee(employee.id, "position", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
                         <td className="px-3 py-2 text-center text-slate-400">—</td>
                         <td className="px-3 py-2"><Button variant="outline" size="sm" onClick={() => { setInactiveTarget(employee); setTerminationDate(new Date().toISOString().slice(0, 10)); }}>Pasa a Pasivo</Button></td>
                       </tr>
