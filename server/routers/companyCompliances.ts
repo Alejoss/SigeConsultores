@@ -28,6 +28,9 @@ export const companyCompliancesRouter = router({
         plannedMonths: z.string().optional(),
         completedMonths: z.string().optional(),
         observations: z.string().optional(),
+        evaluationMode: z.enum(["meses", "vigencia"]).optional(),
+        validFrom: z.string().nullable().optional(),
+        validUntil: z.string().nullable().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -44,6 +47,9 @@ export const companyCompliancesRouter = router({
         plannedMonths: input.plannedMonths ?? null,
         completedMonths: input.completedMonths ?? null,
         observations: input.observations ?? null,
+        evaluationMode: input.evaluationMode ?? "meses",
+        validFrom: input.validFrom || null,
+        validUntil: input.validUntil || null,
       });
       return { success: true };
     }),
@@ -61,6 +67,9 @@ export const companyCompliancesRouter = router({
         plannedMonths: z.string().optional(),
         completedMonths: z.string().optional(),
         observations: z.string().optional(),
+        evaluationMode: z.enum(["meses", "vigencia"]).optional(),
+        validFrom: z.string().nullable().optional(),
+        validUntil: z.string().nullable().optional(),
       })
     )
     .mutation(async ({ input }) => {
