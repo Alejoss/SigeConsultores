@@ -7,7 +7,9 @@ import {
   participantWorkerKpis,
   participantWorkerKpiValues,
   payrollEmployees,
+  processCharacterizations,
   processParticipants,
+  processes,
 } from "../../drizzle/schema";
 
 const normalizePosition = (value: string | null | undefined) => (value || "")
@@ -249,6 +251,113 @@ export const processParticipantsRouter = router({
         participants: participantRows,
         totalWorkers: processWorkerIds.size,
         totalPerformance: average(participantRows.map((row) => row.managementPercentage)),
+      };
+    }),
+
+  performanceByArea: companyProcedure
+    .input(companyInput.extend({ year: z.number().int().min(2020).max(2100) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { areas: [], withoutEvaluation: 0 };
+
+      const processRows = await db.select({
+        processCharacterizationId: processCharacterizations.id,
+        processId: processes.id,
+        processName: processes.name,
+      })
+        .from(processCharacterizations)
+        .innerJoin(processes, eq(processCharacterizations.processId, processes.id))
+        .where(eq(processes.companyId, input.companyId))
+        .orderBy(asc(processes.name));
+      const characterizationIds = processRows.map((process) => process.processCharacterizationId);
+      if (!characterizationIds.length) return { areas: [], withoutEvaluation: 0 };
+
+      // Los participantes históricos se registraron usando el identificador del proceso;
+      // los nuevos usan el de su caracterización. Se consideran ambos sin modificar datos existentes.
+      const participantReferenceIds = Array.from(new Set([
+        ...characterizationIds,
+        ...processRows.map((process) => process.processId),
+      ]));
+      const participants = await db.select().from(processParticipants)
+        .where(inArray(processParticipants.processCharacterizationId, participantReferenceIds));
+      const participantIds = participants.map((participant) => participant.id);
+      const assignments = participantIds.length
+        ? await db.select().from(participantWorkerAssignments)
+          .where(inArray(participantWorkerAssignments.processParticipantId, participantIds))
+        : [];
+      const assignmentIds = assignments.map((assignment) => assignment.id);
+      const kpis = assignmentIds.length
+        ? await db.select().from(participantWorkerKpis)
+          .where(and(inArray(participantWorkerKpis.participantWorkerAssignmentId, assignmentIds), eq(participantWorkerKpis.year, input.year)))
+        : [];
+      const kpiIds = kpis.map((kpi) => kpi.id);
+      const values = kpiIds.length
+        ? await db.select().from(participantWorkerKpiValues)
+          .where(inArray(participantWorkerKpiValues.participantWorkerKpiId, kpiIds))
+        : [];
+      const activeEmployees = await db.select().from(payrollEmployees)
+        .where(and(eq(payrollEmployees.companyId, input.companyId), eq(payrollEmployees.status, "activo")));
+
+      const activeEmployeeIds = new Set(activeEmployees.map((employee) => employee.id));
+      const valuesByKpi = new Map<number, Array<typeof values[number]>>();
+      values.forEach((value) => {
+        const current = valuesByKpi.get(value.participantWorkerKpiId) || [];
+        current.push(value);
+        valuesByKpi.set(value.participantWorkerKpiId, current);
+      });
+      const kpisByAssignment = new Map<number, Array<typeof kpis[number]>>();
+      kpis.forEach((kpi) => {
+        const current = kpisByAssignment.get(kpi.participantWorkerAssignmentId) || [];
+        current.push(kpi);
+        kpisByAssignment.set(kpi.participantWorkerAssignmentId, current);
+      });
+      const assignmentsByParticipant = new Map<number, Array<typeof assignments[number]>>();
+      assignments.forEach((assignment) => {
+        const current = assignmentsByParticipant.get(assignment.processParticipantId) || [];
+        current.push(assignment);
+        assignmentsByParticipant.set(assignment.processParticipantId, current);
+      });
+      const participantsByCharacterization = new Map<number, Array<typeof participants[number]>>();
+      participants.forEach((participant) => {
+        const current = participantsByCharacterization.get(participant.processCharacterizationId) || [];
+        current.push(participant);
+        participantsByCharacterization.set(participant.processCharacterizationId, current);
+      });
+
+      const calculatedAreas = processRows.map((process) => {
+        const processParticipantsRows = [
+          ...(participantsByCharacterization.get(process.processCharacterizationId) || []),
+          ...(participantsByCharacterization.get(process.processId) || []),
+        ].filter((participant, index, rows) => rows.findIndex((row) => row.id === participant.id) === index);
+        const participantPerformances = processParticipantsRows.map((participant) => {
+          const workerPerformances = (assignmentsByParticipant.get(participant.id) || [])
+            .filter((assignment) => activeEmployeeIds.has(assignment.payrollEmployeeId))
+            .map((assignment) => {
+              const scores = (kpisByAssignment.get(assignment.id) || [])
+                .map((kpi) => kpiPercentage(kpi.monthlyTarget, valuesByKpi.get(kpi.id) || []));
+              return average(scores);
+            });
+          return average(workerPerformances);
+        });
+        const performance = average(participantPerformances);
+        const evaluatedPositions = participantPerformances.filter((value) => value !== null).length;
+        const evaluatedWorkers = processParticipantsRows.reduce((count, participant) => count + (assignmentsByParticipant.get(participant.id) || [])
+          .filter((assignment) => activeEmployeeIds.has(assignment.payrollEmployeeId))
+          .filter((assignment) => average((kpisByAssignment.get(assignment.id) || [])
+            .map((kpi) => kpiPercentage(kpi.monthlyTarget, valuesByKpi.get(kpi.id) || []))) !== null).length, 0);
+        return {
+          processId: process.processId,
+          processName: process.processName,
+          performance: performance === null ? null : Number(performance.toFixed(1)),
+          totalPositions: processParticipantsRows.length,
+          evaluatedPositions,
+          evaluatedWorkers,
+        };
+      });
+
+      return {
+        areas: calculatedAreas.filter((area) => area.performance !== null),
+        withoutEvaluation: calculatedAreas.filter((area) => area.performance === null).length,
       };
     }),
 
