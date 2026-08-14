@@ -1,0 +1,18 @@
+Verificación local de la segunda etapa de Participantes (2026-08-14):
+- La ruta /process-participants?processId=90005&companyId=60001 carga correctamente el proceso usando el parámetro URL.
+- Se muestran los indicadores superiores: Número de trabajadores en el área y % de desempeño total.
+- Cada participante conserva Objetivo, Responsabilidades y Autoridad.
+- El panel Trabajadores y KPI permanece plegado inicialmente y se abre con el botón correspondiente.
+- Al abrirse, muestra Año de evaluación, Añadir trabajador y el estado vacío cuando aún no hay trabajadores de Nómina con cargo coincidente en la base local.
+- Tras el ajuste de coincidencia tolerante, el participante «Custome Service» reconoce correctamente a los dos trabajadores activos de Nómina registrados como «Customer Service».
+- El indicador superior y el recuadro del cargo reflejan 2 trabajadores; el panel Trabajadores y KPI continúa habilitado para seleccionarlos y crear KPI.
+- Al abrir «Añadir trabajador» en «Custome Service», se muestran correctamente FREILE CHIRIBOGA ANA MARIA y MONTENEGRO LEON FREDDY NICOLAS. La prueba se cerró sin vincularlos, para no alterar datos de revisión.
+- Objetivo, Responsabilidades y Autoridad están plegados de forma predeterminada con el control «Ver detalles del cargo» y su contenido persistido no fue modificado.
+- Build, TypeScript y la suite de 542 pruebas finalizaron correctamente antes de esta verificación.
+- Ajuste visual posterior: el bloque individual de cada trabajador usa un fondo celeste definido con borde celeste, mientras sus KPI mantienen un panel blanco translúcido. La separación visual se verificó con FREILE CHIRIBOGA ANA MARIA y su KPI mensual, sin modificar los valores existentes.
+- Integración de Nómina: la columna Desempeño y el promedio superior ahora toman los KPI de Participantes del año actual. Se verificó por interfaz y API que FREILE CHIRIBOGA ANA MARIA (C.I. 0602904732) muestra 72.2, idéntico a su cálculo de Participantes para 2026.
+- Desplazamiento horizontal: se añadió una barra fija al borde inferior de la pantalla, sincronizada con la tabla de Nómina. La verificación confirmó que conserva el mismo ancho desplazable de la tabla (1587 px) y permanece visible con un margen inferior de 21 px.
+- Corrección posterior del control horizontal: se eliminó el desbordamiento global de la página y se ocultó la barra interna de la tabla, dejando un solo control visible alineado con Nómina. Al llevarlo totalmente a la derecha, la tabla y la barra quedan sincronizadas en 702 px y el botón «Pasa a Pasivo» se muestra completo dentro de la tabla.
+- Panel ejecutivo de Desempeño de personal: se añadió el acceso en la página principal de Desempeño y se verificó visualmente su gráfico circular. El cumplimiento global refleja 72.2 %, igual al Promedio de desempeño de Nómina. La primera validación reveló que el consolidado por áreas aún no identifica al trabajador evaluado; se revisará la relación de caracterización y proceso antes de presentar el panel.
+- Validación final del panel ejecutivo: tras compatibilizar los identificadores históricos de proceso, el gráfico por áreas muestra Gestión Comercial con el 72.2 % calculado en Participantes y contabiliza 1 trabajador evaluado. El gráfico global mantiene el mismo 72.2 % de Promedio de desempeño en Nómina; 12 áreas restantes no tienen aún KPI evaluados.
+- Política del Sistema Integrado de Gestión: se cambió únicamente el encabezado de la tarjeta a «Política SIGE». La verificación visual confirma que el texto completo de la política existente no fue alterado.

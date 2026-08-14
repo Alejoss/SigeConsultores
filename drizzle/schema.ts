@@ -770,6 +770,61 @@ export type ProcessParticipant = typeof processParticipants.$inferSelect;
 export type InsertProcessParticipant = typeof processParticipants.$inferInsert;
 
 /**
+ * Participant worker assignments - Links active payroll employees to a process role.
+ */
+export const participantWorkerAssignments = mysqlTable("participantWorkerAssignments", {
+  id: int("id").autoincrement().primaryKey(),
+  processParticipantId: int("processParticipantId").notNull(),
+  payrollEmployeeId: int("payrollEmployeeId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  participantEmployeeUnique: unique("participantWorkerAssignments_participant_employee_unique").on(
+    table.processParticipantId,
+    table.payrollEmployeeId,
+  ),
+}));
+
+export type ParticipantWorkerAssignment = typeof participantWorkerAssignments.$inferSelect;
+export type InsertParticipantWorkerAssignment = typeof participantWorkerAssignments.$inferInsert;
+
+/**
+ * Employee KPI definitions - One or more KPI can be configured for each worker-role assignment per year.
+ */
+export const participantWorkerKpis = mysqlTable("participantWorkerKpis", {
+  id: int("id").autoincrement().primaryKey(),
+  participantWorkerAssignmentId: int("participantWorkerAssignmentId").notNull(),
+  year: int("year").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  monthlyTarget: decimal("monthlyTarget", { precision: 14, scale: 2 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ParticipantWorkerKpi = typeof participantWorkerKpis.$inferSelect;
+export type InsertParticipantWorkerKpi = typeof participantWorkerKpis.$inferInsert;
+
+/**
+ * Monthly KPI observations - A null or absent value means the month is still pending.
+ */
+export const participantWorkerKpiValues = mysqlTable("participantWorkerKpiValues", {
+  id: int("id").autoincrement().primaryKey(),
+  participantWorkerKpiId: int("participantWorkerKpiId").notNull(),
+  month: int("month").notNull(),
+  actualValue: decimal("actualValue", { precision: 14, scale: 2 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  kpiMonthUnique: unique("participantWorkerKpiValues_kpi_month_unique").on(
+    table.participantWorkerKpiId,
+    table.month,
+  ),
+}));
+
+export type ParticipantWorkerKpiValue = typeof participantWorkerKpiValues.$inferSelect;
+export type InsertParticipantWorkerKpiValue = typeof participantWorkerKpiValues.$inferInsert;
+
+/**
  * Process Resources - Stores resources used in process characterization
  */
 export const processResources = mysqlTable("processResources", {

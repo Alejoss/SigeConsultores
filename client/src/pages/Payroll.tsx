@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useLocation } from "wouter";
 import * as XLSX from "xlsx";
@@ -24,6 +24,7 @@ type Employee = {
   position: string;
   status: "activo" | "pasivo";
   terminationDate: string | Date | null;
+  performance?: number | null;
 };
 
 type EmployeeDraft = {
@@ -33,6 +34,8 @@ type EmployeeDraft = {
   area: string;
   position: string;
 };
+
+const formatPerformance = (performance: number | null | undefined) => performance == null ? "Pendiente" : `${performance.toFixed(1)}%`;
 
 const EMPTY_EMPLOYEE: EmployeeDraft = {
   fullName: "",
@@ -69,9 +72,26 @@ const excelDateToIso = (value: unknown): string => {
 export default function Payroll() {
   const [, setLocation] = useLocation();
   const companyId = useMemo(() => getCompanyIdFromSession() || 0, []);
+  const performanceYear = useMemo(() => new Date().getFullYear(), []);
   const utils = trpc.useUtils();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const rotationChartRef = useRef<HTMLDivElement>(null);
+  const payrollTableScrollRef = useRef<HTMLDivElement>(null);
+  const fixedPayrollScrollbarRef = useRef<HTMLDivElement>(null);
+  const fixedPayrollScrollbarContentRef = useRef<HTMLDivElement>(null);
+  const [scrollbarMountVersion, setScrollbarMountVersion] = useState(0);
+  const registerPayrollTableScroller = useCallback((node: HTMLDivElement | null) => {
+    payrollTableScrollRef.current = node;
+    if (node) setScrollbarMountVersion((current) => current + 1);
+  }, []);
+  const registerFixedPayrollScrollbar = useCallback((node: HTMLDivElement | null) => {
+    fixedPayrollScrollbarRef.current = node;
+    if (node) setScrollbarMountVersion((current) => current + 1);
+  }, []);
+  const registerFixedPayrollScrollbarContent = useCallback((node: HTMLDivElement | null) => {
+    fixedPayrollScrollbarContentRef.current = node;
+    if (node) setScrollbarMountVersion((current) => current + 1);
+  }, []);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [newEmployee, setNewEmployee] = useState<EmployeeDraft>(EMPTY_EMPLOYEE);
   const [showCreate, setShowCreate] = useState(false);
@@ -82,12 +102,12 @@ export default function Payroll() {
   const [selectedArea, setSelectedArea] = useState("");
 
   const { data, isLoading } = trpc.payroll.list.useQuery(
-    { companyId, status: "activo" },
+    { companyId, status: "activo", performanceYear },
     { enabled: companyId > 0 },
   );
 
   const { data: analytics, isLoading: analyticsLoading } = trpc.payroll.analytics.useQuery(
-    { companyId, area: selectedArea || undefined },
+    { companyId, area: selectedArea || undefined, performanceYear },
     { enabled: companyId > 0 },
   );
 
@@ -95,10 +115,51 @@ export default function Payroll() {
     setEmployees((data || []) as Employee[]);
   }, [data]);
 
+  useEffect(() => {
+    const tableScroller = payrollTableScrollRef.current;
+    const fixedScroller = fixedPayrollScrollbarRef.current;
+    const fixedContent = fixedPayrollScrollbarContentRef.current;
+    if (!tableScroller || !fixedScroller || !fixedContent) return;
+
+    let isSynchronizing = false;
+    const syncWidth = () => {
+      const tableBounds = tableScroller.getBoundingClientRect();
+      fixedScroller.style.width = `${tableScroller.clientWidth}px`;
+      fixedScroller.style.marginLeft = `${Math.max(0, tableBounds.left)}px`;
+      fixedContent.style.width = `${tableScroller.scrollWidth}px`;
+    };
+    const syncFromTable = () => {
+      if (isSynchronizing) return;
+      isSynchronizing = true;
+      fixedScroller.scrollLeft = tableScroller.scrollLeft;
+      isSynchronizing = false;
+    };
+    const syncFromFixedBar = () => {
+      if (isSynchronizing) return;
+      isSynchronizing = true;
+      tableScroller.scrollLeft = fixedScroller.scrollLeft;
+      isSynchronizing = false;
+    };
+
+    syncWidth();
+    tableScroller.addEventListener("scroll", syncFromTable);
+    fixedScroller.addEventListener("scroll", syncFromFixedBar);
+    window.addEventListener("resize", syncWidth);
+    const observer = new ResizeObserver(syncWidth);
+    observer.observe(tableScroller);
+
+    return () => {
+      tableScroller.removeEventListener("scroll", syncFromTable);
+      fixedScroller.removeEventListener("scroll", syncFromFixedBar);
+      window.removeEventListener("resize", syncWidth);
+      observer.disconnect();
+    };
+  }, [employees.length, isLoading, scrollbarMountVersion]);
+
   const refresh = async () => {
-    await utils.payroll.list.invalidate({ companyId, status: "activo" });
+    await utils.payroll.list.invalidate({ companyId, status: "activo", performanceYear });
     await utils.payroll.list.invalidate({ companyId, status: "pasivo" });
-    await utils.payroll.analytics.invalidate({ companyId, area: selectedArea || undefined });
+    await utils.payroll.analytics.invalidate({ companyId, area: selectedArea || undefined, performanceYear });
   };
 
   const createMutation = trpc.payroll.create.useMutation({ onSuccess: refresh });
@@ -297,7 +358,7 @@ export default function Payroll() {
               <div className="rounded-xl bg-emerald-100 p-3 text-emerald-700"><UsersRound className="h-7 w-7" /></div>
               <div>
                 <h1 className="text-3xl font-bold text-slate-900">Nómina</h1>
-                <p className="mt-1 text-slate-600">Administra el personal activo de la empresa. El desempeño se integrará automáticamente en la siguiente etapa.</p>
+                <p className="mt-1 text-slate-600">Administra el personal activo de la empresa. El desempeño se actualiza automáticamente desde los KPI registrados en Participantes.</p>
               </div>
             </div>
           </div>
@@ -332,7 +393,7 @@ export default function Payroll() {
             {isLoading ? <div className="flex items-center justify-center gap-2 py-12 text-slate-600"><Loader2 className="h-5 w-5 animate-spin" />Cargando nómina...</div> : employees.length === 0 ? (
               <div className="rounded-lg border border-dashed py-12 text-center text-slate-500">No hay personal activo registrado. Añade un trabajador o importa la Planilla de Nómina.</div>
             ) : (
-                  <div className="overflow-x-auto rounded-lg border">
+                  <div ref={registerPayrollTableScroller} className="overflow-x-auto rounded-lg border [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <table className="min-w-[1450px] w-full text-sm">
                   <thead className="bg-slate-50 text-left text-slate-600">
                     <tr>
@@ -344,7 +405,7 @@ export default function Payroll() {
                       <th className="min-w-48 px-3 py-3">Área</th>
                       <th className="min-w-56 px-3 py-3">Cargo</th>
                       <th className="min-w-32 px-3 py-3">Desempeño</th>
-                      <th className="min-w-40 px-3 py-3" />
+                      <th className="min-w-44 px-4 py-3" />
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -357,8 +418,8 @@ export default function Payroll() {
                         <td className="px-3 py-2 font-medium text-slate-700 whitespace-nowrap">{formatPayrollTenure(employee.hireDate)}</td>
                         <td className="px-3 py-2"><Input className="min-w-44" value={employee.area} onChange={(e) => updateLocalEmployee(employee.id, "area", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
                         <td className="px-3 py-2"><Input className="min-w-52" value={employee.position} onChange={(e) => updateLocalEmployee(employee.id, "position", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
-                        <td className="px-3 py-2 text-center text-slate-400">—</td>
-                        <td className="px-3 py-2"><Button variant="outline" size="sm" onClick={() => { setInactiveTarget(employee); setTerminationDate(new Date().toISOString().slice(0, 10)); }}>Pasa a Pasivo</Button></td>
+                        <td className="px-3 py-2 text-center">{employee.performance == null ? <span className="text-xs font-medium text-slate-400">Pendiente</span> : <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700">{formatPerformance(employee.performance)}</span>}</td>
+                        <td className="px-4 py-2"><Button variant="outline" size="sm" className="whitespace-nowrap" onClick={() => { setInactiveTarget(employee); setTerminationDate(new Date().toISOString().slice(0, 10)); }}>Pasa a Pasivo</Button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -367,6 +428,12 @@ export default function Payroll() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-300 bg-white/95 py-1.5 shadow-[0_-3px_10px_rgba(15,23,42,0.12)] backdrop-blur">
+        <div ref={registerFixedPayrollScrollbar} className="h-4 overflow-x-auto overflow-y-hidden" aria-label="Desplazamiento horizontal de Nómina">
+          <div ref={registerFixedPayrollScrollbarContent} className="h-px" />
+        </div>
       </div>
 
       <Dialog open={showCreate} onOpenChange={setShowCreate}>

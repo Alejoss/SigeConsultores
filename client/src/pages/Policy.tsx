@@ -245,7 +245,7 @@ export default function Policy() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Política ISGE 360</CardTitle>
+            <CardTitle className="text-lg">Política SIGE</CardTitle>
             <CardDescription>
               Escribe la política que establece los principios y compromisos de tu empresa
             </CardDescription>

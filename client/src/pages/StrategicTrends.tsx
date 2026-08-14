@@ -777,9 +777,103 @@ function SGIView({ companyId, onBack }: { companyId: number; onBack: () => void 
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// VISTA 5: DESEMPEÑO DE PERSONAL
+// ═══════════════════════════════════════════════════════════════════════════════
+function StaffPerformanceView({ companyId, onBack }: { companyId: number; onBack: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+  const evaluationYear = useMemo(() => new Date().getFullYear(), []);
+  const { data: payrollAnalytics, isLoading: isLoadingPayroll } = trpc.payroll.analytics.useQuery(
+    { companyId, performanceYear: evaluationYear },
+    { enabled: companyId > 0 },
+  );
+  const { data: areaSummary, isLoading: isLoadingAreas } = trpc.processParticipants.performanceByArea.useQuery(
+    { companyId, year: evaluationYear },
+    { enabled: companyId > 0 },
+  );
+
+  if (isLoadingPayroll || isLoadingAreas) {
+    return <div className="flex justify-center py-16"><Loader2 className="animate-spin w-8 h-8 text-rose-500" /></div>;
+  }
+
+  const globalPerformance = payrollAnalytics?.averagePerformance ?? 0;
+  const areas = areaSummary?.areas ?? [];
+  const evaluatedWorkers = areas.reduce((total, area) => total + area.evaluatedWorkers, 0);
+
+  return (
+    <div>
+      <SubViewHeader
+        title="Desempeño de personal"
+        onBack={onBack}
+        onExport={() => exportAsImage(ref, "desempeno-de-personal.png", setExporting)}
+        exporting={exporting}
+      />
+      <div ref={ref} className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] gap-6">
+          <Card className="border-2 border-rose-100 bg-gradient-to-br from-rose-50 via-white to-white overflow-hidden">
+            <CardContent className="p-6 flex flex-col items-center text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-rose-600">Cumplimiento global</p>
+              <div className="my-4"><DonutKpi value={globalPerformance} size={178} /></div>
+              <h3 className="text-xl font-bold text-slate-800">Promedio de desempeño</h3>
+              <p className="mt-1 text-sm text-slate-500">Valor actualizado desde Nómina con los KPI registrados en Participantes.</p>
+              <div className="mt-5 grid grid-cols-2 w-full divide-x divide-rose-100 rounded-xl border border-rose-100 bg-white/80">
+                <div className="px-3 py-3">
+                  <p className="text-2xl font-bold text-slate-800">{payrollAnalytics?.activeCount ?? 0}</p>
+                  <p className="text-xs text-slate-500">Personal activo</p>
+                </div>
+                <div className="px-3 py-3">
+                  <p className="text-2xl font-bold text-slate-800">{evaluatedWorkers}</p>
+                  <p className="text-xs text-slate-500">Trabajadores evaluados</p>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-slate-400">Evaluación {evaluationYear}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg text-slate-800">Desempeño por áreas</CardTitle>
+              <p className="text-sm text-slate-500">Cada barra toma el <strong>% de desempeño total</strong> de Participantes del proceso correspondiente.</p>
+            </CardHeader>
+            <CardContent>
+              {areas.length === 0 ? (
+                <div className="flex min-h-72 flex-col items-center justify-center text-center text-slate-400">
+                  <Users size={40} className="mb-3 opacity-30" />
+                  <p className="font-medium">Aún no hay áreas con KPI evaluados.</p>
+                  <p className="mt-1 text-sm">Al registrar resultados en Participantes, el gráfico se actualizará automáticamente.</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.max(280, areas.length * 54)}>
+                  <BarChart
+                    data={areas.map((area) => ({ name: area.processName, value: area.performance ?? 0, workers: area.evaluatedWorkers }))}
+                    layout="vertical"
+                    margin={{ top: 6, right: 48, left: 8, bottom: 6 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`} />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "#475569" }} tickLine={false} axisLine={false} width={128} />
+                    <Tooltip formatter={(value: any, _name: string, item: any) => [`${Number(value).toFixed(1)}%`, `Desempeño · ${item.payload.workers} evaluado${item.payload.workers === 1 ? "" : "s"}`]} />
+                    <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={24}>
+                      {areas.map((area, index) => <Cell key={index} fill={getColor(area.performance ?? 0)} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+              {areaSummary?.withoutEvaluation ? (
+                <p className="mt-3 text-xs text-slate-400">{areaSummary.withoutEvaluation} área{areaSummary.withoutEvaluation === 1 ? " permanece" : "s permanecen"} sin KPI evaluados en {evaluationYear}.</p>
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // PÁGINA PRINCIPAL
 // ═══════════════════════════════════════════════════════════════════════════════
-type ActiveView = null | "oe" | "otg" | "gpi" | "sgi";
+type ActiveView = null | "oe" | "otg" | "gpi" | "sgi" | "staff";
 
 export default function StrategicTrends() {
   const [, setLocation] = useLocation();
@@ -829,6 +923,7 @@ export default function StrategicTrends() {
                 ? activeView === "oe" ? "Objetivos Estratégicos"
                   : activeView === "otg" ? "Objetivos Tácticos de Gestión"
                   : activeView === "gpi" ? "Gestión con Partes Interesadas"
+                  : activeView === "staff" ? "Desempeño de personal"
                   : "Sistemas de Gestión"
                 : "Indicadores consolidados de desempeño de la empresa"}
             </p>
@@ -870,6 +965,14 @@ export default function StrategicTrends() {
               badge="SGI"
               onClick={() => setActiveView("sgi")}
             />
+            <AccessCard
+              icon={<Users size={24} />}
+              title="Desempeño de personal"
+              description="Promedio global de Nómina y comparación del desempeño total entre las áreas evaluadas."
+              color="#e11d48"
+              badge="PERSONAL"
+              onClick={() => setActiveView("staff")}
+            />
           </div>
         )}
 
@@ -877,6 +980,7 @@ export default function StrategicTrends() {
         {activeView === "otg" && <OTGView companyId={companyId} onBack={() => setActiveView(null)} />}
         {activeView === "gpi" && <GPIView companyId={companyId} onBack={() => setActiveView(null)} />}
         {activeView === "sgi" && <SGIView companyId={companyId} onBack={() => setActiveView(null)} />}
+        {activeView === "staff" && <StaffPerformanceView companyId={companyId} onBack={() => setActiveView(null)} />}
       </div>
     </DashboardLayout>
   );
