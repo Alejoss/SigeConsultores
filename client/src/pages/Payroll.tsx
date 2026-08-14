@@ -1,7 +1,8 @@
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useLocation } from "wouter";
 import * as XLSX from "xlsx";
-import { ArrowLeft, FileDown, FileUp, Loader2, Plus, Trash2, UserRoundX, UsersRound } from "lucide-react";
+import { ArrowLeft, ChartNoAxesCombined, Download, FileDown, FileUp, Gauge, Loader2, Plus, Trash2, UserRoundX, UsersRound } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,15 +78,23 @@ export default function Payroll() {
   const companyId = useMemo(() => getCompanyIdFromSession() || 0, []);
   const utils = trpc.useUtils();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const rotationChartRef = useRef<HTMLDivElement>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [newEmployee, setNewEmployee] = useState<EmployeeDraft>(EMPTY_EMPLOYEE);
   const [showCreate, setShowCreate] = useState(false);
   const [inactiveTarget, setInactiveTarget] = useState<Employee | null>(null);
   const [terminationDate, setTerminationDate] = useState(new Date().toISOString().slice(0, 10));
   const [isImporting, setIsImporting] = useState(false);
+  const [showRotation, setShowRotation] = useState(false);
+  const [selectedArea, setSelectedArea] = useState("");
 
   const { data, isLoading } = trpc.payroll.list.useQuery(
     { companyId, status: "activo" },
+    { enabled: companyId > 0 },
+  );
+
+  const { data: analytics, isLoading: analyticsLoading } = trpc.payroll.analytics.useQuery(
+    { companyId, area: selectedArea || undefined },
     { enabled: companyId > 0 },
   );
 
@@ -96,6 +105,7 @@ export default function Payroll() {
   const refresh = async () => {
     await utils.payroll.list.invalidate({ companyId, status: "activo" });
     await utils.payroll.list.invalidate({ companyId, status: "pasivo" });
+    await utils.payroll.analytics.invalidate({ companyId, area: selectedArea || undefined });
   };
 
   const createMutation = trpc.payroll.create.useMutation({ onSuccess: refresh });
@@ -106,6 +116,47 @@ export default function Payroll() {
   const importMutation = trpc.payroll.importBulk.useMutation({ onSuccess: refresh });
 
   const goBack = () => setLocation(`/organization-chart?companyId=${companyId}`);
+
+  const downloadRotationChart = async () => {
+    const sourceSvg = rotationChartRef.current?.querySelector("svg.recharts-surface");
+    if (!sourceSvg) {
+      toast.error("La gráfica aún no está disponible para descargar.");
+      return;
+    }
+    try {
+      const width = sourceSvg.clientWidth || 900;
+      const height = sourceSvg.clientHeight || 420;
+      const clone = sourceSvg.cloneNode(true) as SVGSVGElement;
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      clone.setAttribute("width", String(width));
+      clone.setAttribute("height", String(height));
+      clone.insertAdjacentHTML("afterbegin", `<rect width="100%" height="100%" fill="#ffffff" />`);
+      const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = width * 2;
+        canvas.height = height * 2;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Canvas no disponible");
+        context.scale(2, 2);
+        context.drawImage(image, 0, 0, width, height);
+        URL.revokeObjectURL(url);
+        const link = document.createElement("a");
+        link.download = `curva_rotacion_${selectedArea ? selectedArea.toLowerCase().replace(/\\s+/g, "-") : "empresa"}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(url);
+        toast.error("No se pudo convertir la gráfica a imagen.");
+      };
+      image.src = url;
+    } catch {
+      toast.error("No se pudo descargar la gráfica como imagen.");
+    }
+  };
 
   const updateLocalEmployee = (id: number, field: keyof EmployeeDraft, value: string) => {
     setEmployees((current) => current.map((employee) => employee.id === id ? { ...employee, [field]: value } : employee));
@@ -257,6 +308,13 @@ export default function Payroll() {
           </div>
         </div>
 
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Card className="border-l-4 border-l-emerald-500"><CardContent className="pt-5"><p className="text-sm text-slate-600">Número de personal activo</p><p className="mt-1 text-3xl font-bold text-emerald-600">{analyticsLoading ? "—" : analytics?.activeCount ?? 0}</p></CardContent></Card>
+          <Card className="border-l-4 border-l-slate-500"><CardContent className="pt-5"><p className="text-sm text-slate-600">Personal desvinculado histórico</p><p className="mt-1 text-3xl font-bold text-slate-700">{analyticsLoading ? "—" : analytics?.inactiveCount ?? 0}</p></CardContent></Card>
+          <Card className="border-l-4 border-l-blue-500"><CardContent className="pt-5"><div className="flex items-start justify-between gap-2"><div><p className="text-sm text-slate-600">Promedio de desempeño</p><p className="mt-1 text-lg font-semibold text-blue-700">{analytics?.averagePerformance == null ? "Pendiente de evaluación" : `${analytics.averagePerformance}%`}</p></div><Gauge className="h-5 w-5 text-blue-500" /></div></CardContent></Card>
+          <Card className="border-l-4 border-l-violet-500 transition-shadow hover:shadow-md"><CardContent className="flex h-full min-h-24 items-center justify-between gap-3 pt-5"><div><p className="text-sm text-slate-600">Análisis de rotación</p><p className="mt-1 font-semibold text-violet-700">Curva de rotación de personal</p></div><Button onClick={() => setShowRotation(true)} className="shrink-0 gap-2 bg-violet-600 hover:bg-violet-700"><ChartNoAxesCombined className="h-4 w-4" />Ver</Button></CardContent></Card>
+        </div>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
             <div>
@@ -325,6 +383,50 @@ export default function Payroll() {
           <DialogHeader><DialogTitle>Pasar a Personal Pasivo</DialogTitle><DialogDescription>Registra la fecha de desvinculación. El historial del trabajador se conservará en Personal Pasivo.</DialogDescription></DialogHeader>
           <div className="space-y-2"><Label>Fecha de desvinculación</Label><Input type="date" value={terminationDate} onChange={(e) => setTerminationDate(e.target.value)} /></div>
           <DialogFooter><Button variant="outline" onClick={() => setInactiveTarget(null)}>Cancelar</Button><Button onClick={confirmInactive} disabled={inactiveMutation.isPending}>OK</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showRotation} onOpenChange={setShowRotation}>
+        <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Curva de rotación de personal</DialogTitle>
+            <DialogDescription>Desvinculaciones y tasa de rotación mensual de los últimos 12 meses.</DialogDescription>
+          </DialogHeader>
+          <div ref={rotationChartRef} className="space-y-5 rounded-xl bg-white p-2">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="rotation-area">Área analizada</Label>
+                <select id="rotation-area" value={selectedArea} onChange={(event) => setSelectedArea(event.target.value)} className="block h-10 min-w-56 rounded-md border border-slate-300 bg-white px-3 text-sm focus:border-violet-500 focus:outline-none">
+                  <option value="">Toda la empresa</option>
+                  {(analytics?.areas || []).map((area) => <option key={area} value={area}>{area}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-right">
+                <div><p className="text-xs text-slate-500">Desvinculaciones (12 meses)</p><p className="text-2xl font-bold text-slate-800">{analytics?.recentTerminations ?? 0}</p></div>
+                <div><p className="text-xs text-slate-500">Rotación del período</p><p className="text-2xl font-bold text-violet-700">{analytics?.periodRotationRate ?? 0}%</p></div>
+              </div>
+            </div>
+            {analyticsLoading ? <div className="flex h-80 items-center justify-center gap-2 text-slate-600"><Loader2 className="h-5 w-5 animate-spin" />Calculando rotación...</div> : (
+              <>
+                {(analytics?.recentTerminations ?? 0) === 0 && <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Aún no hay desvinculaciones registradas en este período. La curva se actualizará automáticamente cuando se traslade personal a Pasivo.</p>}
+                <div className="h-80 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={analytics?.months || []} margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                      <YAxis yAxisId="left" allowDecimals={false} label={{ value: "Desvinculaciones", angle: -90, position: "insideLeft", style: { fill: "#475569", fontSize: 12 } }} />
+                      <YAxis yAxisId="right" orientation="right" unit="%" label={{ value: "Rotación", angle: 90, position: "insideRight", style: { fill: "#7c3aed", fontSize: 12 } }} />
+                      <Tooltip formatter={(value: number, name: string) => [name === "rotationRate" ? `${value}%` : value, name === "rotationRate" ? "Tasa de rotación" : "Desvinculaciones"]} />
+                      <Legend formatter={(value) => value === "rotationRate" ? "Tasa de rotación" : "Desvinculaciones"} />
+                      <Bar yAxisId="left" dataKey="exits" name="exits" fill="#3b82f6" radius={[5, 5, 0, 0]} />
+                      <Line yAxisId="right" type="monotone" dataKey="rotationRate" name="rotationRate" stroke="#7c3aed" strokeWidth={3} dot={{ r: 4 }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setShowRotation(false)}>Cerrar</Button><Button onClick={downloadRotationChart} className="gap-2"><Download className="h-4 w-4" />Descargar imagen</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

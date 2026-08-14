@@ -151,4 +151,78 @@ export const payrollRouter = router({
       }
       return { success: true, inserted, updated, skippedInactive };
     }),
+
+  analytics: companyProcedure
+    .input(z.object({ companyId: z.number(), area: z.string().optional() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) {
+        return {
+          activeCount: 0,
+          inactiveCount: 0,
+          averagePerformance: null as number | null,
+          areas: [] as string[],
+          recentTerminations: 0,
+          periodRotationRate: 0,
+          months: [] as Array<{ month: string; exits: number; averageHeadcount: number; rotationRate: number }>,
+        };
+      }
+
+      const allEmployees = await db
+        .select()
+        .from(payrollEmployees)
+        .where(eq(payrollEmployees.companyId, input.companyId));
+
+      const areas = Array.from(new Set(allEmployees.map((employee) => employee.area).filter(Boolean))).sort((a, b) => a.localeCompare(b, "es"));
+      const activeCount = allEmployees.filter((employee) => employee.status === "activo").length;
+      const inactiveCount = allEmployees.filter((employee) => employee.status === "pasivo").length;
+      const filteredEmployees = input.area ? allEmployees.filter((employee) => employee.area === input.area) : allEmployees;
+      const asDate = (value: Date | string | null) => value ? new Date(`${String(value).slice(0, 10)}T12:00:00`) : null;
+      const today = new Date();
+      const months: Array<{ month: string; exits: number; averageHeadcount: number; rotationRate: number }> = [];
+
+      for (let offset = 11; offset >= 0; offset--) {
+        const monthStart = new Date(today.getFullYear(), today.getMonth() - offset, 1, 12, 0, 0, 0);
+        const monthEnd = new Date(today.getFullYear(), today.getMonth() - offset + 1, 0, 12, 0, 0, 0);
+        const presentAtStart = filteredEmployees.filter((employee) => {
+          const hired = asDate(employee.hireDate);
+          const terminated = asDate(employee.terminationDate);
+          return hired && hired <= monthStart && (!terminated || terminated >= monthStart);
+        }).length;
+        const presentAtEnd = filteredEmployees.filter((employee) => {
+          const hired = asDate(employee.hireDate);
+          const terminated = asDate(employee.terminationDate);
+          return hired && hired <= monthEnd && (!terminated || terminated > monthEnd);
+        }).length;
+        const exits = filteredEmployees.filter((employee) => {
+          const terminated = asDate(employee.terminationDate);
+          return terminated && terminated >= monthStart && terminated <= monthEnd;
+        }).length;
+        const averageHeadcount = (presentAtStart + presentAtEnd) / 2;
+        const rotationRate = averageHeadcount > 0 ? Number(((exits / averageHeadcount) * 100).toFixed(1)) : 0;
+        months.push({
+          month: new Intl.DateTimeFormat("es-EC", { month: "short", year: "numeric" }).format(monthStart).replace(".", ""),
+          exits,
+          averageHeadcount: Number(averageHeadcount.toFixed(1)),
+          rotationRate,
+        });
+      }
+
+      const recentTerminations = months.reduce((sum, month) => sum + month.exits, 0);
+      const averagePeriodHeadcount = months.length > 0 ? months.reduce((sum, month) => sum + month.averageHeadcount, 0) / months.length : 0;
+      const periodRotationRate = averagePeriodHeadcount > 0
+        ? Number(((recentTerminations / averagePeriodHeadcount) * 100).toFixed(1))
+        : 0;
+
+      return {
+        activeCount,
+        inactiveCount,
+        // Se conectará cuando esté disponible la evaluación de desempeño en Caracterización de Procesos.
+        averagePerformance: null as number | null,
+        areas,
+        recentTerminations,
+        periodRotationRate,
+        months,
+      };
+    }),
 });
