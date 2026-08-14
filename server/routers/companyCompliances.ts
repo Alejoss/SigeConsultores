@@ -48,8 +48,8 @@ export const companyCompliancesRouter = router({
         completedMonths: input.completedMonths ?? null,
         observations: input.observations ?? null,
         evaluationMode: input.evaluationMode ?? "meses",
-        validFrom: input.validFrom || null,
-        validUntil: input.validUntil || null,
+        validFrom: input.validFrom ? new Date(input.validFrom) : null,
+        validUntil: input.validUntil ? new Date(input.validUntil) : null,
       });
       return { success: true };
     }),
@@ -75,10 +75,14 @@ export const companyCompliancesRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("No DB");
-      const { id, ...rest } = input;
+      const { id, validFrom, validUntil, ...rest } = input;
+      const dateFields = {
+        ...(validFrom !== undefined ? { validFrom: validFrom ? new Date(validFrom) : null } : {}),
+        ...(validUntil !== undefined ? { validUntil: validUntil ? new Date(validUntil) : null } : {}),
+      };
       await db
         .update(companyCompliances)
-        .set({ ...rest, updatedAt: new Date() })
+        .set({ ...rest, ...dateFields, updatedAt: new Date() })
         .where(eq(companyCompliances.id, id));
       return { success: true };
     }),

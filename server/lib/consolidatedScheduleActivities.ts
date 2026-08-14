@@ -87,7 +87,7 @@ export async function getConsolidatedScheduleActivities(
     }
   }
 
-  for (const entry of uniqueStakeholders.values()) {
+  for (const entry of Array.from(uniqueStakeholders.values())) {
     const dueDate = new Date(entry.endDate);
     const contentId = createHash("sha256")
       .update(`${entry.stakeholderId}-${entry.actionToTake.trim().toLowerCase().replace(/\s+/g, " ")}`)
