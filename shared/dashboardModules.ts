@@ -16,7 +16,7 @@ export const DASHBOARD_MODULES: DashboardModuleDefinition[] = [
   {
     moduleName: "flowchart",
     path: "/flowchart",
-    defaultTitle: "Flujograma SIGE",
+    defaultTitle: "Flujograma ISGE",
     description: "Visualiza la estructura completa del Sistema Integrado de Gestión",
     icon: "🔄",
     group: "estrategia",
