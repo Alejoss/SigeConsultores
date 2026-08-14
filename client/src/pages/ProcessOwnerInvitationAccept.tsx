@@ -128,7 +128,7 @@ export default function ProcessOwnerInvitationAccept() {
                 <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
                   <li>Inicia sesión en la plataforma con tu email: <strong>{invitationData?.email || "tu email"}</strong></li>
                   <li>Accede a "Mapa de Procesos" para ver tu proceso asignado</li>
-                  <li>Explora los módulos de SIGE disponibles para tu proceso</li>
+                  <li>Explora los módulos de ISGE 360 disponibles para tu proceso</li>
                 </ol>
               </div>
 
@@ -235,7 +235,7 @@ export default function ProcessOwnerInvitationAccept() {
           <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
             <p className="text-sm text-amber-800">
               <strong>¿Qué sucede después?</strong> Una vez aceptes la invitación con tu código personal, deberás iniciar sesión en la plataforma
-              con tu email y este código para acceder a tu proceso específico en "Mapa de Procesos" y a todos los módulos de SIGE.
+              con tu email y este código para acceder a tu proceso específico en "Mapa de Procesos" y a todos los módulos de ISGE 360.
             </p>
           </div>
         </CardContent>

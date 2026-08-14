@@ -704,7 +704,7 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
       doc.setPage(i);
       doc.setFontSize(7);
       doc.setTextColor(160, 160, 160);
-      doc.text(`Página ${i} de ${totalPages}  |  SIGE Platform  |  ${today}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+      doc.text(`Página ${i} de ${totalPages}  |  ISGE 360  |  ${today}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
     }
 
     const fileName = `Control_Documentos_${processLabel.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;

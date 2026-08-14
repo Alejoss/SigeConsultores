@@ -3,6 +3,7 @@ import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { companyTrends, processes, processTacticalObjectives, criticalityMatrix, strategicObjectives, stakeholders, processFODA } from "../../drizzle/schema";
 import { eq, asc } from "drizzle-orm";
+import { calculateCompanyStrategicSnapshot, saveCompanyStrategicSnapshot } from "../lib/strategicSnapshots";
 
 const MONTH_NAMES = [
   "Ene", "Feb", "Mar", "Abr", "May", "Jun",
@@ -63,111 +64,35 @@ export const strategicTrendsRouter = router({
         .orderBy(asc(companyTrends.year), asc(companyTrends.month));
 
       if (rows.length > 0) {
-        const data = rows.map((r) => ({
-          year: r.year,
-          month: r.month,
-          label: `${MONTH_NAMES[r.month - 1]} ${r.year}`,
-          otePercent: parseFloat(r.otePercent as string),
-          otgPercent: parseFloat(r.otgPercent as string),
-          stakeholderPercent: parseFloat(r.stakeholderPercent as string),
-          oteMeta: parseFloat(r.oteMeta as string),
-          otgMeta: parseFloat(r.otgMeta as string),
-          stakeholderMeta: parseFloat(r.stakeholderMeta as string),
-        }));
+        const data = rows.map((r) => {
+          let oePercents: Record<string, number> = {};
+          try { oePercents = JSON.parse((r as any).oePercentsJson || "{}"); } catch { /* skip */ }
+          return {
+            year: r.year,
+            month: r.month,
+            label: `${MONTH_NAMES[r.month - 1]} ${r.year}`,
+            otePercent: parseFloat(r.otePercent as string),
+            otgPercent: parseFloat(r.otgPercent as string),
+            stakeholderPercent: parseFloat(r.stakeholderPercent as string),
+            oteMeta: parseFloat(r.oteMeta as string),
+            otgMeta: parseFloat(r.otgMeta as string),
+            stakeholderMeta: parseFloat(r.stakeholderMeta as string),
+            oePercents,
+          };
+        });
         return { data, hasSavedData: true };
       }
 
-      // Sin datos históricos: calcular snapshot actual
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth() + 1;
-
-      const companyProcesses = await db
-        .select()
-        .from(processes)
-        .where(eq(processes.companyId, input.companyId));
-
-      if (companyProcesses.length === 0) {
-        return { data: [], hasSavedData: false };
-      }
-
-      // Calcular OTE promedio de todos los procesos
-      let totalOte = 0;
-      let totalOteMeta = 0;
-      let totalStakeholder = 0;
-      let processCount = 0;
-      let oteMetaCount = 0;
-
-      for (const proc of companyProcesses) {
-        // OTE
-        const oteRows = await db
-          .select()
-          .from(processTacticalObjectives)
-          .where(eq(processTacticalObjectives.processId, proc.id));
-
-        let procOte = 0;
-        let procOteWeight = 0;
-        let procOteMeta = 0;
-        let procOteMetaWeight = 0;
-        for (const obj of oteRows) {
-          try {
-            const pd = JSON.parse(obj.planningData as string || "{}");
-            const resultKeys = pd.resultKeys || [];
-            for (const rk of resultKeys) {
-              const ponderacion = parseFloat(rk.ponderacion) || 0;
-              const pct = parseFloat(rk.porcentajeAlcanzado) || 0;
-              const meta = parseFloat(rk.meta);
-              procOte += pct * (ponderacion / 100);
-              procOteWeight += ponderacion;
-              // Acumular meta ponderada si está definida
-              if (!isNaN(meta) && ponderacion > 0) {
-                procOteMeta += meta * (ponderacion / 100);
-                procOteMetaWeight += ponderacion;
-              }
-            }
-          } catch { /* skip */ }
-        }
-        if (procOteWeight > 0) {
-          totalOte += Math.max(0, Math.min(100, procOte));
-          processCount++;
-        }
-        if (procOteMetaWeight > 0) {
-          totalOteMeta += Math.max(0, Math.min(100, procOteMeta));
-          oteMetaCount++;
-        }
-
-        // Partes Interesadas
-        const critRows = await db
-          .select()
-          .from(criticalityMatrix)
-          .where(eq(criticalityMatrix.processId, proc.id));
-
-        if (critRows.length > 0) {
-          const implemented = critRows.filter((c: any) => c.implementationStatus === true).length;
-          totalStakeholder += Math.round((implemented / critRows.length) * 100);
-        }
-      }
-
-      const avgOte = processCount > 0 ? Math.round(totalOte / processCount) : 0;
-      // Meta OTE: promedio real de metas de los resultKeys; si no hay metas definidas, usa 100
-      const avgOteMeta = oteMetaCount > 0 ? Math.round(totalOteMeta / oteMetaCount) : 100;
-      const avgStakeholder = companyProcesses.length > 0
-        ? Math.round(totalStakeholder / companyProcesses.length)
-        : 0;
-
-      const snapshot = {
-        year: currentYear,
-        month: currentMonth,
-        label: `${MONTH_NAMES[currentMonth - 1]} ${currentYear}`,
-        otePercent: avgOte,
-        otgPercent: 0, // OTG requiere datos de tareas completadas
-        stakeholderPercent: avgStakeholder,
-        oteMeta: avgOteMeta,
-        otgMeta: 100,
-        stakeholderMeta: 100,
+      // Sin datos históricos: calcular el estado actual. El primer snapshot se guarda
+      // automáticamente desde la vista de Línea de Tiempo para no perder el mes.
+      const snapshot = await calculateCompanyStrategicSnapshot(input.companyId);
+      return {
+        data: [{
+          ...snapshot,
+          label: `${MONTH_NAMES[snapshot.month - 1]} ${snapshot.year}`,
+        }],
+        hasSavedData: false,
       };
-
-      return { data: [snapshot], hasSavedData: false };
     }),
 
   /**
@@ -219,106 +144,20 @@ export const strategicTrendsRouter = router({
     }),
 
   /**
-   * Calcula y guarda automáticamente el snapshot del mes actual
-   * basándose en los datos reales de la empresa.
+   * Calcula y guarda el snapshot del mes actual con el porcentaje de cada OE.
+   * Si el mes ya existe, se actualiza sin crear un registro duplicado.
    */
   snapshotCurrentMonth: companyProcedure
     .input(z.object({ companyId: z.number() }))
     .mutation(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
-
-      const companyProcesses = await db
-        .select()
-        .from(processes)
-        .where(eq(processes.companyId, input.companyId));
-
-      let totalOte = 0;
-      let totalOteMeta = 0;
-      let totalStakeholder = 0;
-      let oteProcessCount = 0;
-      let oteMetaCount = 0;
-
-      for (const proc of companyProcesses) {
-        const oteRows = await db
-          .select()
-          .from(processTacticalObjectives)
-          .where(eq(processTacticalObjectives.processId, proc.id));
-
-        let procOte = 0;
-        let procOteWeight = 0;
-        let procOteMeta = 0;
-        let procOteMetaWeight = 0;
-        for (const obj of oteRows) {
-          try {
-            const pd = JSON.parse(obj.planningData as string || "{}");
-            const resultKeys = pd.resultKeys || [];
-            for (const rk of resultKeys) {
-              const ponderacion = parseFloat(rk.ponderacion) || 0;
-              const pct = parseFloat(rk.porcentajeAlcanzado) || 0;
-              const meta = parseFloat(rk.meta);
-              procOte += pct * (ponderacion / 100);
-              procOteWeight += ponderacion;
-              if (!isNaN(meta) && ponderacion > 0) {
-                procOteMeta += meta * (ponderacion / 100);
-                procOteMetaWeight += ponderacion;
-              }
-            }
-          } catch { /* skip */ }
-        }
-        if (procOteWeight > 0) {
-          totalOte += Math.max(0, Math.min(100, procOte));
-          oteProcessCount++;
-        }
-        if (procOteMetaWeight > 0) {
-          totalOteMeta += Math.max(0, Math.min(100, procOteMeta));
-          oteMetaCount++;
-        }
-
-        const critRows = await db
-          .select()
-          .from(criticalityMatrix)
-          .where(eq(criticalityMatrix.processId, proc.id));
-
-        if (critRows.length > 0) {
-          const implemented = critRows.filter((c: any) => c.implementationStatus === true).length;
-          totalStakeholder += Math.round((implemented / critRows.length) * 100);
-        }
-      }
-
-      const avgOte = oteProcessCount > 0 ? Math.round(totalOte / oteProcessCount) : 0;
-      const avgOteMeta = oteMetaCount > 0 ? Math.round(totalOteMeta / oteMetaCount) : 100;
-      const avgStakeholder = companyProcesses.length > 0
-        ? Math.round(totalStakeholder / companyProcesses.length)
-        : 0;
-
-      await db
-        .insert(companyTrends)
-        .values({
-          companyId: input.companyId,
-          year,
-          month,
-          otePercent: String(avgOte),
-          otgPercent: "0",
-          stakeholderPercent: String(avgStakeholder),
-          oteMeta: String(avgOteMeta),
-          otgMeta: "100",
-          stakeholderMeta: "100",
-        })
-        .onDuplicateKeyUpdate({
-          set: {
-            otePercent: String(avgOte),
-            oteMeta: String(avgOteMeta),
-            stakeholderPercent: String(avgStakeholder),
-            updatedAt: new Date(),
-          },
-        });
-
-      return { success: true, otePercent: avgOte, oteMeta: avgOteMeta, stakeholderPercent: avgStakeholder };
+      const snapshot = await saveCompanyStrategicSnapshot(input.companyId);
+      return {
+        success: true,
+        otePercent: snapshot.otePercent,
+        oteMeta: snapshot.oteMeta,
+        stakeholderPercent: snapshot.stakeholderPercent,
+        oePercents: snapshot.oePercents,
+      };
     }),
 
   /**
@@ -550,6 +389,8 @@ export const strategicTrendsRouter = router({
         const matchingOTE = allOTE.filter((o) => {
           const so = (o.strategicObjective || "").toLowerCase().trim();
           const oel = oeLabel.toLowerCase().trim();
+          // Un OTE sin OE asignado no debe aparecer en todas las columnas ni alterar sus porcentajes.
+          if (!so) return false;
           return so === oel || so.includes(oel.slice(0, 20)) || oel.includes(so.slice(0, 20));
         });
 

@@ -27,5 +27,5 @@ export const ENV = {
   // Brevo transactional API — key from https://app.brevo.com/settings/keys/api
   brevoApiKey: process.env.BREVO_API_KEY ?? "",
   brevoFromEmail: process.env.BREVO_FROM_EMAIL ?? "",
-  brevoFromName: process.env.BREVO_FROM_NAME ?? "SIGE Consultores",
+  brevoFromName: process.env.BREVO_FROM_NAME ?? "ISGE 360",
 };

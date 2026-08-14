@@ -220,7 +220,7 @@ export default function ProcessLeaderDashboard() {
         {/* Note Section */}
         <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-blue-800">
-            <strong>Nota:</strong> Tienes acceso a todos los módulos SIGE de la empresa, pero solo puedes editar tu proceso asignado. Si necesitas acceder a otros procesos, contacta con el Gerente General.
+            <strong>Nota:</strong> Tienes acceso a todos los módulos ISGE 360 de la empresa, pero solo puedes editar tu proceso asignado. Si necesitas acceder a otros procesos, contacta con el Gerente General.
           </p>
         </div>
       </main>

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vista previa — Agenda semanal del proceso</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #edf2f7; color: #1f2937; font-family: Poppins, Arial, sans-serif; }
+    .preview { max-width: 680px; margin: 28px auto 12px; padding: 8px 14px; border: 1px solid #fdba74; border-radius: 8px; background: #fff7ed; color: #9a3412; font-size: 12px; font-weight: 700; text-align: center; }
+    .mail { max-width: 680px; margin: 0 auto 40px; overflow: hidden; background: #fff; border-radius: 14px; box-shadow: 0 12px 30px rgba(0,37,77,.12); }
+    .header { padding: 30px 34px 26px; color: #fff; background: linear-gradient(130deg, #00254d, #1e5a45); }
+    .brand { margin: 0 0 12px; color: #8ed15b; font-size: 12px; font-weight: 800; letter-spacing: 1.2px; }
+    h1 { margin: 0; font-size: 25px; line-height: 1.2; }
+    .header p { margin: 9px 0 0; color: rgba(255,255,255,.86); font-size: 14px; }
+    .content { padding: 30px 34px; }
+    .intro { margin: 0 0 20px; font-size: 15px; line-height: 1.65; }
+    .summary { width: 100%; margin: 18px 0 24px; border-collapse: separate; border-spacing: 10px 0; }
+    .summary td { width: 50%; padding: 15px; border-radius: 9px; background: #edf7f0; }
+    .summary td:last-child { background: #e8f2fb; }
+    .number { display: block; margin-bottom: 4px; color: #0e5134; font-size: 26px; font-weight: 800; }
+    .summary td:last-child .number { color: #00599d; }
+    .label { color: #475569; font-size: 12px; }
+    .section-title { margin: 8px 0 12px; color: #00254d; font-size: 16px; }
+    table.activities { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .activities th { padding: 10px; color: #64748b; border-bottom: 1px solid #cbd5e1; font-size: 11px; letter-spacing: .3px; text-align: left; text-transform: uppercase; }
+    .activities td { padding: 14px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    .task { color: #172033; font-weight: 700; line-height: 1.35; }
+    .muted { color: #64748b; font-size: 12px; }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 99px; font-size: 10px; font-weight: 800; white-space: nowrap; }
+    .ote { color: #92400e; background: #fef3c7; }
+    .stakeholder { color: #5b21b6; background: #ede9fe; }
+    .compliance { color: #0e7490; background: #cffafe; }
+    .days { color: #c2410c; font-weight: 800; white-space: nowrap; }
+    .button { display: inline-block; margin-top: 25px; padding: 13px 20px; border-radius: 8px; color: #fff !important; background: #00599d; font-size: 13px; font-weight: 700; text-decoration: none; }
+    .note { margin-top: 20px; color: #64748b; font-size: 12px; line-height: 1.55; }
+    .footer { padding: 18px 30px; color: #64748b; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 11px; text-align: center; }
+    @media (max-width: 640px) { .preview { margin: 12px; } .mail { margin: 0 12px 24px; } .header, .content { padding: 24px 20px; } .activities th:nth-child(4), .activities td:nth-child(4) { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="preview">VISTA PREVIA LOCAL — datos de ejemplo; este correo no se enviará.</div>
+  <main class="mail">
+    <header class="header">
+      <p class="brand">ISGE 360 · LA ESTRATEGIA HECHA GESTIÓN.</p>
+      <h1>Agenda semanal del proceso</h1>
+      <p>Proceso: <strong>Financiero Administrativo</strong> · Semana del 17 al 23 de agosto de 2026</p>
+    </header>
+    <section class="content">
+      <p class="intro">Hola, <strong>Responsable del Proceso</strong>. Estas son las actividades pendientes de tu <strong>Cronograma Consolidado</strong> que vencen durante los próximos siete días. Revisa su avance y organiza las acciones necesarias.</p>
+      <table class="summary" role="presentation"><tr><td><span class="number">3</span><span class="label">pendientes de la semana</span></td><td><span class="number">1</span><span class="label">con prioridad alta (3 días o menos)</span></td></tr></table>
+      <h2 class="section-title">Actividades próximas a vencer</h2>
+      <table class="activities">
+        <thead><tr><th>Tipo</th><th>Actividad</th><th>Fecha límite</th><th>Avance</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge ote">OTE</span></td><td><div class="task">Actividad del Objetivo Operativo</div><div class="muted">Cronograma Consolidado</div></td><td><span class="days">Faltan 3 días</span><br><span class="muted">20/08/2026</span></td><td>60%</td></tr>
+          <tr><td><span class="badge stakeholder">PARTES INTERESADAS</span></td><td><div class="task">Acción de relacionamiento pendiente</div><div class="muted">Cronograma Consolidado</div></td><td><span class="days">Faltan 5 días</span><br><span class="muted">22/08/2026</span></td><td>40%</td></tr>
+          <tr><td><span class="badge compliance">CUMPLIMIENTO</span></td><td><div class="task">Obligación registrada para el proceso</div><div class="muted">Cronograma Consolidado</div></td><td><span class="days">Faltan 7 días</span><br><span class="muted">24/08/2026</span></td><td>0%</td></tr>
+        </tbody>
+      </table>
+      <a class="button" href="#">Abrir Cronograma Consolidado</a>
+      <p class="note">Recibirás este resumen únicamente cuando existan actividades próximas a vencer en tu proceso.</p>
+    </section>
+    <footer class="footer">ISGE 360 · La estrategia hecha gestión.<br>Mensaje automático; no respondas a este correo.</footer>
+  </main>
+</body>
+</html>

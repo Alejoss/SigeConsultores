@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { APP_LOGO, APP_TITLE } from "@/const";
+import { APP_LOGO, APP_TAGLINE, APP_TITLE } from "@/const";
 
 /**
  * Login nativo sin React state para el formulario.
@@ -133,9 +133,8 @@ export default function LoginSelector() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          {APP_LOGO && <img src={APP_LOGO} alt={APP_TITLE} className="h-12 mx-auto mb-4" />}
-          <h1 className="text-3xl font-bold text-gray-900">{APP_TITLE}</h1>
-          <p className="text-gray-600 mt-2">Sistema Integrado de Gestión Empresarial</p>
+          {APP_LOGO && <img src={APP_LOGO} alt={APP_TITLE} className="w-64 max-w-full h-auto mx-auto mb-4 object-contain" />}
+          <h1 className="sr-only">{APP_TITLE} — {APP_TAGLINE}</h1>
         </div>
 
         <div className="rounded-xl border bg-card text-card-foreground shadow-lg">
@@ -212,7 +211,7 @@ export default function LoginSelector() {
         </div>
 
         <div className="text-center mt-8 text-sm text-gray-600">
-          <p>© 2025 SIGE Consultores. Todos los derechos reservados.</p>
+          <p>© 2026 ISGE 360. La estrategia hecha gestión.</p>
         </div>
       </div>
     </div>

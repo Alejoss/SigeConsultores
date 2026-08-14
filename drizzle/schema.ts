@@ -1484,9 +1484,14 @@ export const companyTrends = mysqlTable("companyTrends", {
   oteMeta: decimal("oteMeta", { precision: 6, scale: 2 }).notNull().default("100"),
   otgMeta: decimal("otgMeta", { precision: 6, scale: 2 }).notNull().default("100"),
   stakeholderMeta: decimal("stakeholderMeta", { precision: 6, scale: 2 }).notNull().default("100"),
+  // JSON: { [oeName: string]: number } — porcentaje de cada OE en este snapshot
+  oePercentsJson: text("oePercentsJson").default("{}" ),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  // Un solo snapshot por empresa y período; los cierres posteriores actualizan el mismo mes.
+  uniqueCompanyTrendPeriod: unique("company_trends_company_year_month").on(table.companyId, table.year, table.month),
+}));
 export type CompanyTrend = typeof companyTrends.$inferSelect;
 export type InsertCompanyTrend = typeof companyTrends.$inferInsert;
 

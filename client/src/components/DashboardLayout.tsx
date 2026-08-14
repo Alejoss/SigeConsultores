@@ -18,7 +18,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
+import { APP_ICON, APP_LOGO, APP_TAGLINE, APP_TITLE, getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { LayoutDashboard, LogOut, PanelLeft, Users, Shield, Settings } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -81,15 +81,13 @@ export default function DashboardLayout({
                 <img
                   src={APP_LOGO}
                   alt={APP_TITLE}
-                  className="h-20 w-20 rounded-xl object-cover shadow"
+                  className="w-72 max-w-full h-auto object-contain"
                 />
               </div>
             </div>
-            <div className="text-center space-y-2">
-              <h1 className="text-2xl font-bold tracking-tight">{APP_TITLE}</h1>
-              <p className="text-sm text-muted-foreground">
-                Sistema Integrado de Gestión Empresarial
-              </p>
+            <div className="sr-only">
+              <h1>{APP_TITLE}</h1>
+              <p>{APP_TAGLINE}</p>
             </div>
           </div>
           <Button
@@ -224,8 +222,8 @@ function DashboardLayoutContent({
               {isCollapsed ? (
                 <div className="relative h-8 w-8 shrink-0 group">
                   <img
-                    src={APP_LOGO}
-                    className="h-8 w-8 rounded-md object-cover ring-1 ring-border"
+                    src={APP_ICON}
+                    className="h-8 w-8 rounded-md object-contain ring-1 ring-border"
                     alt="Logo"
                   />
                   <button
@@ -239,8 +237,8 @@ function DashboardLayoutContent({
                 <>
                   <div className="flex items-center gap-3 min-w-0">
                     <img
-                      src={APP_LOGO}
-                      className="h-8 w-8 rounded-md object-cover ring-1 ring-border shrink-0"
+                      src={APP_ICON}
+                      className="h-8 w-8 rounded-md object-contain ring-1 ring-border shrink-0"
                       alt="Logo"
                     />
                     <span className="font-semibold tracking-tight truncate">

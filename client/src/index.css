@@ -137,7 +137,7 @@
 
 @layer base {
   body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Poppins', sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -146,12 +146,12 @@
   }
 
   .sige-header {
-    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+    background: linear-gradient(135deg, #00254D 0%, #1E5A45 100%);
     color: white;
   }
 
   .sige-card {
-    border-left: 4px solid #1e3a8a;
+    border-left: 4px solid #00254D;
   }
 }
 

@@ -108,9 +108,9 @@ describe("AI Criticality Integration - HITO 4", () => {
       expect(prompt).toContain("Spanish");
     });
 
-    it("Criticality prompt should restrict to SIGE platform", () => {
+    it("Criticality prompt should restrict to ISGE 360 platform", () => {
       const prompt = getModuleSystemPrompt("Criticality");
-      expect(prompt).toContain("SIGE platform");
+      expect(prompt).toContain("ISGE 360 platform");
     });
 
     it("Criticality prompt should provide actionable recommendations", () => {

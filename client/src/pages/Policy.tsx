@@ -44,13 +44,13 @@ Operamos de manera responsable con el medio ambiente y la sociedad.
 Proporcionamos un ambiente de trabajo seguro y saludable para todos nuestros colaboradores.
 
 4. OBJETIVOS ESTRATÉGICOS
-[Aquí se definen los objetivos principales del SIGE]
+[Aquí se definen los objetivos principales del ISGE 360]
 
 5. RESPONSABILIDADES
 [Define las responsabilidades de la alta dirección, gerentes y colaboradores]
 
 6. RECURSOS
-[Describe los recursos asignados para implementar el SIGE]
+[Describe los recursos asignados para implementar el ISGE 360]
 
 7. REVISIÓN Y ACTUALIZACIÓN
 Esta política será revisada anualmente o cuando sea necesario.
@@ -174,7 +174,7 @@ export default function Policy() {
     const element = document.createElement("a");
     const file = new Blob([POLICY_TEMPLATE], { type: "text/plain;charset=utf-8" });
     element.href = URL.createObjectURL(file);
-    element.download = `Plantilla_Politica_SIGE_${companyName.replace(/\s+/g, "_")}.txt`;
+    element.download = `Plantilla_Politica_ISGE 360_${companyName.replace(/\s+/g, "_")}.txt`;
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
@@ -216,7 +216,7 @@ export default function Policy() {
           <div>
             <h1 className="text-3xl font-bold">Política del Sistema Integrado de Gestión</h1>
             <p className="text-slate-600 mt-2">
-              Documenta la política que guía el SIGE de <strong>{companyName}</strong>
+              Documenta la política que guía el ISGE 360 de <strong>{companyName}</strong>
             </p>
           </div>
           <div className="flex gap-2">
@@ -245,7 +245,7 @@ export default function Policy() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Política SIGE</CardTitle>
+            <CardTitle className="text-lg">Política ISGE 360</CardTitle>
             <CardDescription>
               Escribe la política que establece los principios y compromisos de tu empresa
             </CardDescription>

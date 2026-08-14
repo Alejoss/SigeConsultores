@@ -80,7 +80,7 @@ export default function RequestCompanyAccess() {
       <div className="max-w-md mx-auto">
         <Card className="shadow-lg">
           <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
-            <CardTitle>Solicitar Acceso a SIGE</CardTitle>
+            <CardTitle>Solicitar Acceso a ISGE 360</CardTitle>
             <CardDescription className="text-blue-100">
               Completa el formulario para solicitar acceso a la plataforma
             </CardDescription>

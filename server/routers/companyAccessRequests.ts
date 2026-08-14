@@ -47,8 +47,8 @@ export const companyAccessRequestsRouter = router({
 
         // Notify admin
         await notifyOwner({
-          title: "Nueva solicitud de acceso a SIGE",
-          content: `${input.companyName} (${input.contactName}) ha solicitado acceso a la plataforma SIGE. Email: ${input.email}`,
+          title: "Nueva solicitud de acceso a ISGE 360",
+          content: `${input.companyName} (${input.contactName}) ha solicitado acceso a la plataforma ISGE 360. Email: ${input.email}`,
         });
 
         return {

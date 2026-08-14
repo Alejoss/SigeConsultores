@@ -20,7 +20,7 @@ describe("AI Infrastructure - HITO 1", () => {
       const prompt = getSystemPrompt();
       expect(prompt).toBeDefined();
       expect(prompt.length).toBeGreaterThan(0);
-      expect(prompt).toContain("SIGE");
+      expect(prompt).toContain("ISGE 360");
       expect(prompt).toContain("Spanish");
     });
 
@@ -31,13 +31,13 @@ describe("AI Infrastructure - HITO 1", () => {
         const prompt = getModuleSystemPrompt(module);
         expect(prompt).toBeDefined();
         expect(prompt.length).toBeGreaterThan(0);
-        expect(prompt).toContain(module);
+        expect(prompt).toContain(module === "SIGE" ? "ISGE 360" : module);
       });
     });
 
-    it("SIGE prompt should mention Flujograma", () => {
+    it("ISGE 360 prompt should mention Flujograma", () => {
       const prompt = getModuleSystemPrompt("SIGE");
-      expect(prompt).toContain("Flujograma SIGE");
+      expect(prompt).toContain("Flujograma ISGE");
       expect(prompt).toContain("5 levels");
     });
 
@@ -61,10 +61,10 @@ describe("AI Infrastructure - HITO 1", () => {
       expect(prompt).toContain("CANNOT access");
     });
 
-    it("system prompt should restrict to SIGE platform only", () => {
+    it("system prompt should restrict to ISGE 360 platform only", () => {
       const prompt = getSystemPrompt();
       expect(prompt).toContain("ONLY provide advice");
-      expect(prompt).toContain("SIGE platform");
+      expect(prompt).toContain("ISGE 360 platform");
     });
 
     it("system prompt should be in Spanish", () => {

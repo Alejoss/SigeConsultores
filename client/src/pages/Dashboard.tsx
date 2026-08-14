@@ -173,7 +173,7 @@ export default function Dashboard() {
 
         {selectedCompany && companyIdNum > 0 && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Módulos de SIGE</h2>
+            <h2 className="text-2xl font-bold">Módulos de ISGE 360</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {MODULE_GROUPS.map((group) => {
                 const AXIS_STYLES: Record<string, { card: string; btn: string; icon_bg: string }> = {

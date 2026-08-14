@@ -112,7 +112,7 @@ export default function SetupManagerPassword() {
         <CardHeader className="space-y-2">
           <CardTitle className="text-2xl">Crear Contraseña</CardTitle>
           <CardDescription>
-            Configura tu contraseña para acceder a la plataforma SIGE
+            Configura tu contraseña para acceder a la plataforma ISGE 360
           </CardDescription>
         </CardHeader>
         <CardContent>

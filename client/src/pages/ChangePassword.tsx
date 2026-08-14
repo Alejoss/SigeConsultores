@@ -96,7 +96,7 @@ export default function ChangePassword() {
         <CardHeader className="space-y-2">
           <CardTitle className="text-2xl">Cambiar Contraseña</CardTitle>
           <CardDescription>
-            Actualiza tu contraseña de acceso a la plataforma SIGE
+            Actualiza tu contraseña de acceso a la plataforma ISGE 360
           </CardDescription>
         </CardHeader>
         <CardContent>
