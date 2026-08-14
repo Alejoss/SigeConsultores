@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { and, asc, eq } from "drizzle-orm";
-import { payrollEmployees } from "../../drizzle/schema";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import { participantWorkerAssignments, participantWorkerKpis, participantWorkerKpiValues, payrollEmployees } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { companyProcedure, router } from "../_core/trpc";
 
@@ -15,18 +15,77 @@ const employeeInput = z.object({
 
 const normalizeIdentityCard = (identityCard: string) => identityCard.replace(/[^0-9A-Za-z]/g, "").toUpperCase();
 const toDate = (value: string) => new Date(`${value.slice(0, 10)}T12:00:00`);
+const toNumber = (value: unknown) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+};
+const average = (values: number[]) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+
+/**
+ * Calcula el desempeño anual de cada trabajador con base en los KPI que tiene
+ * registrados en Participantes. Un KPI se promedia únicamente entre los meses
+ * que ya tienen resultado, para no castigar meses todavía pendientes.
+ */
+const getEmployeePerformance = async (
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  employeeIds: number[],
+  year: number,
+) => {
+  const performanceByEmployee = new Map<number, number>();
+  if (!employeeIds.length) return performanceByEmployee;
+
+  const assignments = await db.select().from(participantWorkerAssignments)
+    .where(inArray(participantWorkerAssignments.payrollEmployeeId, employeeIds));
+  const assignmentIds = assignments.map((assignment) => assignment.id);
+  if (!assignmentIds.length) return performanceByEmployee;
+
+  const kpis = await db.select().from(participantWorkerKpis)
+    .where(and(inArray(participantWorkerKpis.participantWorkerAssignmentId, assignmentIds), eq(participantWorkerKpis.year, year)));
+  const kpiIds = kpis.map((kpi) => kpi.id);
+  if (!kpiIds.length) return performanceByEmployee;
+
+  const values = await db.select().from(participantWorkerKpiValues)
+    .where(inArray(participantWorkerKpiValues.participantWorkerKpiId, kpiIds));
+  const valuesByKpi = new Map<number, number[]>();
+  values.forEach((value) => {
+    const current = valuesByKpi.get(value.participantWorkerKpiId) || [];
+    current.push(toNumber(value.actualValue));
+    valuesByKpi.set(value.participantWorkerKpiId, current);
+  });
+  const employeeByAssignment = new Map(assignments.map((assignment) => [assignment.id, assignment.payrollEmployeeId]));
+  const scoresByEmployee = new Map<number, number[]>();
+  kpis.forEach((kpi) => {
+    const target = toNumber(kpi.monthlyTarget);
+    const valuesForKpi = valuesByKpi.get(kpi.id) || [];
+    const score = target > 0 && valuesForKpi.length ? average(valuesForKpi.map((value) => (value / target) * 100)) : null;
+    const employeeId = employeeByAssignment.get(kpi.participantWorkerAssignmentId);
+    if (employeeId === undefined || score === null) return;
+    const current = scoresByEmployee.get(employeeId) || [];
+    current.push(score);
+    scoresByEmployee.set(employeeId, current);
+  });
+  scoresByEmployee.forEach((scores, employeeId) => {
+    const score = average(scores);
+    if (score !== null) performanceByEmployee.set(employeeId, Number(score.toFixed(1)));
+  });
+  return performanceByEmployee;
+};
 
 export const payrollRouter = router({
   list: companyProcedure
-    .input(z.object({ companyId: z.number(), status: z.enum(["activo", "pasivo"]).default("activo") }))
+    .input(z.object({ companyId: z.number(), status: z.enum(["activo", "pasivo"]).default("activo"), performanceYear: z.number().int().min(2020).max(2100).optional() }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
-      return db
+      const employees = await db
         .select()
         .from(payrollEmployees)
         .where(and(eq(payrollEmployees.companyId, input.companyId), eq(payrollEmployees.status, input.status)))
         .orderBy(asc(payrollEmployees.fullName));
+      const performanceByEmployee = input.status === "activo"
+        ? await getEmployeePerformance(db, employees.map((employee) => employee.id), input.performanceYear ?? new Date().getFullYear())
+        : new Map<number, number>();
+      return employees.map((employee) => ({ ...employee, performance: performanceByEmployee.get(employee.id) ?? null }));
     }),
 
   create: companyProcedure
@@ -153,7 +212,7 @@ export const payrollRouter = router({
     }),
 
   analytics: companyProcedure
-    .input(z.object({ companyId: z.number(), area: z.string().optional() }))
+    .input(z.object({ companyId: z.number(), area: z.string().optional(), performanceYear: z.number().int().min(2020).max(2100).optional() }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) {
@@ -177,6 +236,15 @@ export const payrollRouter = router({
       const activeCount = allEmployees.filter((employee) => employee.status === "activo").length;
       const inactiveCount = allEmployees.filter((employee) => employee.status === "pasivo").length;
       const filteredEmployees = input.area ? allEmployees.filter((employee) => employee.area === input.area) : allEmployees;
+      const activeEmployeesForPerformance = filteredEmployees.filter((employee) => employee.status === "activo");
+      const performanceByEmployee = await getEmployeePerformance(
+        db,
+        activeEmployeesForPerformance.map((employee) => employee.id),
+        input.performanceYear ?? new Date().getFullYear(),
+      );
+      const evaluatedPerformances = activeEmployeesForPerformance
+        .map((employee) => performanceByEmployee.get(employee.id))
+        .filter((performance): performance is number => performance !== undefined);
       // MySQL devuelve los campos DATE como objetos Date; convertirlos con String(Date)
       // produce valores como "Wed Jul 15" que no son fechas válidas. Normalizamos ambos formatos.
       const asDate = (value: Date | string | null) => {
@@ -229,8 +297,7 @@ export const payrollRouter = router({
       return {
         activeCount,
         inactiveCount,
-        // Se conectará cuando esté disponible la evaluación de desempeño en Caracterización de Procesos.
-        averagePerformance: null as number | null,
+        averagePerformance: average(evaluatedPerformances) === null ? null : Number(average(evaluatedPerformances)!.toFixed(1)),
         areas,
         recentTerminations,
         periodRotationRate,

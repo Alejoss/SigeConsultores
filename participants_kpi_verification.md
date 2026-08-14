@@ -10,3 +10,4 @@ Verificación local de la segunda etapa de Participantes (2026-08-14):
 - Objetivo, Responsabilidades y Autoridad están plegados de forma predeterminada con el control «Ver detalles del cargo» y su contenido persistido no fue modificado.
 - Build, TypeScript y la suite de 542 pruebas finalizaron correctamente antes de esta verificación.
 - Ajuste visual posterior: el bloque individual de cada trabajador usa un fondo celeste definido con borde celeste, mientras sus KPI mantienen un panel blanco translúcido. La separación visual se verificó con FREILE CHIRIBOGA ANA MARIA y su KPI mensual, sin modificar los valores existentes.
+- Integración de Nómina: la columna Desempeño y el promedio superior ahora toman los KPI de Participantes del año actual. Se verificó por interfaz y API que FREILE CHIRIBOGA ANA MARIA (C.I. 0602904732) muestra 72.2, idéntico a su cálculo de Participantes para 2026.

@@ -24,6 +24,7 @@ type Employee = {
   position: string;
   status: "activo" | "pasivo";
   terminationDate: string | Date | null;
+  performance?: number | null;
 };
 
 type EmployeeDraft = {
@@ -33,6 +34,8 @@ type EmployeeDraft = {
   area: string;
   position: string;
 };
+
+const formatPerformance = (performance: number | null | undefined) => performance == null ? "Pendiente" : `${performance.toFixed(1)}%`;
 
 const EMPTY_EMPLOYEE: EmployeeDraft = {
   fullName: "",
@@ -69,6 +72,7 @@ const excelDateToIso = (value: unknown): string => {
 export default function Payroll() {
   const [, setLocation] = useLocation();
   const companyId = useMemo(() => getCompanyIdFromSession() || 0, []);
+  const performanceYear = useMemo(() => new Date().getFullYear(), []);
   const utils = trpc.useUtils();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const rotationChartRef = useRef<HTMLDivElement>(null);
@@ -82,12 +86,12 @@ export default function Payroll() {
   const [selectedArea, setSelectedArea] = useState("");
 
   const { data, isLoading } = trpc.payroll.list.useQuery(
-    { companyId, status: "activo" },
+    { companyId, status: "activo", performanceYear },
     { enabled: companyId > 0 },
   );
 
   const { data: analytics, isLoading: analyticsLoading } = trpc.payroll.analytics.useQuery(
-    { companyId, area: selectedArea || undefined },
+    { companyId, area: selectedArea || undefined, performanceYear },
     { enabled: companyId > 0 },
   );
 
@@ -96,9 +100,9 @@ export default function Payroll() {
   }, [data]);
 
   const refresh = async () => {
-    await utils.payroll.list.invalidate({ companyId, status: "activo" });
+    await utils.payroll.list.invalidate({ companyId, status: "activo", performanceYear });
     await utils.payroll.list.invalidate({ companyId, status: "pasivo" });
-    await utils.payroll.analytics.invalidate({ companyId, area: selectedArea || undefined });
+    await utils.payroll.analytics.invalidate({ companyId, area: selectedArea || undefined, performanceYear });
   };
 
   const createMutation = trpc.payroll.create.useMutation({ onSuccess: refresh });
@@ -297,7 +301,7 @@ export default function Payroll() {
               <div className="rounded-xl bg-emerald-100 p-3 text-emerald-700"><UsersRound className="h-7 w-7" /></div>
               <div>
                 <h1 className="text-3xl font-bold text-slate-900">Nómina</h1>
-                <p className="mt-1 text-slate-600">Administra el personal activo de la empresa. El desempeño se integrará automáticamente en la siguiente etapa.</p>
+                <p className="mt-1 text-slate-600">Administra el personal activo de la empresa. El desempeño se actualiza automáticamente desde los KPI registrados en Participantes.</p>
               </div>
             </div>
           </div>
@@ -357,7 +361,7 @@ export default function Payroll() {
                         <td className="px-3 py-2 font-medium text-slate-700 whitespace-nowrap">{formatPayrollTenure(employee.hireDate)}</td>
                         <td className="px-3 py-2"><Input className="min-w-44" value={employee.area} onChange={(e) => updateLocalEmployee(employee.id, "area", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
                         <td className="px-3 py-2"><Input className="min-w-52" value={employee.position} onChange={(e) => updateLocalEmployee(employee.id, "position", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
-                        <td className="px-3 py-2 text-center text-slate-400">—</td>
+                        <td className="px-3 py-2 text-center">{employee.performance == null ? <span className="text-xs font-medium text-slate-400">Pendiente</span> : <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700">{formatPerformance(employee.performance)}</span>}</td>
                         <td className="px-3 py-2"><Button variant="outline" size="sm" onClick={() => { setInactiveTarget(employee); setTerminationDate(new Date().toISOString().slice(0, 10)); }}>Pasa a Pasivo</Button></td>
                       </tr>
                     ))}
