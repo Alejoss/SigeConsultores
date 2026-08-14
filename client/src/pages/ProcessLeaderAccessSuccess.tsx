@@ -75,7 +75,7 @@ export default function ProcessLeaderAccessSuccess() {
               <CheckCircle2 className="h-8 w-8 text-green-600" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-center">¡Bienvenido a la plataforma SIGE!</CardTitle>
+          <CardTitle className="text-2xl text-center">¡Bienvenido a la plataforma ISGE 360!</CardTitle>
           <CardDescription className="text-center">
             Tu cuenta ha sido creada exitosamente
           </CardDescription>

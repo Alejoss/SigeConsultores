@@ -207,7 +207,7 @@ export default function AdminJefes() {
             • Solo pueden acceder a su proceso específico en "Mapa de Procesos", no a otros procesos de la empresa
           </p>
           <p>
-            • Tienen acceso a todos los módulos de SIGE (Indicadores, Riesgos, Cumplimientos, etc.) para su proceso
+            • Tienen acceso a todos los módulos de ISGE 360 (Indicadores, Riesgos, Cumplimientos, etc.) para su proceso
           </p>
           <p>
             • Pueden compartir el link de acceso con sus colaboradores, quienes tendrán el mismo nivel de acceso

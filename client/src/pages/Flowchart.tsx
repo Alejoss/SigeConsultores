@@ -30,11 +30,11 @@ export default function Flowchart() {
     try {
       const response = await aiQueryMutation.mutateAsync({
         companyId,
-        moduleType: "SIGE",
+        moduleType: "ISGE 360",
         query,
         contextData: {
-          moduleName: "Flujograma SIGE",
-          description: "Usuario consultando sobre el Flujograma SIGE y sus módulos",
+          moduleName: "Flujograma ISGE 360",
+          description: "Usuario consultando sobre el Flujograma ISGE 360 y sus módulos",
         },
       });
       return response.response;
@@ -47,7 +47,7 @@ export default function Flowchart() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Flujograma SIGE</h1>
+          <h1 className="text-3xl font-bold">Flujograma ISGE 360</h1>
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -71,7 +71,7 @@ export default function Flowchart() {
           <div className="lg:col-span-2 bg-white rounded-lg shadow-lg p-6 overflow-auto">
             <img
               src="/flujograma-sige.png"
-              alt="Flujograma SIGE"
+              alt="Flujograma ISGE 360"
               className="w-full h-auto"
             />
           </div>
@@ -80,8 +80,8 @@ export default function Flowchart() {
           {showAIChat && (
             <div className="lg:col-span-1">
               <AIChatPanel
-                title="Asesor SIGE"
-                placeholder="¿Qué quieres saber del Flujograma SIGE?"
+                title="Asesor ISGE 360"
+                placeholder="¿Qué quieres saber del Flujograma ISGE 360?"
                 onSendMessage={handleAIQuery}
                 onClose={() => setShowAIChat(false)}
                 isLoading={aiQueryMutation.isPending}

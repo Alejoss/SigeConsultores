@@ -210,7 +210,7 @@ function buildEmailHtml(
 <body style="font-family:Arial,sans-serif;background:#f8fafc;margin:0;padding:20px;">
   <div style="max-width:640px;margin:0 auto;">
     <div style="background:linear-gradient(135deg,#1e3a8a,#1e40af);color:white;padding:24px;border-radius:8px 8px 0 0;">
-      <h1 style="margin:0;font-size:20px;">🔔 Alerta de Cronograma — SIGE</h1>
+      <h1 style="margin:0;font-size:20px;">🔔 Alerta de Cronograma — ISGE 360</h1>
       <p style="margin:6px 0 0;opacity:.85;font-size:14px;">${companyName}</p>
     </div>
     <div style="background:white;padding:24px;border:1px solid #e5e7eb;border-top:none;">
@@ -219,10 +219,10 @@ function buildEmailHtml(
       <table style="width:100%;border-collapse:collapse;margin:16px 0;">
         <tbody>${rows}</tbody>
       </table>
-      <p style="color:#6b7280;font-size:13px;">Este correo se envía automáticamente cada lunes. Para gestionar las actividades, ingresa a la plataforma SIGE.</p>
+      <p style="color:#6b7280;font-size:13px;">Este correo se envía automáticamente cada lunes. Para gestionar las actividades, ingresa a la plataforma ISGE 360.</p>
     </div>
     <div style="background:#f3f4f6;padding:12px;text-align:center;font-size:12px;color:#9ca3af;border-radius:0 0 8px 8px;">
-      © 2026 SIGE — Sistema Integrado de Gestión Empresarial. Mensaje automático.
+      © 2026 ISGE 360 — La estrategia hecha gestión. Mensaje automático.
     </div>
   </div>
 </body>

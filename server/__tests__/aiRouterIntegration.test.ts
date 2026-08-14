@@ -14,9 +14,9 @@ describe("AI Router Integration - HITO 2", () => {
       expect(prompt.length).toBeGreaterThan(0);
     });
 
-    it("SIGE prompt should mention Flujograma", () => {
+    it("ISGE 360 prompt should mention Flujograma", () => {
       const prompt = getModuleSystemPrompt("SIGE");
-      expect(prompt).toContain("Flujograma SIGE");
+      expect(prompt).toContain("Flujograma ISGE 360");
     });
 
     it("SIGE prompt should mention 5 levels", () => {
@@ -53,11 +53,11 @@ describe("AI Router Integration - HITO 2", () => {
       });
     });
 
-    it("all module prompts should restrict to SIGE platform", () => {
+    it("all module prompts should restrict to ISGE 360 platform", () => {
       const modules = ["SIGE", "FODA", "Criticality", "Objectives", "General"] as const;
       modules.forEach((module) => {
         const prompt = getModuleSystemPrompt(module);
-        expect(prompt).toContain("SIGE");
+        expect(prompt).toContain("ISGE 360");
       });
     });
   });

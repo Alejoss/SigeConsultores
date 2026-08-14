@@ -173,7 +173,7 @@ export default function ManagerAccess() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle>Aceptar Invitación de Gerente</CardTitle>
-          <CardDescription>Completa tu registro en la plataforma SIGE</CardDescription>
+          <CardDescription>Completa tu registro en la plataforma ISGE 360</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAccept} className="space-y-4">

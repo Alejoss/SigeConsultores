@@ -193,10 +193,10 @@ export default function ConsolidatedSchedule() {
     const lines: string[] = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//SIGE Consultores//Cronograma Consolidado//ES',
+      'PRODID:-//ISGE 360//Cronograma Consolidado//ES',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
-      'X-WR-CALNAME:Cronograma SIGE',
+      'X-WR-CALNAME:Cronograma ISGE 360',
       'X-WR-TIMEZONE:America/Bogota',
     ];
 

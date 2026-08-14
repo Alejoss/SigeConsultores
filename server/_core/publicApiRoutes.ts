@@ -52,7 +52,7 @@ export function registerPublicApiRoutes(app: Express) {
       res.setHeader("Content-Type", "application/json; charset=utf-8");
 
       return res.json({
-        fuente: "SIGE Platform — Tendencias Estratégicas",
+        fuente: "ISGE 360 — Tendencias Estratégicas",
         empresa_id: companyId,
         total_registros: data.length,
         ultima_actualizacion: new Date().toISOString(),

@@ -106,7 +106,7 @@ export default function SetupProcessLeaderPassword() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2">
           <CardTitle className="text-2xl">Crear contraseña</CardTitle>
-          <CardDescription>Configura tu acceso como jefe de proceso en SIGE</CardDescription>
+          <CardDescription>Configura tu acceso como jefe de proceso en ISGE 360</CardDescription>
         </CardHeader>
         <CardContent>
           {success ? (

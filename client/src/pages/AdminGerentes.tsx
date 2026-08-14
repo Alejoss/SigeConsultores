@@ -178,7 +178,7 @@ export default function AdminGerentes() {
             • Desde ese panel, pueden invitar Jefes de Proceso por correo con enlace para crear su contraseña
           </p>
           <p>
-            • Los Dueños de Proceso solo pueden acceder a los módulos de SIGE y a su proceso específico en "Mapa de
+            • Los Dueños de Proceso solo pueden acceder a los módulos de ISGE 360 y a su proceso específico en "Mapa de
             Procesos"
           </p>
         </CardContent>

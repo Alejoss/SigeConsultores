@@ -175,7 +175,7 @@ export default function RequestCompanyAccessProtected() {
           <CardHeader>
             <CardTitle>Solicitar Acceso a la Plataforma</CardTitle>
             <CardDescription>
-              Completa el formulario para solicitar acceso a SIGE
+              Completa el formulario para solicitar acceso a ISGE 360
             </CardDescription>
           </CardHeader>
           <CardContent>

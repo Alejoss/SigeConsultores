@@ -284,14 +284,14 @@ export function sendManagerAccessInvitationEmail(
       <body>
         <div class="container">
           <div class="header">
-            <h1>Invitación a SIGE</h1>
-            <p>Sistema Integrado de Gestión Empresarial</p>
+            <h1>Invitación a ISGE 360</h1>
+            <p>La estrategia hecha gestión.</p>
           </div>
           
           <div class="content">
             <p>Hola,</p>
             
-            <p>Ha sido invitado a ser Gerente de la empresa <strong>${companyName}</strong> en la plataforma SIGE.</p>
+            <p>Ha sido invitado a ser Gerente de la empresa <strong>${companyName}</strong> en la plataforma ISGE 360.</p>
             
             <div class="info-box">
               <strong>Próximos pasos:</strong><br>
@@ -325,11 +325,11 @@ export function sendManagerAccessInvitationEmail(
             <p>Si tiene preguntas o necesita asistencia, contacte a su administrador.</p>
             
             <p>Saludos,<br>
-            El equipo de SIGE</p>
+            El equipo de ISGE 360</p>
           </div>
           
           <div class="footer">
-            <p>&copy; 2026 SIGE - Sistema Integrado de Gestión Empresarial</p>
+            <p>&copy; 2026 ISGE 360 - La estrategia hecha gestión.</p>
             <p>Este es un mensaje automático. Por favor, no responda a este correo.</p>
           </div>
         </div>
@@ -338,11 +338,11 @@ export function sendManagerAccessInvitationEmail(
   `;
 
   const textContent = `
-Invitación a SIGE - Sistema Integrado de Gestión Empresarial
+Invitación a ISGE 360 - La estrategia hecha gestión.
 
 Hola,
 
-Ha sido invitado a ser Gerente de la empresa ${companyName} en la plataforma SIGE.
+Ha sido invitado a ser Gerente de la empresa ${companyName} en la plataforma ISGE 360.
 
 Para aceptar esta invitación, abra el siguiente enlace en su navegador:
 ${invitationUrl}
@@ -351,13 +351,13 @@ Este enlace expirará en ${expirationDays} días.
 
 Si tiene preguntas, contacte a su administrador.
 
-© 2026 SIGE - Sistema Integrado de Gestión Empresarial
+© 2026 ISGE 360 - La estrategia hecha gestión.
   `;
 
   // Send email in background without waiting
   sendEmail({
     to: managerEmail,
-    subject: `Invitación a SIGE - ${companyName}`,
+    subject: `Invitación a ISGE 360 - ${companyName}`,
     htmlContent,
     textContent,
   });
@@ -395,14 +395,14 @@ export function sendManagerAccessConfirmationEmail(
       <body>
         <div class="container">
           <div class="header">
-            <h1>¡Bienvenido a SIGE!</h1>
-            <p>Sistema Integrado de Gestión Empresarial</p>
+            <h1>¡Bienvenido a ISGE 360!</h1>
+            <p>La estrategia hecha gestión.</p>
           </div>
           
           <div class="content">
             <p>Hola,</p>
             
-            <p>Su invitación ha sido <strong>aceptada exitosamente</strong>. Ya puede acceder a la plataforma SIGE como Gerente de <strong>${companyName}</strong>.</p>
+            <p>Su invitación ha sido <strong>aceptada exitosamente</strong>. Ya puede acceder a la plataforma ISGE 360 como Gerente de <strong>${companyName}</strong>.</p>
             
             <div class="info-box">
               <strong>✓ Acceso Confirmado</strong><br>
@@ -423,12 +423,12 @@ export function sendManagerAccessConfirmationEmail(
             
             <p><strong>Como Gerente, podrá:</strong></p>
             <ul>
-              <li>Acceder a todos los módulos SIGE de la empresa</li>
+              <li>Acceder a todos los módulos ISGE 360 de la empresa</li>
               <li>Gestionar Jefes de Proceso</li>
               <li>Monitorear procesos y objetivos</li>
               <li>Generar reportes y análisis</li>
               <li>Visualizar el FODA de la empresa</li>
-              <li>Acceder al Flujograma SIGE</li>
+              <li>Acceder al Flujograma ISGE 360</li>
             </ul>
             
             <div class="info-box">
@@ -438,11 +438,11 @@ export function sendManagerAccessConfirmationEmail(
             <p>Si tiene preguntas o necesita asistencia, contacte a su administrador.</p>
             
             <p>Saludos,<br>
-            El equipo de SIGE</p>
+            El equipo de ISGE 360</p>
           </div>
           
           <div class="footer">
-            <p>&copy; 2026 SIGE - Sistema Integrado de Gestión Empresarial</p>
+            <p>&copy; 2026 ISGE 360 - La estrategia hecha gestión.</p>
             <p>Este es un mensaje automático. Por favor, no responda a este correo.</p>
           </div>
         </div>
@@ -451,11 +451,11 @@ export function sendManagerAccessConfirmationEmail(
   `;
 
   const textContent = `
-Bienvenido a SIGE - Sistema Integrado de Gestión Empresarial
+Bienvenido a ISGE 360 - La estrategia hecha gestión.
 
 Hola,
 
-Su invitación ha sido aceptada exitosamente. Ya puede acceder a la plataforma SIGE como Gerente de ${companyName}.
+Su invitación ha sido aceptada exitosamente. Ya puede acceder a la plataforma ISGE 360 como Gerente de ${companyName}.
 
 Para acceder a la plataforma, abra el siguiente enlace en su navegador:
 ${loginUrl}
@@ -468,7 +468,7 @@ Guarde este email para futuras referencias.
 
 Si tiene preguntas, contacte a su administrador.
 
-© 2026 SIGE - Sistema Integrado de Gestión Empresarial
+© 2026 ISGE 360 - La estrategia hecha gestión.
   `;
 
   console.log(`[ManagerAccessConfirmation] Attempting to send confirmation email to ${managerEmail}`);
@@ -478,7 +478,7 @@ Si tiene preguntas, contacte a su administrador.
   // Send email in background without waiting
   sendEmail({
     to: managerEmail,
-    subject: `Bienvenido a SIGE - ${companyName}`,
+    subject: `Bienvenido a ISGE 360 - ${companyName}`,
     htmlContent,
     textContent,
   });
@@ -518,8 +518,8 @@ export function sendProcessLeaderAccessConfirmationEmail(
       <body>
         <div class="container">
           <div class="header">
-            <h1>¡Bienvenido a SIGE!</h1>
-            <p>Sistema Integrado de Gestión Empresarial</p>
+            <h1>¡Bienvenido a ISGE 360!</h1>
+            <p>La estrategia hecha gestión.</p>
           </div>
           <div class="content">
             <p>Hola <strong>${leaderName}</strong>,</p>
@@ -537,10 +537,10 @@ export function sendProcessLeaderAccessConfirmationEmail(
               <strong>Correo:</strong> ${leaderEmail}<br>
               <strong>Contraseña:</strong> La que creó al aceptar la invitación
             </div>
-            <p>Saludos,<br>El equipo de SIGE</p>
+            <p>Saludos,<br>El equipo de ISGE 360</p>
           </div>
           <div class="footer">
-            <p>&copy; 2026 SIGE - Sistema Integrado de Gestión Empresarial</p>
+            <p>&copy; 2026 ISGE 360 - La estrategia hecha gestión.</p>
           </div>
         </div>
       </body>
@@ -548,7 +548,7 @@ export function sendProcessLeaderAccessConfirmationEmail(
   `;
 
   const textContent = `
-Bienvenido a SIGE
+Bienvenido a ISGE 360
 
 Hola ${leaderName},
 
@@ -558,12 +558,12 @@ Inicie sesión en: ${loginUrl}
 Correo: ${leaderEmail}
 Contraseña: la que creó al aceptar la invitación
 
-© 2026 SIGE
+© 2026 ISGE 360
   `;
 
   sendEmail({
     to: leaderEmail,
-    subject: `Bienvenido a SIGE - ${companyName}`,
+    subject: `Bienvenido a ISGE 360 - ${companyName}`,
     htmlContent,
     textContent,
   });
@@ -603,13 +603,13 @@ export function sendProcessLeaderInvitationEmail(
         <div class="container">
           <div class="header">
             <h1>Invitación - Jefe de Proceso</h1>
-            <p>Plataforma SIGE</p>
+            <p>Plataforma ISGE 360</p>
           </div>
           
           <div class="content">
             <p>Hola <strong>${leaderName}</strong>,</p>
             
-            <p>Ha sido invitado a ser <strong>Jefe del Proceso "${processName}"</strong> en la empresa <strong>${companyName}</strong> en la plataforma SIGE.</p>
+            <p>Ha sido invitado a ser <strong>Jefe del Proceso "${processName}"</strong> en la empresa <strong>${companyName}</strong> en la plataforma ISGE 360.</p>
             
             <div class="info-box">
               <strong>Próximos pasos:</strong><br>
@@ -642,11 +642,11 @@ export function sendProcessLeaderInvitationEmail(
             <p>Si tiene preguntas o necesita asistencia, contacte a su administrador.</p>
             
             <p>Saludos,<br>
-            El equipo de SIGE</p>
+            El equipo de ISGE 360</p>
           </div>
           
           <div class="footer">
-            <p>&copy; 2026 SIGE - Sistema Integrado de Gestión Empresarial</p>
+            <p>&copy; 2026 ISGE 360 - La estrategia hecha gestión.</p>
             <p>Este es un mensaje automático. Por favor, no responda a este correo.</p>
           </div>
         </div>
@@ -655,11 +655,11 @@ export function sendProcessLeaderInvitationEmail(
   `;
 
   const textContent = `
-Invitación - Jefe de Proceso - Plataforma SIGE
+Invitación - Jefe de Proceso - Plataforma ISGE 360
 
 Hola ${leaderName},
 
-Ha sido invitado a ser Jefe del Proceso "${processName}" en la empresa ${companyName} en la plataforma SIGE.
+Ha sido invitado a ser Jefe del Proceso "${processName}" en la empresa ${companyName} en la plataforma ISGE 360.
 
 Para crear su contraseña y acceder, abra el siguiente enlace en su navegador:
 ${setupUrl}
@@ -668,7 +668,7 @@ Este enlace expirará en 7 días.
 
 Si tiene preguntas, contacte a su administrador.
 
-© 2026 SIGE - Sistema Integrado de Gestión Empresarial
+© 2026 ISGE 360 - La estrategia hecha gestión.
   `;
 
   console.log("[ProcessLeaderInvitation] Queuing invitation email", {
@@ -718,7 +718,7 @@ export async function sendAccessInvitationEmail(
         <div class="container">
           <div class="header">
             <h1>Acceso Confirmado</h1>
-            <p>Plataforma SIGE</p>
+            <p>Plataforma ISGE 360</p>
           </div>
           
           <div class="content">
@@ -739,11 +739,11 @@ export async function sendAccessInvitationEmail(
             </p>
             
             <p>Saludos,<br>
-            El equipo de SIGE</p>
+            El equipo de ISGE 360</p>
           </div>
           
           <div class="footer">
-            <p>&copy; 2026 SIGE - Sistema Integrado de Gestión Empresarial</p>
+            <p>&copy; 2026 ISGE 360 - La estrategia hecha gestión.</p>
             <p>Este es un mensaje automático. Por favor, no responda a este correo.</p>
           </div>
         </div>
@@ -752,7 +752,7 @@ export async function sendAccessInvitationEmail(
   `;
 
   const textContent = `
-Acceso Confirmado - Plataforma SIGE
+Acceso Confirmado - Plataforma ISGE 360
 
 Hola ${leaderName},
 
@@ -762,9 +762,9 @@ Para acceder a la plataforma, abra el siguiente enlace en su navegador:
 ${accessUrl}
 
 Saludos,
-El equipo de SIGE
+El equipo de ISGE 360
 
-© 2026 SIGE - Sistema Integrado de Gestión Empresarial
+© 2026 ISGE 360 - La estrategia hecha gestión.
   `;
 
   return sendEmail({
@@ -811,7 +811,7 @@ export async function sendPasswordResetEmail({
         <div class="container">
           <div class="header">
             <h1>Recuperar contraseña</h1>
-            <p>Plataforma SIGE</p>
+            <p>Plataforma ISGE 360</p>
           </div>
           <div class="content">
             <p>Hola <strong>${recipientName}</strong>,</p>
@@ -826,7 +826,7 @@ export async function sendPasswordResetEmail({
             </div>
           </div>
           <div class="footer">
-            <p>&copy; 2026 SIGE - Sistema Integrado de Gestión Empresarial</p>
+            <p>&copy; 2026 ISGE 360 - La estrategia hecha gestión.</p>
           </div>
         </div>
       </body>
@@ -834,7 +834,7 @@ export async function sendPasswordResetEmail({
   `;
 
   const textContent = `
-Recuperar contraseña - Plataforma SIGE
+Recuperar contraseña - Plataforma ISGE 360
 
 Hola ${recipientName},
 
@@ -849,7 +849,7 @@ Si no solicitaste este cambio, ignora este mensaje.
 
   return sendEmailStrict({
     to,
-    subject: "Restablecer contraseña - Plataforma SIGE",
+    subject: "Restablecer contraseña - Plataforma ISGE 360",
     htmlContent,
     textContent,
   });
@@ -887,23 +887,23 @@ export async function sendApprovalNotificationEmail(
         <div class="container">
           <div class="header">
             <h1>¡Acceso Aprobado!</h1>
-            <p>Sistema Integrado de Gestión Empresarial</p>
+            <p>La estrategia hecha gestión.</p>
           </div>
           
           <div class="content">
             <p>Hola ${contactName},</p>
             
-            <p>Tu solicitud de acceso a la plataforma SIGE para <strong>${companyName}</strong> ha sido <strong>aprobada exitosamente</strong>.</p>
+            <p>Tu solicitud de acceso a la plataforma ISGE 360 para <strong>${companyName}</strong> ha sido <strong>aprobada exitosamente</strong>.</p>
             
             <div class="info-box">
               <strong>✓ Acceso Confirmado</strong><br>
-              Ya puedes acceder a la plataforma SIGE.
+              Ya puedes acceder a la plataforma ISGE 360.
             </div>
             
             <p><strong>Para acceder, haz clic en el botón de abajo:</strong></p>
             
             <center>
-              <a href="${approvalUrl}" class="button">Acceder a SIGE</a>
+              <a href="${approvalUrl}" class="button">Acceder a ISGE 360</a>
             </center>
             
             <p style="text-align: center; color: #666; font-size: 14px;">
@@ -912,11 +912,11 @@ export async function sendApprovalNotificationEmail(
             </p>
             
             <p>Saludos,<br>
-            El equipo de SIGE</p>
+            El equipo de ISGE 360</p>
           </div>
           
           <div class="footer">
-            <p>&copy; 2026 SIGE - Sistema Integrado de Gestión Empresarial</p>
+            <p>&copy; 2026 ISGE 360 - La estrategia hecha gestión.</p>
             <p>Este es un mensaje automático. Por favor, no responda a este correo.</p>
           </div>
         </div>
@@ -925,19 +925,19 @@ export async function sendApprovalNotificationEmail(
   `;
 
   const textContent = `
-Acceso Aprobado - Plataforma SIGE
+Acceso Aprobado - Plataforma ISGE 360
 
 Hola ${contactName},
 
-Tu solicitud de acceso a la plataforma SIGE para ${companyName} ha sido aprobada exitosamente.
+Tu solicitud de acceso a la plataforma ISGE 360 para ${companyName} ha sido aprobada exitosamente.
 
 Para acceder a la plataforma, abre el siguiente enlace en tu navegador:
 ${approvalUrl}
 
 Saludos,
-El equipo de SIGE
+El equipo de ISGE 360
 
-© 2026 SIGE - Sistema Integrado de Gestión Empresarial
+© 2026 ISGE 360 - La estrategia hecha gestión.
   `;
 
   return sendEmail({

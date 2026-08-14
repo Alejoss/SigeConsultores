@@ -1,10 +1,10 @@
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
-/** Branding fijo en código (no configurable por .env). */
-export const APP_TITLE = "SIGE Platform";
-
-export const APP_LOGO =
-  "https://placehold.co/128x128/E1E7EF/1F2937?text=SIGE";
+/** Identidad corporativa fija de ISGE 360. */
+export const APP_TITLE = "ISGE 360";
+export const APP_TAGLINE = "La estrategia hecha gestión.";
+export const APP_LOGO = "/isge360-logo.png";
+export const APP_ICON = "/isge360-icon.png";
 
 /** True si hay App ID y portal OAuth reales (evita redirigir con placeholders de .env.example). */
 export function isManusOAuthReady(): boolean {

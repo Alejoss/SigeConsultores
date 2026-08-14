@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
+import { APP_LOGO, APP_TAGLINE, APP_TITLE, getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
 import { trpc } from "@/lib/trpc";
@@ -71,22 +71,20 @@ export default function Home() {
             <img
               src={APP_LOGO}
               alt={APP_TITLE}
-              className="h-20 w-20 rounded-lg object-cover shadow-md"
+              className="w-72 max-w-full h-auto object-contain"
             />
           </div>
 
           {/* Title */}
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold text-slate-900">{APP_TITLE}</h1>
-            <p className="text-slate-600">
-              Sistema Integrado de Gestión Empresarial
-            </p>
+          <div className="sr-only">
+            <h1>{APP_TITLE}</h1>
+            <p>{APP_TAGLINE}</p>
           </div>
 
           {/* Description */}
           <div className="space-y-3 text-sm text-slate-600">
             <p>
-              Bienvenido a la plataforma SIGE. Aquí podrás gestionar de manera integral todos los aspectos de tu Sistema Integrado de Gestión Empresarial.
+              Bienvenido a ISGE 360. Gestiona de manera integral los aspectos estratégicos y operativos de tu organización.
             </p>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
               <h3 className="font-semibold text-blue-900">Funcionalidades principales:</h3>
@@ -126,7 +124,7 @@ export default function Home() {
 
           {/* Footer */}
           <p className="text-xs text-center text-slate-500">
-            © 2025 SIGE Consultores. Todos los derechos reservados.
+            © 2026 ISGE 360. La estrategia hecha gestión.
           </p>
         </div>
       </div>
