@@ -428,7 +428,7 @@ export function sendManagerAccessConfirmationEmail(
               <li>Monitorear procesos y objetivos</li>
               <li>Generar reportes y análisis</li>
               <li>Visualizar el FODA de la empresa</li>
-              <li>Acceder al Flujograma ISGE 360</li>
+              <li>Acceder al Flujograma ISGE</li>
             </ul>
             
             <div class="info-box">

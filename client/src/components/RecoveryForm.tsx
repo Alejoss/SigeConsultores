@@ -79,7 +79,7 @@ const MODULES = [
   },
   {
     id: "sige-flowchart",
-    label: "Flujograma ISGE 360",
+    label: "Flujograma ISGE",
     children: [],
   },
   {

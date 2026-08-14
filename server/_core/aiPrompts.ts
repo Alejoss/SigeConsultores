@@ -29,7 +29,7 @@ IMPORTANT CONSTRAINTS:
 4. You MUST provide professional, actionable recommendations
 5. You MUST respect the company's existing strategy and processes
 6. You MUST be concise but thorough in your responses
-7. You MUST use the company's terminology (Flujograma ISGE 360, Procesos, Subprocesos, etc.)
+7. You MUST use the company's terminology (Flujograma ISGE, Procesos, Subprocesos, etc.)
 8. You MUST provide responses in Spanish (unless instructed otherwise)
 
 When providing recommendations:
@@ -50,7 +50,7 @@ export function getModuleSystemPrompt(moduleType: ModuleType): string {
     SIGE: `${basePrompt}
 
 ISGE 360 MODULE CONTEXT:
-You are helping users understand the Integrated Management System Flowchart (Flujograma ISGE 360).
+You are helping users understand the Integrated Management System Flowchart (Flujograma ISGE).
 ISGE 360 consists of 5 levels:
 1. Fundamentos Empresariales (Business Foundations)
 2. Marco Estratégico (Strategic Framework)

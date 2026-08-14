@@ -16,7 +16,7 @@ describe("AI Router Integration - HITO 2", () => {
 
     it("ISGE 360 prompt should mention Flujograma", () => {
       const prompt = getModuleSystemPrompt("SIGE");
-      expect(prompt).toContain("Flujograma ISGE 360");
+      expect(prompt).toContain("Flujograma ISGE");
     });
 
     it("SIGE prompt should mention 5 levels", () => {

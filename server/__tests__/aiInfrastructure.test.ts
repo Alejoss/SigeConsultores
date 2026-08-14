@@ -37,7 +37,7 @@ describe("AI Infrastructure - HITO 1", () => {
 
     it("ISGE 360 prompt should mention Flujograma", () => {
       const prompt = getModuleSystemPrompt("SIGE");
-      expect(prompt).toContain("Flujograma ISGE 360");
+      expect(prompt).toContain("Flujograma ISGE");
       expect(prompt).toContain("5 levels");
     });
 
