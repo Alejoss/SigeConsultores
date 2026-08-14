@@ -1,0 +1,332 @@
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "wouter";
+import * as XLSX from "xlsx";
+import { ArrowLeft, FileDown, FileUp, Loader2, Plus, Trash2, UserRoundX, UsersRound } from "lucide-react";
+import DashboardLayout from "@/components/DashboardLayout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { trpc } from "@/lib/trpc";
+import { getCompanyIdFromSession } from "@/lib/sessionScope";
+import { toast } from "sonner";
+
+type Employee = {
+  id: number;
+  companyId: number;
+  fullName: string;
+  identityCard: string;
+  hireDate: string | Date;
+  area: string;
+  position: string;
+  status: "activo" | "pasivo";
+  terminationDate: string | Date | null;
+};
+
+type EmployeeDraft = {
+  fullName: string;
+  identityCard: string;
+  hireDate: string;
+  area: string;
+  position: string;
+};
+
+const EMPTY_EMPLOYEE: EmployeeDraft = {
+  fullName: "",
+  identityCard: "",
+  hireDate: "",
+  area: "",
+  position: "",
+};
+
+const formatDateInput = (value: string | Date | null | undefined) => {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value).slice(0, 10) : date.toISOString().slice(0, 10);
+};
+
+const getElapsedDays = (hireDate: string | Date) => {
+  const date = new Date(`${formatDateInput(hireDate)}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return 0;
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  return Math.max(0, Math.floor((today.getTime() - date.getTime()) / 86_400_000));
+};
+
+const readColumn = (row: Record<string, unknown>, ...columns: string[]) => {
+  for (const column of columns) {
+    const value = row[column];
+    if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
+  }
+  return "";
+};
+
+const excelDateToIso = (value: unknown): string => {
+  if (value === undefined || value === null || value === "") return "";
+  if (typeof value === "number" && value > 1000 && value < 100000) {
+    const excelEpoch = new Date(1899, 11, 30);
+    return new Date(excelEpoch.getTime() + value * 86_400_000).toISOString().slice(0, 10);
+  }
+  const parsed = new Date(String(value));
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString().slice(0, 10);
+};
+
+export default function Payroll() {
+  const [, setLocation] = useLocation();
+  const companyId = useMemo(() => getCompanyIdFromSession() || 0, []);
+  const utils = trpc.useUtils();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [newEmployee, setNewEmployee] = useState<EmployeeDraft>(EMPTY_EMPLOYEE);
+  const [showCreate, setShowCreate] = useState(false);
+  const [inactiveTarget, setInactiveTarget] = useState<Employee | null>(null);
+  const [terminationDate, setTerminationDate] = useState(new Date().toISOString().slice(0, 10));
+  const [isImporting, setIsImporting] = useState(false);
+
+  const { data, isLoading } = trpc.payroll.list.useQuery(
+    { companyId, status: "activo" },
+    { enabled: companyId > 0 },
+  );
+
+  useEffect(() => {
+    setEmployees((data || []) as Employee[]);
+  }, [data]);
+
+  const refresh = async () => {
+    await utils.payroll.list.invalidate({ companyId, status: "activo" });
+    await utils.payroll.list.invalidate({ companyId, status: "pasivo" });
+  };
+
+  const createMutation = trpc.payroll.create.useMutation({ onSuccess: refresh });
+  const updateMutation = trpc.payroll.update.useMutation({ onSuccess: refresh });
+  const deleteMutation = trpc.payroll.deleteActive.useMutation({ onSuccess: refresh });
+  const clearMutation = trpc.payroll.clearActive.useMutation({ onSuccess: refresh });
+  const inactiveMutation = trpc.payroll.passToInactive.useMutation({ onSuccess: refresh });
+  const importMutation = trpc.payroll.importBulk.useMutation({ onSuccess: refresh });
+
+  const goBack = () => setLocation(`/organization-chart?companyId=${companyId}`);
+
+  const updateLocalEmployee = (id: number, field: keyof EmployeeDraft, value: string) => {
+    setEmployees((current) => current.map((employee) => employee.id === id ? { ...employee, [field]: value } : employee));
+  };
+
+  const saveEmployee = async (employee: Employee) => {
+    const hireDate = formatDateInput(employee.hireDate);
+    if (!employee.fullName.trim() || !employee.identityCard.trim() || !hireDate || !employee.area.trim() || !employee.position.trim()) {
+      toast.error("Completa Nombre, C.I., fecha de ingreso, área y cargo antes de guardar.");
+      await refresh();
+      return;
+    }
+    try {
+      await updateMutation.mutateAsync({
+        id: employee.id,
+        companyId,
+        fullName: employee.fullName,
+        identityCard: employee.identityCard,
+        hireDate,
+        area: employee.area,
+        position: employee.position,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo guardar el trabajador");
+      await refresh();
+    }
+  };
+
+  const addEmployee = async () => {
+    if (!newEmployee.fullName || !newEmployee.identityCard || !newEmployee.hireDate || !newEmployee.area || !newEmployee.position) {
+      toast.error("Completa todos los campos del trabajador.");
+      return;
+    }
+    try {
+      await createMutation.mutateAsync({ companyId, ...newEmployee });
+      toast.success("Trabajador añadido a Personal Activo.");
+      setNewEmployee(EMPTY_EMPLOYEE);
+      setShowCreate(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo añadir el trabajador");
+    }
+  };
+
+  const confirmInactive = async () => {
+    if (!inactiveTarget || !terminationDate) return;
+    try {
+      await inactiveMutation.mutateAsync({ id: inactiveTarget.id, companyId, terminationDate });
+      toast.success(`${inactiveTarget.fullName} pasó a Personal Pasivo.`);
+      setInactiveTarget(null);
+    } catch {
+      toast.error("No se pudo trasladar al trabajador a Personal Pasivo.");
+    }
+  };
+
+  const removeEmployee = async (employee: Employee) => {
+    if (!window.confirm(`¿Eliminar a ${employee.fullName} de Personal Activo? Esta acción no afecta al Personal Pasivo.`)) return;
+    try {
+      await deleteMutation.mutateAsync({ id: employee.id, companyId });
+      toast.success("Trabajador eliminado de Personal Activo.");
+    } catch {
+      toast.error("No se pudo eliminar el trabajador.");
+    }
+  };
+
+  const clearEmployees = async () => {
+    if (!window.confirm("¿Deseas borrar definitivamente a todo el Personal Activo? El Personal Pasivo se conservará sin cambios.")) return;
+    try {
+      await clearMutation.mutateAsync({ companyId });
+      toast.success("Se eliminó todo el Personal Activo. El Personal Pasivo se mantiene.");
+    } catch {
+      toast.error("No se pudo borrar el Personal Activo.");
+    }
+  };
+
+  const downloadTemplate = () => {
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ["Nombre", "Cédula C.I.", "Fecha de ingreso (YYYY-MM-DD)", "Área", "Cargo"],
+    ]);
+    worksheet["!cols"] = [{ wch: 32 }, { wch: 18 }, { wch: 30 }, { wch: 26 }, { wch: 28 }];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Nómina");
+    XLSX.writeFile(workbook, "plantilla_nomina_isge360.xlsx");
+    toast.success("Plantilla de Nómina descargada.");
+  };
+
+  const handleImport = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    const reader = new FileReader();
+    reader.onload = async (loadEvent) => {
+      try {
+        const raw = new Uint8Array(loadEvent.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(raw, { type: "array", cellDates: false });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+        const parsed = rows.map((row, index) => ({
+          fullName: readColumn(row, "Nombre", "Nombres y apellidos", "fullName"),
+          identityCard: readColumn(row, "Cédula C.I.", "Cedula C.I.", "Cédula", "Cedula", "C.I.", "identityCard"),
+          hireDate: excelDateToIso(row["Fecha de ingreso (YYYY-MM-DD)"] || row["Fecha de ingreso"] || row["hireDate"]),
+          area: readColumn(row, "Área", "Area", "area"),
+          position: readColumn(row, "Cargo", "position"),
+          rowNumber: index + 2,
+        }));
+        const invalid = parsed.filter((row) => !row.fullName || !row.identityCard || !row.hireDate || !row.area || !row.position);
+        if (rows.length === 0) throw new Error("El Excel no contiene trabajadores.");
+        if (invalid.length > 0) {
+          throw new Error(`Hay ${invalid.length} fila(s) incompleta(s). Completa Nombre, C.I., fecha de ingreso, área y cargo.`);
+        }
+        const result = await importMutation.mutateAsync({
+          companyId,
+          rows: parsed.map(({ rowNumber, ...row }) => row),
+        });
+        toast.success(`Nómina actualizada: ${result.inserted} añadidos y ${result.updated} actualizados.${result.skippedInactive ? ` ${result.skippedInactive} C.I. pertenece(n) a Personal Pasivo y no se modificó/modificaron.` : ""}`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "No se pudo importar el Excel.");
+      } finally {
+        setIsImporting(false);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    event.target.value = "";
+  };
+
+  if (!companyId) {
+    return <DashboardLayout><p className="py-12 text-center text-slate-600">Selecciona una empresa para gestionar su nómina.</p></DashboardLayout>;
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-emerald-100 p-3 text-emerald-700"><UsersRound className="h-7 w-7" /></div>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900">Nómina</h1>
+                <p className="mt-1 text-slate-600">Administra el personal activo de la empresa. El desempeño se integrará automáticamente en la siguiente etapa.</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="destructive" onClick={clearEmployees} disabled={clearMutation.isPending || employees.length === 0} className="gap-2"><Trash2 className="h-4 w-4" />Borrar todas</Button>
+            <Button variant="outline" onClick={downloadTemplate} className="gap-2 border-emerald-300 text-emerald-700"><FileDown className="h-4 w-4" />Descargar Planilla</Button>
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="gap-2 border-blue-300 text-blue-700"><FileUp className="h-4 w-4" />{isImporting ? "Importando..." : "Importar desde Excel"}</Button>
+            <Button variant="outline" onClick={() => setLocation(`/payroll-inactive?companyId=${companyId}`)} className="gap-2"><UserRoundX className="h-4 w-4" />Personal Pasivo</Button>
+            <Button variant="outline" onClick={goBack} className="gap-2"><ArrowLeft className="h-4 w-4" />Volver</Button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+            <div>
+              <CardTitle>Personal Activo</CardTitle>
+              <CardDescription>Actualiza los datos directamente en la tabla; cada campo se guarda al salir de él.</CardDescription>
+            </div>
+            <Button onClick={() => setShowCreate(true)} className="gap-2 bg-emerald-600 hover:bg-emerald-700"><Plus className="h-4 w-4" />Añadir nuevo trabajador</Button>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <div className="flex items-center justify-center gap-2 py-12 text-slate-600"><Loader2 className="h-5 w-5 animate-spin" />Cargando nómina...</div> : employees.length === 0 ? (
+              <div className="rounded-lg border border-dashed py-12 text-center text-slate-500">No hay personal activo registrado. Añade un trabajador o importa la Planilla de Nómina.</div>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="min-w-[1200px] w-full text-sm">
+                  <thead className="bg-slate-50 text-left text-slate-600">
+                    <tr>
+                      <th className="w-14 px-3 py-3 text-center" aria-label="Eliminar" />
+                      <th className="min-w-52 px-3 py-3">Nombre</th>
+                      <th className="min-w-36 px-3 py-3">Cédula C.I.</th>
+                      <th className="min-w-40 px-3 py-3">Fecha de ingreso</th>
+                      <th className="min-w-40 px-3 py-3">Tiempo en la empresa</th>
+                      <th className="min-w-44 px-3 py-3">Área</th>
+                      <th className="min-w-44 px-3 py-3">Cargo</th>
+                      <th className="min-w-32 px-3 py-3">Desempeño</th>
+                      <th className="min-w-40 px-3 py-3" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {employees.map((employee) => (
+                      <tr key={employee.id} className="bg-white hover:bg-slate-50">
+                        <td className="px-3 py-2 text-center"><Button variant="ghost" size="icon" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => removeEmployee(employee)} aria-label={`Eliminar ${employee.fullName}`}><Trash2 className="h-4 w-4" /></Button></td>
+                        <td className="px-3 py-2"><Input value={employee.fullName} onChange={(e) => updateLocalEmployee(employee.id, "fullName", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
+                        <td className="px-3 py-2"><Input value={employee.identityCard} onChange={(e) => updateLocalEmployee(employee.id, "identityCard", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
+                        <td className="px-3 py-2"><Input type="date" value={formatDateInput(employee.hireDate)} onChange={(e) => updateLocalEmployee(employee.id, "hireDate", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
+                        <td className="px-3 py-2 font-medium text-slate-700">{getElapsedDays(employee.hireDate).toLocaleString("es-EC")} días</td>
+                        <td className="px-3 py-2"><Input value={employee.area} onChange={(e) => updateLocalEmployee(employee.id, "area", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
+                        <td className="px-3 py-2"><Input value={employee.position} onChange={(e) => updateLocalEmployee(employee.id, "position", e.target.value)} onBlur={() => saveEmployee(employee)} /></td>
+                        <td className="px-3 py-2 text-center text-slate-400">—</td>
+                        <td className="px-3 py-2"><Button variant="outline" size="sm" onClick={() => { setInactiveTarget(employee); setTerminationDate(new Date().toISOString().slice(0, 10)); }}>Pasa a Pasivo</Button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader><DialogTitle>Añadir nuevo trabajador</DialogTitle><DialogDescription>Completa los datos obligatorios para incorporarlo al Personal Activo.</DialogDescription></DialogHeader>
+          <div className="grid gap-4 py-2 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2"><Label>Nombre</Label><Input value={newEmployee.fullName} onChange={(e) => setNewEmployee({ ...newEmployee, fullName: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Cédula C.I.</Label><Input value={newEmployee.identityCard} onChange={(e) => setNewEmployee({ ...newEmployee, identityCard: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Fecha de ingreso</Label><Input type="date" value={newEmployee.hireDate} onChange={(e) => setNewEmployee({ ...newEmployee, hireDate: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Área</Label><Input value={newEmployee.area} onChange={(e) => setNewEmployee({ ...newEmployee, area: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Cargo</Label><Input value={newEmployee.position} onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })} /></div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setShowCreate(false)}>Cancelar</Button><Button onClick={addEmployee} disabled={createMutation.isPending}>{createMutation.isPending ? "Añadiendo..." : "Añadir trabajador"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(inactiveTarget)} onOpenChange={(open) => !open && setInactiveTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Pasar a Personal Pasivo</DialogTitle><DialogDescription>Registra la fecha de desvinculación. El historial del trabajador se conservará en Personal Pasivo.</DialogDescription></DialogHeader>
+          <div className="space-y-2"><Label>Fecha de desvinculación</Label><Input type="date" value={terminationDate} onChange={(e) => setTerminationDate(e.target.value)} /></div>
+          <DialogFooter><Button variant="outline" onClick={() => setInactiveTarget(null)}>Cancelar</Button><Button onClick={confirmInactive} disabled={inactiveMutation.isPending}>OK</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </DashboardLayout>
+  );
+}

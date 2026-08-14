@@ -103,6 +103,7 @@ import { fodasRouter } from "./routers/fodasRouter";
 import { matrixFODAPDFRouter } from "./routers/matrixFODAPDF";
 import { resourcesPDFRouter } from "./routers/resourcesPDF";
 import { organizationChartRouter } from "./routers/organizationChart";
+import { payrollRouter } from "./routers/payroll";
 import { auditsInspectionsRouter } from "./routers/auditsInspections";
 import { managementProgramsRouter } from "./routers/managementPrograms";
 import { stakeholderSurveysRouter } from "./routers/stakeholderSurveys";
@@ -419,6 +420,7 @@ export const appRouter = router({
 
   // Organization Chart
   organizationChart: organizationChartRouter,
+  payroll: payrollRouter,
 
   // Process Stakeholder Criticality
   processStakeholderCriticality: processStakeholderCriticalityRouter,
