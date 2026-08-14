@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useLocation } from "wouter";
 import * as XLSX from "xlsx";
@@ -76,6 +76,22 @@ export default function Payroll() {
   const utils = trpc.useUtils();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const rotationChartRef = useRef<HTMLDivElement>(null);
+  const payrollTableScrollRef = useRef<HTMLDivElement>(null);
+  const fixedPayrollScrollbarRef = useRef<HTMLDivElement>(null);
+  const fixedPayrollScrollbarContentRef = useRef<HTMLDivElement>(null);
+  const [scrollbarMountVersion, setScrollbarMountVersion] = useState(0);
+  const registerPayrollTableScroller = useCallback((node: HTMLDivElement | null) => {
+    payrollTableScrollRef.current = node;
+    if (node) setScrollbarMountVersion((current) => current + 1);
+  }, []);
+  const registerFixedPayrollScrollbar = useCallback((node: HTMLDivElement | null) => {
+    fixedPayrollScrollbarRef.current = node;
+    if (node) setScrollbarMountVersion((current) => current + 1);
+  }, []);
+  const registerFixedPayrollScrollbarContent = useCallback((node: HTMLDivElement | null) => {
+    fixedPayrollScrollbarContentRef.current = node;
+    if (node) setScrollbarMountVersion((current) => current + 1);
+  }, []);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [newEmployee, setNewEmployee] = useState<EmployeeDraft>(EMPTY_EMPLOYEE);
   const [showCreate, setShowCreate] = useState(false);
@@ -98,6 +114,44 @@ export default function Payroll() {
   useEffect(() => {
     setEmployees((data || []) as Employee[]);
   }, [data]);
+
+  useEffect(() => {
+    const tableScroller = payrollTableScrollRef.current;
+    const fixedScroller = fixedPayrollScrollbarRef.current;
+    const fixedContent = fixedPayrollScrollbarContentRef.current;
+    if (!tableScroller || !fixedScroller || !fixedContent) return;
+
+    let isSynchronizing = false;
+    const syncWidth = () => {
+      fixedContent.style.width = `${tableScroller.scrollWidth}px`;
+    };
+    const syncFromTable = () => {
+      if (isSynchronizing) return;
+      isSynchronizing = true;
+      fixedScroller.scrollLeft = tableScroller.scrollLeft;
+      isSynchronizing = false;
+    };
+    const syncFromFixedBar = () => {
+      if (isSynchronizing) return;
+      isSynchronizing = true;
+      tableScroller.scrollLeft = fixedScroller.scrollLeft;
+      isSynchronizing = false;
+    };
+
+    syncWidth();
+    tableScroller.addEventListener("scroll", syncFromTable);
+    fixedScroller.addEventListener("scroll", syncFromFixedBar);
+    window.addEventListener("resize", syncWidth);
+    const observer = new ResizeObserver(syncWidth);
+    observer.observe(tableScroller);
+
+    return () => {
+      tableScroller.removeEventListener("scroll", syncFromTable);
+      fixedScroller.removeEventListener("scroll", syncFromFixedBar);
+      window.removeEventListener("resize", syncWidth);
+      observer.disconnect();
+    };
+  }, [employees.length, isLoading, scrollbarMountVersion]);
 
   const refresh = async () => {
     await utils.payroll.list.invalidate({ companyId, status: "activo", performanceYear });
@@ -336,7 +390,7 @@ export default function Payroll() {
             {isLoading ? <div className="flex items-center justify-center gap-2 py-12 text-slate-600"><Loader2 className="h-5 w-5 animate-spin" />Cargando nómina...</div> : employees.length === 0 ? (
               <div className="rounded-lg border border-dashed py-12 text-center text-slate-500">No hay personal activo registrado. Añade un trabajador o importa la Planilla de Nómina.</div>
             ) : (
-                  <div className="overflow-x-auto rounded-lg border">
+                  <div ref={registerPayrollTableScroller} className="overflow-x-auto rounded-lg border">
                 <table className="min-w-[1450px] w-full text-sm">
                   <thead className="bg-slate-50 text-left text-slate-600">
                     <tr>
@@ -371,6 +425,14 @@ export default function Payroll() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-300 bg-white/95 px-3 py-1.5 shadow-[0_-3px_10px_rgba(15,23,42,0.12)] backdrop-blur">
+        <div className="mx-auto max-w-[1600px]">
+          <div ref={registerFixedPayrollScrollbar} className="h-4 overflow-x-auto overflow-y-hidden" aria-label="Desplazamiento horizontal de Nómina">
+            <div ref={registerFixedPayrollScrollbarContent} className="h-px" />
+          </div>
+        </div>
       </div>
 
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
