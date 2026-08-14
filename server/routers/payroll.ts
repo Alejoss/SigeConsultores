@@ -189,38 +189,41 @@ export const payrollRouter = router({
       };
       const today = new Date();
       const months: Array<{ month: string; exits: number; averageHeadcount: number; rotationRate: number }> = [];
+      const periodStart = new Date(today.getFullYear(), today.getMonth() - 11, 1, 12, 0, 0, 0);
+      const periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 12, 0, 0, 0);
 
       for (let offset = 11; offset >= 0; offset--) {
         const monthStart = new Date(today.getFullYear(), today.getMonth() - offset, 1, 12, 0, 0, 0);
         const monthEnd = new Date(today.getFullYear(), today.getMonth() - offset + 1, 0, 12, 0, 0, 0);
-        const presentAtStart = filteredEmployees.filter((employee) => {
+        // Para una tasa interpretable, el denominador es todo trabajador que estuvo
+        // vinculado al menos un día del mes; una sola salida no puede superar 100 %.
+        const linkedEmployees = filteredEmployees.filter((employee) => {
           const hired = asDate(employee.hireDate);
           const terminated = asDate(employee.terminationDate);
-          return hired && hired <= monthStart && (!terminated || terminated >= monthStart);
-        }).length;
-        const presentAtEnd = filteredEmployees.filter((employee) => {
-          const hired = asDate(employee.hireDate);
-          const terminated = asDate(employee.terminationDate);
-          return hired && hired <= monthEnd && (!terminated || terminated > monthEnd);
+          return hired && hired <= monthEnd && (!terminated || terminated >= monthStart);
         }).length;
         const exits = filteredEmployees.filter((employee) => {
           const terminated = asDate(employee.terminationDate);
           return terminated && terminated >= monthStart && terminated <= monthEnd;
         }).length;
-        const averageHeadcount = (presentAtStart + presentAtEnd) / 2;
-        const rotationRate = averageHeadcount > 0 ? Number(((exits / averageHeadcount) * 100).toFixed(1)) : 0;
+        const rotationRate = linkedEmployees > 0 ? Number(((exits / linkedEmployees) * 100).toFixed(1)) : 0;
         months.push({
           month: new Intl.DateTimeFormat("es-EC", { month: "short", year: "numeric" }).format(monthStart).replace(".", ""),
           exits,
-          averageHeadcount: Number(averageHeadcount.toFixed(1)),
+          // Se conserva la clave por compatibilidad con la interfaz; representa personal vinculado del mes.
+          averageHeadcount: linkedEmployees,
           rotationRate,
         });
       }
 
       const recentTerminations = months.reduce((sum, month) => sum + month.exits, 0);
-      const averagePeriodHeadcount = months.length > 0 ? months.reduce((sum, month) => sum + month.averageHeadcount, 0) / months.length : 0;
-      const periodRotationRate = averagePeriodHeadcount > 0
-        ? Number(((recentTerminations / averagePeriodHeadcount) * 100).toFixed(1))
+      const employeesLinkedInPeriod = filteredEmployees.filter((employee) => {
+        const hired = asDate(employee.hireDate);
+        const terminated = asDate(employee.terminationDate);
+        return hired && hired <= periodEnd && (!terminated || terminated >= periodStart);
+      }).length;
+      const periodRotationRate = employeesLinkedInPeriod > 0
+        ? Number(((recentTerminations / employeesLinkedInPeriod) * 100).toFixed(1))
         : 0;
 
       return {

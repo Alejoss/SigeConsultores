@@ -392,10 +392,10 @@ export default function Payroll() {
       </Dialog>
 
       <Dialog open={showRotation} onOpenChange={setShowRotation}>
-        <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto">
+        <DialogContent className="max-h-[92vh] w-[calc(100vw-2rem)] max-w-[1180px] overflow-y-auto sm:max-w-[1180px]">
           <DialogHeader>
             <DialogTitle>Curva de rotación de personal</DialogTitle>
-            <DialogDescription>Desvinculaciones y tasa de rotación mensual de los últimos 12 meses.</DialogDescription>
+            <DialogDescription>Desvinculaciones y tasa mensual de desvinculación de los últimos 12 meses.</DialogDescription>
           </DialogHeader>
           <div ref={rotationChartRef} className="space-y-5 rounded-xl bg-white p-2">
             <div className="flex flex-wrap items-end justify-between gap-4">
@@ -408,21 +408,21 @@ export default function Payroll() {
               </div>
               <div className="grid grid-cols-2 gap-3 text-right">
                 <div><p className="text-xs text-slate-500">Desvinculaciones (12 meses)</p><p className="text-2xl font-bold text-slate-800">{analytics?.recentTerminations ?? 0}</p></div>
-                <div><p className="text-xs text-slate-500">Rotación del período</p><p className="text-2xl font-bold text-violet-700">{analytics?.periodRotationRate ?? 0}%</p></div>
+                <div><p className="text-xs text-slate-500">Tasa de desvinculación del período</p><p className="text-2xl font-bold text-violet-700">{analytics?.periodRotationRate ?? 0}%</p></div>
               </div>
             </div>
             {analyticsLoading ? <div className="flex h-80 items-center justify-center gap-2 text-slate-600"><Loader2 className="h-5 w-5 animate-spin" />Calculando rotación...</div> : (
               <>
                 {(analytics?.recentTerminations ?? 0) === 0 && <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Aún no hay desvinculaciones registradas en este período. La curva se actualizará automáticamente cuando se traslade personal a Pasivo.</p>}
-                <div className="h-80 w-full">
+                <div className="h-[430px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={analytics?.months || []} margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                       <YAxis yAxisId="left" allowDecimals={false} label={{ value: "Desvinculaciones", angle: -90, position: "insideLeft", style: { fill: "#475569", fontSize: 12 } }} />
-                      <YAxis yAxisId="right" orientation="right" unit="%" label={{ value: "Rotación", angle: 90, position: "insideRight", style: { fill: "#7c3aed", fontSize: 12 } }} />
-                      <Tooltip formatter={(value: number, name: string) => [name === "rotationRate" ? `${value}%` : value, name === "rotationRate" ? "Tasa de rotación" : "Desvinculaciones"]} />
-                      <Legend formatter={(value) => value === "rotationRate" ? "Tasa de rotación" : "Desvinculaciones"} />
+                      <YAxis yAxisId="right" orientation="right" unit="%" label={{ value: "Tasa de desvinculación", angle: 90, position: "insideRight", style: { fill: "#7c3aed", fontSize: 12 } }} />
+                      <Tooltip formatter={(value: number, name: string) => [name === "rotationRate" ? `${value}%` : value, name === "rotationRate" ? "Tasa de desvinculación" : "Desvinculaciones"]} />
+                      <Legend formatter={(value) => value === "rotationRate" ? "Tasa de desvinculación" : "Desvinculaciones"} />
                       <Bar yAxisId="left" dataKey="exits" name="exits" fill="#3b82f6" radius={[5, 5, 0, 0]} />
                       <Line yAxisId="right" type="monotone" dataKey="rotationRate" name="rotationRate" stroke="#7c3aed" strokeWidth={3} dot={{ r: 4 }} />
                     </ComposedChart>
