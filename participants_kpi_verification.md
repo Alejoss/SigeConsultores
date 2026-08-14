@@ -9,3 +9,4 @@ Verificación local de la segunda etapa de Participantes (2026-08-14):
 - Al abrir «Añadir trabajador» en «Custome Service», se muestran correctamente FREILE CHIRIBOGA ANA MARIA y MONTENEGRO LEON FREDDY NICOLAS. La prueba se cerró sin vincularlos, para no alterar datos de revisión.
 - Objetivo, Responsabilidades y Autoridad están plegados de forma predeterminada con el control «Ver detalles del cargo» y su contenido persistido no fue modificado.
 - Build, TypeScript y la suite de 542 pruebas finalizaron correctamente antes de esta verificación.
+- Ajuste visual posterior: el bloque individual de cada trabajador usa un fondo celeste definido con borde celeste, mientras sus KPI mantienen un panel blanco translúcido. La separación visual se verificó con FREILE CHIRIBOGA ANA MARIA y su KPI mensual, sin modificar los valores existentes.

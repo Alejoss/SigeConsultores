@@ -23,11 +23,18 @@ const normalizePosition = (value: string | null | undefined) => (value || "")
  * pequeños errores tipográficos dentro de una misma denominación, por ejemplo
  * «Custome Service» frente a «Customer Service». No asocia cargos distintos.
  */
+const POSITION_EQUIVALENCE_GROUPS = [
+  // Denominaciones corporativas equivalentes. Se mantienen explícitas para no
+  // asociar automáticamente puestos distintos solo por pertenecer a una misma área.
+  ["jefe comercial", "gerente comercial", "gerente de ventas", "jefe de ventas", "director comercial"],
+];
+
 const positionMatches = (participantPosition: string | null | undefined, employeePosition: string | null | undefined) => {
   const participantKey = normalizePosition(participantPosition);
   const employeeKey = normalizePosition(employeePosition);
   if (!participantKey || !employeeKey) return false;
   if (participantKey === employeeKey) return true;
+  if (POSITION_EQUIVALENCE_GROUPS.some((group) => group.includes(participantKey) && group.includes(employeeKey))) return true;
 
   const distance = (left: string, right: string) => {
     const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
