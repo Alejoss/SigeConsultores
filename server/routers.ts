@@ -108,6 +108,7 @@ import { auditsInspectionsRouter } from "./routers/auditsInspections";
 import { managementProgramsRouter } from "./routers/managementPrograms";
 import { stakeholderSurveysRouter } from "./routers/stakeholderSurveys";
 import { strategicTrendsRouter } from "./routers/strategicTrends";
+import { planningCyclesRouter } from "./routers/planningCycles";
 
 // Module Customization Router
 const moduleCustomizationRouter = router({
@@ -450,6 +451,7 @@ export const appRouter = router({
 
   // Process Characterization
   processCharacterization: processCharacterizationRouter,
+  planningCycles: planningCyclesRouter,
 
 
 

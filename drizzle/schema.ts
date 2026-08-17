@@ -825,6 +825,102 @@ export type ParticipantWorkerKpiValue = typeof participantWorkerKpiValues.$infer
 export type InsertParticipantWorkerKpiValue = typeof participantWorkerKpiValues.$inferInsert;
 
 /**
+ * Planning Cycle Activations - Company-level controlled activation of an annual planning cycle.
+ * This table is additive and does not alter any existing operational record.
+ */
+export const planningCycleActivations = mysqlTable("planningCycleActivations", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  targetYear: int("targetYear").notNull(),
+  deadline: date("deadline"),
+  status: mysqlEnum("status", ["draft", "active", "closed", "cancelled"]).default("draft").notNull(),
+  createdByAccountId: int("createdByAccountId"),
+  activatedByAccountId: int("activatedByAccountId"),
+  activatedAt: timestamp("activatedAt"),
+  closedAt: timestamp("closedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  companyYearUnique: unique("planningCycleActivations_company_year_unique").on(table.companyId, table.targetYear),
+}));
+
+export type PlanningCycleActivation = typeof planningCycleActivations.$inferSelect;
+export type InsertPlanningCycleActivation = typeof planningCycleActivations.$inferInsert;
+
+/**
+ * Planning Cycles - One annual cycle per company and process. Existing process tables remain untouched.
+ */
+export const planningCycles = mysqlTable("planningCycles", {
+  id: int("id").autoincrement().primaryKey(),
+  activationId: int("activationId"),
+  sourceCycleId: int("sourceCycleId"),
+  companyId: int("companyId").notNull(),
+  processId: int("processId").notNull(),
+  cycleYear: int("cycleYear").notNull(),
+  status: mysqlEnum("status", ["not_started", "in_review", "ready", "active", "closed", "skipped"]).default("not_started").notNull(),
+  preparedByAccountId: int("preparedByAccountId"),
+  preparedAt: timestamp("preparedAt"),
+  activatedAt: timestamp("activatedAt"),
+  closedAt: timestamp("closedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  companyProcessYearUnique: unique("planningCycles_company_process_year_unique").on(table.companyId, table.processId, table.cycleYear),
+}));
+
+export type PlanningCycle = typeof planningCycles.$inferSelect;
+export type InsertPlanningCycle = typeof planningCycles.$inferInsert;
+
+/**
+ * Planning Cycle Decisions - Explicit, reversible draft decisions for every element being reviewed.
+ */
+export const planningCycleDecisions = mysqlTable("planningCycleDecisions", {
+  id: int("id").autoincrement().primaryKey(),
+  targetCycleId: int("targetCycleId").notNull(),
+  sourceCycleId: int("sourceCycleId"),
+  itemType: mysqlEnum("itemType", ["ote", "otg", "stakeholder_action", "compliance", "participant_kpi"]).notNull(),
+  sourceItemKey: varchar("sourceItemKey", { length: 255 }).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  completionPercent: decimal("completionPercent", { precision: 7, scale: 2 }).default("0.00").notNull(),
+  sourcePayloadJson: longtext("sourcePayloadJson").notNull(),
+  decision: mysqlEnum("decision", ["pending", "migrate", "close", "review"]).default("pending").notNull(),
+  decisionNote: text("decisionNote"),
+  decidedByAccountId: int("decidedByAccountId"),
+  decidedAt: timestamp("decidedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  cycleItemUnique: unique("planningCycleDecisions_cycle_item_unique").on(table.targetCycleId, table.itemType, table.sourceItemKey),
+}));
+
+export type PlanningCycleDecision = typeof planningCycleDecisions.$inferSelect;
+export type InsertPlanningCycleDecision = typeof planningCycleDecisions.$inferInsert;
+
+/**
+ * Planning Cycle Snapshots - Immutable historical record created when a source cycle is closed.
+ */
+export const planningCycleSnapshots = mysqlTable("planningCycleSnapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  cycleId: int("cycleId").notNull(),
+  itemType: mysqlEnum("itemType", ["ote", "otg", "stakeholder_action", "compliance", "participant_kpi"]).notNull(),
+  sourceItemKey: varchar("sourceItemKey", { length: 255 }).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  completionPercent: decimal("completionPercent", { precision: 7, scale: 2 }).default("0.00").notNull(),
+  snapshotJson: longtext("snapshotJson").notNull(),
+  migrationDecision: mysqlEnum("migrationDecision", ["migrate", "close", "review"]).notNull(),
+  migratedToCycleId: int("migratedToCycleId"),
+  closedAt: timestamp("closedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  snapshotItemUnique: unique("planningCycleSnapshots_cycle_item_unique").on(table.cycleId, table.itemType, table.sourceItemKey),
+}));
+
+export type PlanningCycleSnapshot = typeof planningCycleSnapshots.$inferSelect;
+export type InsertPlanningCycleSnapshot = typeof planningCycleSnapshots.$inferInsert;
+
+/**
  * Process Resources - Stores resources used in process characterization
  */
 export const processResources = mysqlTable("processResources", {

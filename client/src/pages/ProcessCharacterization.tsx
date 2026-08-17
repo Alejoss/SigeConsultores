@@ -37,6 +37,7 @@ const CHARACTERIZATION_MODULES = [
   { id: "procedimientos", label: "Procedimientos", icon: "📄" },
   { id: "cronograma", label: "Cronograma\nConsolidado", icon: "📅" },
   { id: "indicadores", label: "Indicadores", icon: "📈" },
+  { id: "ciclos", label: "Ciclos de\nPlanificación", icon: "🔄" },
 ];
 
 export default function ProcessCharacterization() {
@@ -259,6 +260,7 @@ export default function ProcessCharacterization() {
       "indicadores": `/process-indicators${qs}`,
       "participantes": `/process-participants${qs}`,
       "recursos": `/process-resources${qs}`,
+      "ciclos": `/process-planning-cycles${qs}`,
     };
     
     if (routes[moduleId]) {
