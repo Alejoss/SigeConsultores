@@ -921,6 +921,33 @@ export type PlanningCycleSnapshot = typeof planningCycleSnapshots.$inferSelect;
 export type InsertPlanningCycleSnapshot = typeof planningCycleSnapshots.$inferInsert;
 
 /**
+ * Operational items created only after an approved annual-cycle migration.
+ * They preserve a separate plan for the destination year without rewriting the source records.
+ */
+export const planningCycleOperationalItems = mysqlTable("planningCycleOperationalItems", {
+  id: int("id").autoincrement().primaryKey(),
+  targetCycleId: int("targetCycleId").notNull(),
+  sourceDecisionId: int("sourceDecisionId").notNull(),
+  itemType: mysqlEnum("itemType", ["ote", "otg", "stakeholder_action", "compliance", "participant_kpi"]).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  plannedDate: date("plannedDate"),
+  sourceCompletionPercent: decimal("sourceCompletionPercent", { precision: 7, scale: 2 }).default("0.00").notNull(),
+  sourcePayloadJson: longtext("sourcePayloadJson").notNull(),
+  status: mysqlEnum("status", ["active", "review_required"]).default("active").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  cycleDecisionUnique: unique("planningCycleOperationalItems_cycle_decision_unique").on(
+    table.targetCycleId,
+    table.sourceDecisionId,
+  ),
+}));
+
+export type PlanningCycleOperationalItem = typeof planningCycleOperationalItems.$inferSelect;
+export type InsertPlanningCycleOperationalItem = typeof planningCycleOperationalItems.$inferInsert;
+
+/**
  * Process Resources - Stores resources used in process characterization
  */
 export const processResources = mysqlTable("processResources", {

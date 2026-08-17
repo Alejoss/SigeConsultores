@@ -9,6 +9,7 @@ import {
   participantWorkerKpiValues,
   planningCycleActivations,
   planningCycleDecisions,
+  planningCycleOperationalItems,
   planningCycleSnapshots,
   planningCycles,
   processCharacterizations,
@@ -62,6 +63,30 @@ function calculateKpiProgress(monthlyTarget: unknown, values: Array<{ actualValu
   const target = asNumber(monthlyTarget);
   if (target <= 0 || values.length === 0) return 0;
   return average(values.map((value) => (asNumber(value.actualValue) / target) * 100));
+}
+
+function parsePayload(value: string): Record<string, any> {
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function moveDateToTargetYear(value: unknown, targetYear: number): Date | null {
+  if (!value) return null;
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return null;
+  return new Date(Date.UTC(targetYear, date.getUTCMonth(), date.getUTCDate()));
+}
+
+function plannedDateForTargetCycle(payload: Record<string, any>, targetYear: number): Date | null {
+  const activity = payload.activity || {};
+  return moveDateToTargetYear(
+    activity.dueDate || payload.dueDate || payload.deadline || payload.endDate || payload.validUntil,
+    targetYear,
+  );
 }
 
 async function buildCandidates(companyId: number, processId: number, sourceYear: number): Promise<CycleCandidate[]> {
@@ -183,6 +208,11 @@ export const planningCyclesRouter = router({
       const snapshots = await db.select().from(planningCycleSnapshots)
         .where(eq(planningCycleSnapshots.cycleId, cycle?.sourceCycleId || -1))
         .orderBy(asc(planningCycleSnapshots.itemType), asc(planningCycleSnapshots.title));
+      const operationalItems = cycle
+        ? await db.select().from(planningCycleOperationalItems)
+          .where(eq(planningCycleOperationalItems.targetCycleId, cycle.id))
+          .orderBy(asc(planningCycleOperationalItems.itemType), asc(planningCycleOperationalItems.title))
+        : [];
       const pendingCount = decisions.filter((decision) => decision.decision === "pending").length;
       return {
         sourceYear: input.targetYear - 1,
@@ -190,6 +220,7 @@ export const planningCyclesRouter = router({
         cycle: cycle || null,
         decisions,
         snapshots,
+        operationalItems,
         pendingCount,
         ready: decisions.length > 0 && pendingCount === 0,
       };
@@ -386,6 +417,49 @@ export const planningCyclesRouter = router({
             migrationDecision,
             migratedToCycleId: decision.decision === "migrate" ? cycle.id : null,
           } });
+
+          if (decision.decision !== "migrate") continue;
+          const payload = parsePayload(decision.sourcePayloadJson);
+          await db.insert(planningCycleOperationalItems).values({
+            targetCycleId: cycle.id,
+            sourceDecisionId: decision.id,
+            itemType: decision.itemType,
+            title: decision.title,
+            description: decision.description,
+            plannedDate: plannedDateForTargetCycle(payload, input.targetYear),
+            sourceCompletionPercent: String(decision.completionPercent),
+            sourcePayloadJson: decision.sourcePayloadJson,
+            status: "active",
+          }).onDuplicateKeyUpdate({ set: {
+            title: decision.title,
+            description: decision.description,
+            plannedDate: plannedDateForTargetCycle(payload, input.targetYear),
+            sourceCompletionPercent: String(decision.completionPercent),
+            sourcePayloadJson: decision.sourcePayloadJson,
+            status: "active",
+          } });
+
+          // Un KPI migrado conserva solamente su definición: trabajador, nombre y meta.
+          // Los resultados mensuales nunca se trasladan al nuevo año.
+          if (decision.itemType === "participant_kpi") {
+            const assignmentId = Number(payload.participantWorkerAssignmentId);
+            const name = typeof payload.name === "string" ? payload.name.trim() : "";
+            if (assignmentId > 0 && name) {
+              const existingKpi = await db.select().from(participantWorkerKpis).where(and(
+                eq(participantWorkerKpis.participantWorkerAssignmentId, assignmentId),
+                eq(participantWorkerKpis.year, input.targetYear),
+                eq(participantWorkerKpis.name, name),
+              )).limit(1);
+              if (!existingKpi[0]) {
+                await db.insert(participantWorkerKpis).values({
+                  participantWorkerAssignmentId: assignmentId,
+                  year: input.targetYear,
+                  name,
+                  monthlyTarget: String(payload.monthlyTarget ?? 0),
+                });
+              }
+            }
+          }
         }
         if (cycle.sourceCycleId) sourceCyclesToClose.add(cycle.sourceCycleId);
         await db.update(planningCycles).set({ status: "active", activatedAt: new Date() }).where(eq(planningCycles.id, cycle.id));

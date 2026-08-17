@@ -112,6 +112,8 @@ export default function ProcessPlanningCycles() {
   const pendingCount = overview?.pendingCount || 0;
   const scheduleDecisionCount = decisions.filter((decision) => decision.sourceItemKey?.startsWith("schedule:")).length;
   const kpiDecisionCount = decisions.filter((decision) => decision.itemType === "participant_kpi").length;
+  const operationalItems = overview?.operationalItems || [];
+  const isActiveCycle = overview?.cycle?.status === "active";
 
   if (!enabled) {
     return (
@@ -231,13 +233,30 @@ export default function ProcessPlanningCycles() {
               <Card className="border-blue-200"><CardContent className="p-5"><p className="text-sm text-slate-600">Actividades del Cronograma</p><p className="mt-1 text-3xl font-bold text-blue-800">{scheduleDecisionCount}</p><p className="mt-1 text-xs text-slate-500">Misma fuente del Cronograma Consolidado</p></CardContent></Card>
               <Card className="border-emerald-200"><CardContent className="p-5"><p className="text-sm text-slate-600">KPI anuales a revisar</p><p className="mt-1 text-3xl font-bold text-emerald-700">{kpiDecisionCount}</p><p className="mt-1 text-xs text-slate-500">Definiciones; no se copian resultados</p></CardContent></Card>
               <Card className={pendingCount ? "border-amber-200" : "border-emerald-200"}><CardContent className="p-5"><p className="text-sm text-slate-600">Decisiones pendientes</p><p className={`mt-1 text-3xl font-bold ${pendingCount ? "text-amber-600" : "text-emerald-700"}`}>{pendingCount}</p><p className="mt-1 text-xs text-slate-500">Total de elementos: {decisions.length}</p></CardContent></Card>
-              <Card className="border-slate-200"><CardContent className="p-5"><p className="text-sm text-slate-600">Estado del proceso</p><p className="mt-1 font-bold text-slate-800">{overview?.cycle.status === "ready" ? "Listo para activar" : "En revisión"}</p></CardContent></Card>
+              <Card className="border-slate-200"><CardContent className="p-5"><p className="text-sm text-slate-600">Estado del proceso</p><p className="mt-1 font-bold text-slate-800">{isActiveCycle ? `Ciclo ${targetYear} activo` : overview?.cycle.status === "ready" ? "Listo para activar" : "En revisión"}</p></CardContent></Card>
             </div>
+
+            {isActiveCycle && (
+              <Card className="mb-6 border-emerald-200 bg-emerald-50/40">
+                <CardHeader>
+                  <CardTitle className="text-emerald-950">Plan operativo {targetYear}</CardTitle>
+                  <CardDescription>Estos son los elementos aprobados con “Migrar”. Se crearon como un plan independiente sin modificar el ciclo anterior.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {operationalItems.length ? operationalItems.map((item) => (
+                    <div key={item.id} className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
+                      <div><Badge className={TYPE_COLORS[item.itemType] || ""}>{TYPE_LABELS[item.itemType] || item.itemType}</Badge><p className="mt-2 font-semibold text-slate-900">{item.title}</p>{item.description && <p className="mt-1 text-sm text-slate-600">{item.description}</p>}</div>
+                      <p className="text-sm font-semibold text-emerald-800">{item.plannedDate ? `Planificado: ${formatDate(item.plannedDate)}` : "Pendiente de calendarizar"}</p>
+                    </div>
+                  )) : <p className="rounded-lg border border-dashed border-emerald-300 bg-white p-5 text-sm text-emerald-800">No se aprobaron elementos para migrar a este ciclo.</p>}
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader>
                 <CardTitle>Decisiones de transición</CardTitle>
-                <CardDescription>Elija el destino de cada elemento. La decisión se guarda de inmediato y puede cambiarse mientras el ciclo esté en revisión.</CardDescription>
+                <CardDescription>{isActiveCycle ? `Las decisiones de ${targetYear - 1} quedaron protegidas en el histórico después de activar el ciclo.` : "Elija el destino de cada elemento. La decisión se guarda de inmediato y puede cambiarse mientras el ciclo esté en revisión."}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {decisions.length ? decisions.map((decision) => (
@@ -252,9 +271,9 @@ export default function ProcessPlanningCycles() {
                         {decision.description && <p className="mt-1 text-sm text-slate-600">{decision.description}</p>}
                       </div>
                       <div className="flex flex-wrap gap-2 lg:justify-end">
-                        <Button size="sm" variant={decision.decision === "migrate" ? "default" : "outline"} className={decision.decision === "migrate" ? "bg-emerald-600 hover:bg-emerald-700" : "border-emerald-300 text-emerald-700"} disabled={decisionMutation.isPending || overview?.cycle.status === "ready"} onClick={() => decisionMutation.mutate({ companyId, decisionId: decision.id, decision: "migrate" })}><CheckCircle2 size={15} /> Migrar</Button>
-                        <Button size="sm" variant={decision.decision === "close" ? "default" : "outline"} className={decision.decision === "close" ? "bg-slate-700 hover:bg-slate-800" : ""} disabled={decisionMutation.isPending || overview?.cycle.status === "ready"} onClick={() => decisionMutation.mutate({ companyId, decisionId: decision.id, decision: "close" })}><XCircle size={15} /> No migrar</Button>
-                        <Button size="sm" variant={decision.decision === "review" ? "default" : "outline"} className={decision.decision === "review" ? "bg-amber-600 hover:bg-amber-700" : "border-amber-300 text-amber-700"} disabled={decisionMutation.isPending || overview?.cycle.status === "ready"} onClick={() => decisionMutation.mutate({ companyId, decisionId: decision.id, decision: "review" })}><Clock3 size={15} /> Revisar</Button>
+                        <Button size="sm" variant={decision.decision === "migrate" ? "default" : "outline"} className={decision.decision === "migrate" ? "bg-emerald-600 hover:bg-emerald-700" : "border-emerald-300 text-emerald-700"} disabled={decisionMutation.isPending || overview?.cycle.status !== "in_review"} onClick={() => decisionMutation.mutate({ companyId, decisionId: decision.id, decision: "migrate" })}><CheckCircle2 size={15} /> Migrar</Button>
+                        <Button size="sm" variant={decision.decision === "close" ? "default" : "outline"} className={decision.decision === "close" ? "bg-slate-700 hover:bg-slate-800" : ""} disabled={decisionMutation.isPending || overview?.cycle.status !== "in_review"} onClick={() => decisionMutation.mutate({ companyId, decisionId: decision.id, decision: "close" })}><XCircle size={15} /> No migrar</Button>
+                        <Button size="sm" variant={decision.decision === "review" ? "default" : "outline"} className={decision.decision === "review" ? "bg-amber-600 hover:bg-amber-700" : "border-amber-300 text-amber-700"} disabled={decisionMutation.isPending || overview?.cycle.status !== "in_review"} onClick={() => decisionMutation.mutate({ companyId, decisionId: decision.id, decision: "review" })}><Clock3 size={15} /> Revisar</Button>
                       </div>
                     </div>
                   </div>
@@ -264,9 +283,9 @@ export default function ProcessPlanningCycles() {
 
             <div className="mt-6 flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50 p-5 md:flex-row md:items-center md:justify-between">
               <div><p className="font-semibold text-blue-950">Finalizar la revisión del proceso</p><p className="text-sm text-blue-800">Solo se habilita cuando los {decisions.length} elementos tengan una decisión.</p></div>
-              <Button disabled={!ready || readyMutation.isPending || overview?.cycle.status === "ready"} className="bg-blue-800 hover:bg-blue-900" onClick={() => overview?.cycle && readyMutation.mutate({ companyId, cycleId: overview.cycle.id })}>
+              <Button disabled={!ready || readyMutation.isPending || overview?.cycle.status !== "in_review"} className="bg-blue-800 hover:bg-blue-900" onClick={() => overview?.cycle && readyMutation.mutate({ companyId, cycleId: overview.cycle.id })}>
                 {readyMutation.isPending && <Loader2 className="mr-2 animate-spin" size={16} />}
-                {overview?.cycle.status === "ready" ? "Proceso listo" : "Marcar proceso como listo"}
+                {isActiveCycle ? `Ciclo ${targetYear} activo` : overview?.cycle.status === "ready" ? "Proceso listo" : "Marcar proceso como listo"}
               </Button>
             </div>
           </>
@@ -276,7 +295,7 @@ export default function ProcessPlanningCycles() {
           <Card className="mt-8 border-violet-200">
             <CardHeader className="bg-violet-50">
               <CardTitle className="text-violet-950">Control gerencial del ciclo {targetYear}</CardTitle>
-              <CardDescription>Esta sección consolida la preparación de todos los procesos. La activación empresarial solo cambia el estado de los borradores y genera el histórico; no borra datos operativos.</CardDescription>
+              <CardDescription>Esta sección consolida la preparación de todos los procesos. La activación genera el histórico y crea el plan operativo del nuevo ciclo solo para los elementos aprobados con “Migrar”.</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
