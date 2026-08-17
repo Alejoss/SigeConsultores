@@ -35,3 +35,7 @@ Cada proceso tendrá una caracterización breve, uno o dos OTE con objetivos ope
 ## Escenario de ciclo anual
 
 El cierre de 2026 y borrador de 2027 evidenciarán tres decisiones: un objetivo que continúa por estar parcialmente cumplido, una acción que se cierra por estar terminada y un KPI cuya definición se reutiliza para el año siguiente sin trasladar sus resultados mensuales. El ciclo empresarial no se activará durante la preparación inicial; quedará disponible para la demostración bajo control del usuario.
+
+## Ampliación solicitada: Producción y Calidad
+
+La carga demostrativa de Producción y Calidad utilizará el identificador de proceso `2610042`. Los OTG se registrarán en `tacticalObjectives` y sus tareas en la misma planificación de cada objetivo. Los OTE se registrarán en `processTacticalObjectives`; sus objetivos operativos y tareas se conservarán dentro de `planningData.resultKeys`, que es la estructura que consume la página de Planificación OTE. Los cuatro cumplimientos se registrarán en `processCompliances` con sus fechas entre enero y julio de 2026. La información de subprocesos se almacenará en `subprocessMaps` y sus tablas de entradas, actividades y salidas, preservando las relaciones propias de cada módulo.
