@@ -110,6 +110,8 @@ export default function ProcessPlanningCycles() {
   const decisions = overview?.decisions || [];
   const ready = Boolean(overview?.ready);
   const pendingCount = overview?.pendingCount || 0;
+  const scheduleDecisionCount = decisions.filter((decision) => decision.sourceItemKey?.startsWith("schedule:")).length;
+  const kpiDecisionCount = decisions.filter((decision) => decision.itemType === "participant_kpi").length;
 
   if (!enabled) {
     return (
@@ -225,9 +227,10 @@ export default function ProcessPlanningCycles() {
           </Card>
         ) : (
           <>
-            <div className="mb-5 grid gap-4 md:grid-cols-3">
-              <Card className="border-blue-200"><CardContent className="p-5"><p className="text-sm text-slate-600">Elementos para decidir</p><p className="mt-1 text-3xl font-bold text-blue-800">{decisions.length}</p></CardContent></Card>
-              <Card className={pendingCount ? "border-amber-200" : "border-emerald-200"}><CardContent className="p-5"><p className="text-sm text-slate-600">Decisiones pendientes</p><p className={`mt-1 text-3xl font-bold ${pendingCount ? "text-amber-600" : "text-emerald-700"}`}>{pendingCount}</p></CardContent></Card>
+            <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <Card className="border-blue-200"><CardContent className="p-5"><p className="text-sm text-slate-600">Actividades del Cronograma</p><p className="mt-1 text-3xl font-bold text-blue-800">{scheduleDecisionCount}</p><p className="mt-1 text-xs text-slate-500">Misma fuente del Cronograma Consolidado</p></CardContent></Card>
+              <Card className="border-emerald-200"><CardContent className="p-5"><p className="text-sm text-slate-600">KPI anuales a revisar</p><p className="mt-1 text-3xl font-bold text-emerald-700">{kpiDecisionCount}</p><p className="mt-1 text-xs text-slate-500">Definiciones; no se copian resultados</p></CardContent></Card>
+              <Card className={pendingCount ? "border-amber-200" : "border-emerald-200"}><CardContent className="p-5"><p className="text-sm text-slate-600">Decisiones pendientes</p><p className={`mt-1 text-3xl font-bold ${pendingCount ? "text-amber-600" : "text-emerald-700"}`}>{pendingCount}</p><p className="mt-1 text-xs text-slate-500">Total de elementos: {decisions.length}</p></CardContent></Card>
               <Card className="border-slate-200"><CardContent className="p-5"><p className="text-sm text-slate-600">Estado del proceso</p><p className="mt-1 font-bold text-slate-800">{overview?.cycle.status === "ready" ? "Listo para activar" : "En revisión"}</p></CardContent></Card>
             </div>
 

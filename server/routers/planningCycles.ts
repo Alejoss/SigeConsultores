@@ -2,8 +2,8 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
+import { getConsolidatedScheduleActivities } from "../lib/consolidatedScheduleActivities";
 import {
-  criticalityMatrix,
   participantWorkerAssignments,
   participantWorkerKpis,
   participantWorkerKpiValues,
@@ -12,11 +12,8 @@ import {
   planningCycleSnapshots,
   planningCycles,
   processCharacterizations,
-  processCompliances,
   processParticipants,
-  processTacticalObjectives,
   processes,
-  stakeholders,
 } from "../../drizzle/schema";
 
 const ITEM_TYPES = ["ote", "otg", "stakeholder_action", "compliance", "participant_kpi"] as const;
@@ -77,50 +74,27 @@ async function buildCandidates(companyId: number, processId: number, sourceYear:
   if (!processRows[0]) throw new Error("El proceso no corresponde a la empresa seleccionada");
 
   const candidates: CycleCandidate[] = [];
-  const [objectives, compliances, criticalities, stakeholderRows, characterizations] = await Promise.all([
-    db.select().from(processTacticalObjectives).where(eq(processTacticalObjectives.processId, processId)),
-    db.select().from(processCompliances).where(eq(processCompliances.processId, processId)),
-    db.select().from(criticalityMatrix).where(eq(criticalityMatrix.processId, processId)),
-    db.select().from(stakeholders).where(eq(stakeholders.processId, processId)),
+  const [scheduleActivities, characterizations] = await Promise.all([
+    getConsolidatedScheduleActivities(processId),
     db.select().from(processCharacterizations).where(eq(processCharacterizations.processId, processId)).limit(1),
   ]);
 
-  for (const objective of objectives) {
+  // La transición anual toma como referencia exacta las actividades del Cronograma Consolidado.
+  // De este modo, una tarea que existe en el cronograma siempre requiere una decisión en Ciclos.
+  const scheduleTypeToCycleType: Record<string, CycleItemType> = {
+    stakeholder: "stakeholder_action",
+    foda: "otg",
+    objective: "ote",
+    compliance: "compliance",
+  };
+  for (const activity of scheduleActivities) {
     candidates.push({
-      itemType: "ote",
-      sourceItemKey: String(objective.id),
-      title: objective.name,
-      description: objective.description || objective.target || null,
-      completionPercent: calculateOteProgress(objective.planningData),
-      sourcePayloadJson: JSON.stringify(objective),
-    });
-  }
-
-  for (const compliance of compliances) {
-    const validUntil = compliance.validUntil ? new Date(compliance.validUntil) : null;
-    const isStillValid = compliance.evaluationMode === "vigencia" && validUntil && validUntil.getFullYear() >= sourceYear + 1;
-    candidates.push({
-      itemType: "compliance",
-      sourceItemKey: String(compliance.id),
-      title: compliance.requirement,
-      description: isStillValid
-        ? `Vigencia hasta ${validUntil.toLocaleDateString("es-EC")}. Requiere revisión antes de reiniciar.`
-        : (compliance.description || compliance.regulation || null),
-      completionPercent: clampPercent(compliance.completionPercentage),
-      sourcePayloadJson: JSON.stringify({ ...compliance, isStillValid }),
-    });
-  }
-
-  const stakeholderNames = new Map(stakeholderRows.map((stakeholder) => [stakeholder.id, stakeholder.name]));
-  for (const criticality of criticalities) {
-    if (!criticality.actionToTake?.trim()) continue;
-    candidates.push({
-      itemType: "stakeholder_action",
-      sourceItemKey: String(criticality.id),
-      title: criticality.actionToTake,
-      description: stakeholderNames.get(criticality.stakeholderId) || "Gestión con Partes Interesadas",
-      completionPercent: clampPercent(criticality.completionPercentage),
-      sourcePayloadJson: JSON.stringify(criticality),
+      itemType: scheduleTypeToCycleType[activity.type],
+      sourceItemKey: `schedule:${activity.id}`,
+      title: activity.action,
+      description: `${activity.badge} · ${activity.element} · Fecha planificada: ${activity.dueDate.toLocaleDateString("es-EC")}`,
+      completionPercent: clampPercent(activity.completionPercentage),
+      sourcePayloadJson: JSON.stringify({ source: "consolidated_schedule", activity }),
     });
   }
 
