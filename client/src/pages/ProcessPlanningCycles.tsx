@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, CalendarDays, CheckCircle2, CircleAlert, Clock3, History, Loader2, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, CircleAlert, Clock3, History, Loader2, RefreshCw, RotateCcw, ShieldCheck, XCircle } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +50,7 @@ export default function ProcessPlanningCycles() {
   const [targetYear, setTargetYear] = useState(Number(parameters.get("targetYear") || new Date().getFullYear() + 1));
   const [view, setView] = useState<"new" | "history">("new");
   const [deadlineValue, setDeadlineValue] = useState("");
+  const [managerReviewNote, setManagerReviewNote] = useState("");
   const isManager = isManagerLogin || localStorage.getItem("managerCompanyId") !== null;
   const enabled = companyId > 0 && processId > 0;
   const utils = trpc.useUtils();
@@ -98,6 +99,15 @@ export default function ProcessPlanningCycles() {
     onError: (error) => toast.error(error.message),
   });
 
+  const managerReviewMutation = trpc.planningCycles.reviewByManager.useMutation({
+    onSuccess: async (result) => {
+      toast.success(result.success ? "Revisión gerencial registrada." : "No se pudo registrar la revisión.");
+      setManagerReviewNote("");
+      await refresh();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   const activateMutation = trpc.planningCycles.activateCompanyCycle.useMutation({
     onSuccess: async (result) => {
       toast.success(`Ciclo empresarial activado con ${result.activatedCycles} proceso(s) preparado(s).`);
@@ -114,6 +124,10 @@ export default function ProcessPlanningCycles() {
   const kpiDecisionCount = decisions.filter((decision) => decision.itemType === "participant_kpi").length;
   const operationalItems = overview?.operationalItems || [];
   const isActiveCycle = overview?.cycle?.status === "active";
+  const managerApprovalStatus = overview?.cycle?.managerApprovalStatus || "pending";
+  const awaitingManagerReview = isManager && overview?.cycle?.status === "ready" && managerApprovalStatus === "pending";
+  const managerApproved = managerApprovalStatus === "approved";
+  const approvedProcessCount = managerQuery.data?.processes.filter((process) => process.cycle?.managerApprovalStatus === "approved").length || 0;
 
   if (!enabled) {
     return (
@@ -233,7 +247,7 @@ export default function ProcessPlanningCycles() {
               <Card className="border-blue-200"><CardContent className="p-5"><p className="text-sm text-slate-600">Actividades del Cronograma</p><p className="mt-1 text-3xl font-bold text-blue-800">{scheduleDecisionCount}</p><p className="mt-1 text-xs text-slate-500">Misma fuente del Cronograma Consolidado</p></CardContent></Card>
               <Card className="border-emerald-200"><CardContent className="p-5"><p className="text-sm text-slate-600">KPI anuales a revisar</p><p className="mt-1 text-3xl font-bold text-emerald-700">{kpiDecisionCount}</p><p className="mt-1 text-xs text-slate-500">Definiciones; no se copian resultados</p></CardContent></Card>
               <Card className={pendingCount ? "border-amber-200" : "border-emerald-200"}><CardContent className="p-5"><p className="text-sm text-slate-600">Decisiones pendientes</p><p className={`mt-1 text-3xl font-bold ${pendingCount ? "text-amber-600" : "text-emerald-700"}`}>{pendingCount}</p><p className="mt-1 text-xs text-slate-500">Total de elementos: {decisions.length}</p></CardContent></Card>
-              <Card className="border-slate-200"><CardContent className="p-5"><p className="text-sm text-slate-600">Estado del proceso</p><p className="mt-1 font-bold text-slate-800">{isActiveCycle ? `Ciclo ${targetYear} activo` : overview?.cycle.status === "ready" ? "Listo para activar" : "En revisión"}</p></CardContent></Card>
+              <Card className="border-slate-200"><CardContent className="p-5"><p className="text-sm text-slate-600">Estado del proceso</p><p className="mt-1 font-bold text-slate-800">{isActiveCycle ? `Ciclo ${targetYear} activo` : managerApproved ? "Aprobado por Gerencia" : managerApprovalStatus === "returned" ? "Devuelto para ajuste" : overview?.cycle.status === "ready" ? "Pendiente de revisión gerencial" : "En revisión"}</p></CardContent></Card>
             </div>
 
             {isActiveCycle && (
@@ -281,11 +295,20 @@ export default function ProcessPlanningCycles() {
               </CardContent>
             </Card>
 
+            {isManager && overview?.cycle && !isActiveCycle && (
+              <Card className="mt-6 border-violet-200 bg-violet-50/50">
+                <CardHeader><CardTitle className="text-violet-950">Revisión y aprobación gerencial</CardTitle><CardDescription>Revise el resumen anterior. Puede aprobar este proceso para la activación empresarial o devolverlo al Jefe de Proceso con una observación.</CardDescription></CardHeader>
+                <CardContent className="space-y-4">
+                  {managerApproved ? <Alert className="border-emerald-200 bg-emerald-50"><CheckCircle2 className="h-5 w-5 text-emerald-700" /><AlertTitle className="text-emerald-900">Proceso aprobado por Gerencia</AlertTitle><AlertDescription className="text-emerald-800">Este proceso se incluirá en la próxima activación empresarial del ciclo {targetYear}.</AlertDescription></Alert> : awaitingManagerReview ? <><div className="grid gap-3 md:grid-cols-3 text-sm"><div className="rounded-lg bg-white border p-3"><p className="text-slate-500">Migrar</p><p className="text-xl font-bold text-emerald-700">{decisions.filter((item) => item.decision === "migrate").length}</p></div><div className="rounded-lg bg-white border p-3"><p className="text-slate-500">Cerrar</p><p className="text-xl font-bold text-slate-700">{decisions.filter((item) => item.decision === "close").length}</p></div><div className="rounded-lg bg-white border p-3"><p className="text-slate-500">Revisar</p><p className="text-xl font-bold text-amber-700">{decisions.filter((item) => item.decision === "review").length}</p></div></div><div><Label htmlFor="manager-review-note">Observación para el Jefe de Proceso (opcional)</Label><Input id="manager-review-note" value={managerReviewNote} onChange={(event) => setManagerReviewNote(event.target.value)} placeholder="Escriba una observación o motivo de devolución" /></div><div className="flex flex-wrap gap-3"><Button className="bg-emerald-700 hover:bg-emerald-800" disabled={managerReviewMutation.isPending} onClick={() => managerReviewMutation.mutate({ companyId, cycleId: overview.cycle.id, decision: "approved", note: managerReviewNote || undefined })}><CheckCircle2 className="mr-2" size={16} /> Aprobar proceso</Button><Button variant="outline" className="border-amber-300 text-amber-800" disabled={managerReviewMutation.isPending} onClick={() => managerReviewMutation.mutate({ companyId, cycleId: overview.cycle.id, decision: "returned", note: managerReviewNote || undefined })}><RotateCcw className="mr-2" size={16} /> Devolver para ajuste</Button></div></> : managerApprovalStatus === "returned" ? <Alert className="border-amber-200 bg-amber-50"><CircleAlert className="h-5 w-5 text-amber-700" /><AlertTitle className="text-amber-900">Proceso devuelto al Jefe de Proceso</AlertTitle><AlertDescription className="text-amber-800">{overview.cycle.managerReviewNote || "El Jefe debe ajustar sus decisiones y marcar nuevamente el proceso como listo."}</AlertDescription></Alert> : <p className="text-sm text-slate-600">El proceso debe terminar su revisión antes de estar disponible para la aprobación gerencial.</p>}
+                </CardContent>
+              </Card>
+            )}
+
             <div className="mt-6 flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50 p-5 md:flex-row md:items-center md:justify-between">
               <div><p className="font-semibold text-blue-950">Finalizar la revisión del proceso</p><p className="text-sm text-blue-800">Solo se habilita cuando los {decisions.length} elementos tengan una decisión.</p></div>
               <Button disabled={!ready || readyMutation.isPending || overview?.cycle.status !== "in_review"} className="bg-blue-800 hover:bg-blue-900" onClick={() => overview?.cycle && readyMutation.mutate({ companyId, cycleId: overview.cycle.id })}>
                 {readyMutation.isPending && <Loader2 className="mr-2 animate-spin" size={16} />}
-                {isActiveCycle ? `Ciclo ${targetYear} activo` : overview?.cycle.status === "ready" ? "Proceso listo" : "Marcar proceso como listo"}
+                {isActiveCycle ? `Ciclo ${targetYear} activo` : managerApproved ? "Aprobado por Gerencia" : overview?.cycle.status === "ready" ? "Pendiente de aprobación gerencial" : "Marcar proceso como listo"}
               </Button>
             </div>
           </>
@@ -306,14 +329,14 @@ export default function ProcessPlanningCycles() {
                 {managerQuery.data?.processes.map((process) => (
                   <div key={process.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 px-4 py-3">
                     <div><p className="font-semibold text-slate-900">{process.name}</p><p className="text-sm text-slate-500">{process.macroProcess || "Proceso"}</p></div>
-                    <Badge className={process.cycle?.status === "ready" ? "bg-emerald-100 text-emerald-800" : process.cycle?.status === "active" ? "bg-blue-100 text-blue-800" : "bg-slate-100 text-slate-700"}>{process.cycle?.status === "ready" ? "Listo" : process.cycle?.status === "active" ? "Activo" : process.cycle?.status === "in_review" ? "En revisión" : "Sin iniciar"}</Badge>
+                    <Badge className={process.cycle?.status === "active" ? "bg-blue-100 text-blue-800" : process.cycle?.managerApprovalStatus === "approved" ? "bg-emerald-100 text-emerald-800" : process.cycle?.managerApprovalStatus === "returned" ? "bg-amber-100 text-amber-800" : process.cycle?.status === "ready" ? "bg-violet-100 text-violet-800" : "bg-slate-100 text-slate-700"}>{process.cycle?.status === "active" ? "Activo" : process.cycle?.managerApprovalStatus === "approved" ? "Aprobado" : process.cycle?.managerApprovalStatus === "returned" ? "Devuelto" : process.cycle?.status === "ready" ? "Pendiente de revisión" : process.cycle?.status === "in_review" ? "En revisión" : "Sin iniciar"}</Badge>
                   </div>
                 ))}
               </div>
               <AlertDialog>
-                <AlertDialogTrigger asChild><Button className="mt-6 bg-violet-700 hover:bg-violet-800" disabled={activateMutation.isPending || managerQuery.data?.activation?.status === "active"}>Activar ciclo empresarial {targetYear}</Button></AlertDialogTrigger>
+                <AlertDialogTrigger asChild><Button className="mt-6 bg-violet-700 hover:bg-violet-800" disabled={activateMutation.isPending || managerQuery.data?.activation?.status === "active" || approvedProcessCount === 0}>Activar ciclo empresarial {targetYear}</Button></AlertDialogTrigger>
                 <AlertDialogContent>
-                  <AlertDialogHeader><AlertDialogTitle>¿Activar el ciclo empresarial {targetYear}?</AlertDialogTitle><AlertDialogDescription>Se conservarán snapshots históricos de los procesos listos y se activarán sus borradores. Los procesos sin preparar quedarán identificados como pendientes, sin borrar su información actual.</AlertDialogDescription></AlertDialogHeader>
+                  <AlertDialogHeader><AlertDialogTitle>¿Activar el ciclo empresarial {targetYear}?</AlertDialogTitle><AlertDialogDescription>Se conservarán snapshots históricos y se activarán únicamente los procesos aprobados por Gerencia. Los procesos sin preparar, pendientes o devueltos permanecerán sin cambios.</AlertDialogDescription></AlertDialogHeader>
                   <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => activateMutation.mutate({ companyId, targetYear })}>Activar de forma controlada</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>

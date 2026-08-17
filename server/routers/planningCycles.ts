@@ -4,6 +4,7 @@ import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { getConsolidatedScheduleActivities } from "../lib/consolidatedScheduleActivities";
 import {
+  accounts,
   participantWorkerAssignments,
   participantWorkerKpis,
   participantWorkerKpiValues,
@@ -348,8 +349,43 @@ export const planningCyclesRouter = router({
       if (!decisions.length || decisions.some((decision) => decision.decision === "pending")) {
         throw new Error("Debe decidir el destino de todos los elementos antes de marcar el ciclo como listo");
       }
-      await db.update(planningCycles).set({ status: "ready", preparedByAccountId: ctx.user?.id || null, preparedAt: new Date() })
-        .where(eq(planningCycles.id, input.cycleId));
+      await db.update(planningCycles).set({
+        status: "ready",
+        preparedByAccountId: ctx.user?.id || null,
+        preparedAt: new Date(),
+        managerApprovalStatus: "pending",
+        managerReviewedByAccountId: null,
+        managerReviewedAt: null,
+        managerReviewNote: null,
+      }).where(eq(planningCycles.id, input.cycleId));
+      return { success: true };
+    }),
+
+  reviewByManager: companyProcedure
+    .input(companyInput.extend({
+      cycleId: z.number().int().positive(),
+      decision: z.enum(["approved", "returned"]),
+      note: z.string().max(2000).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.manager || ctx.manager.companyId !== input.companyId) {
+        throw new Error("Solo el Gerente General de la empresa puede revisar un ciclo");
+      }
+      const db = await getDb();
+      if (!db) throw new Error("Base de datos no disponible");
+      const [cycle] = await db.select().from(planningCycles).where(eq(planningCycles.id, input.cycleId)).limit(1);
+      if (!cycle || cycle.companyId !== input.companyId || cycle.status !== "ready") {
+        throw new Error("El proceso no está disponible para revisión gerencial");
+      }
+      const [managerAccount] = await db.select({ id: accounts.id }).from(accounts)
+        .where(eq(accounts.email, ctx.manager.managerEmail)).limit(1);
+      await db.update(planningCycles).set({
+        status: input.decision === "returned" ? "in_review" : "ready",
+        managerApprovalStatus: input.decision,
+        managerReviewedByAccountId: managerAccount?.id || null,
+        managerReviewedAt: new Date(),
+        managerReviewNote: input.note?.trim() || null,
+      }).where(eq(planningCycles.id, input.cycleId));
       return { success: true };
     }),
 
@@ -368,6 +404,21 @@ export const planningCyclesRouter = router({
         eq(planningCycles.companyId, input.companyId),
         eq(planningCycles.cycleYear, input.targetYear),
       ));
+      const decisions = cycles.length
+        ? await db.select({ targetCycleId: planningCycleDecisions.targetCycleId, decision: planningCycleDecisions.decision })
+          .from(planningCycleDecisions)
+          .where(inArray(planningCycleDecisions.targetCycleId, cycles.map((cycle) => cycle.id)))
+        : [];
+      const summaryByCycle = new Map<number, { total: number; migrate: number; close: number; review: number; pending: number }>();
+      for (const decision of decisions) {
+        const summary = summaryByCycle.get(decision.targetCycleId) || { total: 0, migrate: 0, close: 0, review: 0, pending: 0 };
+        summary.total += 1;
+        if (decision.decision === "migrate") summary.migrate += 1;
+        else if (decision.decision === "close") summary.close += 1;
+        else if (decision.decision === "review") summary.review += 1;
+        else summary.pending += 1;
+        summaryByCycle.set(decision.targetCycleId, summary);
+      }
       const cycleByProcess = new Map(cycles.map((cycle) => [cycle.processId, cycle]));
       return {
         activation: activation || null,
@@ -376,6 +427,7 @@ export const planningCyclesRouter = router({
           name: process.name,
           macroProcess: process.macroProcess,
           cycle: cycleByProcess.get(process.id) || null,
+          summary: cycleByProcess.get(process.id) ? summaryByCycle.get(cycleByProcess.get(process.id)!.id) || { total: 0, migrate: 0, close: 0, review: 0, pending: 0 } : null,
         })),
       };
     }),
@@ -383,6 +435,9 @@ export const planningCyclesRouter = router({
   setDeadline: companyProcedure
     .input(companyInput.extend({ targetYear: z.number().int().min(2020).max(2100), deadline: z.string().nullable().optional() }))
     .mutation(async ({ input, ctx }) => {
+      if (!ctx.manager || ctx.manager.companyId !== input.companyId) {
+        throw new Error("Solo el Gerente General de la empresa puede definir la fecha límite");
+      }
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
       const activation = await getOrCreateActivation(input.companyId, input.targetYear, ctx.user?.id);
@@ -396,6 +451,9 @@ export const planningCyclesRouter = router({
   activateCompanyCycle: companyProcedure
     .input(companyInput.extend({ targetYear: z.number().int().min(2020).max(2100) }))
     .mutation(async ({ input, ctx }) => {
+      if (!ctx.manager || ctx.manager.companyId !== input.companyId) {
+        throw new Error("Solo el Gerente General de la empresa puede activar el ciclo empresarial");
+      }
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [activation] = await db.select().from(planningCycleActivations).where(and(
@@ -403,8 +461,7 @@ export const planningCyclesRouter = router({
         eq(planningCycleActivations.targetYear, input.targetYear),
       )).limit(1);
       if (!activation) throw new Error("Primero debe configurarse el ciclo empresarial");
-      if (activation.status === "active") return { success: true, alreadyActive: true };
-      if (activation.status !== "draft") throw new Error("El ciclo empresarial no está disponible para activación");
+      if (!["draft", "active"].includes(activation.status)) throw new Error("El ciclo empresarial no está disponible para activación");
 
       const targetCycles = await db.select().from(planningCycles).where(and(
         eq(planningCycles.companyId, input.companyId),
@@ -412,7 +469,7 @@ export const planningCyclesRouter = router({
       ));
       const sourceCyclesToClose = new Set<number>();
       for (const cycle of targetCycles) {
-        if (cycle.status !== "ready") continue;
+        if (cycle.status !== "ready" || cycle.managerApprovalStatus !== "approved") continue;
         const decisions = await db.select().from(planningCycleDecisions)
           .where(eq(planningCycleDecisions.targetCycleId, cycle.id));
         for (const decision of decisions) {
@@ -485,8 +542,12 @@ export const planningCyclesRouter = router({
       for (const sourceCycleId of Array.from(sourceCyclesToClose)) {
         await db.update(planningCycles).set({ status: "closed", closedAt: new Date() }).where(eq(planningCycles.id, sourceCycleId));
       }
-      await db.update(planningCycleActivations).set({ status: "active", activatedAt: new Date(), activatedByAccountId: ctx.user?.id || null })
-        .where(eq(planningCycleActivations.id, activation.id));
-      return { success: true, activatedCycles: targetCycles.filter((cycle) => cycle.status === "ready").length };
+      const activatedCycles = targetCycles.filter((cycle) => cycle.status === "ready" && cycle.managerApprovalStatus === "approved").length;
+      await db.update(planningCycleActivations).set({
+        status: "active",
+        activatedAt: activation.activatedAt || new Date(),
+        activatedByAccountId: activation.activatedByAccountId || ctx.user?.id || null,
+      }).where(eq(planningCycleActivations.id, activation.id));
+      return { success: true, activatedCycles, alreadyActive: activation.status === "active" };
     }),
 });

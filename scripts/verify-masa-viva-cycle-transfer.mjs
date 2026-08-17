@@ -40,6 +40,15 @@ try {
     WHERE pc.processId = ? AND k.year IN (2026, 2027)
     GROUP BY k.year ORDER BY k.year
   `, [processId]);
+  const [targetKpiValues] = await db.execute(`
+    SELECT COUNT(*) AS total
+    FROM participantWorkerKpiValues v
+    JOIN participantWorkerKpis k ON k.id = v.participantWorkerKpiId
+    JOIN participantWorkerAssignments a ON a.id = k.participantWorkerAssignmentId
+    JOIN processParticipants pp ON pp.id = a.processParticipantId
+    JOIN processCharacterizations pc ON pc.id = pp.processCharacterizationId
+    WHERE pc.processId = ? AND k.year = 2027
+  `, [processId]);
   const [[sourceRecords]] = await db.execute(`
     SELECT
       (SELECT COUNT(*) FROM processTacticalObjectives WHERE processId = ?) AS ote,
@@ -55,6 +64,7 @@ try {
     operationalByType,
     snapshotByDecision,
     kpisByYear,
+    targetKpiValues,
     sourceRecords,
   }, null, 2));
 } finally {

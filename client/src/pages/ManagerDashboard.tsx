@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { APP_TITLE } from "@/const";
 import { toast } from "sonner";
 import { MODULE_GROUPS } from "@shared/dashboardModules";
+import { ManagerCycleActivationPanel } from "@/components/ManagerCycleActivationPanel";
 
 const AXIS_STYLES: Record<string, { card: string; btn: string; icon_bg: string }> = {
   estrategia: { card: "bg-sky-50 border-sky-200 hover:border-sky-400 hover:shadow-sky-100", btn: "border-sky-300 text-sky-700 hover:bg-sky-100", icon_bg: "bg-sky-100" },
@@ -297,6 +298,9 @@ export default function ManagerDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Cycle approval queue — shown above company details */}
+        {companyId && <ManagerCycleActivationPanel companyId={companyId} />}
 
         {/* Company Info — B (compacto) */}
         <details className="mb-8 group">
