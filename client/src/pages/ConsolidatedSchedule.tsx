@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Clock, CalendarDays, HelpCircle, BarChart2 } from "lucide-react";
 import { SimpleGanttChart, SimpleGanttActivity } from "@/components/SimpleGanttChart";
+import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
 
 interface ScheduleActivity {
   id: string;
@@ -257,8 +258,8 @@ export default function ConsolidatedSchedule() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-4xl font-bold text-gray-900">Cronograma Consolidado</h1>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div className="flex flex-wrap items-center gap-3"><h1 className="text-4xl font-bold text-gray-900">Cronograma Consolidado</h1><ActivePlanningCycleBadge companyId={Number(localStorage.getItem("selectedCompanyId"))} /></div>
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"

@@ -14,6 +14,7 @@ import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { useRef } from "react";
 import { getAxisBackPathForRole } from "@/lib/sessionScope";
 import { toast } from "sonner";
+import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
 
 interface ProcessData {
   macroProcess: string;
@@ -312,8 +313,11 @@ export default function ProcessCharacterization() {
   return (
     <DashboardLayout>
       <div className="p-6 bg-white min-h-screen">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-blue-900">CARACTERIZACIÓN DE PROCESOS</h1>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-bold text-blue-900">CARACTERIZACIÓN DE PROCESOS</h1>
+            <ActivePlanningCycleBadge companyId={Number(companyId)} />
+          </div>
           {activeModule !== "procedimientos" && (
             <Button
               variant="outline"

@@ -8,6 +8,7 @@ import { useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { AIChatPanel } from "@/components/AIChatPanel";
+import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
 
 
 // Componente de tooltip informativo al hacer clic
@@ -893,7 +894,7 @@ export default function ProcessStakeholderCriticality() {
     <div className="space-y-6 p-6 bg-white min-h-screen" translate="no">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-blue-900">GESTIÓN CON PARTES INTERESADAS</h1>
+          <div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-bold text-blue-900">GESTIÓN CON PARTES INTERESADAS</h1><ActivePlanningCycleBadge companyId={Number(companyId)} /></div>
           <p className="text-sm text-slate-600 mt-1">
             {saveStatus === 'saving' && '💾 Guardando cambios...'}
             {saveStatus === 'saved' && '✓ Cambios guardados'}

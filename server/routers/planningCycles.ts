@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
@@ -185,6 +185,24 @@ async function getOrCreateActivation(companyId: number, targetYear: number, acco
 }
 
 export const planningCyclesRouter = router({
+  activeYear: companyProcedure
+    .input(companyInput)
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Base de datos no disponible");
+      const [activation] = await db.select().from(planningCycleActivations)
+        .where(and(
+          eq(planningCycleActivations.companyId, input.companyId),
+          eq(planningCycleActivations.status, "active"),
+        ))
+        .orderBy(desc(planningCycleActivations.targetYear))
+        .limit(1);
+      return {
+        year: activation?.targetYear || new Date().getFullYear(),
+        isActive: Boolean(activation),
+      };
+    }),
+
   overview: companyProcedure
     .input(companyInput.extend({ processId: z.number().int().positive(), targetYear: z.number().int().min(2020).max(2100) }))
     .query(async ({ input }) => {
