@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
-import { Plus, Trash2, ChevronRight, AlertCircle, CheckCircle, Upload, Download, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, ChevronRight, AlertCircle, CheckCircle, Upload, Download, Eye, EyeOff, Pencil } from 'lucide-react';
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -43,6 +43,8 @@ export default function ProcessMap() {
   const [mapImageFileName, setMapImageFileName] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [editingProcessId, setEditingProcessId] = useState<number | null>(null);
+  const [editingProcessName, setEditingProcessName] = useState("");
 
   // Fetch user's companies (only if not manager login)
   const userCompaniesQuery = trpc.adminOperations.getUserCompanies.useQuery(
@@ -203,6 +205,18 @@ export default function ProcessMap() {
     },
   });
 
+  const renameMutation = trpc.processMap.rename.useMutation({
+    onSuccess: () => {
+      toast.success("Nombre del proceso actualizado");
+      setEditingProcessId(null);
+      setEditingProcessName("");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "No se pudo actualizar el nombre del proceso");
+    },
+  });
+
   // Delete process mutation
   const deleteMutation = trpc.processMap.delete.useMutation({
     onSuccess: () => {
@@ -235,6 +249,91 @@ export default function ProcessMap() {
       await deleteMutation.mutateAsync({ processId });
     }
   };
+
+  const startRenamingProcess = (processId: number, name: string) => {
+    setEditingProcessId(processId);
+    setEditingProcessName(name);
+  };
+
+  const saveProcessName = async (processId: number, currentName: string) => {
+    if (editingProcessId !== processId || renameMutation.isPending) return;
+
+    const name = editingProcessName.trim();
+    if (!name) {
+      toast.error("El nombre del proceso no puede quedar vacío");
+      setEditingProcessName(currentName);
+      return;
+    }
+
+    if (name === currentName) {
+      setEditingProcessId(null);
+      setEditingProcessName("");
+      return;
+    }
+
+    if (!companyId) return;
+    await renameMutation.mutateAsync({ companyId, processId, name });
+  };
+
+  const renderProcessRow = (
+    process: (typeof processes)[number],
+    typeLabel: string,
+    styles: { border: string; background: string; hover: string; title: string; subtitle: string }
+  ) => (
+    <div
+      key={process.id}
+      className={`flex items-center justify-between p-3 border ${styles.border} ${styles.background} rounded-lg ${styles.hover} transition`}
+    >
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => handleDeleteProcess(process.id)}
+        aria-label={`Eliminar ${process.name}`}
+      >
+        <Trash2 className="h-4 w-4 text-red-500" />
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => startRenamingProcess(process.id, process.name)}
+        aria-label={`Editar nombre de ${process.name}`}
+        title="Editar nombre"
+      >
+        <Pencil className="h-4 w-4 text-slate-600" />
+      </Button>
+      <div className="flex-1 px-2 min-w-0">
+        {editingProcessId === process.id ? (
+          <Input
+            autoFocus
+            value={editingProcessName}
+            onChange={(event) => setEditingProcessName(event.target.value)}
+            onBlur={() => void saveProcessName(process.id, process.name)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+              if (event.key === "Escape") {
+                setEditingProcessId(null);
+                setEditingProcessName("");
+              }
+            }}
+            disabled={renameMutation.isPending}
+            aria-label="Nombre del proceso"
+            className="h-8 bg-white"
+          />
+        ) : (
+          <p className={`font-medium ${styles.title} truncate`}>{process.name}</p>
+        )}
+        <p className={`text-xs ${styles.subtitle}`}>{typeLabel}</p>
+      </div>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => handleAccessProcess(process.id)}
+        aria-label={`Abrir ${process.name}`}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+  );
 
   const isDisplayableImage = (fileName: string | null) => {
     if (!fileName) return true;
@@ -447,31 +546,15 @@ export default function ProcessMap() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {strategicProcesses.map((process) => (
-                      <div
-                        key={process.id}
-                        className="flex items-center justify-between p-3 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
-                      >
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeleteProcess(process.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                        <div className="flex-1 px-2">
-                          <p className="font-medium text-blue-900">{process.name}</p>
-                          <p className="text-xs text-blue-700">Estratégico</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleAccessProcess(process.id)}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
+                    {strategicProcesses.map((process) =>
+                      renderProcessRow(process, "Estratégico", {
+                        border: "border-blue-200",
+                        background: "bg-blue-50",
+                        hover: "hover:bg-blue-100",
+                        title: "text-blue-900",
+                        subtitle: "text-blue-700",
+                      })
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -485,31 +568,15 @@ export default function ProcessMap() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {misionalProcesses.map((process) => (
-                      <div
-                        key={process.id}
-                        className="flex items-center justify-between p-3 border border-green-200 bg-green-50 rounded-lg hover:bg-green-100 transition"
-                      >
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeleteProcess(process.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                        <div className="flex-1 px-2">
-                          <p className="font-medium text-green-900">{process.name}</p>
-                          <p className="text-xs text-green-700">Misional</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleAccessProcess(process.id)}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
+                    {misionalProcesses.map((process) =>
+                      renderProcessRow(process, "Misional", {
+                        border: "border-green-200",
+                        background: "bg-green-50",
+                        hover: "hover:bg-green-100",
+                        title: "text-green-900",
+                        subtitle: "text-green-700",
+                      })
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -523,31 +590,15 @@ export default function ProcessMap() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {supportProcesses.map((process) => (
-                      <div
-                        key={process.id}
-                        className="flex items-center justify-between p-3 border border-orange-200 bg-orange-50 rounded-lg hover:bg-orange-100 transition"
-                      >
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeleteProcess(process.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                        <div className="flex-1 px-2">
-                          <p className="font-medium text-orange-900">{process.name}</p>
-                          <p className="text-xs text-orange-700">Soporte</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleAccessProcess(process.id)}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
+                    {supportProcesses.map((process) =>
+                      renderProcessRow(process, "Soporte", {
+                        border: "border-orange-200",
+                        background: "bg-orange-50",
+                        hover: "hover:bg-orange-100",
+                        title: "text-orange-900",
+                        subtitle: "text-orange-700",
+                      })
+                    )}
                   </div>
                 </CardContent>
               </Card>

@@ -161,6 +161,30 @@ export const processMapRouter = router({
       return { success: true, message: "Proceso actualizado exitosamente" };
     }),
 
+  rename: companyProcedure
+    .input(
+      z.object({
+        companyId: z.number(),
+        processId: z.number(),
+        name: z.string().trim().min(1, "El nombre del proceso es obligatorio.").max(255),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const result = await db
+        .update(processes)
+        .set({ name: input.name, updatedAt: new Date() })
+        .where(and(eq(processes.id, input.processId), eq(processes.companyId, input.companyId)));
+
+      if (result[0].affectedRows === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No se encontró el proceso solicitado." });
+      }
+
+      return { success: true, name: input.name };
+    }),
+
   delete: companyProcedure
     .input(z.object({ processId: z.number() }))
     .mutation(async ({ input }) => {
