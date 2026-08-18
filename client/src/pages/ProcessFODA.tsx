@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { exportFODAToPDF } from "@/lib/exportFODAToPDF";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
+import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
 
 type FODAType = 'Fortaleza' | 'Oportunidad' | 'Debilidad' | 'Amenaza';
 
@@ -318,7 +319,7 @@ export default function ProcessFODA() {
     <div className="space-y-6 p-6 bg-white min-h-screen">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-blue-900">ANÁLISIS FODA</h1>
+          <div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-bold text-blue-900">ANÁLISIS FODA</h1><ActivePlanningCycleBadge companyId={Number(localStorage.getItem("selectedCompanyId"))} /></div>
           <p className="text-slate-600 mt-2">Proceso: <strong>{processName}</strong></p>
         </div>
         <div className="flex items-center gap-3">

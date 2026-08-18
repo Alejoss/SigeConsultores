@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { ArrowLeft } from 'lucide-react';
+import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
 
 export default function ObjectivesTactical() {
   const [, setLocation] = useLocation();
@@ -33,7 +34,7 @@ export default function ObjectivesTactical() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-blue-900 mb-2">OBJETIVOS TÁCTICOS</h1>
+            <div className="flex flex-wrap items-center gap-3"><h1 className="text-4xl font-bold text-blue-900 mb-2">OBJETIVOS TÁCTICOS</h1><ActivePlanningCycleBadge companyId={Number(localStorage.getItem("selectedCompanyId"))} /></div>
             <p className="text-gray-600">Proceso: <span className="font-semibold">{localStorage.getItem("selectedProcessName") || "Proceso"}</span></p>
           </div>
           <Button

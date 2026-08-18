@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { ChevronUp } from "lucide-react";
+import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
 
 const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"] as const;
 
@@ -335,8 +336,8 @@ export default function ProcessCompliances() {
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-4xl font-bold text-gray-900">Cumplimientos del Proceso</h1>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div className="flex flex-wrap items-center gap-3"><h1 className="text-4xl font-bold text-gray-900">Cumplimientos del Proceso</h1><ActivePlanningCycleBadge companyId={Number(localStorage.getItem("selectedCompanyId"))} /></div>
             <Button variant="outline" onClick={() => navigate(backUrl)}>
               ← Volver
             </Button>

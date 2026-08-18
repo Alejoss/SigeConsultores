@@ -36,6 +36,7 @@ import PolicyObjectives from "./pages/PolicyObjectives";
 import Flowchart from "./pages/Flowchart";
 import ProcessParticipants from "./pages/ProcessParticipants";
 import ProcessResources from "./pages/ProcessResources";
+import ProcessPlanningCycles from "./pages/ProcessPlanningCycles";
 import TacticalDefinition from "./pages/TacticalDefinition";
 import TacticalPlanning from "./pages/TacticalPlanning";
 import ProceduresCharacterization from "./pages/ProceduresCharacterization";
@@ -166,6 +167,7 @@ function Router() {
       <Route path={"/flowchart"} component={Flowchart} />
       <Route path={"/process-participants"} component={ProcessParticipants} />
       <Route path={"/process-resources"} component={ProcessResources} />
+      <Route path={"/process-planning-cycles"} component={ProcessPlanningCycles} />
       <Route path={"/404"} component={NotFound} />
       <Route path={"/indicators"} component={Indicators} />
       <Route path={"/criticality-matrix"} component={CriticalityMatrix} />

@@ -55,18 +55,27 @@ export default function ProcessParticipants() {
   }, []);
 
   const utils = trpc.useUtils();
+  // El contexto general conserva el id del proceso. Participantes se almacena por
+  // caracterización, por lo que se resuelve esa relación antes de consultar datos.
+  // Si una sesión heredada ya contiene el id de caracterización, el fallback preserva
+  // su funcionamiento mientras se completa la transición al contexto correcto.
+  const { data: resolvedCharacterization } = trpc.processCharacterization.getByProcessId.useQuery(
+    { processId: processId || 0 },
+    { enabled: processId !== null },
+  );
+  const processCharacterizationId = resolvedCharacterization?.id || processId || 0;
   const { data: participants = [], isLoading, refetch } = trpc.processParticipants.list.useQuery(
-    { processCharacterizationId: processId || 0 },
+    { processCharacterizationId },
     { enabled: processId !== null },
   );
   const { data: performanceData, isLoading: isLoadingPerformance, refetch: refetchPerformance } = trpc.processParticipants.performanceDashboard.useQuery(
-    { companyId, processCharacterizationId: processId || 0, year },
+    { companyId, processCharacterizationId, year },
     { enabled: processId !== null && companyId > 0 },
   );
 
   const refreshPerformance = async () => {
     if (!processId || !companyId) return;
-    await utils.processParticipants.performanceDashboard.invalidate({ companyId, processCharacterizationId: processId, year });
+    await utils.processParticipants.performanceDashboard.invalidate({ companyId, processCharacterizationId, year });
     await refetchPerformance();
   };
 
@@ -124,7 +133,7 @@ export default function ProcessParticipants() {
     if (!formData.position.trim()) return toast.error("Por favor ingresa el cargo del participante");
     if (!processId) return toast.error("Por favor selecciona un proceso primero");
     if (editingId) await updateMutation.mutateAsync({ id: editingId, ...formData });
-    else await createMutation.mutateAsync({ processCharacterizationId: processId, ...formData, orderIndex: participants.length + 1 });
+    else await createMutation.mutateAsync({ processCharacterizationId, ...formData, orderIndex: participants.length + 1 });
   };
 
   const handleEdit = (participant: any) => {

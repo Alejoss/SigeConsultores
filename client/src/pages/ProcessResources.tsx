@@ -20,6 +20,7 @@ interface ResourceData {
 
 export default function ProcessResources() {
   const [, setLocation] = useLocation();
+  const utils = trpc.useUtils();
   const { isManagerLogin } = useManagerAuth();
   const { session: processLeaderSession } = useProcessLeaderAuth();
   const isProcessLeader = processLeaderSession !== null;
@@ -32,7 +33,6 @@ export default function ProcessResources() {
     resourceName: "",
     resourceElements: "",
   });
-  const [participants, setParticipants] = useState<any[]>([]);
   const [expandedParticipants, setExpandedParticipants] = useState<Set<number>>(new Set());
 
   // Get processId from localStorage
@@ -47,40 +47,36 @@ export default function ProcessResources() {
     }
   }, []);
 
+  // El proceso seleccionado conserva su id operativo; Recursos y Participantes
+  // se almacenan por caracterización. Se resuelve la relación antes de consultar.
+  const { data: resolvedCharacterization } = trpc.processCharacterization.getByProcessId.useQuery(
+    { processId: processId || 0 },
+    { enabled: processId !== null }
+  );
+  const processCharacterizationId = resolvedCharacterization?.id || processId || 0;
+
   // Fetch participants from database
   const { data: participantsList = [] } = trpc.processParticipants.list.useQuery(
-    { processCharacterizationId: processId || 0 },
+    { processCharacterizationId },
     { enabled: processId !== null }
   );
 
-  // Update participants list when data changes
-  useEffect(() => {
-    if (participantsList && participantsList.length > 0) {
-      setParticipants(participantsList);
-    }
-  }, [participantsList]);
+  // Se usan directamente los participantes consultados para evitar ciclos de actualización.
+  const participants = participantsList;
 
   // Fetch resources from database
   const { data: resources = [], isLoading } = trpc.processResources.list.useQuery(
-    { processCharacterizationId: processId || 0 },
+    { processCharacterizationId },
     { enabled: processId !== null }
   );
 
-  // Local copy of resources for optimistic updates — avoids refetch() which triggers
-  // a full DashboardLayout re-render causing Radix portal removeChild/insertBefore errors
-  const [localResources, setLocalResources] = useState<any[]>([]);
+  // Los recursos se derivan directamente de la consulta para evitar ciclos de estado.
+  const localResources = resources;
 
-  useEffect(() => {
-    setLocalResources(resources);
-  }, [resources]);
-
-  // Create resource mutation — optimistic update: no refetch, update local state directly
   const createMutation = trpc.processResources.create.useMutation({
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast.success("Recurso agregado exitosamente");
-      if (data.resource) {
-        setLocalResources((prev) => [...prev, data.resource]);
-      }
+      void utils.processResources.list.invalidate({ processCharacterizationId });
       setFormData({ resourceName: "", resourceElements: "" });
       setEditingParticipantId(null);
     },
@@ -89,15 +85,10 @@ export default function ProcessResources() {
     },
   });
 
-  // Update resource mutation — optimistic update: no refetch, update local state directly
   const updateMutation = trpc.processResources.update.useMutation({
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast.success("Recurso actualizado exitosamente");
-      if (data.resource) {
-        setLocalResources((prev) =>
-          prev.map((r) => (r.id === data.resource!.id ? data.resource! : r))
-        );
-      }
+      void utils.processResources.list.invalidate({ processCharacterizationId });
       setFormData({ resourceName: "", resourceElements: "" });
       setEditingId(null);
       setEditingParticipantId(null);
@@ -107,11 +98,10 @@ export default function ProcessResources() {
     },
   });
 
-  // Delete resource mutation — optimistic update: no refetch, remove from local state directly
   const deleteMutation = trpc.processResources.delete.useMutation({
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       toast.success("Recurso eliminado");
-      setLocalResources((prev) => prev.filter((r) => r.id !== variables.id));
+      void utils.processResources.list.invalidate({ processCharacterizationId });
     },
     onError: (error: any) => {
       toast.error(error.message || "Error al eliminar el recurso");
@@ -140,7 +130,7 @@ export default function ProcessResources() {
     } else {
       // Create new
       await createMutation.mutateAsync({
-        processCharacterizationId: processId,
+        processCharacterizationId,
         participantId: participantId,
         resourceName: formData.resourceName,
         resourceElements: formData.resourceElements,
