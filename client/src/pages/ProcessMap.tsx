@@ -45,6 +45,7 @@ export default function ProcessMap() {
   const [showMap, setShowMap] = useState(false);
   const [editingProcessId, setEditingProcessId] = useState<number | null>(null);
   const [editingProcessName, setEditingProcessName] = useState("");
+  const [editingProcessType, setEditingProcessType] = useState<ProcessType>("misional");
 
   // Fetch user's companies (only if not manager login)
   const userCompaniesQuery = trpc.adminOperations.getUserCompanies.useQuery(
@@ -207,13 +208,14 @@ export default function ProcessMap() {
 
   const renameMutation = trpc.processMap.rename.useMutation({
     onSuccess: () => {
-      toast.success("Nombre del proceso actualizado");
+      toast.success("Proceso actualizado");
       setEditingProcessId(null);
       setEditingProcessName("");
+      setEditingProcessType("misional");
       refetch();
     },
     onError: (error) => {
-      toast.error(error.message || "No se pudo actualizar el nombre del proceso");
+      toast.error(error.message || "No se pudo actualizar el proceso");
     },
   });
 
@@ -250,29 +252,41 @@ export default function ProcessMap() {
     }
   };
 
-  const startRenamingProcess = (processId: number, name: string) => {
+  const startRenamingProcess = (processId: number, name: string, processType: ProcessType) => {
     setEditingProcessId(processId);
     setEditingProcessName(name);
+    setEditingProcessType(processType);
   };
 
-  const saveProcessName = async (processId: number, currentName: string) => {
+  const cancelProcessEdit = () => {
+    setEditingProcessId(null);
+    setEditingProcessName("");
+    setEditingProcessType("misional");
+  };
+
+  const saveProcessDetails = async (
+    processId: number,
+    currentName: string,
+    currentType: ProcessType,
+    nameToSave = editingProcessName,
+    typeToSave = editingProcessType
+  ) => {
     if (editingProcessId !== processId || renameMutation.isPending) return;
 
-    const name = editingProcessName.trim();
+    const name = nameToSave.trim();
     if (!name) {
       toast.error("El nombre del proceso no puede quedar vacío");
       setEditingProcessName(currentName);
       return;
     }
 
-    if (name === currentName) {
-      setEditingProcessId(null);
-      setEditingProcessName("");
+    if (name === currentName && typeToSave === currentType) {
+      cancelProcessEdit();
       return;
     }
 
     if (!companyId) return;
-    await renameMutation.mutateAsync({ companyId, processId, name });
+    await renameMutation.mutateAsync({ companyId, processId, name, processType: typeToSave });
   };
 
   const renderProcessRow = (
@@ -295,7 +309,7 @@ export default function ProcessMap() {
       <Button
         size="sm"
         variant="ghost"
-        onClick={() => startRenamingProcess(process.id, process.name)}
+        onClick={() => startRenamingProcess(process.id, process.name, process.processType)}
         aria-label={`Editar nombre de ${process.name}`}
         title="Editar nombre"
       >
@@ -303,22 +317,42 @@ export default function ProcessMap() {
       </Button>
       <div className="flex-1 px-2 min-w-0">
         {editingProcessId === process.id ? (
-          <Input
-            autoFocus
-            value={editingProcessName}
-            onChange={(event) => setEditingProcessName(event.target.value)}
-            onBlur={() => void saveProcessName(process.id, process.name)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") event.currentTarget.blur();
-              if (event.key === "Escape") {
-                setEditingProcessId(null);
-                setEditingProcessName("");
-              }
+          <div
+            className="flex items-center gap-2"
+            onBlur={(event) => {
+              const nextTarget = event.relatedTarget;
+              if (nextTarget instanceof HTMLElement && event.currentTarget.contains(nextTarget)) return;
+              void saveProcessDetails(process.id, process.name, process.processType);
             }}
-            disabled={renameMutation.isPending}
-            aria-label="Nombre del proceso"
-            className="h-8 bg-white"
-          />
+            onKeyDown={(event) => {
+              if (event.key === "Enter") (event.target as HTMLElement).blur();
+              if (event.key === "Escape") cancelProcessEdit();
+            }}
+          >
+            <Input
+              autoFocus
+              value={editingProcessName}
+              onChange={(event) => setEditingProcessName(event.target.value)}
+              disabled={renameMutation.isPending}
+              aria-label="Nombre del proceso"
+              className="h-8 bg-white"
+            />
+            <select
+              value={editingProcessType}
+              onChange={(event) => {
+                const processType = event.target.value as ProcessType;
+                setEditingProcessType(processType);
+                void saveProcessDetails(process.id, process.name, process.processType, editingProcessName, processType);
+              }}
+              disabled={renameMutation.isPending}
+              aria-label="Clasificación del proceso"
+              className="h-8 w-32 shrink-0 rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-slate-700"
+            >
+              <option value="estrategico">Estratégico</option>
+              <option value="misional">Misional</option>
+              <option value="soporte">Soporte</option>
+            </select>
+          </div>
         ) : (
           <p className={`font-medium ${styles.title} truncate`}>{process.name}</p>
         )}
@@ -424,25 +458,10 @@ export default function ProcessMap() {
             </Button>
         </div>
 
-        {/* Sección de Imagen del Mapa de Procesos — diseño compacto */}
+        {/* Acciones del archivo del Mapa de Procesos */}
         <div className="border border-purple-200 bg-purple-50 rounded-xl px-4 py-3">
-          {/* Fila compacta: título + 3 botones */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-                <Upload size={16} className="text-purple-600" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-800">Imagen del Mapa de Procesos</p>
-                {mapImageFileName ? (
-                  <p className="text-xs text-slate-500 truncate max-w-xs">{mapImageFileName}</p>
-                ) : (
-                  <p className="text-xs text-slate-400">Sin archivo subido</p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Input oculto para subir */}
+            <div className="flex items-center gap-2 flex-wrap">
               <input
                 type="file"
                 accept="image/*,application/pdf"
@@ -460,10 +479,16 @@ export default function ProcessMap() {
               >
                 <label htmlFor="map-image-input" className="cursor-pointer">
                   <Upload size={14} />
-                  {isUploadingImage ? "Subiendo..." : "Subir Mapa"}
+                  {isUploadingImage ? "Subiendo..." : mapImage ? "Reemplazar Mapa" : "Subir Mapa"}
                 </label>
               </Button>
-              <span className="text-xs text-slate-400 hidden sm:inline">PDF, PNG o JPG</span>
+              <span className="text-xs text-slate-500">PDF, PNG o JPG</span>
+              {mapImage && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+                  <CheckCircle size={13} />
+                  Mapa cargado
+                </span>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -480,17 +505,17 @@ export default function ProcessMap() {
                 {(!isPdf(mapImageFileName) && showMap) ? <EyeOff size={14} /> : <Eye size={14} />}
                 {(!isPdf(mapImageFileName) && showMap) ? "Ocultar Mapa" : "Ver Mapa"}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDeleteMapImage}
-                disabled={!mapImage || deleteMapImageMutation.isPending}
-                className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-40"
-              >
-                <Trash2 size={14} />
-                Eliminar Mapa
-              </Button>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDeleteMapImage}
+              disabled={!mapImage || deleteMapImageMutation.isPending}
+              className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-40"
+            >
+              <Trash2 size={14} />
+              Eliminar Mapa
+            </Button>
           </div>
         </div>
 
