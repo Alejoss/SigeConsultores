@@ -25,7 +25,9 @@ export const accounts = mysqlTable("accounts", {
   email: varchar("email", { length: 320 }),
   passwordHash: varchar("passwordHash", { length: 255 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  status: mysqlEnum("status", ["active", "disabled", "pending_invitation"]).default("active").notNull(),
+  status: mysqlEnum("status", ["active", "disabled", "pending_invitation"])
+    .default("active")
+    .notNull(),
   emailVerifiedAt: timestamp("emailVerifiedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -80,7 +82,7 @@ export const accountRoles = mysqlTable(
     processId: int("processId").notNull().default(0),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  (table) => ({
+  table => ({
     accountRoleScope: unique("account_role_scope").on(
       table.accountId,
       table.roleId,
@@ -116,7 +118,9 @@ export const companies = mysqlTable("companies", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   ownerAccountId: int("ownerAccountId").notNull(),
-  status: mysqlEnum("status", ["En Proceso", "Activa", "Desactivada"]).default("En Proceso").notNull(),
+  status: mysqlEnum("status", ["En Proceso", "Activa", "Desactivada"])
+    .default("En Proceso")
+    .notNull(),
   cancelledAt: timestamp("cancelledAt"),
   storageLimitMb: int("storageLimitMb").notNull().default(500),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -222,7 +226,11 @@ export const processes = mysqlTable("processes", {
   companyId: int("companyId").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   macroProcess: varchar("macroProcess", { length: 255 }),
-  processType: mysqlEnum("processType", ["estrategico", "misional", "soporte"]).notNull(),
+  processType: mysqlEnum("processType", [
+    "estrategico",
+    "misional",
+    "soporte",
+  ]).notNull(),
   description: text("description"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -285,30 +293,36 @@ export type InsertStakeholder = typeof stakeholders.$inferInsert;
 /**
  * Stakeholder Criticality - Stores criticality assessment of stakeholders for processes
  */
-export const criticalityMatrix = mysqlTable("criticalityMatrix", {
-  id: int("id").autoincrement().primaryKey(),
-  processId: int("processId").notNull(),
-  stakeholderId: int("stakeholderId").notNull(),
-  incidence: mysqlEnum("incidence", ["1", "2", "3"]).notNull(),
-  risk: mysqlEnum("risk", ["A", "B", "C"]).notNull(),
-  criticality: varchar("criticality", { length: 10 }).notNull(),
-  existingDefenses: text("existingDefenses"),
-  actionToTake: text("actionToTake"),
-  observations: text("observations"),
-  startDate: date("startDate"),
-  endDate: date("endDate"),
-  implementationStatus: boolean("implementationStatus").default(false),
-  completionPercentage: int("completionPercentage").default(0),
-  // Fuente/origen de la acción de mejora
-  actionSource: varchar("actionSource", { length: 100 }).default("Iniciativa propia"),
-  // Referencia a encuesta que originó la acción (si aplica)
-  surveyId: int("surveyId"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({
-  // Ensure only one criticality entry per (processId, stakeholderId) combination
-  uniqueProcessStakeholder: unique().on(table.processId, table.stakeholderId),
-}));
+export const criticalityMatrix = mysqlTable(
+  "criticalityMatrix",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    processId: int("processId").notNull(),
+    stakeholderId: int("stakeholderId").notNull(),
+    incidence: mysqlEnum("incidence", ["1", "2", "3"]).notNull(),
+    risk: mysqlEnum("risk", ["A", "B", "C"]).notNull(),
+    criticality: varchar("criticality", { length: 10 }).notNull(),
+    existingDefenses: text("existingDefenses"),
+    actionToTake: text("actionToTake"),
+    observations: text("observations"),
+    startDate: date("startDate"),
+    endDate: date("endDate"),
+    implementationStatus: boolean("implementationStatus").default(false),
+    completionPercentage: int("completionPercentage").default(0),
+    // Fuente/origen de la acción de mejora
+    actionSource: varchar("actionSource", { length: 100 }).default(
+      "Iniciativa propia"
+    ),
+    // Referencia a encuesta que originó la acción (si aplica)
+    surveyId: int("surveyId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    // Ensure only one criticality entry per (processId, stakeholderId) combination
+    uniqueProcessStakeholder: unique().on(table.processId, table.stakeholderId),
+  })
+);
 
 export type CriticalityEntry = typeof criticalityMatrix.$inferSelect;
 export type InsertCriticalityEntry = typeof criticalityMatrix.$inferInsert;
@@ -342,7 +356,12 @@ export const riskMatrix = mysqlTable("riskMatrix", {
   probability: mysqlEnum("probability", ["1", "2", "3", "4", "5"]).notNull(),
   impact: mysqlEnum("impact", ["A", "B", "C", "D", "E"]).notNull(),
   riskLevel: varchar("riskLevel", { length: 20 }).notNull(),
-  managementSystem: mysqlEnum("managementSystem", ["Calidad", "SSO", "Ambiente", "BASC"]),
+  managementSystem: mysqlEnum("managementSystem", [
+    "Calidad",
+    "SSO",
+    "Ambiente",
+    "BASC",
+  ]),
   existingControls: text("existingControls"),
   improvementImplemented: boolean("improvementImplemented").default(false),
   newProbability: mysqlEnum("newProbability", ["1", "2", "3", "4", "5"]),
@@ -384,17 +403,23 @@ export const operationalObjectives = mysqlTable("operationalObjectives", {
   plannedCompletion: int("plannedCompletion").default(0),
   actualCompletion: int("actualCompletion").default(0),
   completionPercentage: int("completionPercentage").default(0),
-  ponderacion: decimal("ponderacion", { precision: 5, scale: 2 }).default("0.00"),
+  ponderacion: decimal("ponderacion", { precision: 5, scale: 2 }).default(
+    "0.00"
+  ),
   condicionInicial: decimal("condicionInicial", { precision: 12, scale: 2 }),
   meta: decimal("meta", { precision: 12, scale: 2 }),
   condicionActual: decimal("condicionActual", { precision: 12, scale: 2 }),
-  porcentajeAlcanzado: decimal("porcentajeAlcanzado", { precision: 5, scale: 2 }).default("0.00"),
+  porcentajeAlcanzado: decimal("porcentajeAlcanzado", {
+    precision: 5,
+    scale: 2,
+  }).default("0.00"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type OperationalObjective = typeof operationalObjectives.$inferSelect;
-export type InsertOperationalObjective = typeof operationalObjectives.$inferInsert;
+export type InsertOperationalObjective =
+  typeof operationalObjectives.$inferInsert;
 
 /**
  * Compliances - Stores compliance obligations
@@ -443,7 +468,12 @@ export const documents = mysqlTable("documents", {
   id: int("id").autoincrement().primaryKey(),
   processId: int("processId").notNull(),
   documentName: varchar("documentName", { length: 255 }).notNull(),
-  documentType: mysqlEnum("documentType", ["Politica", "Programa", "Procedimiento", "Varios"]).notNull(),
+  documentType: mysqlEnum("documentType", [
+    "Politica",
+    "Programa",
+    "Procedimiento",
+    "Varios",
+  ]).notNull(),
   status: mysqlEnum("status", ["Obsoleto", "Vigente", "Registro"]).notNull(),
   fileUrl: text("fileUrl"),
   fileKey: text("fileKey"),
@@ -496,8 +526,10 @@ export const processCharacterizations = mysqlTable("processCharacterizations", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
-export type ProcessCharacterization = typeof processCharacterizations.$inferSelect;
-export type InsertProcessCharacterization = typeof processCharacterizations.$inferInsert;
+export type ProcessCharacterization =
+  typeof processCharacterizations.$inferSelect;
+export type InsertProcessCharacterization =
+  typeof processCharacterizations.$inferInsert;
 
 /**
  * Subprocess Map - Stores entrada, subprocesos, and salida for subprocess mapping
@@ -536,17 +568,22 @@ export type InsertSubprocessMapEntry = typeof subprocessMapEntries.$inferInsert;
 /**
  * Subprocess Map Subprocesses - Stores subproceso items
  */
-export const subprocessMapSubprocesses = mysqlTable("subprocessMapSubprocesses", {
-  id: int("id").autoincrement().primaryKey(),
-  subprocessMapId: int("subprocessMapId").notNull(),
-  acciones: text("acciones"),
-  subproceso: text("subproceso"),
-  orderIndex: int("orderIndex").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const subprocessMapSubprocesses = mysqlTable(
+  "subprocessMapSubprocesses",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    subprocessMapId: int("subprocessMapId").notNull(),
+    acciones: text("acciones"),
+    subproceso: text("subproceso"),
+    orderIndex: int("orderIndex").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  }
+);
 
-export type SubprocessMapSubprocess = typeof subprocessMapSubprocesses.$inferSelect;
-export type InsertSubprocessMapSubprocess = typeof subprocessMapSubprocesses.$inferInsert;
+export type SubprocessMapSubprocess =
+  typeof subprocessMapSubprocesses.$inferSelect;
+export type InsertSubprocessMapSubprocess =
+  typeof subprocessMapSubprocesses.$inferInsert;
 
 /**
  * Subprocess Map Outputs - Stores salida items
@@ -561,7 +598,8 @@ export const subprocessMapOutputs = mysqlTable("subprocessMapOutputs", {
 });
 
 export type SubprocessMapOutput = typeof subprocessMapOutputs.$inferSelect;
-export type InsertSubprocessMapOutput = typeof subprocessMapOutputs.$inferInsert;
+export type InsertSubprocessMapOutput =
+  typeof subprocessMapOutputs.$inferInsert;
 
 /**
  * Stakeholder Criticality - Stores criticality assessment of stakeholders for processes
@@ -582,8 +620,10 @@ export const stakeholderCriticalities = mysqlTable("stakeholderCriticalities", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
-export type StakeholderCriticality = typeof stakeholderCriticalities.$inferSelect;
-export type InsertStakeholderCriticality = typeof stakeholderCriticalities.$inferInsert;
+export type StakeholderCriticality =
+  typeof stakeholderCriticalities.$inferSelect;
+export type InsertStakeholderCriticality =
+  typeof stakeholderCriticalities.$inferInsert;
 
 /**
  * Process FODA - Stores FODA analysis for specific processes
@@ -624,25 +664,30 @@ export type InsertProcessRiskMatrix = typeof processRiskMatrices.$inferInsert;
 /**
  * Process Tactical Objectives - Stores tactical objectives for specific processes
  */
-export const processTacticalObjectives = mysqlTable("processTacticalObjectives", {
-  id: int("id").autoincrement().primaryKey(),
-  processId: int("processId").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  target: varchar("target", { length: 255 }),
-  responsible: varchar("responsible", { length: 255 }),
-  deadline: date("deadline"),
-  subprocess: varchar("subprocess", { length: 255 }),
-  strategicObjective: varchar("strategicObjective", { length: 255 }),
-  strategicObjectiveDescription: text("strategicObjectiveDescription"),
-  planningData: longtext("planningData"),
-  completed: mysqlEnum("completed", ["SI", "NO"]).default("NO").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+export const processTacticalObjectives = mysqlTable(
+  "processTacticalObjectives",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    processId: int("processId").notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    target: varchar("target", { length: 255 }),
+    responsible: varchar("responsible", { length: 255 }),
+    deadline: date("deadline"),
+    subprocess: varchar("subprocess", { length: 255 }),
+    strategicObjective: varchar("strategicObjective", { length: 255 }),
+    strategicObjectiveDescription: text("strategicObjectiveDescription"),
+    planningData: longtext("planningData"),
+    completed: mysqlEnum("completed", ["SI", "NO"]).default("NO").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  }
+);
 
-export type ProcessTacticalObjective = typeof processTacticalObjectives.$inferSelect;
-export type InsertProcessTacticalObjective = typeof processTacticalObjectives.$inferInsert;
+export type ProcessTacticalObjective =
+  typeof processTacticalObjectives.$inferSelect;
+export type InsertProcessTacticalObjective =
+  typeof processTacticalObjectives.$inferInsert;
 
 // NOTE: The fields ponderacion, puntoPartida, metaLlegada, unidadMedida, avanceMeta
 // are NOT in the actual database table. They were planned but never migrated.
@@ -663,9 +708,17 @@ export const processCompliances = mysqlTable("processCompliances", {
   requirement: varchar("requirement", { length: 255 }).notNull(),
   description: text("description"),
   regulation: varchar("regulation", { length: 255 }),
-  obligationType: mysqlEnum("obligationType", ["Legal", "Reglamentaria", "Concesion", "Sistema de Gestion", "Otros"]).notNull(),
+  obligationType: mysqlEnum("obligationType", [
+    "Legal",
+    "Reglamentaria",
+    "Concesion",
+    "Sistema de Gestion",
+    "Otros",
+  ]).notNull(),
   otherObligationType: varchar("otherObligationType", { length: 255 }),
-  status: mysqlEnum("status", ["Planificado", "En Progreso", "Completado"]).default("Planificado").notNull(),
+  status: mysqlEnum("status", ["Planificado", "En Progreso", "Completado"])
+    .default("Planificado")
+    .notNull(),
   dueDate: date("dueDate"),
   responsible: varchar("responsible", { length: 255 }),
   evidence: text("evidence"),
@@ -674,7 +727,9 @@ export const processCompliances = mysqlTable("processCompliances", {
   completedMonths: varchar("completedMonths", { length: 50 }),
   observations: text("observations"),
   completionPercentage: int("completionPercentage").default(0),
-  evaluationMode: mysqlEnum("evaluationMode", ["meses", "vigencia"]).default("meses").notNull(),
+  evaluationMode: mysqlEnum("evaluationMode", ["meses", "vigencia"])
+    .default("meses")
+    .notNull(),
   validFrom: date("validFrom"),
   validUntil: date("validUntil"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -692,10 +747,14 @@ export const processTrainings = mysqlTable("processTrainings", {
   processId: int("processId").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   objective: text("objective"),
-  type: mysqlEnum("type", ["Mandatoria", "Reglamentaria", "Sugerida"]).default("Mandatoria").notNull(),
+  type: mysqlEnum("type", ["Mandatoria", "Reglamentaria", "Sugerida"])
+    .default("Mandatoria")
+    .notNull(),
   audience: varchar("audience", { length: 255 }),
   plannedAttendees: int("plannedAttendees").default(0),
-  modality: mysqlEnum("modality", ["Presencial", "Online", "Externa"]).default("Presencial").notNull(),
+  modality: mysqlEnum("modality", ["Presencial", "Online", "Externa"])
+    .default("Presencial")
+    .notNull(),
   plannedDate: date("plannedDate"),
   conductedDate: date("conductedDate"),
   actualAttendees: int("actualAttendees").default(0),
@@ -710,24 +769,33 @@ export type InsertProcessTraining = typeof processTrainings.$inferInsert;
 /**
  * Process Schedule Activities - Stores activities for consolidated schedule
  */
-export const processScheduleActivities = mysqlTable("processScheduleActivities", {
-  id: int("id").autoincrement().primaryKey(),
-  processId: int("processId").notNull(),
-  tacticalObjectiveId: int("tacticalObjectiveId"),
-  name: varchar("name", { length: 255 }).notNull(),
-  type: varchar("type", { length: 100 }),
-  status: mysqlEnum("status", ["Planificado", "En Progreso", "Completado"]).default("Planificado").notNull(),
-  startDate: date("startDate"),
-  endDate: date("endDate"),
-  responsible: varchar("responsible", { length: 255 }),
-  priority: mysqlEnum("priority", ["Baja", "Media", "Alta"]).default("Media").notNull(),
-  progress: int("progress").default(0),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+export const processScheduleActivities = mysqlTable(
+  "processScheduleActivities",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    processId: int("processId").notNull(),
+    tacticalObjectiveId: int("tacticalObjectiveId"),
+    name: varchar("name", { length: 255 }).notNull(),
+    type: varchar("type", { length: 100 }),
+    status: mysqlEnum("status", ["Planificado", "En Progreso", "Completado"])
+      .default("Planificado")
+      .notNull(),
+    startDate: date("startDate"),
+    endDate: date("endDate"),
+    responsible: varchar("responsible", { length: 255 }),
+    priority: mysqlEnum("priority", ["Baja", "Media", "Alta"])
+      .default("Media")
+      .notNull(),
+    progress: int("progress").default(0),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  }
+);
 
-export type ProcessScheduleActivity = typeof processScheduleActivities.$inferSelect;
-export type InsertProcessScheduleActivity = typeof processScheduleActivities.$inferInsert;
+export type ProcessScheduleActivity =
+  typeof processScheduleActivities.$inferSelect;
+export type InsertProcessScheduleActivity =
+  typeof processScheduleActivities.$inferInsert;
 
 /**
  * Process Indicators - Stores KPI indicators for specific processes
@@ -772,21 +840,26 @@ export type InsertProcessParticipant = typeof processParticipants.$inferInsert;
 /**
  * Participant worker assignments - Links active payroll employees to a process role.
  */
-export const participantWorkerAssignments = mysqlTable("participantWorkerAssignments", {
-  id: int("id").autoincrement().primaryKey(),
-  processParticipantId: int("processParticipantId").notNull(),
-  payrollEmployeeId: int("payrollEmployeeId").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({
-  participantEmployeeUnique: unique("participantWorkerAssignments_participant_employee_unique").on(
-    table.processParticipantId,
-    table.payrollEmployeeId,
-  ),
-}));
+export const participantWorkerAssignments = mysqlTable(
+  "participantWorkerAssignments",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    processParticipantId: int("processParticipantId").notNull(),
+    payrollEmployeeId: int("payrollEmployeeId").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    participantEmployeeUnique: unique(
+      "participantWorkerAssignments_participant_employee_unique"
+    ).on(table.processParticipantId, table.payrollEmployeeId),
+  })
+);
 
-export type ParticipantWorkerAssignment = typeof participantWorkerAssignments.$inferSelect;
-export type InsertParticipantWorkerAssignment = typeof participantWorkerAssignments.$inferInsert;
+export type ParticipantWorkerAssignment =
+  typeof participantWorkerAssignments.$inferSelect;
+export type InsertParticipantWorkerAssignment =
+  typeof participantWorkerAssignments.$inferInsert;
 
 /**
  * Employee KPI definitions - One or more KPI can be configured for each worker-role assignment per year.
@@ -796,81 +869,118 @@ export const participantWorkerKpis = mysqlTable("participantWorkerKpis", {
   participantWorkerAssignmentId: int("participantWorkerAssignmentId").notNull(),
   year: int("year").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
-  monthlyTarget: decimal("monthlyTarget", { precision: 14, scale: 2 }).notNull(),
+  monthlyTarget: decimal("monthlyTarget", {
+    precision: 14,
+    scale: 2,
+  }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type ParticipantWorkerKpi = typeof participantWorkerKpis.$inferSelect;
-export type InsertParticipantWorkerKpi = typeof participantWorkerKpis.$inferInsert;
+export type InsertParticipantWorkerKpi =
+  typeof participantWorkerKpis.$inferInsert;
 
 /**
  * Monthly KPI observations - A null or absent value means the month is still pending.
  */
-export const participantWorkerKpiValues = mysqlTable("participantWorkerKpiValues", {
-  id: int("id").autoincrement().primaryKey(),
-  participantWorkerKpiId: int("participantWorkerKpiId").notNull(),
-  month: int("month").notNull(),
-  actualValue: decimal("actualValue", { precision: 14, scale: 2 }).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({
-  kpiMonthUnique: unique("participantWorkerKpiValues_kpi_month_unique").on(
-    table.participantWorkerKpiId,
-    table.month,
-  ),
-}));
+export const participantWorkerKpiValues = mysqlTable(
+  "participantWorkerKpiValues",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    participantWorkerKpiId: int("participantWorkerKpiId").notNull(),
+    month: int("month").notNull(),
+    actualValue: decimal("actualValue", { precision: 14, scale: 2 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    kpiMonthUnique: unique("participantWorkerKpiValues_kpi_month_unique").on(
+      table.participantWorkerKpiId,
+      table.month
+    ),
+  })
+);
 
-export type ParticipantWorkerKpiValue = typeof participantWorkerKpiValues.$inferSelect;
-export type InsertParticipantWorkerKpiValue = typeof participantWorkerKpiValues.$inferInsert;
+export type ParticipantWorkerKpiValue =
+  typeof participantWorkerKpiValues.$inferSelect;
+export type InsertParticipantWorkerKpiValue =
+  typeof participantWorkerKpiValues.$inferInsert;
 
 /**
  * Planning Cycle Activations - Company-level controlled activation of an annual planning cycle.
  * This table is additive and does not alter any existing operational record.
  */
-export const planningCycleActivations = mysqlTable("planningCycleActivations", {
-  id: int("id").autoincrement().primaryKey(),
-  companyId: int("companyId").notNull(),
-  targetYear: int("targetYear").notNull(),
-  deadline: date("deadline"),
-  status: mysqlEnum("status", ["draft", "active", "closed", "cancelled"]).default("draft").notNull(),
-  createdByAccountId: int("createdByAccountId"),
-  activatedByAccountId: int("activatedByAccountId"),
-  activatedAt: timestamp("activatedAt"),
-  closedAt: timestamp("closedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({
-  companyYearUnique: unique("planningCycleActivations_company_year_unique").on(table.companyId, table.targetYear),
-}));
+export const planningCycleActivations = mysqlTable(
+  "planningCycleActivations",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    targetYear: int("targetYear").notNull(),
+    deadline: date("deadline"),
+    status: mysqlEnum("status", ["draft", "active", "closed", "cancelled"])
+      .default("draft")
+      .notNull(),
+    createdByAccountId: int("createdByAccountId"),
+    activatedByAccountId: int("activatedByAccountId"),
+    activatedAt: timestamp("activatedAt"),
+    closedAt: timestamp("closedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    companyYearUnique: unique(
+      "planningCycleActivations_company_year_unique"
+    ).on(table.companyId, table.targetYear),
+  })
+);
 
-export type PlanningCycleActivation = typeof planningCycleActivations.$inferSelect;
-export type InsertPlanningCycleActivation = typeof planningCycleActivations.$inferInsert;
+export type PlanningCycleActivation =
+  typeof planningCycleActivations.$inferSelect;
+export type InsertPlanningCycleActivation =
+  typeof planningCycleActivations.$inferInsert;
 
 /**
  * Planning Cycles - One annual cycle per company and process. Existing process tables remain untouched.
  */
-export const planningCycles = mysqlTable("planningCycles", {
-  id: int("id").autoincrement().primaryKey(),
-  activationId: int("activationId"),
-  sourceCycleId: int("sourceCycleId"),
-  companyId: int("companyId").notNull(),
-  processId: int("processId").notNull(),
-  cycleYear: int("cycleYear").notNull(),
-  status: mysqlEnum("status", ["not_started", "in_review", "ready", "active", "closed", "skipped"]).default("not_started").notNull(),
-  preparedByAccountId: int("preparedByAccountId"),
-  preparedAt: timestamp("preparedAt"),
-  managerApprovalStatus: varchar("managerApprovalStatus", { length: 24 }).default("pending").notNull(),
-  managerReviewedByAccountId: int("managerReviewedByAccountId"),
-  managerReviewedAt: timestamp("managerReviewedAt"),
-  managerReviewNote: text("managerReviewNote"),
-  activatedAt: timestamp("activatedAt"),
-  closedAt: timestamp("closedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({
-  companyProcessYearUnique: unique("planningCycles_company_process_year_unique").on(table.companyId, table.processId, table.cycleYear),
-}));
+export const planningCycles = mysqlTable(
+  "planningCycles",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    activationId: int("activationId"),
+    sourceCycleId: int("sourceCycleId"),
+    companyId: int("companyId").notNull(),
+    processId: int("processId").notNull(),
+    cycleYear: int("cycleYear").notNull(),
+    status: mysqlEnum("status", [
+      "not_started",
+      "in_review",
+      "ready",
+      "active",
+      "closed",
+      "skipped",
+    ])
+      .default("not_started")
+      .notNull(),
+    preparedByAccountId: int("preparedByAccountId"),
+    preparedAt: timestamp("preparedAt"),
+    managerApprovalStatus: varchar("managerApprovalStatus", { length: 24 })
+      .default("pending")
+      .notNull(),
+    managerReviewedByAccountId: int("managerReviewedByAccountId"),
+    managerReviewedAt: timestamp("managerReviewedAt"),
+    managerReviewNote: text("managerReviewNote"),
+    activatedAt: timestamp("activatedAt"),
+    closedAt: timestamp("closedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    companyProcessYearUnique: unique(
+      "planningCycles_company_process_year_unique"
+    ).on(table.companyId, table.processId, table.cycleYear),
+  })
+);
 
 export type PlanningCycle = typeof planningCycles.$inferSelect;
 export type InsertPlanningCycle = typeof planningCycles.$inferInsert;
@@ -878,78 +988,136 @@ export type InsertPlanningCycle = typeof planningCycles.$inferInsert;
 /**
  * Planning Cycle Decisions - Explicit, reversible draft decisions for every element being reviewed.
  */
-export const planningCycleDecisions = mysqlTable("planningCycleDecisions", {
-  id: int("id").autoincrement().primaryKey(),
-  targetCycleId: int("targetCycleId").notNull(),
-  sourceCycleId: int("sourceCycleId"),
-  itemType: mysqlEnum("itemType", ["ote", "otg", "stakeholder_action", "compliance", "participant_kpi"]).notNull(),
-  sourceItemKey: varchar("sourceItemKey", { length: 255 }).notNull(),
-  title: text("title").notNull(),
-  description: text("description"),
-  completionPercent: decimal("completionPercent", { precision: 7, scale: 2 }).default("0.00").notNull(),
-  sourcePayloadJson: longtext("sourcePayloadJson").notNull(),
-  decision: mysqlEnum("decision", ["pending", "migrate", "close", "review"]).default("pending").notNull(),
-  decisionNote: text("decisionNote"),
-  decidedByAccountId: int("decidedByAccountId"),
-  decidedAt: timestamp("decidedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({
-  cycleItemUnique: unique("planningCycleDecisions_cycle_item_unique").on(table.targetCycleId, table.itemType, table.sourceItemKey),
-}));
+export const planningCycleDecisions = mysqlTable(
+  "planningCycleDecisions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    targetCycleId: int("targetCycleId").notNull(),
+    sourceCycleId: int("sourceCycleId"),
+    itemType: mysqlEnum("itemType", [
+      "ote",
+      "otg",
+      "stakeholder_action",
+      "compliance",
+      "participant_kpi",
+    ]).notNull(),
+    sourceItemKey: varchar("sourceItemKey", { length: 255 }).notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    completionPercent: decimal("completionPercent", { precision: 7, scale: 2 })
+      .default("0.00")
+      .notNull(),
+    sourcePayloadJson: longtext("sourcePayloadJson").notNull(),
+    decision: mysqlEnum("decision", ["pending", "migrate", "close", "review"])
+      .default("pending")
+      .notNull(),
+    decisionNote: text("decisionNote"),
+    decidedByAccountId: int("decidedByAccountId"),
+    decidedAt: timestamp("decidedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    cycleItemUnique: unique("planningCycleDecisions_cycle_item_unique").on(
+      table.targetCycleId,
+      table.itemType,
+      table.sourceItemKey
+    ),
+  })
+);
 
 export type PlanningCycleDecision = typeof planningCycleDecisions.$inferSelect;
-export type InsertPlanningCycleDecision = typeof planningCycleDecisions.$inferInsert;
+export type InsertPlanningCycleDecision =
+  typeof planningCycleDecisions.$inferInsert;
 
 /**
  * Planning Cycle Snapshots - Immutable historical record created when a source cycle is closed.
  */
-export const planningCycleSnapshots = mysqlTable("planningCycleSnapshots", {
-  id: int("id").autoincrement().primaryKey(),
-  cycleId: int("cycleId").notNull(),
-  itemType: mysqlEnum("itemType", ["ote", "otg", "stakeholder_action", "compliance", "participant_kpi"]).notNull(),
-  sourceItemKey: varchar("sourceItemKey", { length: 255 }).notNull(),
-  title: text("title").notNull(),
-  description: text("description"),
-  completionPercent: decimal("completionPercent", { precision: 7, scale: 2 }).default("0.00").notNull(),
-  snapshotJson: longtext("snapshotJson").notNull(),
-  migrationDecision: mysqlEnum("migrationDecision", ["migrate", "close", "review"]).notNull(),
-  migratedToCycleId: int("migratedToCycleId"),
-  closedAt: timestamp("closedAt").defaultNow().notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, (table) => ({
-  snapshotItemUnique: unique("planningCycleSnapshots_cycle_item_unique").on(table.cycleId, table.itemType, table.sourceItemKey),
-}));
+export const planningCycleSnapshots = mysqlTable(
+  "planningCycleSnapshots",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    cycleId: int("cycleId").notNull(),
+    itemType: mysqlEnum("itemType", [
+      "ote",
+      "otg",
+      "stakeholder_action",
+      "compliance",
+      "participant_kpi",
+    ]).notNull(),
+    sourceItemKey: varchar("sourceItemKey", { length: 255 }).notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    completionPercent: decimal("completionPercent", { precision: 7, scale: 2 })
+      .default("0.00")
+      .notNull(),
+    snapshotJson: longtext("snapshotJson").notNull(),
+    migrationDecision: mysqlEnum("migrationDecision", [
+      "migrate",
+      "close",
+      "review",
+    ]).notNull(),
+    migratedToCycleId: int("migratedToCycleId"),
+    closedAt: timestamp("closedAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    snapshotItemUnique: unique("planningCycleSnapshots_cycle_item_unique").on(
+      table.cycleId,
+      table.itemType,
+      table.sourceItemKey
+    ),
+  })
+);
 
 export type PlanningCycleSnapshot = typeof planningCycleSnapshots.$inferSelect;
-export type InsertPlanningCycleSnapshot = typeof planningCycleSnapshots.$inferInsert;
+export type InsertPlanningCycleSnapshot =
+  typeof planningCycleSnapshots.$inferInsert;
 
 /**
  * Operational items created only after an approved annual-cycle migration.
  * They preserve a separate plan for the destination year without rewriting the source records.
  */
-export const planningCycleOperationalItems = mysqlTable("planningCycleOperationalItems", {
-  id: int("id").autoincrement().primaryKey(),
-  targetCycleId: int("targetCycleId").notNull(),
-  sourceDecisionId: int("sourceDecisionId").notNull(),
-  itemType: mysqlEnum("itemType", ["ote", "otg", "stakeholder_action", "compliance", "participant_kpi"]).notNull(),
-  title: text("title").notNull(),
-  description: text("description"),
-  plannedDate: date("plannedDate"),
-  sourceCompletionPercent: decimal("sourceCompletionPercent", { precision: 7, scale: 2 }).default("0.00").notNull(),
-  sourcePayloadJson: longtext("sourcePayloadJson").notNull(),
-  status: mysqlEnum("status", ["active", "review_required"]).default("active").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({
-  cycleDecisionUnique: unique("planningCycleOperationalItems_cycle_decision_unique").on(
-    table.targetCycleId,
-    table.sourceDecisionId,
-  ),
-}));
+export const planningCycleOperationalItems = mysqlTable(
+  "planningCycleOperationalItems",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    targetCycleId: int("targetCycleId").notNull(),
+    sourceDecisionId: int("sourceDecisionId").notNull(),
+    itemType: mysqlEnum("itemType", [
+      "ote",
+      "otg",
+      "stakeholder_action",
+      "compliance",
+      "participant_kpi",
+    ]).notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    plannedDate: date("plannedDate"),
+    sourceCompletionPercent: decimal("sourceCompletionPercent", {
+      precision: 7,
+      scale: 2,
+    })
+      .default("0.00")
+      .notNull(),
+    sourcePayloadJson: longtext("sourcePayloadJson").notNull(),
+    status: mysqlEnum("status", ["active", "review_required"])
+      .default("active")
+      .notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    cycleDecisionUnique: unique(
+      "planningCycleOperationalItems_cycle_decision_unique"
+    ).on(table.targetCycleId, table.sourceDecisionId),
+  })
+);
 
-export type PlanningCycleOperationalItem = typeof planningCycleOperationalItems.$inferSelect;
-export type InsertPlanningCycleOperationalItem = typeof planningCycleOperationalItems.$inferInsert;
+export type PlanningCycleOperationalItem =
+  typeof planningCycleOperationalItems.$inferSelect;
+export type InsertPlanningCycleOperationalItem =
+  typeof planningCycleOperationalItems.$inferInsert;
 
 /**
  * Process Resources - Stores resources used in process characterization
@@ -970,7 +1138,6 @@ export const processResources = mysqlTable("processResources", {
 
 export type ProcessResource = typeof processResources.$inferSelect;
 export type InsertProcessResource = typeof processResources.$inferInsert;
-
 
 /**
  * Procedures - Stores procedures for each process
@@ -1017,7 +1184,6 @@ export const procedureRecords = mysqlTable("procedureRecords", {
 export type ProcedureRecord = typeof procedureRecords.$inferSelect;
 export type InsertProcedureRecord = typeof procedureRecords.$inferInsert;
 
-
 /**
  * Company Access Requests - Stores requests from companies to access SIGE platform
  * Admin (Esteban) approves or rejects these requests
@@ -1029,7 +1195,9 @@ export const companyAccessRequests = mysqlTable("companyAccessRequests", {
   contactName: varchar("contactName", { length: 255 }).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
   phone: varchar("phone", { length: 20 }),
-  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"])
+    .default("pending")
+    .notNull(),
   approvedBy: int("approvedBy"), // User ID of admin who approved
   approvalDate: timestamp("approvalDate"),
   rejectionReason: text("rejectionReason"),
@@ -1038,7 +1206,8 @@ export const companyAccessRequests = mysqlTable("companyAccessRequests", {
 });
 
 export type CompanyAccessRequest = typeof companyAccessRequests.$inferSelect;
-export type InsertCompanyAccessRequest = typeof companyAccessRequests.$inferInsert;
+export type InsertCompanyAccessRequest =
+  typeof companyAccessRequests.$inferInsert;
 
 /**
  * Process Access Keys - Stores access keys for process managers (jefes de proceso)
@@ -1143,11 +1312,18 @@ export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
  */
 export const authInvitations = mysqlTable("auth_invitations", {
   id: int("id").autoincrement().primaryKey(),
-  kind: mysqlEnum("kind", ["manager", "process_leader", "process_owner", "company_setup"]).notNull(),
+  kind: mysqlEnum("kind", [
+    "manager",
+    "process_leader",
+    "process_owner",
+    "company_setup",
+  ]).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
   /** Display name (e.g. process leader). */
   inviteeName: varchar("inviteeName", { length: 255 }),
-  invitationToken: varchar("invitationToken", { length: 255 }).notNull().unique(),
+  invitationToken: varchar("invitationToken", { length: 255 })
+    .notNull()
+    .unique(),
   /** Set when known (e.g. manager/leader); optional for company_setup until company exists. */
   companyId: int("companyId"),
   processId: int("processId"),
@@ -1163,7 +1339,6 @@ export const authInvitations = mysqlTable("auth_invitations", {
 export type AuthInvitation = typeof authInvitations.$inferSelect;
 export type InsertAuthInvitation = typeof authInvitations.$inferInsert;
 
-
 /**
  * Access Invitations - Stores invitation tokens for company access requests
  * Controls who can request access to the platform
@@ -1171,7 +1346,9 @@ export type InsertAuthInvitation = typeof authInvitations.$inferInsert;
  */
 export const accessInvitations = mysqlTable("accessInvitations", {
   id: int("id").autoincrement().primaryKey(),
-  invitationToken: varchar("invitationToken", { length: 255 }).notNull().unique(),
+  invitationToken: varchar("invitationToken", { length: 255 })
+    .notNull()
+    .unique(),
   companyName: varchar("companyName", { length: 255 }).notNull(),
   contactEmail: varchar("contactEmail", { length: 320 }).notNull(),
   expiresAt: timestamp("expiresAt").notNull(),
@@ -1183,7 +1360,6 @@ export const accessInvitations = mysqlTable("accessInvitations", {
 export type AccessInvitation = typeof accessInvitations.$inferSelect;
 export type InsertAccessInvitation = typeof accessInvitations.$inferInsert;
 
-
 /**
  * User Company Access - Associates users with companies they can access
  * Ensures users can only see and manage their assigned companies
@@ -1192,14 +1368,15 @@ export const userCompanyAccess = mysqlTable("userCompanyAccess", {
   id: int("id").autoincrement().primaryKey(),
   accountId: int("accountId").notNull(),
   companyId: int("companyId").notNull(),
-  role: mysqlEnum("role", ["manager", "process_leader", "viewer"]).default("manager").notNull(),
+  role: mysqlEnum("role", ["manager", "process_leader", "viewer"])
+    .default("manager")
+    .notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type UserCompanyAccess = typeof userCompanyAccess.$inferSelect;
 export type InsertUserCompanyAccess = typeof userCompanyAccess.$inferInsert;
-
 
 /**
  * Company Module Customization — one display label per (companyId, moduleName).
@@ -1215,16 +1392,17 @@ export const companyModuleCustomization = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  (table) => ({
-    companyModuleNameUnique: unique("company_module_customization_company_module").on(
-      table.companyId,
-      table.moduleName
-    ),
+  table => ({
+    companyModuleNameUnique: unique(
+      "company_module_customization_company_module"
+    ).on(table.companyId, table.moduleName),
   })
 );
 
-export type CompanyModuleCustomization = typeof companyModuleCustomization.$inferSelect;
-export type InsertCompanyModuleCustomization = typeof companyModuleCustomization.$inferInsert;
+export type CompanyModuleCustomization =
+  typeof companyModuleCustomization.$inferSelect;
+export type InsertCompanyModuleCustomization =
+  typeof companyModuleCustomization.$inferInsert;
 
 /**
  * Company Managers - Associates users with companies as managers/gerentes
@@ -1251,16 +1429,22 @@ export const processOwnerInvitations = mysqlTable("processOwnerInvitations", {
   processId: int("processId").notNull(),
   email: varchar("email", { length: 320 }).notNull(),
   accessCode: varchar("accessCode", { length: 12 }), // 12-character robust code - nullable, set by Process Owner
-  invitationToken: varchar("invitationToken", { length: 255 }).notNull().unique(),
-  status: mysqlEnum("status", ["pending", "accepted", "expired"]).default("pending").notNull(),
+  invitationToken: varchar("invitationToken", { length: 255 })
+    .notNull()
+    .unique(),
+  status: mysqlEnum("status", ["pending", "accepted", "expired"])
+    .default("pending")
+    .notNull(),
   expiresAt: timestamp("expiresAt").notNull(),
   acceptedAt: timestamp("acceptedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
-export type ProcessOwnerInvitation = typeof processOwnerInvitations.$inferSelect;
-export type InsertProcessOwnerInvitation = typeof processOwnerInvitations.$inferInsert;
+export type ProcessOwnerInvitation =
+  typeof processOwnerInvitations.$inferSelect;
+export type InsertProcessOwnerInvitation =
+  typeof processOwnerInvitations.$inferInsert;
 
 /**
  * Process Owners - Associates users with processes as owners/jefes de proceso
@@ -1286,7 +1470,12 @@ export type InsertProcessOwner = typeof processOwners.$inferInsert;
 export const companyFODAs = mysqlTable("companyFODAs", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull(),
-  type: mysqlEnum("type", ["Fortaleza", "Oportunidad", "Debilidad", "Amenaza"]).notNull(),
+  type: mysqlEnum("type", [
+    "Fortaleza",
+    "Oportunidad",
+    "Debilidad",
+    "Amenaza",
+  ]).notNull(),
   description: text("description").notNull(),
   justification: text("justification"), // Justification or context for the FODA element
   processId: int("processId"), // Reference to original process (for traceability)
@@ -1308,7 +1497,12 @@ export const companyFODASelections = mysqlTable("companyFODASelections", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull(),
   processId: int("processId").notNull(),
-  type: mysqlEnum("type", ["Fortaleza", "Oportunidad", "Debilidad", "Amenaza"]).notNull(),
+  type: mysqlEnum("type", [
+    "Fortaleza",
+    "Oportunidad",
+    "Debilidad",
+    "Amenaza",
+  ]).notNull(),
   originalText: text("originalText").notNull(), // Original text from processFODA
   isSelected: boolean("isSelected").default(false).notNull(),
   companyFODAId: int("companyFODAId"), // Reference to companyFODA if selected
@@ -1317,7 +1511,8 @@ export const companyFODASelections = mysqlTable("companyFODASelections", {
 });
 
 export type CompanyFODASelection = typeof companyFODASelections.$inferSelect;
-export type InsertCompanyFODASelection = typeof companyFODASelections.$inferInsert;
+export type InsertCompanyFODASelection =
+  typeof companyFODASelections.$inferInsert;
 
 /**
  * AI Query Audit - Stores all AI queries and responses for auditing and learning
@@ -1334,9 +1529,13 @@ export const aiQueryAudit = mysqlTable("aiQueryAudit", {
   model: varchar("model", { length: 50 }).notNull(), // e.g., "claude-3-sonnet"
   tokensUsed: int("tokensUsed"), // For future billing tracking
   responseTimeMs: int("responseTimeMs"), // Response time in milliseconds
-  status: mysqlEnum("status", ["success", "error", "partial"]).default("success").notNull(),
+  status: mysqlEnum("status", ["success", "error", "partial"])
+    .default("success")
+    .notNull(),
   errorMessage: text("errorMessage"), // If status is error
-  userFeedback: mysqlEnum("userFeedback", ["helpful", "not_helpful", "none"]).default("none").notNull(),
+  userFeedback: mysqlEnum("userFeedback", ["helpful", "not_helpful", "none"])
+    .default("none")
+    .notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -1372,26 +1571,33 @@ export const recoveryAudit = mysqlTable("recoveryAudit", {
 export type RecoveryAudit = typeof recoveryAudit.$inferSelect;
 export type InsertRecoveryAudit = typeof recoveryAudit.$inferInsert;
 
-
 /**
  * Payroll employees - Master personnel roster for performance evaluation.
  * Active employees are managed in Nómina; inactive employees retain their employment history.
  */
-export const payrollEmployees = mysqlTable("payrollEmployees", {
-  id: int("id").autoincrement().primaryKey(),
-  companyId: int("companyId").notNull(),
-  fullName: varchar("fullName", { length: 255 }).notNull(),
-  identityCard: varchar("identityCard", { length: 20 }).notNull(),
-  hireDate: date("hireDate").notNull(),
-  area: varchar("area", { length: 255 }).notNull(),
-  position: varchar("position", { length: 255 }).notNull(),
-  status: mysqlEnum("status", ["activo", "pasivo"]).default("activo").notNull(),
-  terminationDate: date("terminationDate"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({
-  companyIdentityUnique: unique("payrollEmployees_company_identity_unique").on(table.companyId, table.identityCard),
-}));
+export const payrollEmployees = mysqlTable(
+  "payrollEmployees",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    fullName: varchar("fullName", { length: 255 }).notNull(),
+    identityCard: varchar("identityCard", { length: 20 }).notNull(),
+    hireDate: date("hireDate").notNull(),
+    area: varchar("area", { length: 255 }).notNull(),
+    position: varchar("position", { length: 255 }).notNull(),
+    status: mysqlEnum("status", ["activo", "pasivo"])
+      .default("activo")
+      .notNull(),
+    terminationDate: date("terminationDate"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    companyIdentityUnique: unique(
+      "payrollEmployees_company_identity_unique"
+    ).on(table.companyId, table.identityCard),
+  })
+);
 
 export type PayrollEmployee = typeof payrollEmployees.$inferSelect;
 export type InsertPayrollEmployee = typeof payrollEmployees.$inferInsert;
@@ -1433,7 +1639,8 @@ export const organizationChartNodes = mysqlTable("organizationChartNodes", {
 });
 
 export type OrganizationChartNode = typeof organizationChartNodes.$inferSelect;
-export type InsertOrganizationChartNode = typeof organizationChartNodes.$inferInsert;
+export type InsertOrganizationChartNode =
+  typeof organizationChartNodes.$inferInsert;
 
 /**
  * Organization Chart Files - PDF files uploaded for the organization chart
@@ -1451,7 +1658,8 @@ export const organizationChartFiles = mysqlTable("organizationChartFiles", {
 });
 
 export type OrganizationChartFile = typeof organizationChartFiles.$inferSelect;
-export type InsertOrganizationChartFile = typeof organizationChartFiles.$inferInsert;
+export type InsertOrganizationChartFile =
+  typeof organizationChartFiles.$inferInsert;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MÓDULO: AUDITORÍAS E INSPECCIONES
@@ -1465,7 +1673,9 @@ export const managementSystems = mysqlTable("managementSystems", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull(),
   systemName: varchar("systemName", { length: 255 }).notNull().default(""),
-  certification: varchar("certification", { length: 255 }).notNull().default(""),
+  certification: varchar("certification", { length: 255 })
+    .notNull()
+    .default(""),
   orderIndex: int("orderIndex").notNull().default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -1488,7 +1698,8 @@ export const managementSystemFiles = mysqlTable("managementSystemFiles", {
   uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
 });
 export type ManagementSystemFile = typeof managementSystemFiles.$inferSelect;
-export type InsertManagementSystemFile = typeof managementSystemFiles.$inferInsert;
+export type InsertManagementSystemFile =
+  typeof managementSystemFiles.$inferInsert;
 
 /**
  * Control de Auditorías — una fila por auditoría realizada.
@@ -1496,9 +1707,13 @@ export type InsertManagementSystemFile = typeof managementSystemFiles.$inferInse
 export const audits = mysqlTable("audits", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull(),
-  managementSystem: varchar("managementSystem", { length: 255 }).notNull().default(""),
+  managementSystem: varchar("managementSystem", { length: 255 })
+    .notNull()
+    .default(""),
   auditDate: varchar("auditDate", { length: 20 }).notNull().default(""),
-  auditType: mysqlEnum("auditType", ["Interna", "Externa"]).notNull().default("Interna"),
+  auditType: mysqlEnum("auditType", ["Interna", "Externa"])
+    .notNull()
+    .default("Interna"),
   findingsObservations: int("findingsObservations").notNull().default(0),
   findingsMajorNC: int("findingsMajorNC").notNull().default(0),
   findingsMinorNC: int("findingsMinorNC").notNull().default(0),
@@ -1536,8 +1751,12 @@ export type InsertAuditFile = typeof auditFiles.$inferInsert;
 export const inspections = mysqlTable("inspections", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull(),
-  managementSystem: varchar("managementSystem", { length: 255 }).notNull().default(""),
-  inspectionDate: varchar("inspectionDate", { length: 20 }).notNull().default(""),
+  managementSystem: varchar("managementSystem", { length: 255 })
+    .notNull()
+    .default(""),
+  inspectionDate: varchar("inspectionDate", { length: 20 })
+    .notNull()
+    .default(""),
   area: varchar("area", { length: 255 }).notNull().default(""),
   findings: int("findings").notNull().default(0),
   closures: int("closures").notNull().default(0),
@@ -1567,18 +1786,23 @@ export type InsertInspectionFile = typeof inspectionFiles.$inferInsert;
 /**
  * Process Stakeholder Matrix File - Stores the uploaded Excel matrix file for each process
  */
-export const processStakeholderMatrixFiles = mysqlTable("processStakeholderMatrixFiles", {
-  id: int("id").autoincrement().primaryKey(),
-  processId: int("processId").notNull(),
-  fileName: varchar("fileName", { length: 255 }).notNull(),
-  fileKey: text("fileKey").notNull(),
-  fileSizeBytes: int("fileSizeBytes").default(0),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+export const processStakeholderMatrixFiles = mysqlTable(
+  "processStakeholderMatrixFiles",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    processId: int("processId").notNull(),
+    fileName: varchar("fileName", { length: 255 }).notNull(),
+    fileKey: text("fileKey").notNull(),
+    fileSizeBytes: int("fileSizeBytes").default(0),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  }
+);
 
-export type ProcessStakeholderMatrixFile = typeof processStakeholderMatrixFiles.$inferSelect;
-export type InsertProcessStakeholderMatrixFile = typeof processStakeholderMatrixFiles.$inferInsert;
+export type ProcessStakeholderMatrixFile =
+  typeof processStakeholderMatrixFiles.$inferSelect;
+export type InsertProcessStakeholderMatrixFile =
+  typeof processStakeholderMatrixFiles.$inferInsert;
 
 /**
  * Management Programs - Stores programs for each company's management systems
@@ -1587,7 +1811,9 @@ export const managementPrograms = mysqlTable("managementPrograms", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull(),
   programName: varchar("programName", { length: 500 }).notNull(),
-  managementSystem: varchar("managementSystem", { length: 100 }).notNull().default("Calidad"),
+  managementSystem: varchar("managementSystem", { length: 100 })
+    .notNull()
+    .default("Calidad"),
   plannedActions: int("plannedActions").default(0),
   completedActions: int("completedActions").default(0),
   planFileKey: text("planFileKey"),
@@ -1608,18 +1834,25 @@ export const stakeholderSurveys = mysqlTable("stakeholderSurveys", {
   processId: int("processId").notNull(),
   // Datos de control
   surveyName: varchar("surveyName", { length: 500 }).notNull().default(""),
-  segment: mysqlEnum("segment", ["Clientes", "Proveedores Externos", "Proveedores Internos", "Mixto"]).notNull().default("Clientes"),
+  segment: mysqlEnum("segment", [
+    "Clientes",
+    "Proveedores Externos",
+    "Proveedores Internos",
+    "Mixto",
+  ])
+    .notNull()
+    .default("Clientes"),
   surveyDate: varchar("surveyDate", { length: 20 }).default(""),
   sentCount: int("sentCount").default(0),
   respondedCount: int("respondedCount").default(0),
   // KPIs de satisfacción
-  nps: int("nps"),                          // -100 a 100
-  csat: int("csat"),                        // 0 a 100 (%)
-  avgRating: varchar("avgRating", { length: 20 }).default(""),  // Ej: "4.2/5"
+  nps: int("nps"), // -100 a 100
+  csat: int("csat"), // 0 a 100 (%)
+  avgRating: varchar("avgRating", { length: 20 }).default(""), // Ej: "4.2/5"
   // Hallazgos cualitativos
-  topStrengths: text("topStrengths"),       // Top fortalezas mencionadas
-  topWeaknesses: text("topWeaknesses"),     // Top debilidades mencionadas
-  mainFindings: text("mainFindings"),       // Resumen ejecutivo de hallazgos
+  topStrengths: text("topStrengths"), // Top fortalezas mencionadas
+  topWeaknesses: text("topWeaknesses"), // Top debilidades mencionadas
+  mainFindings: text("mainFindings"), // Resumen ejecutivo de hallazgos
   // Vinculación con acciones (JSON array de criticalityMatrix IDs)
   linkedActionIds: text("linkedActionIds"), // JSON: [1, 2, 3]
   orderIndex: int("orderIndex").notNull().default(0),
@@ -1638,10 +1871,14 @@ export const companyTrainings = mysqlTable("companyTrainings", {
   companyId: int("companyId").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   objective: text("objective"),
-  type: mysqlEnum("type", ["Mandatoria", "Reglamentaria", "Sugerida"]).default("Mandatoria").notNull(),
+  type: mysqlEnum("type", ["Mandatoria", "Reglamentaria", "Sugerida"])
+    .default("Mandatoria")
+    .notNull(),
   audience: varchar("audience", { length: 255 }),
   plannedAttendees: int("plannedAttendees").default(0),
-  modality: mysqlEnum("modality", ["Presencial", "Online", "Externa"]).default("Presencial").notNull(),
+  modality: mysqlEnum("modality", ["Presencial", "Online", "Externa"])
+    .default("Presencial")
+    .notNull(),
   responsible: varchar("responsible", { length: 255 }),
   plannedDate: date("plannedDate"),
   conductedDate: date("conductedDate"),
@@ -1661,16 +1898,27 @@ export const companyCompliances = mysqlTable("companyCompliances", {
   companyId: int("companyId").notNull(),
   requirement: varchar("requirement", { length: 255 }).notNull(),
   description: text("description"),
-  obligationType: mysqlEnum("obligationType", ["Legal", "Reglamentaria", "Concesion", "Sistema de Gestion", "Otros"]).notNull(),
+  obligationType: mysqlEnum("obligationType", [
+    "Legal",
+    "Reglamentaria",
+    "Concesion",
+    "Sistema de Gestion",
+    "Otros",
+  ]).notNull(),
   otherObligationType: varchar("otherObligationType", { length: 255 }),
   responsible: varchar("responsible", { length: 255 }),
   completed: mysqlEnum("completed", ["SI", "NO"]).default("NO").notNull(),
   plannedMonths: varchar("plannedMonths", { length: 50 }),
   completedMonths: varchar("completedMonths", { length: 50 }),
   observations: text("observations"),
-  evaluationMode: mysqlEnum("evaluationMode", ["meses", "vigencia"]).default("meses").notNull(),
+  evaluationMode: mysqlEnum("evaluationMode", ["meses", "vigencia"])
+    .default("meses")
+    .notNull(),
   validFrom: date("validFrom"),
   validUntil: date("validUntil"),
+  evidencePdfUrl: varchar("evidencePdfUrl", { length: 1024 }),
+  evidencePdfName: varchar("evidencePdfName", { length: 255 }),
+  evidencePdfKey: varchar("evidencePdfKey", { length: 512 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1678,25 +1926,48 @@ export type CompanyCompliance = typeof companyCompliances.$inferSelect;
 export type InsertCompanyCompliance = typeof companyCompliances.$inferInsert;
 
 // Company-level Strategic Trends (snapshots mensuales de % avance)
-export const companyTrends = mysqlTable("companyTrends", {
-  id: int("id").autoincrement().primaryKey(),
-  companyId: int("companyId").notNull(),
-  year: int("year").notNull(),
-  month: int("month").notNull(),
-  otePercent: decimal("otePercent", { precision: 6, scale: 2 }).notNull().default("0"),
-  otgPercent: decimal("otgPercent", { precision: 6, scale: 2 }).notNull().default("0"),
-  stakeholderPercent: decimal("stakeholderPercent", { precision: 6, scale: 2 }).notNull().default("0"),
-  oteMeta: decimal("oteMeta", { precision: 6, scale: 2 }).notNull().default("100"),
-  otgMeta: decimal("otgMeta", { precision: 6, scale: 2 }).notNull().default("100"),
-  stakeholderMeta: decimal("stakeholderMeta", { precision: 6, scale: 2 }).notNull().default("100"),
-  // JSON: { [oeName: string]: number } — porcentaje de cada OE en este snapshot
-  oePercentsJson: text("oePercentsJson").default("{}" ),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({
-  // Un solo snapshot por empresa y período; los cierres posteriores actualizan el mismo mes.
-  uniqueCompanyTrendPeriod: unique("company_trends_company_year_month").on(table.companyId, table.year, table.month),
-}));
+export const companyTrends = mysqlTable(
+  "companyTrends",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    year: int("year").notNull(),
+    month: int("month").notNull(),
+    otePercent: decimal("otePercent", { precision: 6, scale: 2 })
+      .notNull()
+      .default("0"),
+    otgPercent: decimal("otgPercent", { precision: 6, scale: 2 })
+      .notNull()
+      .default("0"),
+    stakeholderPercent: decimal("stakeholderPercent", {
+      precision: 6,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    oteMeta: decimal("oteMeta", { precision: 6, scale: 2 })
+      .notNull()
+      .default("100"),
+    otgMeta: decimal("otgMeta", { precision: 6, scale: 2 })
+      .notNull()
+      .default("100"),
+    stakeholderMeta: decimal("stakeholderMeta", { precision: 6, scale: 2 })
+      .notNull()
+      .default("100"),
+    // JSON: { [oeName: string]: number } — porcentaje de cada OE en este snapshot
+    oePercentsJson: text("oePercentsJson").default("{}"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    // Un solo snapshot por empresa y período; los cierres posteriores actualizan el mismo mes.
+    uniqueCompanyTrendPeriod: unique("company_trends_company_year_month").on(
+      table.companyId,
+      table.year,
+      table.month
+    ),
+  })
+);
 export type CompanyTrend = typeof companyTrends.$inferSelect;
 export type InsertCompanyTrend = typeof companyTrends.$inferInsert;
 
