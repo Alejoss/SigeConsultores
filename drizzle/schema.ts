@@ -1826,6 +1826,23 @@ export type ManagementProgram = typeof managementPrograms.$inferSelect;
 export type InsertManagementProgram = typeof managementPrograms.$inferInsert;
 
 /**
+ * Documentación de respaldo de Programas de gestión.
+ * Un programa puede conservar múltiples documentos, independientes de su planificación.
+ */
+export const managementProgramFiles = mysqlTable("managementProgramFiles", {
+  id: int("id").autoincrement().primaryKey(),
+  programId: int("programId").notNull(),
+  companyId: int("companyId").notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileUrl: varchar("fileUrl", { length: 1024 }).notNull(),
+  fileKey: varchar("fileKey", { length: 1024 }).notNull(),
+  fileSizeBytes: int("fileSizeBytes").default(0),
+  uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+});
+export type ManagementProgramFile = typeof managementProgramFiles.$inferSelect;
+export type InsertManagementProgramFile = typeof managementProgramFiles.$inferInsert;
+
+/**
  * Stakeholder Surveys - Registra encuestas aplicadas a partes interesadas
  * Cada encuesta puede generar acciones que se vinculan a la tabla criticalityMatrix
  */
