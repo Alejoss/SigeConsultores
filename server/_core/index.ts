@@ -7,6 +7,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes, validateOAuthConfig } from "./oauth";
 import { registerAuthSessionRoutes } from "./authSessionHttpRoutes";
 import { registerFileUploadRoutes } from "./fileUploadRoutes";
+import { registerManagementProgramUploadRoutes } from "../managementProgramUploadRoutes";
 import { registerPublicApiRoutes } from "./publicApiRoutes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -40,6 +41,7 @@ async function startServer() {
   registerOAuthRoutes(app);
   registerAuthSessionRoutes(app);
   registerFileUploadRoutes(app);
+  registerManagementProgramUploadRoutes(app);
   registerPublicApiRoutes(app);
   // tRPC API
   app.use(

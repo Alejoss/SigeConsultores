@@ -159,6 +159,7 @@ export default function ManagementPrograms() {
   const planningInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const documentationInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const [documentationModal, setDocumentationModal] = useState<DocumentationModal | null>(null);
+  const [uploadingDocumentationProgramId, setUploadingDocumentationProgramId] = useState<number | null>(null);
 
   const { data: programs = [], refetch, isLoading } = trpc.managementPrograms.list.useQuery(
     { companyId: companyId ?? 0 },
@@ -191,11 +192,6 @@ export default function ManagementPrograms() {
       refetch();
       toast.success("Planificación subida correctamente");
     },
-    onError: (error) => toast.error(error.message),
-  });
-
-  const uploadDocumentationMutation = trpc.managementPrograms.uploadDocumentation.useMutation({
-    onSuccess: () => toast.success("Documento subido correctamente"),
     onError: (error) => toast.error(error.message),
   });
 
@@ -269,25 +265,59 @@ export default function ManagementPrograms() {
   };
 
   const handleDocumentationFiles = async (programId: number, fileList: FileList) => {
-    if (!companyId) return;
+    if (!companyId || uploadingDocumentationProgramId !== null) return;
     const validFiles = Array.from(fileList).filter(validateFile);
     if (validFiles.length === 0) return;
+
+    setUploadingDocumentationProgramId(programId);
+    const progressToast = toast.loading(
+      validFiles.length > 1
+        ? `Subiendo 0 de ${validFiles.length} documentos...`
+        : "Subiendo documentación..."
+    );
+    let uploaded = 0;
+    const failedFiles: string[] = [];
+
     try {
       for (const file of validFiles) {
-        const fileData = Array.from(new Uint8Array(await file.arrayBuffer()));
-        await uploadDocumentationMutation.mutateAsync({
-          programId,
-          companyId,
-          fileName: file.name,
-          fileData,
-          mimeType: file.type,
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("companyId", String(companyId));
+        formData.append("programId", String(programId));
+
+        const response = await fetch("/api/upload/management-program-documentation", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
         });
+        const result = await response.json().catch(() => null);
+        if (!response.ok || !result?.ok) {
+          failedFiles.push(file.name);
+          continue;
+        }
+
+        uploaded += 1;
+        if (validFiles.length > 1) {
+          toast.loading(`Subiendo ${uploaded} de ${validFiles.length} documentos...`, { id: progressToast });
+        }
       }
-      if (validFiles.length > 1) toast.success(`${validFiles.length} documentos subidos correctamente`);
-      if (documentationModal?.programId === programId) documentationQuery.refetch();
+
+      if (documentationModal?.programId === programId) await documentationQuery.refetch();
+      if (uploaded > 0) {
+        toast.success(
+          uploaded === 1 ? "Documento subido correctamente" : `${uploaded} documentos subidos correctamente`,
+          { id: progressToast }
+        );
+      } else {
+        toast.error("No fue posible subir la documentación", { id: progressToast });
+      }
+      if (failedFiles.length > 0) {
+        toast.error(`${failedFiles.length} archivo(s) no se pudieron subir. Puede intentarlo nuevamente.`, { id: `${progressToast}-errors` });
+      }
     } catch {
-      toast.error("No fue posible subir uno de los documentos");
+      toast.error("No fue posible subir la documentación. Inténtelo nuevamente.", { id: progressToast });
     } finally {
+      setUploadingDocumentationProgramId(null);
       const input = documentationInputRefs.current[programId];
       if (input) input.value = "";
     }
@@ -391,9 +421,15 @@ export default function ManagementPrograms() {
                           if (event.target.files?.length) handleDocumentationFiles(program.id, event.target.files);
                         }}
                       />
-                      <Button size="sm" variant="outline" className="border-teal-300 text-teal-700 hover:bg-teal-50" onClick={() => documentationInputRefs.current[program.id]?.click()} disabled={uploadDocumentationMutation.isPending}>
-                        {uploadDocumentationMutation.isPending ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Upload size={14} className="mr-1" />}
-                        Subir documentación
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-teal-300 text-teal-700 hover:bg-teal-50"
+                        onClick={() => documentationInputRefs.current[program.id]?.click()}
+                        disabled={uploadingDocumentationProgramId !== null}
+                      >
+                        {uploadingDocumentationProgramId === program.id ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Upload size={14} className="mr-1" />}
+                        {uploadingDocumentationProgramId === program.id ? "Subiendo documentación..." : "Subir documentación"}
                       </Button>
                       <Button size="sm" variant="outline" className="border-teal-300 text-teal-700 hover:bg-teal-50" onClick={() => setDocumentationModal({ programId: program.id, programName: program.programName })}>
                         <Eye size={14} className="mr-1" /> Ver documentación
