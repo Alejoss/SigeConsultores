@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
-import { Loader2, Plus, Trash2, Upload, Eye, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, Loader2, Plus, Trash2, Upload } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
@@ -20,6 +20,130 @@ const MANAGEMENT_SYSTEMS = [
   "Otro",
 ];
 
+const PROGRAM_FILE_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+];
+const MAX_PROGRAM_FILE_BYTES = 50 * 1024 * 1024;
+
+type DocumentationModal = {
+  programId: number;
+  programName: string;
+};
+
+function DocumentationModal({
+  title,
+  files,
+  isLoading,
+  onClose,
+  onDelete,
+}: {
+  title: string;
+  files: { id: number; fileName: string; fileUrl: string }[];
+  isLoading: boolean;
+  onClose: () => void;
+  onDelete: (id: number) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-xl rounded-xl bg-white p-6 shadow-xl">
+        <h3 className="text-lg font-bold text-slate-800">{title}</h3>
+        <p className="mt-1 text-sm text-slate-500">
+          Documentos de respaldo asociados a este programa.
+        </p>
+        <div className="mt-4 max-h-[55vh] overflow-y-auto">
+          {isLoading ? (
+            <div className="flex items-center gap-2 py-6 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" /> Cargando documentación...
+            </div>
+          ) : files.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+              No hay documentación subida aún.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {files.map((file) => (
+                <li
+                  key={file.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-3"
+                >
+                  <a
+                    href={file.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="min-w-0 truncate text-sm font-medium text-blue-600 hover:underline"
+                    title={file.fileName}
+                  >
+                    {file.fileName}
+                  </a>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="shrink-0 text-red-500 hover:bg-red-50 hover:text-red-700"
+                    onClick={() => onDelete(file.id)}
+                    title="Eliminar documento"
+                  >
+                    <Trash2 size={15} />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="mt-5 flex justify-end">
+          <Button variant="outline" onClick={onClose}>
+            Cerrar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ViewPlanningButton({
+  programId,
+  companyId,
+  planFileName,
+}: {
+  programId: number;
+  companyId: number;
+  planFileName: string | null;
+}) {
+  const { data, isLoading } = trpc.managementPrograms.getPlanUrl.useQuery(
+    { id: programId, companyId },
+    { enabled: !!planFileName }
+  );
+
+  const handleViewPlanning = () => {
+    if (!planFileName) {
+      toast.info("Este programa todavía no tiene una planificación subida");
+      return;
+    }
+    if (!data?.url) {
+      toast.error("No fue posible abrir la planificación. Inténtelo nuevamente.");
+      return;
+    }
+    window.open(data.url, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="border-blue-300 text-blue-700 hover:bg-blue-50"
+      onClick={handleViewPlanning}
+      disabled={isLoading}
+      title={planFileName ?? "No hay planificación subida"}
+    >
+      {isLoading ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Eye size={14} className="mr-1" />}
+      Ver planificación
+    </Button>
+  );
+}
+
 export default function ManagementPrograms() {
   const [, setLocation] = useLocation();
   const { session: processLeaderSession, isLoading: plLoading } = useProcessLeaderAuth();
@@ -32,7 +156,9 @@ export default function ManagementPrograms() {
     return getCompanyIdFromLocationOrStorage();
   }, [isManagerLogin, managerCompanyId, processLeaderSession]);
 
-  const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const planningInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const documentationInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const [documentationModal, setDocumentationModal] = useState<DocumentationModal | null>(null);
 
   const { data: programs = [], refetch, isLoading } = trpc.managementPrograms.list.useQuery(
     { companyId: companyId ?? 0 },
@@ -40,26 +166,54 @@ export default function ManagementPrograms() {
   );
 
   const createMutation = trpc.managementPrograms.create.useMutation({
-    onSuccess: () => { refetch(); toast.success("Programa agregado"); },
-    onError: (e) => toast.error(e.message),
+    onSuccess: () => {
+      refetch();
+      toast.success("Programa agregado");
+    },
+    onError: (error) => toast.error(error.message),
   });
 
   const updateMutation = trpc.managementPrograms.update.useMutation({
-    onSuccess: () => { refetch(); },
-    onError: (e) => toast.error(e.message),
+    onSuccess: () => refetch(),
+    onError: (error) => toast.error(error.message),
   });
 
   const deleteMutation = trpc.managementPrograms.delete.useMutation({
-    onSuccess: () => { refetch(); toast.success("Programa eliminado"); },
-    onError: (e) => toast.error(e.message),
+    onSuccess: () => {
+      refetch();
+      toast.success("Programa eliminado");
+    },
+    onError: (error) => toast.error(error.message),
   });
 
-  const uploadMutation = trpc.managementPrograms.uploadPlan.useMutation({
-    onSuccess: () => { refetch(); toast.success("Planificación subida"); },
-    onError: (e) => toast.error(e.message),
+  const uploadPlanMutation = trpc.managementPrograms.uploadPlan.useMutation({
+    onSuccess: () => {
+      refetch();
+      toast.success("Planificación subida correctamente");
+    },
+    onError: (error) => toast.error(error.message),
   });
 
-  const getPlanUrlMutation = trpc.managementPrograms.getPlanUrl.useQuery;
+  const uploadDocumentationMutation = trpc.managementPrograms.uploadDocumentation.useMutation({
+    onSuccess: () => toast.success("Documento subido correctamente"),
+    onError: (error) => toast.error(error.message),
+  });
+
+  const documentationQuery = trpc.managementPrograms.listDocumentation.useQuery(
+    {
+      programId: documentationModal?.programId ?? 0,
+      companyId: companyId ?? 0,
+    },
+    { enabled: !!documentationModal && !!companyId }
+  );
+
+  const deleteDocumentationMutation = trpc.managementPrograms.deleteDocumentation.useMutation({
+    onSuccess: () => {
+      documentationQuery.refetch();
+      toast.success("Documento eliminado");
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
   const handleAddProgram = () => {
     if (!companyId) return;
@@ -72,43 +226,79 @@ export default function ManagementPrograms() {
     });
   };
 
-  const handleUpdate = (id: number, field: string, value: any) => {
+  const handleUpdate = (id: number, field: string, value: string | number) => {
     if (!companyId) return;
     updateMutation.mutate({ id, companyId, [field]: value });
   };
 
   const handleDelete = (id: number) => {
     if (!companyId) return;
-    if (!confirm("¿Eliminar este programa?")) return;
+    if (!confirm("¿Eliminar este programa y todos sus archivos asociados?")) return;
     deleteMutation.mutate({ id, companyId });
   };
 
-  const handleFileUpload = async (id: number, file: File) => {
-    if (!companyId) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = (e.target?.result as string).split(",")[1];
-      uploadMutation.mutate({
-        id,
-        companyId,
-        fileName: file.name,
-        fileData: base64,
-        mimeType: file.type,
-      });
-    };
-    reader.readAsDataURL(file);
+  const validateFile = (file: File) => {
+    if (!PROGRAM_FILE_TYPES.includes(file.type)) {
+      toast.error("Solo se permiten archivos PDF, Word o Excel");
+      return false;
+    }
+    if (file.size > MAX_PROGRAM_FILE_BYTES) {
+      toast.error("El archivo no debe superar 50 MB");
+      return false;
+    }
+    return true;
   };
 
-  // Calculate overall compliance
+  const handlePlanningFile = async (programId: number, file: File) => {
+    if (!companyId || !validateFile(file)) return;
+    try {
+      const fileData = Array.from(new Uint8Array(await file.arrayBuffer()));
+      await uploadPlanMutation.mutateAsync({
+        id: programId,
+        companyId,
+        fileName: file.name,
+        fileData,
+        mimeType: file.type,
+      });
+    } catch {
+      toast.error("No fue posible subir la planificación");
+    } finally {
+      const input = planningInputRefs.current[programId];
+      if (input) input.value = "";
+    }
+  };
+
+  const handleDocumentationFiles = async (programId: number, fileList: FileList) => {
+    if (!companyId) return;
+    const validFiles = Array.from(fileList).filter(validateFile);
+    if (validFiles.length === 0) return;
+    try {
+      for (const file of validFiles) {
+        const fileData = Array.from(new Uint8Array(await file.arrayBuffer()));
+        await uploadDocumentationMutation.mutateAsync({
+          programId,
+          companyId,
+          fileName: file.name,
+          fileData,
+          mimeType: file.type,
+        });
+      }
+      if (validFiles.length > 1) toast.success(`${validFiles.length} documentos subidos correctamente`);
+      if (documentationModal?.programId === programId) documentationQuery.refetch();
+    } catch {
+      toast.error("No fue posible subir uno de los documentos");
+    } finally {
+      const input = documentationInputRefs.current[programId];
+      if (input) input.value = "";
+    }
+  };
+
   const overallCompliance = useMemo(() => {
     if (!programs.length) return 0;
-    const total = programs.reduce((sum, p) => {
-      const planned = p.plannedActions ?? 0;
-      const completed = p.completedActions ?? 0;
-      const pct = planned > 0
-        ? Math.min(100, Math.round((completed / planned) * 100))
-        : 0;
-      return sum + pct;
+    const total = programs.reduce((sum, program) => {
+      const planned = program.plannedActions ?? 0;
+      const completed = program.completedActions ?? 0;
+      return sum + (planned > 0 ? Math.min(100, Math.round((completed / planned) * 100)) : 0);
     }, 0);
     return Math.round(total / programs.length);
   }, [programs]);
@@ -117,7 +307,7 @@ export default function ManagementPrograms() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center p-12">
-          <Loader2 className="animate-spin w-8 h-8 text-blue-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
         </div>
       </DashboardLayout>
     );
@@ -125,9 +315,8 @@ export default function ManagementPrograms() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
               variant="outline"
@@ -139,146 +328,96 @@ export default function ManagementPrograms() {
             </Button>
             <div>
               <h1 className="text-2xl font-bold text-slate-800">Programas</h1>
-              <p className="text-slate-500 text-sm mt-0.5">
-                Gestión de programas de sistemas de gestión
-              </p>
+              <p className="mt-0.5 text-sm text-slate-500">Gestión de programas de sistemas de gestión</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-center bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
-              <p className="text-xs text-blue-600 font-semibold">% Cumplimiento</p>
-              <p className={`text-2xl font-bold ${overallCompliance >= 80 ? "text-green-600" : overallCompliance >= 50 ? "text-yellow-600" : "text-red-600"}`}>
-                {overallCompliance}%
-              </p>
-            </div>
+          <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-center">
+            <p className="text-xs font-semibold text-blue-600">% Cumplimiento</p>
+            <p className={`text-2xl font-bold ${overallCompliance >= 80 ? "text-green-600" : overallCompliance >= 50 ? "text-yellow-600" : "text-red-600"}`}>
+              {overallCompliance}%
+            </p>
           </div>
         </div>
 
-        {/* Programs Table */}
         {isLoading ? (
-          <div className="flex justify-center p-8">
-            <Loader2 className="animate-spin w-6 h-6 text-blue-500" />
-          </div>
+          <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
         ) : (
           <div className="space-y-4">
             {programs.length === 0 && (
-              <Card>
-                <CardContent className="pt-6 text-center text-slate-400">
-                  No hay programas registrados. Agregue el primero.
-                </CardContent>
-              </Card>
+              <Card><CardContent className="pt-6 text-center text-slate-400">No hay programas registrados. Agregue el primero.</CardContent></Card>
             )}
             {programs.map((program) => {
               const planned = program.plannedActions ?? 0;
               const completed = program.completedActions ?? 0;
-              const compliance = planned > 0
-                ? Math.min(100, Math.round((completed / planned) * 100))
-                : 0;
+              const compliance = planned > 0 ? Math.min(100, Math.round((completed / planned) * 100)) : 0;
               return (
                 <Card key={program.id} className="border border-slate-200">
                   <CardContent className="pt-4 pb-4">
-                    <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
-                      {/* Nombre del Programa */}
+                    <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-6">
                       <div className="md:col-span-2">
-                        <label className="text-xs font-semibold text-slate-500 mb-1 block">
-                          Nombre del Programa
-                        </label>
-                        <Input
-                          defaultValue={program.programName}
-                          onBlur={(e) => handleUpdate(program.id, "programName", e.target.value)}
-                          className="text-sm"
-                        />
+                        <label className="mb-1 block text-xs font-semibold text-slate-500">Nombre del Programa</label>
+                        <Input defaultValue={program.programName} onBlur={(event) => handleUpdate(program.id, "programName", event.target.value)} className="text-sm" />
                       </div>
-
-                      {/* Sistema de Gestión */}
                       <div>
-                        <label className="text-xs font-semibold text-slate-500 mb-1 block">
-                          Sistema de Gestión
-                        </label>
-                        <select
-                          defaultValue={program.managementSystem}
-                          onBlur={(e) => handleUpdate(program.id, "managementSystem", e.target.value)}
-                          className="w-full border rounded p-2 text-sm"
-                        >
-                          {MANAGEMENT_SYSTEMS.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
+                        <label className="mb-1 block text-xs font-semibold text-slate-500">Sistema de Gestión</label>
+                        <select defaultValue={program.managementSystem} onChange={(event) => handleUpdate(program.id, "managementSystem", event.target.value)} className="w-full rounded border p-2 text-sm">
+                          {MANAGEMENT_SYSTEMS.map((system) => <option key={system} value={system}>{system}</option>)}
                         </select>
                       </div>
-
-                      {/* Acciones Planificadas */}
                       <div>
-                        <label className="text-xs font-semibold text-slate-500 mb-1 block">
-                          # Acciones Planificadas
-                        </label>
-                        <Input
-                          type="number"
-                          min={0}
-                          defaultValue={program.plannedActions ?? 0}
-                          onBlur={(e) => handleUpdate(program.id, "plannedActions", parseInt(e.target.value) || 0)}
-                          className="text-sm"
-                        />
+                        <label className="mb-1 block text-xs font-semibold text-slate-500"># Acciones Planificadas</label>
+                        <Input type="number" min={0} defaultValue={planned} onBlur={(event) => handleUpdate(program.id, "plannedActions", parseInt(event.target.value, 10) || 0)} className="text-sm" />
                       </div>
-
-                      {/* Acciones Realizadas */}
                       <div>
-                        <label className="text-xs font-semibold text-slate-500 mb-1 block">
-                          # Acciones Realizadas
-                        </label>
-                        <Input
-                          type="number"
-                          min={0}
-                          defaultValue={program.completedActions ?? 0}
-                          onBlur={(e) => handleUpdate(program.id, "completedActions", parseInt(e.target.value) || 0)}
-                          className="text-sm"
-                        />
+                        <label className="mb-1 block text-xs font-semibold text-slate-500"># Acciones Realizadas</label>
+                        <Input type="number" min={0} defaultValue={completed} onBlur={(event) => handleUpdate(program.id, "completedActions", parseInt(event.target.value, 10) || 0)} className="text-sm" />
                       </div>
-
-                      {/* Cumplimiento */}
                       <div>
-                        <label className="text-xs font-semibold text-slate-500 mb-1 block">
-                          Cumplimiento
-                        </label>
-                        <div className={`w-full border rounded p-2 text-sm font-bold text-center ${
-                          compliance >= 80 ? "bg-green-100 text-green-700 border-green-300"
-                          : compliance >= 50 ? "bg-yellow-100 text-yellow-700 border-yellow-300"
-                          : "bg-red-100 text-red-700 border-red-300"
-                        }`}>
-                          {compliance}%
-                        </div>
+                        <label className="mb-1 block text-xs font-semibold text-slate-500">Cumplimiento</label>
+                        <div className={`w-full rounded border p-2 text-center text-sm font-bold ${
+                          compliance >= 80 ? "border-green-300 bg-green-100 text-green-700" : compliance >= 50 ? "border-yellow-300 bg-yellow-100 text-yellow-700" : "border-red-300 bg-red-100 text-red-700"
+                        }`}>{compliance}%</div>
                       </div>
                     </div>
 
-                    {/* File actions */}
-                    <div className="flex items-center gap-2 mt-3">
+                    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
                       <input
+                        ref={(element) => { documentationInputRefs.current[program.id] = element; }}
                         type="file"
-                        ref={(el) => { fileInputRefs.current[program.id] = el; }}
                         className="hidden"
-                        accept=".pdf,.xlsx,.xls,.doc,.docx"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleFileUpload(program.id, file);
+                        multiple
+                        accept=".pdf,.doc,.docx,.xls,.xlsx"
+                        onChange={(event) => {
+                          if (event.target.files?.length) handleDocumentationFiles(program.id, event.target.files);
                         }}
                       />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex items-center gap-1 text-blue-600 border-blue-300"
-                        onClick={() => fileInputRefs.current[program.id]?.click()}
-                      >
-                        <Upload size={14} /> Subir planificación
+                      <Button size="sm" variant="outline" className="border-teal-300 text-teal-700 hover:bg-teal-50" onClick={() => documentationInputRefs.current[program.id]?.click()} disabled={uploadDocumentationMutation.isPending}>
+                        {uploadDocumentationMutation.isPending ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Upload size={14} className="mr-1" />}
+                        Subir documentación
                       </Button>
-                      {program.planFileName && (
-                        <PlanViewButton programId={program.id} companyId={companyId!} fileName={program.planFileName} />
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="ml-auto text-red-500 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => handleDelete(program.id)}
-                      >
-                        <Trash2 size={14} />
+                      <Button size="sm" variant="outline" className="border-teal-300 text-teal-700 hover:bg-teal-50" onClick={() => setDocumentationModal({ programId: program.id, programName: program.programName })}>
+                        <Eye size={14} className="mr-1" /> Ver documentación
+                      </Button>
+                      <input
+                        ref={(element) => { planningInputRefs.current[program.id] = element; }}
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) handlePlanningFile(program.id, file);
+                        }}
+                      />
+                      <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-50" onClick={() => planningInputRefs.current[program.id]?.click()} disabled={uploadPlanMutation.isPending}>
+                        {uploadPlanMutation.isPending ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Upload size={14} className="mr-1" />}
+                        Subir planificación
+                      </Button>
+                      <ViewPlanningButton programId={program.id} companyId={companyId!} planFileName={program.planFileName} />
+                    </div>
+
+                    <div className="mt-3 flex justify-end">
+                      <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50 hover:text-red-700" onClick={() => handleDelete(program.id)}>
+                        <Trash2 size={14} className="mr-1" /> Eliminar
                       </Button>
                     </div>
                   </CardContent>
@@ -288,37 +427,22 @@ export default function ManagementPrograms() {
           </div>
         )}
 
-        {/* Add Button */}
         <div className="mt-6">
-          <Button
-            onClick={handleAddProgram}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center gap-2"
-            disabled={createMutation.isPending}
-          >
-            {createMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-            Añadir nuevo programa
+          <Button onClick={handleAddProgram} className="flex w-full items-center justify-center gap-2 bg-blue-500 text-white hover:bg-blue-600" disabled={createMutation.isPending}>
+            {createMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Añadir nuevo programa
           </Button>
         </div>
+
+        {documentationModal && (
+          <DocumentationModal
+            title={`Documentación — ${documentationModal.programName}`}
+            files={(documentationQuery.data ?? []) as { id: number; fileName: string; fileUrl: string }[]}
+            isLoading={documentationQuery.isLoading}
+            onClose={() => setDocumentationModal(null)}
+            onDelete={(id) => deleteDocumentationMutation.mutate({ id, companyId: companyId! })}
+          />
+        )}
       </div>
     </DashboardLayout>
-  );
-}
-
-function PlanViewButton({ programId, companyId, fileName }: { programId: number; companyId: number; fileName: string }) {
-  const { data, isLoading } = trpc.managementPrograms.getPlanUrl.useQuery(
-    { id: programId, companyId },
-    { enabled: true }
-  );
-  if (isLoading) return <Loader2 size={14} className="animate-spin text-slate-400" />;
-  if (!data?.url) return null;
-  return (
-    <a
-      href={data.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
-    >
-      <Eye size={14} /> {fileName}
-    </a>
   );
 }
