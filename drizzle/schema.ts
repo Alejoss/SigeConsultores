@@ -80,6 +80,9 @@ export const accountRoles = mysqlTable(
     roleId: int("roleId").notNull(),
     companyId: int("companyId").notNull().default(0),
     processId: int("processId").notNull().default(0),
+    /** Estado reversible de esta asignación, independiente de la cuenta global. */
+    status: mysqlEnum("status", ["active", "suspended"]).default("active").notNull(),
+    suspendedAt: timestamp("suspendedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => ({
@@ -522,6 +525,8 @@ export const processCharacterizations = mysqlTable("processCharacterizations", {
   objective: text("objective"),
   scope: text("scope"),
   resources: text("resources"),
+  /** Área de RR.HH. cuyos trabajadores pueden vincularse a los puestos de este proceso. */
+  payrollArea: varchar("payrollArea", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1585,6 +1590,8 @@ export const payrollEmployees = mysqlTable(
     hireDate: date("hireDate").notNull(),
     area: varchar("area", { length: 255 }).notNull(),
     position: varchar("position", { length: 255 }).notNull(),
+    /** Puesto funcional activo, asignado desde Participantes; no reemplaza el cargo contractual. */
+    currentProcessParticipantId: int("currentProcessParticipantId"),
     status: mysqlEnum("status", ["activo", "pasivo"])
       .default("activo")
       .notNull(),

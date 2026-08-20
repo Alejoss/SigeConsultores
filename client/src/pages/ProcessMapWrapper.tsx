@@ -33,16 +33,9 @@ export default function ProcessMapWrapper() {
       !!user
     );
 
-    // Check if user is authenticated in any way
+    // La ruta sólo se habilita cuando uno de los contextos autenticados por el
+    // servidor confirma el acceso. localStorage no puede ser un respaldo.
     if (!processLeaderSession && !isManagerLogin && !user) {
-      // Last resort: check if there's a session in localStorage
-      const storedSession = localStorage.getItem("processLeaderSession");
-      if (storedSession) {
-        console.log("[ProcessMapWrapper] Session found in localStorage, allowing access");
-        setIsAuthChecked(true);
-        return;
-      }
-
       console.log("[ProcessMapWrapper] No authentication detected, redirecting to login");
       setLocation("/login");
       return;

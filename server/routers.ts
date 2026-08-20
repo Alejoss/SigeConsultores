@@ -123,6 +123,7 @@ import { managementProgramsRouter } from "./routers/managementPrograms";
 import { stakeholderSurveysRouter } from "./routers/stakeholderSurveys";
 import { strategicTrendsRouter } from "./routers/strategicTrends";
 import { planningCyclesRouter } from "./routers/planningCycles";
+import { teamAccessRouter } from "./routers/teamAccess";
 
 // Module Customization Router
 const moduleCustomizationRouter = router({
@@ -431,6 +432,9 @@ export const appRouter = router({
 
   // Process Leader Invitations
   processLeaderInvitations: processLeaderInvitationsRouter,
+
+  // Reversible team access and process-leader profile
+  teamAccess: teamAccessRouter,
 
   // Admin Operations
   adminOperations: adminOperationsRouter,

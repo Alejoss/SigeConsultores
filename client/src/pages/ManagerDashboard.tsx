@@ -8,6 +8,8 @@ import { APP_TITLE } from "@/const";
 import { toast } from "sonner";
 import { MODULE_GROUPS } from "@shared/dashboardModules";
 import { ManagerCycleActivationPanel } from "@/components/ManagerCycleActivationPanel";
+import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
+import { clearAllAuthRoleClientContext } from "@/lib/authRoleContext";
 
 const AXIS_STYLES: Record<string, { card: string; btn: string; icon_bg: string }> = {
   estrategia: { card: "bg-sky-50 border-sky-200 hover:border-sky-400 hover:shadow-sky-100", btn: "border-sky-300 text-sky-700 hover:bg-sky-100", icon_bg: "bg-sky-100" },
@@ -48,10 +50,13 @@ function WelcomeCard({ companyId, companyName }: { companyId: number | null; com
 
 export default function ManagerDashboard() {
   const [, setLocation] = useLocation();
-  const [managerEmail, setManagerEmail] = useState<string | null>(null);
-  const [companyId, setCompanyId] = useState<number | null>(null);
-  const [companyName, setCompanyName] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    isManagerLogin,
+    managerCompanyId: companyId,
+    managerCompanyName: companyName,
+    managerEmail,
+    isLoading,
+  } = useManagerAuth();
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteForm, setInviteForm] = useState({
     leaderEmail: "",
@@ -82,67 +87,12 @@ export default function ManagerDashboard() {
   });
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      let compId = localStorage.getItem("managerCompanyId");
-      let compName = localStorage.getItem("managerCompanyName");
-      let email = localStorage.getItem("managerEmail");
-
-      if (!compId || !compName) {
-        try {
-          const res = await fetch("/api/auth/session/me", { credentials: "include" });
-          const data = (await res.json()) as {
-            authenticated: boolean;
-            kind?: string;
-            companyId?: number;
-            companyName?: string;
-            managerEmail?: string;
-          };
-          if (
-            data.authenticated &&
-            data.kind === "company_manager" &&
-            data.companyId != null &&
-            data.companyName
-          ) {
-            compId = String(data.companyId);
-            compName = data.companyName;
-            email = data.managerEmail ?? null;
-            localStorage.setItem("managerCompanyId", compId);
-            localStorage.setItem("managerCompanyName", compName);
-            if (email) {
-              localStorage.setItem("managerEmail", email);
-              localStorage.setItem("managerName", email);
-            }
-            localStorage.setItem("selectedCompanyId", compId);
-          }
-        } catch {
-          /* ignore */
-        }
-      }
-
-      if (cancelled) return;
-      if (!compId || !compName) {
-        setLocation("/login");
-        return;
-      }
-
-      setCompanyId(parseInt(compId, 10));
-      setCompanyName(compName);
-      setManagerEmail(email);
-      setIsLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [setLocation]);
+    if (!isLoading && !isManagerLogin) setLocation("/login");
+  }, [isLoading, isManagerLogin, setLocation]);
 
   const handleLogout = () => {
     void fetch("/api/auth/session/logout", { method: "POST", credentials: "include" });
-    localStorage.removeItem("managerCompanyId");
-    localStorage.removeItem("managerCompanyName");
-    localStorage.removeItem("managerEmail");
-    localStorage.removeItem("managerName");
-    localStorage.removeItem("selectedCompanyId");
+    clearAllAuthRoleClientContext();
     setLocation("/login");
   };
 
@@ -289,12 +239,17 @@ export default function ManagerDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button
-                onClick={() => setShowInviteModal(true)}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Invitar Jefe de Proceso
-              </Button>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  onClick={() => setShowInviteModal(true)}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Invitar Jefe de Proceso
+                </Button>
+                <Button variant="outline" onClick={() => setLocation("/manager-team-access")}>
+                  Accesos del equipo
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -330,8 +285,6 @@ export default function ManagerDashboard() {
               </CardHeader>
               <CardContent className="px-4 pb-4 flex flex-col gap-1">
                 <Button variant="outline" size="sm" className="w-full justify-start text-xs" onClick={() => handleQuickAction("editProfile")}>Editar Perfil</Button>
-                <Button variant="outline" size="sm" className="w-full justify-start text-xs" onClick={() => handleQuickAction("changePassword")}>Cambiar Contraseña</Button>
-                <Button variant="outline" size="sm" className="w-full justify-start text-xs" onClick={() => handleQuickAction("documentation")}>Ver Documentación</Button>
               </CardContent>
             </Card>
             <Card>

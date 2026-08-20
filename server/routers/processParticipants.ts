@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import {
@@ -12,7 +12,8 @@ import {
   processes,
 } from "../../drizzle/schema";
 
-const normalizePosition = (value: string | null | undefined) => (value || "")
+/** Normaliza nombres de Áreas para comparar mayúsculas, tildes y separadores. */
+const normalizeArea = (value: string | null | undefined) => (value || "")
   .normalize("NFD")
   .replace(/[\u0300-\u036f]/g, "")
   .toLocaleLowerCase()
@@ -20,44 +21,19 @@ const normalizePosition = (value: string | null | undefined) => (value || "")
   .trim()
   .replace(/\s+/g, " ");
 
-/**
- * Trata como equivalentes los cargos iguales tras normalizarlos y también
- * pequeños errores tipográficos dentro de una misma denominación, por ejemplo
- * «Custome Service» frente a «Customer Service». No asocia cargos distintos.
- */
-const POSITION_EQUIVALENCE_GROUPS = [
-  // Denominaciones corporativas equivalentes. Se mantienen explícitas para no
-  // asociar automáticamente puestos distintos solo por pertenecer a una misma área.
-  ["jefe comercial", "gerente comercial", "gerente de ventas", "jefe de ventas", "director comercial"],
-];
+const sameArea = (left: string | null | undefined, right: string | null | undefined) => {
+  const leftKey = normalizeArea(left);
+  const rightKey = normalizeArea(right);
+  return Boolean(leftKey && rightKey && leftKey === rightKey);
+};
 
-const positionMatches = (participantPosition: string | null | undefined, employeePosition: string | null | undefined) => {
-  const participantKey = normalizePosition(participantPosition);
-  const employeeKey = normalizePosition(employeePosition);
-  if (!participantKey || !employeeKey) return false;
-  if (participantKey === employeeKey) return true;
-  if (POSITION_EQUIVALENCE_GROUPS.some((group) => group.includes(participantKey) && group.includes(employeeKey))) return true;
-
-  const distance = (left: string, right: string) => {
-    const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
-    for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
-      const current = [leftIndex];
-      for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
-        current[rightIndex] = Math.min(
-          current[rightIndex - 1] + 1,
-          previous[rightIndex] + 1,
-          previous[rightIndex - 1] + (left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1),
-        );
-      }
-      for (let index = 0; index < current.length; index += 1) previous[index] = current[index];
-    }
-    return previous[right.length];
-  };
-
-  const participantWords = participantKey.split(" ");
-  const employeeWords = employeeKey.split(" ");
-  return participantWords.length === employeeWords.length
-    && participantWords.every((word, index) => word === employeeWords[index] || (word.length >= 5 && employeeWords[index].length >= 5 && distance(word, employeeWords[index]) <= 1));
+const suggestedArea = (processName: string, areas: string[]) => {
+  const processKey = normalizeArea(processName);
+  const matches = areas.filter((area) => {
+    const areaKey = normalizeArea(area);
+    return areaKey && (areaKey === processKey || processKey.endsWith(` ${areaKey}`));
+  });
+  return matches.length === 1 ? matches[0] : null;
 };
 
 const toNumber = (value: unknown) => {
@@ -80,14 +56,141 @@ const companyInput = z.object({ companyId: z.number().int().positive() });
 
 export const processParticipantsRouter = router({
   list: companyProcedure
-    .input(z.object({ processCharacterizationId: z.number() }))
+    .input(companyInput.extend({ processCharacterizationId: z.number().int().positive() }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
+      const [characterization] = await db.select({
+        id: processCharacterizations.id,
+        processId: processCharacterizations.processId,
+      })
+        .from(processCharacterizations)
+        .innerJoin(processes, eq(processCharacterizations.processId, processes.id))
+        .where(and(
+          or(
+            eq(processCharacterizations.id, input.processCharacterizationId),
+            eq(processCharacterizations.processId, input.processCharacterizationId),
+          ),
+          eq(processes.companyId, input.companyId),
+        ))
+        .limit(1);
+      // Un proceso recién creado todavía puede no tener caracterización. En ese
+      // caso no existen puestos que listar; devolver una lista vacía evita los
+      // reintentos de la interfaz y no crea ni modifica ningún dato.
+      if (!characterization) return [];
 
+      // Algunas caracterizaciones antiguas guardaron los puestos con el id del
+      // proceso. Se consultan ambos identificadores para conservar ese contenido.
       return db.select().from(processParticipants)
-        .where(eq(processParticipants.processCharacterizationId, input.processCharacterizationId))
+        .where(inArray(processParticipants.processCharacterizationId, [characterization.id, characterization.processId]))
         .orderBy(asc(processParticipants.orderIndex));
+    }),
+
+  payrollAreaOptions: companyProcedure
+    .input(companyInput.extend({ processCharacterizationId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { payrollArea: null, suggestedPayrollArea: null, areas: [] as string[] };
+
+      const [characterization] = await db.select({
+        payrollArea: processCharacterizations.payrollArea,
+        processName: processes.name,
+      })
+        .from(processCharacterizations)
+        .innerJoin(processes, eq(processCharacterizations.processId, processes.id))
+        .where(and(
+          or(
+            eq(processCharacterizations.id, input.processCharacterizationId),
+            eq(processCharacterizations.processId, input.processCharacterizationId),
+          ),
+          eq(processes.companyId, input.companyId),
+        ))
+        .limit(1);
+      if (!characterization) {
+        const [process] = await db.select({ processName: processes.name })
+          .from(processes)
+          .where(and(eq(processes.id, input.processCharacterizationId), eq(processes.companyId, input.companyId)))
+          .limit(1);
+        const rows = await db.select({ area: payrollEmployees.area })
+          .from(payrollEmployees)
+          .where(and(eq(payrollEmployees.companyId, input.companyId), eq(payrollEmployees.status, "activo")));
+        const areas = Array.from(new Set(rows.map((row) => row.area.trim()).filter(Boolean)))
+          .sort((left, right) => left.localeCompare(right, "es"));
+        return {
+          payrollArea: null,
+          suggestedPayrollArea: process ? suggestedArea(process.processName, areas) : null,
+          areas,
+        };
+      }
+
+      const rows = await db.select({ area: payrollEmployees.area })
+        .from(payrollEmployees)
+        .where(and(eq(payrollEmployees.companyId, input.companyId), eq(payrollEmployees.status, "activo")));
+      const areas = Array.from(new Set(rows.map((row) => row.area.trim()).filter(Boolean)))
+        .sort((left, right) => left.localeCompare(right, "es"));
+      return {
+        payrollArea: characterization.payrollArea,
+        suggestedPayrollArea: characterization.payrollArea ? null : suggestedArea(characterization.processName, areas),
+        areas,
+      };
+    }),
+
+  setPayrollArea: companyProcedure
+    .input(companyInput.extend({
+      processCharacterizationId: z.number().int().positive(),
+      payrollArea: z.string().trim().min(1).max(255),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Base de datos no disponible");
+      const [characterization] = await db.select({
+        id: processCharacterizations.id,
+        processId: processCharacterizations.processId,
+        payrollArea: processCharacterizations.payrollArea,
+      })
+        .from(processCharacterizations)
+        .innerJoin(processes, eq(processCharacterizations.processId, processes.id))
+        .where(and(
+          or(
+            eq(processCharacterizations.id, input.processCharacterizationId),
+            eq(processCharacterizations.processId, input.processCharacterizationId),
+          ),
+          eq(processes.companyId, input.companyId),
+        ))
+        .limit(1);
+      if (!characterization) throw new Error("No se encontró el proceso caracterizado de esta empresa");
+
+      const [area] = await db.select({ area: payrollEmployees.area })
+        .from(payrollEmployees)
+        .where(and(
+          eq(payrollEmployees.companyId, input.companyId),
+          eq(payrollEmployees.status, "activo"),
+          eq(payrollEmployees.area, input.payrollArea),
+        ))
+        .limit(1);
+      if (!area) throw new Error("Selecciona una Área activa existente en Nómina");
+      if (characterization.payrollArea && !sameArea(characterization.payrollArea, area.area)) {
+        const participantRows = await db.select({ id: processParticipants.id })
+          .from(processParticipants)
+          .where(inArray(processParticipants.processCharacterizationId, [characterization.id, characterization.processId]));
+        const participantIds = participantRows.map((participant) => participant.id);
+        const activeAssignments = participantIds.length
+          ? await db.select({ id: payrollEmployees.id })
+            .from(payrollEmployees)
+            .where(and(
+              eq(payrollEmployees.companyId, input.companyId),
+              inArray(payrollEmployees.currentProcessParticipantId, participantIds),
+            ))
+          : [];
+        if (activeAssignments.length) {
+          throw new Error("No puedes cambiar la Área mientras existan trabajadores vinculados. Reasígnalos o retíralos primero.");
+        }
+      }
+
+      await db.update(processCharacterizations)
+        .set({ payrollArea: area.area, updatedAt: new Date() })
+        .where(eq(processCharacterizations.id, characterization.id));
+      return { success: true, payrollArea: area.area };
     }),
 
   create: companyProcedure
@@ -140,11 +243,27 @@ export const processParticipantsRouter = router({
     }),
 
   delete: companyProcedure
-    .input(z.object({ id: z.number() }))
+    .input(companyInput.extend({ id: z.number().int().positive() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
+      const [participant] = await db.select({ id: processParticipants.id })
+        .from(processParticipants)
+        .innerJoin(processCharacterizations, or(
+          eq(processParticipants.processCharacterizationId, processCharacterizations.id),
+          eq(processParticipants.processCharacterizationId, processCharacterizations.processId),
+        ))
+        .innerJoin(processes, eq(processCharacterizations.processId, processes.id))
+        .where(and(eq(processParticipants.id, input.id), eq(processes.companyId, input.companyId)))
+        .limit(1);
+      if (!participant) throw new Error("No se encontró el Puesto de Trabajo de esta empresa");
 
+      await db.update(payrollEmployees)
+        .set({ currentProcessParticipantId: null, updatedAt: new Date() })
+        .where(and(
+          eq(payrollEmployees.companyId, input.companyId),
+          eq(payrollEmployees.currentProcessParticipantId, input.id),
+        ));
       const assignments = await db.select({ id: participantWorkerAssignments.id })
         .from(participantWorkerAssignments)
         .where(eq(participantWorkerAssignments.processParticipantId, input.id));
@@ -176,14 +295,49 @@ export const processParticipantsRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) return { participants: [], totalWorkers: 0, totalPerformance: null };
+      if (!db) return {
+        participants: [],
+        totalPositions: 0,
+        totalAssignedWorkers: 0,
+        pendingEvaluations: 0,
+        totalPerformance: null,
+      };
 
+      const [characterization] = await db.select({
+        id: processCharacterizations.id,
+        processId: processCharacterizations.processId,
+        payrollArea: processCharacterizations.payrollArea,
+      })
+        .from(processCharacterizations)
+        .innerJoin(processes, eq(processCharacterizations.processId, processes.id))
+        .where(and(
+          or(
+            eq(processCharacterizations.id, input.processCharacterizationId),
+            eq(processCharacterizations.processId, input.processCharacterizationId),
+          ),
+          eq(processes.companyId, input.companyId),
+        ))
+        .limit(1);
+      // Los procesos nuevos se muestran sin puestos ni evaluaciones hasta que
+      // su responsable agregue información; no deben producir un error de carga.
+      if (!characterization) return {
+        payrollArea: null,
+        participants: [],
+        totalPositions: 0,
+        totalAssignedWorkers: 0,
+        pendingEvaluations: 0,
+        totalPerformance: null,
+      };
       const participants = await db.select().from(processParticipants)
-        .where(eq(processParticipants.processCharacterizationId, input.processCharacterizationId))
+        .where(inArray(processParticipants.processCharacterizationId, [characterization.id, characterization.processId]))
         .orderBy(asc(processParticipants.orderIndex));
       const activeEmployees = await db.select().from(payrollEmployees)
         .where(and(eq(payrollEmployees.companyId, input.companyId), eq(payrollEmployees.status, "activo")))
         .orderBy(asc(payrollEmployees.fullName));
+      const payrollArea = characterization.payrollArea || null;
+      const areaEmployees = payrollArea
+        ? activeEmployees.filter((employee) => sameArea(employee.area, payrollArea))
+        : [];
 
       const participantIds = participants.map((participant) => participant.id);
       const assignments = participantIds.length
@@ -221,12 +375,13 @@ export const processParticipantsRouter = router({
         assignmentsByParticipant.set(assignment.processParticipantId, current);
       });
 
-      const processWorkerIds = new Set<number>();
       const participantRows = participants.map((participant) => {
-        const availableWorkers = activeEmployees.filter((employee) => positionMatches(participant.position, employee.position));
-        availableWorkers.forEach((employee) => processWorkerIds.add(employee.id));
+        // Los candidatos pertenecen al Área de RR.HH. asociada al proceso. Un
+        // empleado puede estar en un único puesto funcional a la vez.
+        const availableWorkers = areaEmployees;
         const linkedAssignments = (assignmentsByParticipant.get(participant.id) || [])
-          .filter((assignment) => employeeById.has(assignment.payrollEmployeeId));
+          .filter((assignment) => employeeById.has(assignment.payrollEmployeeId))
+          .filter((assignment) => employeeById.get(assignment.payrollEmployeeId)?.currentProcessParticipantId === participant.id);
         const workers = linkedAssignments.map((assignment) => {
           const employee = employeeById.get(assignment.payrollEmployeeId)!;
           const workerKpis = (kpisByAssignment.get(assignment.id) || []).map((kpi) => ({
@@ -242,14 +397,18 @@ export const processParticipantsRouter = router({
           participant,
           availableWorkers,
           workers,
-          workerCount: availableWorkers.length,
+          workerCount: workers.length,
           managementPercentage,
         };
       });
 
+      const assignedWorkers = participantRows.flatMap((row) => row.workers);
       return {
+        payrollArea,
         participants: participantRows,
-        totalWorkers: processWorkerIds.size,
+        totalPositions: participants.length,
+        totalAssignedWorkers: assignedWorkers.length,
+        pendingEvaluations: assignedWorkers.filter((worker) => worker.performance === null).length,
         totalPerformance: average(participantRows.map((row) => row.managementPercentage)),
       };
     }),
@@ -298,7 +457,7 @@ export const processParticipantsRouter = router({
       const activeEmployees = await db.select().from(payrollEmployees)
         .where(and(eq(payrollEmployees.companyId, input.companyId), eq(payrollEmployees.status, "activo")));
 
-      const activeEmployeeIds = new Set(activeEmployees.map((employee) => employee.id));
+      const activeEmployeeById = new Map(activeEmployees.map((employee) => [employee.id, employee]));
       const valuesByKpi = new Map<number, Array<typeof values[number]>>();
       values.forEach((value) => {
         const current = valuesByKpi.get(value.participantWorkerKpiId) || [];
@@ -331,7 +490,7 @@ export const processParticipantsRouter = router({
         ].filter((participant, index, rows) => rows.findIndex((row) => row.id === participant.id) === index);
         const participantPerformances = processParticipantsRows.map((participant) => {
           const workerPerformances = (assignmentsByParticipant.get(participant.id) || [])
-            .filter((assignment) => activeEmployeeIds.has(assignment.payrollEmployeeId))
+            .filter((assignment) => activeEmployeeById.get(assignment.payrollEmployeeId)?.currentProcessParticipantId === participant.id)
             .map((assignment) => {
               const scores = (kpisByAssignment.get(assignment.id) || [])
                 .map((kpi) => kpiPercentage(kpi.monthlyTarget, valuesByKpi.get(kpi.id) || []));
@@ -342,7 +501,7 @@ export const processParticipantsRouter = router({
         const performance = average(participantPerformances);
         const evaluatedPositions = participantPerformances.filter((value) => value !== null).length;
         const evaluatedWorkers = processParticipantsRows.reduce((count, participant) => count + (assignmentsByParticipant.get(participant.id) || [])
-          .filter((assignment) => activeEmployeeIds.has(assignment.payrollEmployeeId))
+          .filter((assignment) => activeEmployeeById.get(assignment.payrollEmployeeId)?.currentProcessParticipantId === participant.id)
           .filter((assignment) => average((kpisByAssignment.get(assignment.id) || [])
             .map((kpi) => kpiPercentage(kpi.monthlyTarget, valuesByKpi.get(kpi.id) || []))) !== null).length, 0);
         return {
@@ -366,26 +525,57 @@ export const processParticipantsRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
-      const [participant] = await db.select().from(processParticipants).where(eq(processParticipants.id, input.processParticipantId));
+      const [participant] = await db.select({
+        id: processParticipants.id,
+        position: processParticipants.position,
+        payrollArea: processCharacterizations.payrollArea,
+      })
+        .from(processParticipants)
+        .innerJoin(processCharacterizations, or(
+          eq(processParticipants.processCharacterizationId, processCharacterizations.id),
+          eq(processParticipants.processCharacterizationId, processCharacterizations.processId),
+        ))
+        .innerJoin(processes, eq(processCharacterizations.processId, processes.id))
+        .where(and(
+          eq(processParticipants.id, input.processParticipantId),
+          eq(processes.companyId, input.companyId),
+        ))
+        .limit(1);
       const [employee] = await db.select().from(payrollEmployees).where(and(
         eq(payrollEmployees.id, input.payrollEmployeeId),
         eq(payrollEmployees.companyId, input.companyId),
         eq(payrollEmployees.status, "activo"),
       ));
-      if (!participant || !employee) throw new Error("No se encontró el cargo o trabajador activo seleccionado");
-      if (!positionMatches(participant.position, employee.position)) {
-        throw new Error("El cargo del trabajador no coincide con el cargo del participante");
+      if (!participant || !employee) throw new Error("No se encontró el puesto o trabajador activo seleccionado");
+      if (!participant.payrollArea) throw new Error("Primero selecciona la Área de Nómina asociada al proceso");
+      if (!sameArea(participant.payrollArea, employee.area)) {
+        throw new Error("El trabajador no pertenece a la Área de Nómina asociada a este proceso");
       }
+
       const existing = await db.select().from(participantWorkerAssignments).where(and(
         eq(participantWorkerAssignments.processParticipantId, input.processParticipantId),
         eq(participantWorkerAssignments.payrollEmployeeId, input.payrollEmployeeId),
       ));
-      if (existing.length) return { success: true, id: existing[0].id, alreadyAssigned: true };
-      const result = await db.insert(participantWorkerAssignments).values({
-        processParticipantId: input.processParticipantId,
-        payrollEmployeeId: input.payrollEmployeeId,
-      });
-      return { success: true, id: Number(result[0].insertId), alreadyAssigned: false };
+      const previousParticipantId = employee.currentProcessParticipantId;
+      let assignmentId: number;
+      if (existing.length) {
+        assignmentId = existing[0].id;
+      } else {
+        const result = await db.insert(participantWorkerAssignments).values({
+          processParticipantId: input.processParticipantId,
+          payrollEmployeeId: input.payrollEmployeeId,
+        });
+        assignmentId = Number(result[0].insertId);
+      }
+      await db.update(payrollEmployees)
+        .set({ currentProcessParticipantId: input.processParticipantId, updatedAt: new Date() })
+        .where(eq(payrollEmployees.id, employee.id));
+      return {
+        success: true,
+        id: assignmentId,
+        alreadyAssigned: existing.length > 0,
+        reassigned: previousParticipantId !== null && previousParticipantId !== input.processParticipantId,
+      };
     }),
 
   unassignWorker: companyProcedure
@@ -393,12 +583,21 @@ export const processParticipantsRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
-      const [assignment] = await db.select({ id: participantWorkerAssignments.id })
+      const [assignment] = await db.select({
+        employeeId: payrollEmployees.id,
+        processParticipantId: participantWorkerAssignments.processParticipantId,
+        currentProcessParticipantId: payrollEmployees.currentProcessParticipantId,
+      })
         .from(participantWorkerAssignments)
         .innerJoin(payrollEmployees, eq(participantWorkerAssignments.payrollEmployeeId, payrollEmployees.id))
         .where(and(eq(participantWorkerAssignments.id, input.assignmentId), eq(payrollEmployees.companyId, input.companyId)));
       if (!assignment) throw new Error("No se encontró la asignación del trabajador");
-      await db.delete(participantWorkerAssignments).where(eq(participantWorkerAssignments.id, input.assignmentId));
+      if (assignment.currentProcessParticipantId === assignment.processParticipantId) {
+        await db.update(payrollEmployees)
+          .set({ currentProcessParticipantId: null, updatedAt: new Date() })
+          .where(eq(payrollEmployees.id, assignment.employeeId));
+      }
+      // El vínculo y sus KPI se mantienen como historial para no perder información.
       return { success: true };
     }),
 

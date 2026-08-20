@@ -11,7 +11,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { useSearch } from "wouter";
-import { getAxisBackPathForRole } from "@/lib/sessionScope";
+import { getAxisBackPath } from "@/lib/sessionScope";
 
 type ProcessType = "estrategico" | "misional" | "soporte";
 
@@ -22,17 +22,19 @@ export default function ProcessMap() {
   const { isManagerLogin, managerCompanyId } = useManagerAuth();
   const { session: processLeaderSession } = useProcessLeaderAuth();
   
-  // Check if this is being accessed by a manager
-  const urlParams = new URLSearchParams(search);
-  const isManagerAccess = localStorage.getItem('managerCompanyId') !== null;
+  // El rol activo se determina únicamente mediante los contextos hidratados
+  // desde /api/auth/session/me. La URL y localStorage no pueden conceder acceso.
+  const isProcessLeader = !isManagerLogin && !!processLeaderSession;
   
-  // Check if user is a process leader
-  const isProcessLeader = !!processLeaderSession;
-  const processIdFromUrl = urlParams.get('processId') ? parseInt(urlParams.get('processId')!) : null;
-  
-  // Back button handler
+  // El destino de regreso se deriva del rol autenticado de esta vista, no de
+  // una marca persistida por una sesión anterior.
   const handleBack = () => {
-    setLocation(getAxisBackPathForRole());
+    const fallback = isProcessLeader
+      ? `/process-leader-dashboard?processId=${processLeaderSession?.processId || ""}`
+      : isManagerLogin
+        ? "/manager-dashboard"
+        : "/dashboard";
+    setLocation(getAxisBackPath(fallback));
   };
   // Declare state variables
   const [companyId, setCompanyId] = useState<number | null>(null);
@@ -59,31 +61,23 @@ export default function ProcessMap() {
     { enabled: isManagerLogin && !!managerCompanyId }
   );
 
-  // Get company from manager context or localStorage
+  // Resuelve empresa con el mismo orden de confianza en toda la página:
+  // sesión de Jefe, sesión de Gerente y, por último, selección validada del Administrador.
   useEffect(() => {
-    // If process leader, use process leader company ID
     if (isProcessLeader && processLeaderSession?.companyId) {
-      console.log("[ProcessMap] Process leader detected, companyId:", processLeaderSession.companyId);
       setCompanyId(processLeaderSession.companyId);
       setCompanyName(processLeaderSession.companyName || "Empresa");
       return;
     }
 
-    // If manager login, use manager company ID
     if (isManagerLogin && managerCompanyId) {
-      console.log("[ProcessMap] Manager login detected, managerCompanyId:", managerCompanyId);
-      console.log("[ProcessMap] managerCompanyQuery.data:", managerCompanyQuery.data);
       setCompanyId(managerCompanyId);
-      if (managerCompanyQuery.data) {
-        console.log("[ProcessMap] Setting company name:", managerCompanyQuery.data.name);
-        setCompanyName(managerCompanyQuery.data.name);
-        localStorage.setItem("selectedCompanyId", managerCompanyId.toString());
-        localStorage.setItem("selectedCompanyName", managerCompanyQuery.data.name);
-      }
+      setCompanyName(managerCompanyQuery.data?.name || "Empresa");
       return;
     }
 
-    // Otherwise use OAuth user companies
+    // El Administrador sólo puede utilizar una empresa incluida en la lista
+    // entregada por el servidor para su cuenta.
     if (!userCompaniesQuery.data || userCompaniesQuery.data.length === 0) {
       return; // Wait for user companies to load
     }
@@ -161,19 +155,16 @@ export default function ProcessMap() {
     },
   });
 
-  // Fetch processes from database
-  // Jefe de Proceso: filtrar por processId (de URL o de su sesión) para mostrar solo su proceso
-  // Gerente/Admin: sin filtro de processId para ver todos los procesos
-  const processLeaderEmail = !isManagerLogin && !processIdFromUrl && !isProcessLeader && typeof window !== 'undefined' ? localStorage.getItem("processLeaderEmail") : null;
-  // Si es Jefe, usar el processId de la URL o el de su sesión como filtro
-  const filterProcessId = isProcessLeader 
-    ? (processIdFromUrl || processLeaderSession?.processId || undefined)
+  // Jefe de Proceso: únicamente su processId certificado por la sesión del
+  // servidor. Gerente y Administrador: sin filtro, ven todos los procesos de
+  // la empresa que les corresponde.
+  const filterProcessId = isProcessLeader
+    ? processLeaderSession?.processId || undefined
     : undefined;
   const { data: processes = [], isLoading, refetch } = trpc.processMap.list.useQuery(
     { 
       companyId: companyId || 0, 
-      processLeaderEmail: processLeaderEmail || undefined,
-      filterProcessId: filterProcessId
+      filterProcessId,
     },
     { enabled: companyId !== null }
   );
@@ -184,14 +175,16 @@ export default function ProcessMap() {
     { enabled: !!user?.id }
   );
 
-  // Filter processes based on user role
-  const filteredProcesses = processes.filter(process => {
-    if (userAssignedProcessesQuery.data && userAssignedProcessesQuery.data.length > 0) {
-      const assignedProcessIds = userAssignedProcessesQuery.data.map(po => po.processId);
-      return assignedProcessIds.includes(process.id);
-    }
-    return true;
-  });
+  // Administrador y Gerente siempre ven todos los procesos de su empresa.
+  // El filtro de asignación aplica sólo a un usuario operativo de plataforma,
+  // nunca a una sesión administrativa ni a un Jefe de Proceso.
+  const filteredProcesses =
+    user?.role === "user" && !isManagerLogin && !isProcessLeader && userAssignedProcessesQuery.data && userAssignedProcessesQuery.data.length > 0
+      ? processes.filter((process) => {
+          const assignedProcessIds = userAssignedProcessesQuery.data.map((po) => po.processId);
+          return assignedProcessIds.includes(process.id);
+        })
+      : processes;
 
   // Create process mutation
   const createMutation = trpc.processMap.create.useMutation({
@@ -298,23 +291,27 @@ export default function ProcessMap() {
       key={process.id}
       className={`flex items-center justify-between p-3 border ${styles.border} ${styles.background} rounded-lg ${styles.hover} transition`}
     >
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => handleDeleteProcess(process.id)}
-        aria-label={`Eliminar ${process.name}`}
-      >
-        <Trash2 className="h-4 w-4 text-red-500" />
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => startRenamingProcess(process.id, process.name, process.processType)}
-        aria-label={`Editar nombre de ${process.name}`}
-        title="Editar nombre"
-      >
-        <Pencil className="h-4 w-4 text-slate-600" />
-      </Button>
+      {!isProcessLeader && (
+        <>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => handleDeleteProcess(process.id)}
+            aria-label={`Eliminar ${process.name}`}
+          >
+            <Trash2 className="h-4 w-4 text-red-500" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => startRenamingProcess(process.id, process.name, process.processType)}
+            aria-label={`Editar nombre de ${process.name}`}
+            title="Editar nombre"
+          >
+            <Pencil className="h-4 w-4 text-slate-600" />
+          </Button>
+        </>
+      )}
       <div className="flex-1 px-2 min-w-0">
         {editingProcessId === process.id ? (
           <div
@@ -432,7 +429,7 @@ export default function ProcessMap() {
             </p>
             <Button
               className="w-full mt-4"
-              onClick={() => setLocation(getAxisBackPathForRole())}
+              onClick={handleBack}
             >
               Volver al Dashboard
             </Button>
@@ -462,27 +459,31 @@ export default function ProcessMap() {
         <div className="border border-purple-200 bg-purple-50 rounded-xl px-4 py-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
-              <input
-                type="file"
-                accept="image/*,application/pdf"
-                onChange={handleImageUpload}
-                disabled={isUploadingImage}
-                className="hidden"
-                id="map-image-input"
-              />
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                disabled={isUploadingImage || uploadMapImageMutation.isPending}
-                className="gap-1.5 border-purple-300 text-purple-700 hover:bg-purple-100"
-              >
-                <label htmlFor="map-image-input" className="cursor-pointer">
-                  <Upload size={14} />
-                  {isUploadingImage ? "Subiendo..." : mapImage ? "Reemplazar Mapa" : "Subir Mapa"}
-                </label>
-              </Button>
-              <span className="text-xs text-slate-500">PDF, PNG o JPG</span>
+              {!isProcessLeader && (
+                <>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={handleImageUpload}
+                    disabled={isUploadingImage}
+                    className="hidden"
+                    id="map-image-input"
+                  />
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    disabled={isUploadingImage || uploadMapImageMutation.isPending}
+                    className="gap-1.5 border-purple-300 text-purple-700 hover:bg-purple-100"
+                  >
+                    <label htmlFor="map-image-input" className="cursor-pointer">
+                      <Upload size={14} />
+                      {isUploadingImage ? "Subiendo..." : mapImage ? "Reemplazar Mapa" : "Subir Mapa"}
+                    </label>
+                  </Button>
+                  <span className="text-xs text-slate-500">PDF, PNG o JPG</span>
+                </>
+              )}
               {mapImage && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
                   <CheckCircle size={13} />
@@ -506,16 +507,18 @@ export default function ProcessMap() {
                 {(!isPdf(mapImageFileName) && showMap) ? "Ocultar Mapa" : "Ver Mapa"}
               </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDeleteMapImage}
-              disabled={!mapImage || deleteMapImageMutation.isPending}
-              className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-40"
-            >
-              <Trash2 size={14} />
-              Eliminar Mapa
-            </Button>
+            {!isProcessLeader && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDeleteMapImage}
+                disabled={!mapImage || deleteMapImageMutation.isPending}
+                className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-40"
+              >
+                <Trash2 size={14} />
+                Eliminar Mapa
+              </Button>
+            )}
           </div>
         </div>
 
@@ -632,6 +635,7 @@ export default function ProcessMap() {
         )}
 
         {/* Agregar nuevo proceso */}
+        {!isProcessLeader && (
         <Card className="border-2 border-green-200 bg-green-50">
           <CardHeader>
             <CardTitle className="text-lg">Agregar Nuevo Proceso</CardTitle>
@@ -670,6 +674,7 @@ export default function ProcessMap() {
             </div>
           </CardContent>
         </Card>
+        )}
       </div>
     </DashboardLayout>
   );

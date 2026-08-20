@@ -69,6 +69,8 @@ type Employee = {
   hireDate: string | Date;
   area: string;
   position: string;
+  /** Puesto funcional asignado desde Participantes; distinto del cargo contractual. */
+  workPosition?: string | null;
   status: "activo" | "pasivo";
   terminationDate: string | Date | null;
   performance?: number | null;
@@ -1123,7 +1125,7 @@ export default function Payroll() {
                 ref={registerPayrollTableScroller}
                 className="overflow-x-auto rounded-lg border [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               >
-                <table className="min-w-[1450px] w-full text-sm">
+                <table className="min-w-[1630px] w-full text-sm">
                   <thead className="bg-slate-50 text-left text-slate-600">
                     <tr>
                       <th
@@ -1140,6 +1142,7 @@ export default function Payroll() {
                       </th>
                       <th className="min-w-48 px-3 py-3">Área</th>
                       <th className="min-w-56 px-3 py-3">Cargo</th>
+                      <th className="min-w-56 px-3 py-3">Puesto de Trabajo</th>
                       <th className="min-w-32 px-3 py-3">Desempeño</th>
                       <th className="min-w-44 px-4 py-3" />
                     </tr>
@@ -1234,6 +1237,13 @@ export default function Payroll() {
                             }
                             onBlur={() => saveEmployee(employee)}
                           />
+                        </td>
+                        <td className="px-3 py-2">
+                          {employee.workPosition ? (
+                            <span className="font-medium text-slate-700">{employee.workPosition}</span>
+                          ) : (
+                            <span className="text-xs text-slate-400">Sin asignar</span>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-center">
                           {employee.performance == null ? (

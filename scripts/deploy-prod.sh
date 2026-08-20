@@ -39,6 +39,22 @@ echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 
 "${COMPOSE[@]}" pull app
 "${COMPOSE[@]}" up -d mysql
+
+# Respaldo transaccional obligatorio antes de cambiar la versión de la aplicación.
+# Se conserva en el servidor de producción y se valida antes de continuar.
+BACKUP_DIR="${ROOT}/backups"
+mkdir -p "$BACKUP_DIR"
+BACKUP_FILE="${BACKUP_DIR}/isge360-predeploy-$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
+echo "Creating pre-deployment database backup: ${BACKUP_FILE}"
+"${COMPOSE[@]}" exec -T mysql sh -c 'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction --quick --lock-tables=false "$MYSQL_DATABASE"' \
+  | gzip -c > "$BACKUP_FILE"
+if [ ! -s "$BACKUP_FILE" ]; then
+  echo "Database backup failed or is empty; deployment aborted." >&2
+  exit 1
+fi
+sha256sum "$BACKUP_FILE" | tee "${BACKUP_FILE}.sha256"
+echo "Pre-deployment backup verified."
+
 "${COMPOSE[@]}" up -d app
 docker image prune -f
 

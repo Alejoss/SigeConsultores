@@ -27,45 +27,49 @@ export async function tryUnifiedLogin(
 ): Promise<UnifiedLoginSuccess | UnifiedLoginFailure> {
   const emailNorm = normalizeLoginEmail(emailRaw);
 
-  const rows = await db
+  const candidates = await db
     .select()
     .from(accounts)
-    .where(and(sql`LOWER(${accounts.email}) = ${emailNorm}`, eq(accounts.status, "active")))
-    .limit(1);
+    .where(and(sql`LOWER(${accounts.email}) = ${emailNorm}`, eq(accounts.status, "active")));
 
-  const acc = rows[0];
-  if (!acc?.passwordHash) {
-    return { status: 401, error: "Email o contraseña incorrectos" };
+  // El mismo correo puede tener accesos independientes en distintas empresas.
+  // La contraseña valida cuál de esas cuentas se desea usar, sin combinar roles.
+  const passwordMatches = [] as typeof candidates;
+  for (const candidate of candidates) {
+    if (candidate.passwordHash && await bcrypt.compare(password, candidate.passwordHash)) {
+      passwordMatches.push(candidate);
+    }
   }
 
-  const ok = await bcrypt.compare(password, acc.passwordHash);
-  if (!ok) {
-    return { status: 401, error: "Email o contraseña incorrectos" };
-  }
-
+  let matched = passwordMatches;
   if (processIdFilter != null) {
     const plRoleId = await getRoleIdBySlug(db, "process_leader");
-    if (plRoleId == null) {
-      return { status: 401, error: "Email o contraseña incorrectos" };
-    }
-    const scope = await db
-      .select({ id: accountRoles.id })
-      .from(accountRoles)
-      .where(
-        and(
-          eq(accountRoles.accountId, acc.id),
-          eq(accountRoles.roleId, plRoleId),
-          eq(accountRoles.processId, processIdFilter)
+    if (plRoleId == null) return { status: 401, error: "Email o contraseña incorrectos" };
+    const scoped = [] as typeof candidates;
+    for (const candidate of passwordMatches) {
+      const scope = await db
+        .select({ id: accountRoles.id })
+        .from(accountRoles)
+        .where(
+          and(
+            eq(accountRoles.accountId, candidate.id),
+            eq(accountRoles.roleId, plRoleId),
+            eq(accountRoles.status, "active"),
+            eq(accountRoles.processId, processIdFilter)
+          )
         )
-      )
-      .limit(1);
-    if (!scope.length) {
-      return { status: 401, error: "Email o contraseña incorrectos" };
+        .limit(1);
+      if (scope.length) scoped.push(candidate);
     }
+    matched = scoped;
   }
 
-  await db.update(accounts).set({ lastSignedIn: new Date() }).where(eq(accounts.id, acc.id));
+  if (matched.length !== 1) {
+    return { status: 401, error: "Email o contraseña incorrectos" };
+  }
 
+  const acc = matched[0];
+  await db.update(accounts).set({ lastSignedIn: new Date() }).where(eq(accounts.id, acc.id));
   return { accountId: acc.id };
 }
 
