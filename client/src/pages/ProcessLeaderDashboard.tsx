@@ -55,6 +55,10 @@ export default function ProcessLeaderDashboard() {
   const { session: processLeaderSession, logout, isLoading: contextLoading } = useProcessLeaderAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
+  const processDetailsQuery = trpc.processMap.get.useQuery(
+    { processId: processLeaderSession?.processId || 0 },
+    { enabled: !!processLeaderSession?.processId },
+  );
 
   useEffect(() => {
     if (contextLoading) return;
@@ -118,7 +122,7 @@ export default function ProcessLeaderDashboard() {
         <WelcomeCard 
           companyId={processLeaderSession.companyId || null} 
           companyName={processLeaderSession.companyName || "Empresa"}
-          processName={processLeaderSession.processName || "Mi Proceso"}
+          processName={processDetailsQuery.data?.name || processLeaderSession.processName || "Mi Proceso"}
         />
 
         {/* Modules Section — primero */}
@@ -172,8 +176,11 @@ export default function ProcessLeaderDashboard() {
                 <CardContent>
                   <p className="text-sm text-gray-600 mb-2">Nombre:</p>
                   <p className="text-lg font-semibold text-gray-900">{processLeaderSession.leaderName}</p>
-                  <p className="text-sm text-gray-600 mt-4 mb-2">Tu Correo:</p>
+                    <p className="text-sm text-gray-600 mt-4 mb-2">Tu Correo:</p>
                   <p className="text-sm font-medium text-gray-900">{processLeaderSession.leaderEmail}</p>
+                  <Button variant="outline" size="sm" className="mt-5 w-full" onClick={() => setLocation("/process-leader-profile")}>
+                    Mi cuenta
+                  </Button>
                 </CardContent>
               </Card>
 

@@ -1,5 +1,9 @@
 import { useEffect, useRef } from "react";
 import { APP_LOGO, APP_TAGLINE, APP_TITLE } from "@/const";
+import {
+  clearAllAuthRoleClientContext,
+  syncManagerClientContext,
+} from "@/lib/authRoleContext";
 
 /**
  * Login nativo sin React state para el formulario.
@@ -86,13 +90,17 @@ export default function LoginSelector() {
           return;
         }
 
+        // Un inicio de sesión correcto siempre sustituye por completo la
+        // identidad anterior. Ningún rol se hereda desde localStorage.
+        clearAllAuthRoleClientContext();
+
         const kind = data.kind as string;
         if (kind === "company_manager") {
-          localStorage.setItem("managerCompanyId", String(data.companyId));
-          localStorage.setItem("managerCompanyName", String(data.companyName));
-          localStorage.setItem("selectedCompanyId", String(data.companyId));
-          localStorage.setItem("managerEmail", String(data.managerEmail));
-          localStorage.setItem("managerName", String(data.managerEmail));
+          syncManagerClientContext({
+            companyId: Number(data.companyId),
+            companyName: String(data.companyName),
+            managerEmail: String(data.managerEmail),
+          });
           window.location.assign("/manager-dashboard");
           return;
         }

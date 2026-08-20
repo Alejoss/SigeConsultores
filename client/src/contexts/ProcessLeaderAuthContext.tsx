@@ -1,8 +1,13 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import {
+  clearAllAuthRoleClientContext,
+  clearManagerClientContext,
+  clearProcessLeaderClientContext,
+} from "@/lib/authRoleContext";
 
 /**
- * Process Leader Session Data
- * Stored in localStorage (if "remember me") or sessionStorage
+ * Datos de interfaz del Jefe de Proceso. Se hidratan exclusivamente desde la
+ * sesión autenticada por el servidor.
  */
 export interface ProcessLeaderSession {
   processLeaderId: number;
@@ -16,10 +21,6 @@ export interface ProcessLeaderSession {
   rememberMe: boolean;
 }
 
-/**
- * Process Leader Auth Context
- * Manages authentication state for process leaders (non-OAuth)
- */
 interface ProcessLeaderAuthContextType {
   session: ProcessLeaderSession | null;
   isAuthenticated: boolean;
@@ -30,131 +31,100 @@ interface ProcessLeaderAuthContextType {
 
 const ProcessLeaderAuthContext = createContext<ProcessLeaderAuthContextType | undefined>(undefined);
 
+type ServerProcessLeaderSession =
+  | {
+      authenticated: true;
+      kind: "process_leader";
+      processLeaderId: number;
+      leaderName: string;
+      leaderEmail: string;
+      processId: number;
+      companyId: number;
+      companyName: string;
+    }
+  | { authenticated: true; kind: "company_manager" | "platform_user" }
+  | { authenticated: false };
+
+function toProcessLeaderSession(
+  data: Extract<ServerProcessLeaderSession, { kind: "process_leader" }>
+): ProcessLeaderSession {
+  return {
+    processLeaderId: data.processLeaderId,
+    leaderName: data.leaderName,
+    leaderEmail: data.leaderEmail,
+    processId: data.processId,
+    companyId: data.companyId,
+    companyName: data.companyName,
+    processName: "Proceso",
+    loginTime: new Date().toISOString(),
+    rememberMe: true,
+  };
+}
+
 /**
- * Process Leader Auth Provider
- * Wraps the application to provide process leader auth state
+ * Fuente de verdad del Jefe de Proceso.
+ *
+ * El almacenamiento local conserva sólo una caché auxiliar para componentes
+ * heredados; nunca puede reactivar ni autorizar un rol, una empresa o proceso.
  */
 export function ProcessLeaderAuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<ProcessLeaderSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Helper function to load session from storage
-  const loadSessionFromStorage = () => {
-    try {
-      // Always try localStorage first (now the primary storage)
-      let storedSession = localStorage.getItem("processLeaderSession");
-      console.log("[ProcessLeaderAuth] loadSessionFromStorage - localStorage:", storedSession ? "found" : "not found");
-
-      // If not in localStorage, try sessionStorage (for backward compatibility)
-      if (!storedSession) {
-        storedSession = sessionStorage.getItem("processLeaderSession");
-        console.log("[ProcessLeaderAuth] loadSessionFromStorage - sessionStorage:", storedSession ? "found" : "not found");
-      }
-
-      if (storedSession) {
-        const parsedSession = JSON.parse(storedSession) as ProcessLeaderSession;
-        console.log("[ProcessLeaderAuth] Loaded session:", parsedSession);
-
-        // For now, accept all sessions (they're valid for the current session)
-        setSession(parsedSession);
-      } else {
-        console.log("[ProcessLeaderAuth] No session found in storage");
-        setSession(null);
-      }
-    } catch (error) {
-      console.error("[ProcessLeaderAuth] Failed to load session:", error);
-      localStorage.removeItem("processLeaderSession");
-      sessionStorage.removeItem("processLeaderSession");
-      setSession(null);
-    }
-  };
-
   useEffect(() => {
     let cancelled = false;
 
-    const applyFromStorage = () => {
-      try {
-        let stored = localStorage.getItem("processLeaderSession");
-        if (!stored) stored = sessionStorage.getItem("processLeaderSession");
-        if (stored) {
-          const parsed = JSON.parse(stored) as ProcessLeaderSession;
-          if (!cancelled) setSession(parsed);
-          return;
-        }
-      } catch (e) {
-        console.error("[ProcessLeaderAuth] Failed to parse session:", e);
-      }
-      if (!cancelled) setSession(null);
-    };
-
-    (async () => {
+    void (async () => {
       try {
         const res = await fetch("/api/auth/session/me", { credentials: "include" });
-        const data = (await res.json()) as
-          | {
-              authenticated: true;
-              kind: "process_leader";
-              processLeaderId: number;
-              leaderName: string;
-              leaderEmail: string;
-              processId: number;
-              companyId: number;
-              companyName: string;
-            }
-          | { authenticated: false };
+        const data = (await res.json()) as ServerProcessLeaderSession;
+        if (cancelled) return;
 
-        if (!cancelled && data.authenticated && data.kind === "process_leader") {
-          const s: ProcessLeaderSession = {
-            processLeaderId: data.processLeaderId,
-            leaderName: data.leaderName,
-            leaderEmail: data.leaderEmail,
-            processId: data.processId,
-            companyId: data.companyId,
-            companyName: data.companyName,
-            processName: "Proceso",
-            loginTime: new Date().toISOString(),
-            rememberMe: true,
-          };
-          setSession(s);
-        } else if (!cancelled) {
-          applyFromStorage();
+        if (data.authenticated && data.kind === "process_leader") {
+          const nextSession = toProcessLeaderSession(data);
+          setSession(nextSession);
+          localStorage.setItem("processLeaderSession", JSON.stringify(nextSession));
+          sessionStorage.removeItem("processLeaderSession");
+          // Compatibilidad visual con módulos que aún muestran la empresa
+          // seleccionada. Estos valores vienen de la sesión del servidor y no
+          // se utilizan para decidir el rol del usuario.
+          localStorage.setItem("selectedCompanyId", String(data.companyId));
+          localStorage.setItem("selectedCompanyName", data.companyName);
+          clearManagerClientContext();
+          return;
         }
+
+        // Si el servidor confirma otro rol, o no confirma una sesión, se elimina
+        // de inmediato cualquier Jefe recordado por una identidad anterior.
+        setSession(null);
+        clearProcessLeaderClientContext();
       } catch {
-        if (!cancelled) applyFromStorage();
+        if (!cancelled) {
+          // Ante una sesión no verificable, no se concede acceso desde caché.
+          setSession(null);
+          clearProcessLeaderClientContext();
+        }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
     })();
 
-    const handleStorageChange = () => {
-      loadSessionFromStorage();
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    window.addEventListener("processLeaderSessionUpdated", handleStorageChange);
-
     return () => {
       cancelled = true;
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("processLeaderSessionUpdated", handleStorageChange);
     };
   }, []);
 
   const logout = () => {
     void fetch("/api/auth/session/logout", { method: "POST", credentials: "include" });
-    localStorage.removeItem("processLeaderSession");
-    sessionStorage.removeItem("processLeaderSession");
+    clearAllAuthRoleClientContext();
     setSession(null);
   };
 
   const updateSession = (newSession: ProcessLeaderSession) => {
-    console.log("[ProcessLeaderAuth] Updating session:", newSession);
+    // Refleja el autosave de Mi cuenta durante esta vista. Al recargar, el
+    // servidor vuelve a construir la sesión y mantiene la fuente de verdad.
     setSession(newSession);
-    // Save to localStorage for persistence across page navigations
     localStorage.setItem("processLeaderSession", JSON.stringify(newSession));
-    // Dispatch custom event to notify other parts of the app
-    window.dispatchEvent(new Event("processLeaderSessionUpdated"));
-    console.log("[ProcessLeaderAuth] Session updated to localStorage and event dispatched");
   };
 
   const value: ProcessLeaderAuthContextType = {
@@ -172,9 +142,6 @@ export function ProcessLeaderAuthProvider({ children }: { children: React.ReactN
   );
 }
 
-/**
- * Hook to use process leader auth context
- */
 export function useProcessLeaderAuth() {
   const context = useContext(ProcessLeaderAuthContext);
   if (context === undefined) {
@@ -183,10 +150,7 @@ export function useProcessLeaderAuth() {
   return context;
 }
 
-/**
- * Helper function to update process leader session from outside the context
- * Used when saving session in ProcessLeaderLogin
- */
-export function updateProcessLeaderSession(session: ProcessLeaderSession) {
+/** @deprecated El proveedor actualiza la sesión reactiva después del autosave. */
+export function updateProcessLeaderSession(_session: ProcessLeaderSession) {
   window.dispatchEvent(new Event("processLeaderSessionUpdated"));
 }

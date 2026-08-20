@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { toast } from "sonner";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { exportResourcesToPDF } from "@/lib/exportResourcesToPDF";
-import { getAxisBackPathForRole } from "@/lib/sessionScope";
+import { getAxisBackPathForRole, getCompanyIdFromSession } from "@/lib/sessionScope";
 
 interface ResourceData {
   resourceName: string;
@@ -25,6 +26,7 @@ export default function ProcessResources() {
   const { session: processLeaderSession } = useProcessLeaderAuth();
   const isProcessLeader = processLeaderSession !== null;
   const isManagerAccess = localStorage.getItem('managerCompanyId') !== null || isManagerLogin;
+  const companyId = useMemo(() => getCompanyIdFromSession() || 0, []);
   const [processId, setProcessId] = useState<number | null>(null);
   const [processName, setProcessName] = useState("Proceso");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -57,8 +59,8 @@ export default function ProcessResources() {
 
   // Fetch participants from database
   const { data: participantsList = [] } = trpc.processParticipants.list.useQuery(
-    { processCharacterizationId },
-    { enabled: processId !== null }
+    { companyId, processCharacterizationId },
+    { enabled: processId !== null && companyId > 0 }
   );
 
   // Se usan directamente los participantes consultados para evitar ciclos de actualización.

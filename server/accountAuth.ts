@@ -22,7 +22,7 @@ export async function getPlatformUserShape(db: AppDb, accountId: number): Promis
     .from(accountRoles)
     .innerJoin(roles, eq(accountRoles.roleId, roles.id))
     .where(
-      and(eq(accountRoles.accountId, accountId), eq(accountRoles.companyId, 0), eq(accountRoles.processId, 0))
+      and(eq(accountRoles.accountId, accountId), eq(accountRoles.companyId, 0), eq(accountRoles.processId, 0), eq(accountRoles.status, "active"))
     );
 
   const slugs = new Set(ar.map((r) => r.slug));
@@ -50,7 +50,7 @@ export async function getManagerContext(db: AppDb, accountId: number): Promise<M
       companyId: accountRoles.companyId,
     })
     .from(accountRoles)
-    .where(and(eq(accountRoles.accountId, accountId), eq(accountRoles.roleId, cmRoleId)))
+    .where(and(eq(accountRoles.accountId, accountId), eq(accountRoles.roleId, cmRoleId), eq(accountRoles.status, "active")))
     .limit(1);
 
   const companyId = row[0]?.companyId;
@@ -84,7 +84,7 @@ export async function getProcessLeaderContext(
       processId: accountRoles.processId,
     })
     .from(accountRoles)
-    .where(and(eq(accountRoles.accountId, accountId), eq(accountRoles.roleId, plRoleId)))
+    .where(and(eq(accountRoles.accountId, accountId), eq(accountRoles.roleId, plRoleId), eq(accountRoles.status, "active")))
     .limit(1);
 
   const companyId = row[0]?.companyId;
@@ -128,7 +128,8 @@ export async function getProcessLeaderContextForProcess(
       and(
         eq(accountRoles.accountId, accountId),
         eq(accountRoles.roleId, plRoleId),
-        eq(accountRoles.processId, processId)
+        eq(accountRoles.processId, processId),
+        eq(accountRoles.status, "active")
       )
     )
     .limit(1);

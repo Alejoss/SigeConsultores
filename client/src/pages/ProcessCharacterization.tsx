@@ -48,11 +48,16 @@ export default function ProcessCharacterization() {
   const { session: processLeaderSession } = useProcessLeaderAuth();
   const isManagerAccess = localStorage.getItem('managerCompanyId') !== null || isManagerLogin;
   const isProcessLeader = processLeaderSession !== null;
-  const [processId, setProcessId] = useState<number | null>(null);
   
-  // Get companyId and processId from localStorage for back button
-  const companyId = localStorage.getItem('selectedCompanyId');
-  const selectedProcessId = localStorage.getItem('selectedProcessId');
+  // La dirección de navegación tiene prioridad para evitar una espera innecesaria
+  // al cargar Caracterización; el almacenamiento local queda sólo como respaldo.
+  const routeParams = new URLSearchParams(window.location.search);
+  const companyId = routeParams.get('companyId') || localStorage.getItem('selectedCompanyId');
+  const selectedProcessId = routeParams.get('processId') || localStorage.getItem('selectedProcessId');
+  // Se resuelve de forma síncrona: antes se esperaba un ciclo extra de React
+  // para obtener este mismo dato y eso mantenía la pantalla en "Cargando...".
+  const parsedProcessId = selectedProcessId ? Number.parseInt(selectedProcessId, 10) : NaN;
+  const processId = Number.isFinite(parsedProcessId) ? parsedProcessId : null;
   const [processName, setProcessName] = useState("");
   const [macroProcessName, setMacroProcessName] = useState("");
   const [macroProcessEditable, setMacroProcessEditable] = useState("");
@@ -70,25 +75,26 @@ export default function ProcessCharacterization() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedDataRef = useRef<string>("");
+  const hasHydratedInitialDataRef = useRef(false);
 
   // selectedProcessId is already declared above
   
   // Check if user is a Process Owner and get their assigned processes
   const userProcessOwnersQuery = trpc.hierarchicalAccess.processOwners.getByUser.useQuery(
     { userId: user?.id || 0 },
-    { enabled: !!user?.id }
+    { enabled: !!user?.id, staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false }
   );
   
   // Fetch process details
   const { data: processDetails, isLoading: processLoading } = trpc.processMap.get.useQuery(
     { processId: selectedProcessId ? parseInt(selectedProcessId) : 0 },
-    { enabled: !!selectedProcessId }
+    { enabled: !!selectedProcessId, staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false }
   );
 
   // Fetch characterization data
   const { data: characterization, isLoading: charLoading } = trpc.processCharacterization.getByProcessId.useQuery(
     { processId: selectedProcessId ? parseInt(selectedProcessId) : 0 },
-    { enabled: !!selectedProcessId }
+    { enabled: !!selectedProcessId, staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false }
   );
 
   // Update mutation
@@ -128,10 +134,8 @@ export default function ProcessCharacterization() {
             return;
           }
       }
-      
-      setProcessId(processIdNum);
     }
-  }, [selectedProcessId, userProcessOwnersQuery.data, setLocation]);
+  }, [selectedProcessId, userProcessOwnersQuery.data, setLocation, isProcessLeader, isManagerAccess]);
 
   // Auto-fill process name from processDetails
   useEffect(() => {
@@ -141,31 +145,30 @@ export default function ProcessCharacterization() {
     }
   }, [processDetails]);
 
-  // Load characterization data - this takes priority over processDetails
+  // Hidratación inicial: al abrir, los valores recibidos nunca deben activar autosave.
+  // Antes la pantalla enviaba una actualización vacía mientras aún llegaban los datos.
   useEffect(() => {
-    if (characterization) {
-      const newData = {
-        macroProcess: characterization.macroProcess || "",
-        responsible: characterization.responsible || "",
-        responsibleEmail: (characterization as any).responsibleEmail || "",
-        participants: characterization.participants || "",
-        objective: characterization.objective || "",
-        scope: characterization.scope || "",
-        resources: characterization.resources || "",
-      };
-      setData(newData);
-      // Use characterization's macroProcess if it exists, otherwise use processDetails
-      setMacroProcessEditable(characterization.macroProcess || processDetails?.macroProcess || "");
-      lastSavedDataRef.current = JSON.stringify(newData);
-    } else if (processDetails) {
-      // Only auto-fill from processDetails if no characterization data exists
-      setMacroProcessEditable(processDetails.macroProcess || "");
-    }
-  }, [characterization, processDetails]);
+    if (charLoading || hasHydratedInitialDataRef.current) return;
+
+    const newData = {
+      macroProcess: characterization?.macroProcess || "",
+      responsible: characterization?.responsible || "",
+      responsibleEmail: (characterization as any)?.responsibleEmail || "",
+      participants: characterization?.participants || "",
+      objective: characterization?.objective || "",
+      scope: characterization?.scope || "",
+      resources: characterization?.resources || "",
+    };
+    const initialMacroProcess = characterization?.macroProcess || processDetails?.macroProcess || "";
+    setData(newData);
+    setMacroProcessEditable(initialMacroProcess);
+    lastSavedDataRef.current = JSON.stringify({ ...newData, macroProcess: initialMacroProcess });
+    hasHydratedInitialDataRef.current = true;
+  }, [characterization, processDetails, charLoading]);
 
   // Auto-save data cuando hay cambios reales
   useEffect(() => {
-    if (!processId) return;
+    if (!processId || !hasHydratedInitialDataRef.current) return;
 
     const currentData = {
       macroProcess: macroProcessEditable,
@@ -298,17 +301,10 @@ export default function ProcessCharacterization() {
     );
   }
 
-  if (processLoading || charLoading) {
-    return (
-      <DashboardLayout>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-slate-600">Cargando...</p>
-          </CardContent>
-        </Card>
-      </DashboardLayout>
-    );
-  }
+  // La estructura y los módulos pueden mostrarse de inmediato. Los datos del
+  // proceso se hidratan en segundo plano en lugar de bloquear toda la pantalla.
+  const isLoadingProcessData = processLoading || charLoading;
+  const displayedProcessName = processName || (isLoadingProcessData ? "Cargando proceso..." : "Proceso");
 
   return (
     <DashboardLayout>
@@ -355,7 +351,7 @@ export default function ProcessCharacterization() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-3 bg-blue-50 rounded border border-blue-200">
-                  <p className="font-semibold text-sm text-blue-900">{processName}</p>
+                  <p className="font-semibold text-sm text-blue-900">{displayedProcessName}</p>
                 </div>
 
                 <div className="border-t pt-4 mt-4">
@@ -389,6 +385,7 @@ export default function ProcessCharacterization() {
                   <div className="flex items-center justify-between">
                     <CardTitle>DATOS GENERALES</CardTitle>
                     <div className="text-xs text-slate-500">
+                      {isLoadingProcessData && <span className="text-slate-500">Cargando datos...</span>}
                       {isAutoSaving && <span className="text-blue-600">⏳ Guardando...</span>}
                       {lastSaved && !isAutoSaving && <span className="text-green-600">✓ Guardado {lastSaved.toLocaleTimeString()}</span>}
                     </div>
@@ -400,7 +397,7 @@ export default function ProcessCharacterization() {
                       <tbody>
                         <tr>
                           <td className="border border-slate-300 bg-blue-50 font-bold p-3 w-1/3">PROCESO:</td>
-                          <td className="border border-slate-300 p-3 font-semibold text-blue-900">{processName}</td>
+                          <td className="border border-slate-300 p-3 font-semibold text-blue-900">{displayedProcessName}</td>
                         </tr>
                         <tr>
                           <td className="border border-slate-300 bg-blue-50 font-bold p-3">MACRO PROCESO:</td>

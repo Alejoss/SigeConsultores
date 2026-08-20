@@ -11,7 +11,7 @@ export function ActivePlanningCycleBadge({ companyId, className = "" }: ActivePl
   const enabled = Boolean(companyId && companyId > 0);
   const { data } = trpc.planningCycles.activeYear.useQuery(
     { companyId: companyId || 0 },
-    { enabled },
+    { enabled, staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false },
   );
   const year = data?.year || new Date().getFullYear();
   const label = data?.isActive ? `Planificación activa ${year}` : `Planificación ${year}`;

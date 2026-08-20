@@ -29,6 +29,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
+import { clearAllAuthRoleClientContext } from "@/lib/authRoleContext";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/manager-dashboard" },
@@ -134,17 +135,14 @@ function DashboardLayoutContent({
   console.log('[DashboardLayout] isManagerLogin:', isManagerLogin, 'managerCompanyName:', managerCompanyName);
   
   const handleLogout = () => {
+    // Siempre se elimina el contexto auxiliar de todos los roles. La cookie se
+    // revoca por la ruta correspondiente al tipo de sesión activo.
+    clearAllAuthRoleClientContext();
     if (isManagerLogin) {
       void fetch("/api/auth/session/logout", { method: "POST", credentials: "include" });
-      localStorage.removeItem("managerCompanyId");
-      localStorage.removeItem("managerCompanyName");
-      localStorage.removeItem("managerEmail");
-      localStorage.removeItem("managerName");
-      localStorage.removeItem("selectedCompanyId");
-      localStorage.removeItem("managerPassword");
       window.location.href = "/login";
     } else {
-      logout();
+      void logout();
     }
   };
   const [location, setLocation] = useLocation();

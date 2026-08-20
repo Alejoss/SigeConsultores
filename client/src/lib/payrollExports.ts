@@ -7,6 +7,8 @@ export type PayrollExportEmployee = {
   hireDate: string | Date;
   area: string;
   position: string;
+  workPosition?: string | null;
+  performance?: number | null;
   terminationDate?: string | Date | null;
 };
 
@@ -51,7 +53,8 @@ const activeColumns: ExportColumn[] = [
   { header: "Tiempo en la empresa", width: 22, value: (e) => formatPayrollTenure(e.hireDate) },
   { header: "Área", width: 26, value: (e) => e.area },
   { header: "Cargo", width: 34, value: (e) => e.position },
-  { header: "Desempeño", width: 22, value: () => "Pendiente de evaluación" },
+  { header: "Puesto de Trabajo", width: 34, value: (e) => e.workPosition || "Sin asignar" },
+  { header: "Desempeño", width: 22, value: (e) => e.performance == null ? "Pendiente de evaluación" : `${e.performance.toFixed(1)}%` },
 ];
 
 const inactiveColumns: ExportColumn[] = [
@@ -61,6 +64,7 @@ const inactiveColumns: ExportColumn[] = [
   { header: "Tiempo en la empresa", width: 22, value: (e) => formatPayrollTenure(e.hireDate, e.terminationDate) },
   { header: "Área", width: 26, value: (e) => e.area },
   { header: "Cargo", width: 34, value: (e) => e.position },
+  { header: "Puesto de Trabajo", width: 34, value: (e) => e.workPosition || "Sin asignar" },
   { header: "Fecha de desvinculación", width: 24, value: (e) => formatPayrollDate(e.terminationDate) },
 ];
 

@@ -13,6 +13,7 @@ import { processes, accounts, accountRoles } from "../../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getRoleIdBySlug } from "../accountAuth";
 import { storagePut, storageGet, storageDelete } from "../storage";
+import type { TrpcContext } from "../_core/context";
 
 const PROCESS_MAP_ALLOWED_TYPES = new Set([
   "image/png",
@@ -51,70 +52,68 @@ function resolveProcessMapMime(fileName: string, fileType: string): string {
   return byExt[ext ?? ""] ?? "application/octet-stream";
 }
 
+function forbidden(message: string): never {
+  throw new TRPCError({ code: "FORBIDDEN", message });
+}
+
+/** La empresa enviada por la interfaz debe coincidir con el alcance de la cookie. */
+function assertCompanyReadAccess(ctx: TrpcContext, companyId: number) {
+  if (ctx.manager && ctx.manager.companyId !== companyId) {
+    forbidden("No tiene acceso a la empresa solicitada.");
+  }
+  if (ctx.processLeader && ctx.processLeader.companyId !== companyId) {
+    forbidden("No tiene acceso a la empresa solicitada.");
+  }
+}
+
+/** La estructura del Mapa sólo la administran Gerente de la empresa o Administrador. */
+function assertMapManagementAccess(ctx: TrpcContext, companyId: number) {
+  assertCompanyReadAccess(ctx, companyId);
+  if (ctx.processLeader) {
+    forbidden("El Jefe de Proceso no puede modificar la estructura del Mapa de Procesos.");
+  }
+  if (ctx.manager || ctx.user?.role === "admin") return;
+  forbidden("No tiene permisos para modificar el Mapa de Procesos.");
+}
+
 export const processMapRouter = router({
   list: companyProcedure
-    .input(z.object({ companyId: z.number(), processLeaderEmail: z.string().optional(), filterProcessId: z.number().optional() }))
-    .query(async ({ input }) => {
+    .input(z.object({ companyId: z.number(), filterProcessId: z.number().optional() }))
+    .query(async ({ input, ctx }) => {
+      assertCompanyReadAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db) return [];
 
-      // If filterProcessId is provided (process leader accessing via URL), return only that process
-      if (input.filterProcessId) {
-        const result = await db.select().from(processes)
-          .where(and(
-            eq(processes.companyId, input.companyId),
-            eq(processes.id, input.filterProcessId)
-          ));
-        return result;
+      // El Jefe no puede ampliar el alcance modificando URL o parámetros: el
+      // proceso se toma exclusivamente del contexto autenticado del servidor.
+      if (ctx.processLeader) {
+        return db.select().from(processes).where(and(
+          eq(processes.companyId, ctx.processLeader.companyId),
+          eq(processes.id, ctx.processLeader.processId)
+        ));
       }
 
-      // Check if user is a process leader (passed via optional parameter)
-      if (input.processLeaderEmail) {
-        const emailNorm = input.processLeaderEmail.trim().toLowerCase();
-        const plRoleId = await getRoleIdBySlug(db, "process_leader");
-        if (plRoleId != null) {
-          const leaderRows = await db
-            .select({ processId: accountRoles.processId })
-            .from(accounts)
-            .innerJoin(accountRoles, eq(accountRoles.accountId, accounts.id))
-            .where(
-              and(
-                sql`LOWER(${accounts.email}) = ${emailNorm}`,
-                eq(accountRoles.roleId, plRoleId),
-                eq(accountRoles.companyId, input.companyId)
-              )
-            )
-            .limit(1);
-
-          if (leaderRows.length && leaderRows[0].processId) {
-            const result = await db
-              .select()
-              .from(processes)
-              .where(
-                and(eq(processes.companyId, input.companyId), eq(processes.id, leaderRows[0].processId))
-              );
-            return result;
-          }
-        }
-      }
-
-      // Otherwise, return all processes for the company (for managers/admins)
-      const result = await db.select().from(processes)
-        .where(eq(processes.companyId, input.companyId));
-
-      return result;
+      // Gerente y Administrador consultan todos los procesos de su empresa
+      // autorizada. El parámetro filterProcessId ya no concede privilegios.
+      return db.select().from(processes).where(eq(processes.companyId, input.companyId));
     }),
 
   get: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) return null;
 
       const result = await db.select().from(processes)
         .where(eq(processes.id, input.processId));
+      const process = result[0] ?? null;
+      if (!process) return null;
 
-      return result.length > 0 ? result[0] : null;
+      assertCompanyReadAccess(ctx, process.companyId);
+      if (ctx.processLeader && ctx.processLeader.processId !== process.id) {
+        forbidden("No tiene acceso al proceso solicitado.");
+      }
+      return process;
     }),
 
   create: companyProcedure
@@ -124,7 +123,8 @@ export const processMapRouter = router({
       processType: z.enum(["estrategico", "misional", "soporte"]),
       description: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      assertMapManagementAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -145,9 +145,13 @@ export const processMapRouter = router({
       processType: z.enum(["estrategico", "misional", "soporte"]),
       description: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+      const target = await db.select({ companyId: processes.companyId }).from(processes)
+        .where(eq(processes.id, input.processId)).limit(1);
+      if (!target[0]) throw new TRPCError({ code: "NOT_FOUND", message: "No se encontró el proceso solicitado." });
+      assertMapManagementAccess(ctx, target[0].companyId);
 
       await db.update(processes)
         .set({
@@ -170,7 +174,8 @@ export const processMapRouter = router({
         processType: z.enum(["estrategico", "misional", "soporte"]),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      assertMapManagementAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -188,9 +193,13 @@ export const processMapRouter = router({
 
   delete: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+      const target = await db.select({ companyId: processes.companyId }).from(processes)
+        .where(eq(processes.id, input.processId)).limit(1);
+      if (!target[0]) throw new TRPCError({ code: "NOT_FOUND", message: "No se encontró el proceso solicitado." });
+      assertMapManagementAccess(ctx, target[0].companyId);
 
       await db.delete(processes)
         .where(eq(processes.id, input.processId));
@@ -200,7 +209,8 @@ export const processMapRouter = router({
 
   getMapImage: companyProcedure
     .input(z.object({ companyId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      assertCompanyReadAccess(ctx, input.companyId);
       try {
         const doc = await getProcessMapImageDocument(input.companyId);
         if (!doc?.fileKey) return null;
@@ -228,7 +238,8 @@ export const processMapRouter = router({
         fileType: z.string(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      assertMapManagementAccess(ctx, input.companyId);
       try {
         const mimeType = resolveProcessMapMime(input.fileName, input.fileType);
         if (!PROCESS_MAP_ALLOWED_TYPES.has(mimeType)) {
@@ -271,7 +282,8 @@ export const processMapRouter = router({
 
   deleteMapImage: companyProcedure
     .input(z.object({ companyId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      assertMapManagementAccess(ctx, input.companyId);
       try {
         const removed = await deleteProcessMapImageDocument(input.companyId);
         if (removed?.fileKey) {

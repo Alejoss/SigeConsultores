@@ -37,11 +37,9 @@ export async function resolveAuthFromRequest(req: Request): Promise<{
 
   const accountId = row.accountId;
 
-  const platformUser = await getPlatformUserShape(db, accountId);
-  if (platformUser) {
-    return { user: platformUser, manager: null, processLeader: null };
-  }
-
+  // Debe coincidir con la prioridad aplicada al crear la cookie en
+  // POST /api/auth/session/login. Una misma sesión no puede iniciar como un rol
+  // y luego hidratarse como otro al cargar la interfaz.
   const manager = await getManagerContext(db, accountId);
   if (manager) {
     return { user: null, manager, processLeader: null };
@@ -50,6 +48,11 @@ export async function resolveAuthFromRequest(req: Request): Promise<{
   const processLeader = await getProcessLeaderContext(db, accountId);
   if (processLeader) {
     return { user: null, manager: null, processLeader };
+  }
+
+  const platformUser = await getPlatformUserShape(db, accountId);
+  if (platformUser) {
+    return { user: platformUser, manager: null, processLeader: null };
   }
 
   return { user: null, manager: null, processLeader: null };

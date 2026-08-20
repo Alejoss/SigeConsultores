@@ -75,6 +75,8 @@ import ManagerAccessSuccess from "./pages/ManagerAccessSuccess";
 import ProcessLeaderAccessSuccess from "./pages/ProcessLeaderAccessSuccess";
 import ProcessLeaderInvitationLink from "./pages/ProcessLeaderInvitationLink";
 import ManagerEditProfile from "./pages/ManagerEditProfile";
+import ManagerTeamAccess from "./pages/ManagerTeamAccess";
+import ProcessLeaderProfile from "./pages/ProcessLeaderProfile";
 import OrganizationChart from "./pages/OrganizationChart";
 import OrganizationChartView from "./pages/OrganizationChartView";
 import Payroll from "./pages/Payroll";
@@ -218,6 +220,8 @@ function Router() {
       <Route path={"/forgot-password-manager"} component={ForgotPasswordManager} />
       <Route path={"/manager-access"} component={ManagerAccess} />
       <Route path={"/manager-dashboard"} component={ManagerDashboard} />
+      <Route path={"/manager-team-access"} component={ManagerTeamAccess} />
+      <Route path={"/process-leader-profile"} component={ProcessLeaderProfile} />
       <Route path={"/manager-confirmation"} component={ManagerConfirmation} />
       <Route path={"/manager-access-success"} component={ManagerAccessSuccess} />
       <Route path={"/process-leader-access-success"} component={ProcessLeaderAccessSuccess} />

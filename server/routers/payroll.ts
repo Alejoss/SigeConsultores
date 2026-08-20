@@ -5,6 +5,7 @@ import {
   participantWorkerKpis,
   participantWorkerKpiValues,
   payrollEmployees,
+  processParticipants,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { companyProcedure, router } from "../_core/trpc";
@@ -195,12 +196,22 @@ const getEmployeePerformance = async (
   const performanceByEmployee = new Map<number, number>();
   if (!employeeIds.length) return performanceByEmployee;
 
-  const assignments = await db
+  const employees = await db.select({
+    id: payrollEmployees.id,
+    currentProcessParticipantId: payrollEmployees.currentProcessParticipantId,
+  })
+    .from(payrollEmployees)
+    .where(inArray(payrollEmployees.id, employeeIds));
+  const currentPositionByEmployee = new Map(
+    employees.map(employee => [employee.id, employee.currentProcessParticipantId])
+  );
+  const assignments = (await db
     .select()
     .from(participantWorkerAssignments)
     .where(
       inArray(participantWorkerAssignments.payrollEmployeeId, employeeIds)
-    );
+    ))
+    .filter(assignment => currentPositionByEmployee.get(assignment.payrollEmployeeId) === assignment.processParticipantId);
   const assignmentIds = assignments.map(assignment => assignment.id);
   if (!assignmentIds.length) return performanceByEmployee;
 
@@ -286,8 +297,20 @@ export const payrollRouter = router({
               input.performanceYear ?? new Date().getFullYear()
             )
           : new Map<number, number>();
+      const participantIds = Array.from(new Set(
+        employees.map(employee => employee.currentProcessParticipantId).filter((id): id is number => id !== null)
+      ));
+      const workPositions = participantIds.length
+        ? await db.select({ id: processParticipants.id, position: processParticipants.position })
+          .from(processParticipants)
+          .where(inArray(processParticipants.id, participantIds))
+        : [];
+      const workPositionByParticipant = new Map(workPositions.map(position => [position.id, position.position]));
       return employees.map(employee => ({
         ...employee,
+        workPosition: employee.currentProcessParticipantId === null
+          ? null
+          : workPositionByParticipant.get(employee.currentProcessParticipantId) ?? null,
         performance: performanceByEmployee.get(employee.id) ?? null,
       }));
     }),

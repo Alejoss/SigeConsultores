@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { PasswordInput } from "@/components/PasswordInput";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 
 export default function ManagerEditProfile() {
   const [, setLocation] = useLocation();
@@ -15,8 +16,12 @@ export default function ManagerEditProfile() {
   const [currentPassword, setCurrentPassword] = useState<string>("");
   const [newPassword, setNewPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [companyId, setCompanyId] = useState<number | null>(null);
+  const {
+    isManagerLogin,
+    managerCompanyId,
+    managerEmail: authenticatedManagerEmail,
+    isLoading: authLoading,
+  } = useManagerAuth();
   // Update manager email mutation
   const updateEmailMutation = trpc.managerAuth.updateManagerEmail.useMutation({
     onSuccess: () => {
@@ -44,18 +49,14 @@ export default function ManagerEditProfile() {
   });
 
   useEffect(() => {
-    const compId = localStorage.getItem("managerCompanyId");
-    const managerEmailFromStorage = localStorage.getItem("managerEmail");
-
-    if (!compId || !managerEmailFromStorage) {
+    if (!authLoading && !isManagerLogin) {
       setLocation("/login");
       return;
     }
-
-    setCompanyId(parseInt(compId));
-    setManagerEmail(managerEmailFromStorage);
-    setIsLoading(false);
-  }, [setLocation]);
+    if (isManagerLogin && authenticatedManagerEmail) {
+      setManagerEmail(authenticatedManagerEmail);
+    }
+  }, [authLoading, isManagerLogin, authenticatedManagerEmail, setLocation]);
 
   const handleUpdateEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,13 +77,13 @@ export default function ManagerEditProfile() {
       return;
     }
 
-    if (!companyId) {
+    if (!managerCompanyId) {
       toast.error("ID de empresa no disponible");
       return;
     }
 
     await updateEmailMutation.mutateAsync({
-      companyId,
+      companyId: managerCompanyId,
       newEmail,
     });
   };
@@ -110,19 +111,19 @@ export default function ManagerEditProfile() {
       return;
     }
 
-    if (!companyId) {
+    if (!managerCompanyId) {
       toast.error("ID de empresa no disponible");
       return;
     }
 
     await updatePasswordMutation.mutateAsync({
-      companyId,
+      companyId: managerCompanyId,
       currentPassword,
       newPassword,
     });
   };
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
