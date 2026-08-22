@@ -29,9 +29,11 @@ import {
   Gauge,
   Loader2,
   Plus,
+  Search,
   Trash2,
   UserRoundX,
   UsersRound,
+  X,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -150,6 +152,13 @@ const EXTERNAL_ACTION_LABELS: Record<ExternalChange["action"], string> = {
 
 const formatPerformance = (performance: number | null | undefined) =>
   performance == null ? "Pendiente" : `${performance.toFixed(1)}%`;
+
+const normalizeSearchText = (value: unknown) =>
+  String(value ?? "")
+    .toLocaleLowerCase("es")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
 
 const EMPTY_EMPLOYEE: EmployeeDraft = {
   fullName: "",
@@ -404,6 +413,8 @@ export default function Payroll() {
   }, [externalHeaders]);
   const [showRotation, setShowRotation] = useState(false);
   const [selectedArea, setSelectedArea] = useState("");
+  const [showActiveSearch, setShowActiveSearch] = useState(false);
+  const [activeSearch, setActiveSearch] = useState("");
 
   const { data, isLoading } = trpc.payroll.list.useQuery(
     { companyId, status: "activo", performanceYear },
@@ -419,6 +430,24 @@ export default function Payroll() {
   useEffect(() => {
     setEmployees((data || []) as Employee[]);
   }, [data]);
+
+  const filteredEmployees = useMemo(() => {
+    const query = normalizeSearchText(activeSearch);
+    if (!query) return employees;
+    return employees.filter(employee =>
+      [
+        employee.fullName,
+        employee.identityCard,
+        employee.hireDate,
+        formatPayrollTenure(employee.hireDate),
+        employee.area,
+        employee.position,
+        employee.workPosition,
+        formatPerformance(employee.performance),
+        "activo",
+      ].some(value => normalizeSearchText(value).includes(query))
+    );
+  }, [activeSearch, employees]);
 
   useEffect(() => {
     const tableScroller = payrollTableScrollRef.current;
@@ -1093,7 +1122,7 @@ export default function Payroll() {
         </div>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 space-y-0">
             <div>
               <CardTitle>Personal Activo</CardTitle>
               <CardDescription>
@@ -1101,13 +1130,53 @@ export default function Payroll() {
                 guarda al salir de él.
               </CardDescription>
             </div>
-            <Button
-              onClick={() => setShowCreate(true)}
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-            >
-              <Plus className="h-4 w-4" />
-              Añadir nuevo trabajador
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {showActiveSearch && (
+                <div className="relative w-full sm:w-80">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    aria-label="Buscar en Personal Activo"
+                    autoFocus
+                    value={activeSearch}
+                    onChange={event => setActiveSearch(event.target.value)}
+                    placeholder="Buscar por cualquier dato..."
+                    className="pr-9 pl-9"
+                  />
+                  {activeSearch && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
+                      onClick={() => setActiveSearch("")}
+                      aria-label="Limpiar búsqueda"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  if (showActiveSearch) setActiveSearch("");
+                  setShowActiveSearch(current => !current);
+                }}
+                aria-label={showActiveSearch ? "Cerrar búsqueda" : "Buscar personal"}
+                title={showActiveSearch ? "Cerrar búsqueda" : "Buscar personal"}
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+              <Button
+                onClick={() => setShowCreate(true)}
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+              >
+                <Plus className="h-4 w-4" />
+                Añadir nuevo trabajador
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -1121,6 +1190,11 @@ export default function Payroll() {
                 la Planilla de Nómina.
               </div>
             ) : (
+              filteredEmployees.length === 0 ? (
+                <div className="rounded-lg border border-dashed py-12 text-center text-slate-500">
+                  No se encontraron trabajadores que coincidan con “{activeSearch}”.
+                </div>
+              ) : (
               <div
                 ref={registerPayrollTableScroller}
                 className="overflow-x-auto rounded-lg border [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
@@ -1148,7 +1222,7 @@ export default function Payroll() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {employees.map(employee => (
+                    {filteredEmployees.map(employee => (
                       <tr
                         key={employee.id}
                         className="bg-white hover:bg-slate-50"
@@ -1276,6 +1350,7 @@ export default function Payroll() {
                   </tbody>
                 </table>
               </div>
+              )
             )}
           </CardContent>
         </Card>
