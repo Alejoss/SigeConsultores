@@ -115,10 +115,6 @@ export default function ManagementSystems() {
     onError: () => toast.error("Error al eliminar"),
   });
 
-  const uploadFileMutation = trpc.auditsInspections.uploadManagementSystemFile.useMutation({
-    onError: () => toast.error("Error al subir el archivo"),
-  });
-
   const listFilesMutation = trpc.auditsInspections.listManagementSystemFiles.useQuery(
     { managementSystemId: modal?.systemId ?? 0, companyId: companyId ?? 0, fileType: modal?.fileType ?? "certification" },
     { enabled: !!modal && modal.mode === "view" }
@@ -187,19 +183,25 @@ export default function ManagementSystems() {
     }
     setIsUploading(true);
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      await uploadFileMutation.mutateAsync({
-        managementSystemId: modal.systemId,
-        companyId,
-        fileType: modal.fileType,
-        fileName: file.name,
-        fileData: Array.from(uint8Array),
-        mimeType: file.type,
+      // FormData transmite el archivo binario directamente. Evita convertir cada byte
+      // en JSON, operación que bloqueaba el navegador con documentos medianos o grandes.
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("managementSystemId", String(modal.systemId));
+      formData.append("companyId", String(companyId));
+      formData.append("fileType", modal.fileType);
+
+      const response = await fetch("/api/upload/management-system-file", {
+        method: "POST",
+        body: formData,
       });
+      const result = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !result?.ok) {
+        throw new Error(result?.error || "Error al subir el archivo");
+      }
       toast.success("Archivo subido correctamente");
-    } catch {
-      toast.error("Error al subir el archivo");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al subir el archivo");
     } finally {
       setIsUploading(false);
       setModal(null);
