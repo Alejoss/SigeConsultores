@@ -578,7 +578,6 @@ export default function Trainings() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importRows, setImportRows] = useState<ImportRow[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
-  const [replaceMode, setReplaceMode] = useState(false);
   const importFileRef = useRef<HTMLInputElement>(null);
 
   const { data: trainingsData, isLoading } = trpc.companyTrainings.list.useQuery(
@@ -715,6 +714,10 @@ export default function Trainings() {
         "Responsable": "Juan Pérez",
         "Asistentes Previstos": 20,
         "Fecha Planificada (YYYY-MM-DD)": "2026-03-15",
+        "Impartida (SI/NO)": "SI",
+        "Fecha impartida (YYYY-MM-DD)": "2026-03-15",
+        "Asistentes reales": 18,
+        "% Asistencia": "90%",
       },
       {
         "Capacitación (Obligatorio)": "Ejemplo: Manejo de Residuos",
@@ -725,11 +728,15 @@ export default function Trainings() {
         "Responsable": "Ana López",
         "Asistentes Previstos": 15,
         "Fecha Planificada (YYYY-MM-DD)": "2026-05-20",
+        "Impartida (SI/NO)": "NO",
+        "Fecha impartida (YYYY-MM-DD)": "",
+        "Asistentes reales": "",
+        "% Asistencia": "",
       },
     ];
     const ws = XLSX.utils.json_to_sheet(templateData);
     // Ancho de columnas
-    ws["!cols"] = [{ wch: 35 }, { wch: 38 }, { wch: 35 }, { wch: 45 }, { wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 28 }];
+    ws["!cols"] = [{ wch: 35 }, { wch: 38 }, { wch: 35 }, { wch: 45 }, { wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 28 }, { wch: 20 }, { wch: 28 }, { wch: 20 }, { wch: 18 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
     XLSX.writeFile(wb, "plantilla_cronograma_capacitaciones.xlsx");
@@ -802,12 +809,29 @@ export default function Trainings() {
           const plannedAttendees = parseInt(rawAttendees) || undefined;
           const plannedDate = excelDateToISO(rawDate);
           // Columnas de seguimiento post-capacitación (I, J, K)
-          const rawCompleted = getCol(row, "Capacitación Impartida (SI/NO)", "Capacitacion Impartida (SI/NO)", "Impartida", "completed").toUpperCase();
-          const completed: "SI" | "NO" | undefined = rawCompleted === "SI" ? "SI" : rawCompleted === "NO" ? "NO" : undefined;
-          const rawConductedDate = getCol(row, "Fecha en la que se Impartió (YYYY-MM-DD)", "Fecha en la que se Impartio (YYYY-MM-DD)", "Fecha Impartida", "conductedDate") || row["Fecha en la que se Impartió (YYYY-MM-DD)"];
+          // Columnas I–L. Algunos archivos antiguos tenían esos valores sin encabezados;
+          // por compatibilidad se usan sus posiciones únicamente cuando falta el nombre de columna.
+          const positionalValues = Object.values(row);
+          const rawCompleted = (getCol(
+            row,
+            "Capacitación Impartida (SI/NO)", "Capacitacion Impartida (SI/NO)",
+            "Impartida (SI/NO)", "Impartida", "completed"
+          ) || String(positionalValues[8] ?? "")).toUpperCase();
+          const completed: "SI" | "NO" | undefined = rawCompleted === "SI" || rawCompleted === "SÍ"
+            ? "SI"
+            : rawCompleted === "NO" ? "NO" : undefined;
+          const rawConductedDate = getCol(
+            row,
+            "Fecha en la que se Impartió (YYYY-MM-DD)", "Fecha en la que se Impartio (YYYY-MM-DD)",
+            "Fecha impartida (YYYY-MM-DD)", "Fecha Impartida", "Fecha Impart", "conductedDate"
+          ) || row["Fecha en la que se Impartió (YYYY-MM-DD)"] || positionalValues[9];
           const conductedDate = excelDateToISO(rawConductedDate);
-          const rawActualAttendees = getCol(row, "Numero de Asistentes", "Número de Asistentes", "Asistentes Reales", "actualAttendees");
-          const actualAttendees = parseInt(rawActualAttendees) || undefined;
+          const rawActualAttendees = getCol(row, "Numero de Asistentes", "Número de Asistentes", "Asistentes reales", "Asistentes Reales", "actualAttendees") || String(positionalValues[10] ?? "");
+          const parsedActualAttendees = Number.parseInt(rawActualAttendees, 10);
+          const actualAttendees = rawActualAttendees.trim() === "" || Number.isNaN(parsedActualAttendees)
+            ? undefined
+            : parsedActualAttendees;
+
           const error = !name ? "Falta el nombre de la capacitación" :
             (rawType && !type) ? `Tipo inválido: "${rawType}"` :
             (rawModality && !modality) ? `Modalidad inválida: "${rawModality}"` : undefined;
@@ -842,10 +866,6 @@ export default function Trainings() {
     const validRows = importRows.filter(r => !r._error && r.name);
     if (validRows.length === 0) { toast.error("No hay filas válidas para importar"); return; }
     try {
-      // Si modo reemplazar: borrar todas las capacitaciones existentes primero
-      if (replaceMode) {
-        await clearByCompanyMutation.mutateAsync({ companyId });
-      }
       const result = await importBulkMutation.mutateAsync({
         companyId,
         rows: validRows.map(r => ({
@@ -862,11 +882,12 @@ export default function Trainings() {
           actualAttendees: r.actualAttendees,
         })),
       });
-      const action = replaceMode ? "reemplazaron" : "importaron";
-      toast.success(`Se ${action} ${result.inserted} capacitaciones exitosamente`);
+      const messages: string[] = [];
+      if (result.updated > 0) messages.push(`${result.updated} actualizada${result.updated === 1 ? "" : "s"}`);
+      if (result.inserted > 0) messages.push(`${result.inserted} nueva${result.inserted === 1 ? "" : "s"}`);
+      toast.success(`Importación completada: ${messages.join(" y ") || "sin cambios"}`);
       setShowImportModal(false);
       setImportRows([]);
-      setReplaceMode(false);
       await utils.companyTrainings.list.invalidate({ companyId });
     } catch {
       toast.error("Error al importar las capacitaciones");
@@ -1373,7 +1394,11 @@ export default function Trainings() {
                     <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Modalidad</th>
                     <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Responsable</th>
                     <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Fecha Planificada</th>
-                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Asistentes</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Asistentes previstos</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Impartida</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Fecha impartida</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Asistentes reales</th>
+                    <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">% Asistencia</th>
                     <th className="border px-3 py-2 text-left text-xs font-semibold text-gray-600">Estado</th>
                   </tr>
                 </thead>
@@ -1394,7 +1419,15 @@ export default function Trainings() {
                       <td className="border px-3 py-2 text-gray-700">{row.modality || <span className="text-gray-400 text-xs">—</span>}</td>
                       <td className="border px-3 py-2 text-gray-700">{row.responsible || <span className="text-gray-400 text-xs">—</span>}</td>
                       <td className="border px-3 py-2 text-gray-700">{row.plannedDate || <span className="text-gray-400 text-xs">—</span>}</td>
-                      <td className="border px-3 py-2 text-gray-700 text-center">{row.plannedAttendees || <span className="text-gray-400 text-xs">—</span>}</td>
+                      <td className="border px-3 py-2 text-gray-700 text-center">{row.plannedAttendees ?? <span className="text-gray-400 text-xs">—</span>}</td>
+                      <td className="border px-3 py-2 text-center text-gray-700">{row.completed ?? <span className="text-gray-400 text-xs">—</span>}</td>
+                      <td className="border px-3 py-2 text-gray-700">{row.conductedDate ?? <span className="text-gray-400 text-xs">—</span>}</td>
+                      <td className="border px-3 py-2 text-center text-gray-700">{row.actualAttendees ?? <span className="text-gray-400 text-xs">—</span>}</td>
+                      <td className="border px-3 py-2 text-center text-gray-700">
+                        {row.plannedAttendees && row.actualAttendees !== undefined
+                          ? `${Math.round((row.actualAttendees / row.plannedAttendees) * 100)}%`
+                          : <span className="text-gray-400 text-xs">—</span>}
+                      </td>
                       <td className="border px-3 py-2">
                         {row._error ? (
                           <span className="flex items-center gap-1 text-red-600 text-xs"><X className="w-3 h-3" />{row._error}</span>
@@ -1410,38 +1443,25 @@ export default function Trainings() {
 
             {/* Pie del modal */}
             <div className="p-6 border-t bg-gray-50 rounded-b-xl">
-              {/* Toggle reemplazar */}
-              <div className="flex items-center gap-3 mb-4 p-3 rounded-lg border border-orange-200 bg-orange-50">
-                <input
-                  type="checkbox"
-                  id="replaceMode"
-                  checked={replaceMode}
-                  onChange={(e) => setReplaceMode(e.target.checked)}
-                  className="w-4 h-4 accent-orange-500 cursor-pointer"
-                />
-                <label htmlFor="replaceMode" className="text-sm cursor-pointer">
-                  <span className="font-semibold text-orange-700">Reemplazar todo</span>
-                  <span className="text-orange-600 ml-1">— elimina las capacitaciones existentes e importa las del Excel (evita duplicados)</span>
-                </label>
+              <div className="mb-4 p-3 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-800">
+                La importación actualiza las capacitaciones ya registradas sin eliminar datos. Primero busca por nombre y fecha planificada; si la fecha fue corregida, actualiza por nombre sólo cuando existe una coincidencia única.
               </div>
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-500">
                   Solo se importarán las filas marcadas como <span className="text-green-600 font-medium">✓ Válida</span>.
                 </p>
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => { setShowImportModal(false); setImportRows([]); setReplaceMode(false); }}>
+                  <Button variant="outline" onClick={() => { setShowImportModal(false); setImportRows([]); }}>
                     Cancelar
                   </Button>
                   <Button
                     onClick={handleConfirmImport}
-                    disabled={importBulkMutation.isPending || clearByCompanyMutation.isPending || importRows.filter(r => !r._error).length === 0}
-                    className={replaceMode ? "bg-orange-600 hover:bg-orange-700" : "bg-blue-600 hover:bg-blue-700"}
+                    disabled={importBulkMutation.isPending || importRows.filter(r => !r._error).length === 0}
+                    className="bg-blue-600 hover:bg-blue-700"
                   >
-                    {(importBulkMutation.isPending || clearByCompanyMutation.isPending)
-                      ? (replaceMode ? "Reemplazando..." : "Importando...")
-                      : replaceMode
-                        ? `Reemplazar con ${importRows.filter(r => !r._error).length} capacitaciones`
-                        : `Importar ${importRows.filter(r => !r._error).length} capacitaciones`
+                    {importBulkMutation.isPending
+                      ? "Actualizando..."
+                      : `Actualizar ${importRows.filter(r => !r._error).length} capacitaciones`
                     }
                   </Button>
                 </div>

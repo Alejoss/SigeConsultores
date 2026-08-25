@@ -1254,33 +1254,97 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
-        if (input.rows.length === 0) return { inserted: 0 };
-        await db.insert(companyTrainings).values(
-          input.rows.map(row => {
-            const planned = row.plannedAttendees || 0;
-            const actual = row.actualAttendees || 0;
-            const attendance =
-              planned > 0 ? Math.round((actual / planned) * 100) : 0;
-            return {
-              companyId: input.companyId,
-              name: row.name,
-              type: row.type || "Mandatoria",
-              objective: row.objective || null,
-              audience: row.audience || null,
-              plannedAttendees: planned,
-              modality: row.modality || "Presencial",
-              responsible: row.responsible || null,
-              plannedDate: row.plannedDate ? new Date(row.plannedDate) : null,
-              completed: row.completed || null,
-              conductedDate: row.conductedDate
-                ? new Date(row.conductedDate)
-                : null,
-              actualAttendees: actual,
-              attendancePercentage: attendance,
+        if (input.rows.length === 0) return { inserted: 0, updated: 0 };
+
+        // La coincidencia no depende de mayúsculas, tildes ni espacios accidentales.
+        // Se prioriza nombre + fecha planificada; si la fecha fue corregida, se usa
+        // únicamente el nombre cuando existe una sola capacitación con ese nombre.
+        const normalizeName = (value: string) => value
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .trim()
+          .replace(/\s+/g, " ")
+          .toLowerCase();
+        const dateKey = (value: Date | string | null | undefined) => {
+          if (!value) return "";
+          const date = value instanceof Date ? value : new Date(value);
+          if (Number.isNaN(date.getTime())) return "";
+          return date.toISOString().slice(0, 10);
+        };
+
+        const existing = await db
+          .select()
+          .from(companyTrainings)
+          .where(eq(companyTrainings.companyId, input.companyId));
+        const byExactKey = new Map<string, typeof existing>();
+        const byName = new Map<string, typeof existing>();
+        for (const training of existing) {
+          const normalizedName = normalizeName(training.name);
+          const exactKey = `${normalizedName}|${dateKey(training.plannedDate)}`;
+          byExactKey.set(exactKey, [...(byExactKey.get(exactKey) ?? []), training]);
+          byName.set(normalizedName, [...(byName.get(normalizedName) ?? []), training]);
+        }
+
+        let inserted = 0;
+        let updated = 0;
+        for (const row of input.rows) {
+          const normalizedName = normalizeName(row.name);
+          const exactKey = `${normalizedName}|${dateKey(row.plannedDate)}`;
+          const exactMatches = byExactKey.get(exactKey) ?? [];
+          const nameMatches = byName.get(normalizedName) ?? [];
+          const target = exactMatches.length === 1
+            ? exactMatches[0]
+            : nameMatches.length === 1
+              ? nameMatches[0]
+              : undefined;
+
+          if (target) {
+            // Una celda vacía en la planilla no borra el dato que ya estaba registrado.
+            const effectivePlanned = row.plannedAttendees ?? target.plannedAttendees ?? 0;
+            const effectiveActual = row.actualAttendees ?? target.actualAttendees ?? 0;
+            const updateData = {
+              ...(row.name ? { name: row.name } : {}),
+              ...(row.type !== undefined ? { type: row.type } : {}),
+              ...(row.objective !== undefined ? { objective: row.objective } : {}),
+              ...(row.audience !== undefined ? { audience: row.audience } : {}),
+              ...(row.plannedAttendees !== undefined ? { plannedAttendees: row.plannedAttendees } : {}),
+              ...(row.modality !== undefined ? { modality: row.modality } : {}),
+              ...(row.responsible !== undefined ? { responsible: row.responsible } : {}),
+              ...(row.plannedDate !== undefined ? { plannedDate: new Date(row.plannedDate) } : {}),
+              ...(row.completed !== undefined ? { completed: row.completed } : {}),
+              ...(row.conductedDate !== undefined ? { conductedDate: new Date(row.conductedDate) } : {}),
+              ...(row.actualAttendees !== undefined ? { actualAttendees: row.actualAttendees } : {}),
+              ...(row.plannedAttendees !== undefined || row.actualAttendees !== undefined
+                ? { attendancePercentage: effectivePlanned > 0 ? Math.round((effectiveActual / effectivePlanned) * 100) : 0 }
+                : {}),
+              updatedAt: new Date(),
             };
-          })
-        );
-        return { inserted: input.rows.length };
+            await db.update(companyTrainings).set(updateData).where(eq(companyTrainings.id, target.id));
+            updated += 1;
+            continue;
+          }
+
+          const planned = row.plannedAttendees ?? 0;
+          const actual = row.actualAttendees ?? 0;
+          const attendance = planned > 0 ? Math.round((actual / planned) * 100) : 0;
+          await db.insert(companyTrainings).values({
+            companyId: input.companyId,
+            name: row.name,
+            type: row.type || "Mandatoria",
+            objective: row.objective || null,
+            audience: row.audience || null,
+            plannedAttendees: planned,
+            modality: row.modality || "Presencial",
+            responsible: row.responsible || null,
+            plannedDate: row.plannedDate ? new Date(row.plannedDate) : null,
+            completed: row.completed || null,
+            conductedDate: row.conductedDate ? new Date(row.conductedDate) : null,
+            actualAttendees: actual,
+            attendancePercentage: attendance,
+          });
+          inserted += 1;
+        }
+        return { inserted, updated };
       }),
   }),
 
