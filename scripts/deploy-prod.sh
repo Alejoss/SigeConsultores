@@ -16,11 +16,20 @@ fi
 # shellcheck source=scripts/load-env-file.sh
 . "${ROOT}/scripts/load-env-file.sh"
 
-# Workflow/CD may export APP_IMAGE (commit sha) before this script runs.
+# Workflow/CD puede enviar la imagen y las credenciales vigentes antes de ejecutar este script.
+# Se conservan para que una copia antigua en .env.production no las sobrescriba.
 _SAVED_APP_IMAGE="${APP_IMAGE:-}"
+_SAVED_GHCR_USERNAME="${GHCR_USERNAME:-}"
+_SAVED_GHCR_TOKEN="${GHCR_TOKEN:-}"
 load_env_file_keys "$ENV_FILE" APP_IMAGE GHCR_USERNAME GHCR_TOKEN
 if [ -n "$_SAVED_APP_IMAGE" ]; then
   export APP_IMAGE="$_SAVED_APP_IMAGE"
+fi
+if [ -n "$_SAVED_GHCR_USERNAME" ]; then
+  export GHCR_USERNAME="$_SAVED_GHCR_USERNAME"
+fi
+if [ -n "$_SAVED_GHCR_TOKEN" ]; then
+  export GHCR_TOKEN="$_SAVED_GHCR_TOKEN"
 fi
 
 if [ -z "${APP_IMAGE:-}" ]; then
