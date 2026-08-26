@@ -505,7 +505,8 @@ export default function ProcessIndicators() {
   const cumplimientosData = indicatorsData?.find((d: any) => d.id === "promedio_cumplimiento");
 
   const oteValue = oteData?.value ?? 0;
-  const otgValue = otgData ? Math.round((otgData.value / Math.max(otgData.otgRows?.length || 1, 1)) * 100) : 0;
+  // El porcentaje OTG procede del avance real de tareas; "Logrado" sólo es un estado informativo.
+  const otgValue = otgData?.compliance ?? 0;
   const partesValue = partesData?.value ?? 0;
   const cumplimientosValue = cumplimientosData?.value ?? 0;
 
