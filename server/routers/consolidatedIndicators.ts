@@ -95,9 +95,7 @@ export const consolidatedIndicatorsRouter = router({
             try {
               const matrixRows = JSON.parse(latestFoda.matrixData);
               if (Array.isArray(matrixRows)) {
-                const implemented = matrixRows.filter((row: any) => row.objetivoLogrado === "SI").length;
                 const communicated = matrixRows.filter((row: any) => row.comunicado === "SI").length;
-                matrizAlcanzado = implemented;
                 matrizComunicado = matrixRows.length > 0 ? Math.round((communicated / matrixRows.length) * 100) : 0;
 
                 // Construir detalle por OTG y calcular su avance exclusivamente desde tareas.
@@ -138,12 +136,15 @@ export const consolidatedIndicatorsRouter = router({
                     pctOTG = acciones.reduce((s: number, a: any) => s + (parseFloat(a.alcanzado) || 0), 0) / acciones.length;
                   }
 
+                  const pctOTGRedondeado = Math.round(pctOTG);
+                  // Un OTG sólo está logrado si tiene tareas y todas alcanzan el 100 % real.
+                  const objetivoLogrado = acciones.length > 0 && pctOTGRedondeado >= 100;
                   return {
                     id: row.id || String(Math.random()),
                     name: row.accionATomar || row.name || "OTG sin nombre",
-                    pctOTG: Math.round(pctOTG),
+                    pctOTG: pctOTGRedondeado,
                     comunicado: row.comunicado === "SI",
-                    objetivoLogrado: row.objetivoLogrado === "SI",
+                    objetivoLogrado,
                     tareas: acciones.map((a: any) => ({
                       id: a.id || String(Math.random()),
                       description: a.accion || a.description || "Sin descripción",
@@ -155,6 +156,7 @@ export const consolidatedIndicatorsRouter = router({
                 matrizCumplimiento = otgRows.length > 0
                   ? Math.round(otgRows.reduce((sum, otg) => sum + otg.pctOTG, 0) / otgRows.length)
                   : 0;
+                matrizAlcanzado = otgRows.filter((otg) => otg.objetivoLogrado).length;
               }
             } catch (e) {
               console.error("Error parsing FODA matrix data:", e);
