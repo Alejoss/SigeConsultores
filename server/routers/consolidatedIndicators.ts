@@ -78,7 +78,10 @@ export const consolidatedIndicatorsRouter = router({
         const fodaData = await db.select().from(processFODA)
           .where(eq(processFODA.processId, input.processId));
 
+        // El estado "objetivoLogrado" se conserva como conteo informativo.
+        // El cumplimiento del OTG se calcula exclusivamente desde el avance de sus tareas.
         let matrizAlcanzado = 0;
+        let matrizCumplimiento = 0;
         let matrizComunicado = 0;
         let otgRows: any[] = [];
 
@@ -97,7 +100,7 @@ export const consolidatedIndicatorsRouter = router({
                 matrizAlcanzado = implemented;
                 matrizComunicado = matrixRows.length > 0 ? Math.round((communicated / matrixRows.length) * 100) : 0;
 
-                // Construir detalle por OTG
+                // Construir detalle por OTG y calcular su avance exclusivamente desde tareas.
                 otgRows = matrixRows.map((row: any) => {
                   const acciones: any[] = Array.isArray(row.acciones) ? row.acciones : [];
                   const totalPonderacion = acciones.reduce((s: number, a: any) => s + (a.ponderacion || 0), 0);
@@ -149,6 +152,9 @@ export const consolidatedIndicatorsRouter = router({
                     })),
                   };
                 });
+                matrizCumplimiento = otgRows.length > 0
+                  ? Math.round(otgRows.reduce((sum, otg) => sum + otg.pctOTG, 0) / otgRows.length)
+                  : 0;
               }
             } catch (e) {
               console.error("Error parsing FODA matrix data:", e);
@@ -311,6 +317,7 @@ export const consolidatedIndicatorsRouter = router({
             indicator: "Total alcanzado",
             value: matrizAlcanzado,
             performance: matrizAlcanzado,
+            compliance: matrizCumplimiento,
             otgRows,
           },
           {
