@@ -81,7 +81,9 @@ export const accountRoles = mysqlTable(
     companyId: int("companyId").notNull().default(0),
     processId: int("processId").notNull().default(0),
     /** Estado reversible de esta asignación, independiente de la cuenta global. */
-    status: mysqlEnum("status", ["active", "suspended"]).default("active").notNull(),
+    status: mysqlEnum("status", ["active", "suspended"])
+      .default("active")
+      .notNull(),
     suspendedAt: timestamp("suspendedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
@@ -1709,6 +1711,168 @@ export type InsertManagementSystemFile =
   typeof managementSystemFiles.$inferInsert;
 
 /**
+ * Ítems operativos de un checklist de Sistema de Gestión. Los archivos Excel/PDF
+ * originales se conservan en managementSystemFiles como respaldo documental.
+ */
+export const managementSystemChecklistItems = mysqlTable(
+  "managementSystemChecklistItems",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    managementSystemId: int("managementSystemId").notNull(),
+    companyId: int("companyId").notNull(),
+    importKey: varchar("importKey", { length: 255 }).notNull(),
+    standardCode: varchar("standardCode", { length: 120 }),
+    standardName: varchar("standardName", { length: 500 }).notNull(),
+    // Las cláusulas y requisitos de certificación pueden contener textos extensos.
+    description: longtext("description"),
+    verificationMode: mysqlEnum("verificationMode", [
+      "vigencia",
+      "planificacion",
+      "ambas",
+    ])
+      .default("planificacion")
+      .notNull(),
+    applicable: boolean("applicable").default(true).notNull(),
+    notApplicableReason: text("notApplicableReason"),
+    validFrom: date("validFrom"),
+    validUntil: date("validUntil"),
+    responsible: varchar("responsible", { length: 255 }),
+    orderIndex: int("orderIndex").notNull().default(0),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  }
+);
+export type ManagementSystemChecklistItem =
+  typeof managementSystemChecklistItems.$inferSelect;
+export type InsertManagementSystemChecklistItem =
+  typeof managementSystemChecklistItems.$inferInsert;
+
+/**
+ * Acciones de implementación para un estándar de checklist. Un estándar puede
+ * requerir varias acciones sin perder su seguimiento anterior.
+ */
+export const managementSystemChecklistActions = mysqlTable(
+  "managementSystemChecklistActions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    checklistItemId: int("checklistItemId").notNull(),
+    action: text("action").notNull(),
+    responsible: varchar("responsible", { length: 255 }),
+    implementationDate: date("implementationDate"),
+    completed: boolean("completed").default(false).notNull(),
+    completedAt: timestamp("completedAt"),
+    orderIndex: int("orderIndex").notNull().default(0),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  }
+);
+export type ManagementSystemChecklistAction =
+  typeof managementSystemChecklistActions.$inferSelect;
+export type InsertManagementSystemChecklistAction =
+  typeof managementSystemChecklistActions.$inferInsert;
+
+/**
+ * Compromisos que una fuente empresarial asigna a uno o más procesos. Cada fila
+ * corresponde a un proceso destino, lo que permite exigir el cierre de todos
+ * antes de sincronizar el resultado al registro de origen.
+ */
+export const linkedCommitments = mysqlTable(
+  "linkedCommitments",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    processId: int("processId").notNull(),
+    sourceType: mysqlEnum("sourceType", [
+      "checklist_action",
+      "checklist_vigency",
+      "program_action",
+      "company_compliance",
+      "own",
+    ]).notNull(),
+    // Las actividades propias no tienen fuente y mantienen ambos valores nulos.
+    sourceId: int("sourceId"),
+    sourceSubId: int("sourceSubId"),
+    kind: mysqlEnum("kind", ["action", "vigency", "own"]).notNull(),
+    title: varchar("title", { length: 500 }).notNull(),
+    description: text("description"),
+    dueDate: date("dueDate"),
+    referenceResponsible: varchar("referenceResponsible", { length: 255 }),
+    status: mysqlEnum("status", ["pending", "completed"])
+      .notNull()
+      .default("pending"),
+    completedAt: timestamp("completedAt"),
+    renewedValidFrom: date("renewedValidFrom"),
+    renewedValidUntil: date("renewedValidUntil"),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    uniqueLinkedCommitmentSourceProcess: unique(
+      "linked_commitment_source_process_unique"
+    ).on(
+      table.companyId,
+      table.processId,
+      table.sourceType,
+      table.sourceId,
+      table.sourceSubId
+    ),
+  })
+);
+export type LinkedCommitment = typeof linkedCommitments.$inferSelect;
+export type InsertLinkedCommitment = typeof linkedCommitments.$inferInsert;
+
+/** Evidencias adjuntas por el Jefe de Proceso a un compromiso asignado. */
+export const linkedCommitmentEvidence = mysqlTable("linkedCommitmentEvidence", {
+  id: int("id").autoincrement().primaryKey(),
+  linkedCommitmentId: int("linkedCommitmentId").notNull(),
+  companyId: int("companyId").notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileKey: varchar("fileKey", { length: 1024 }).notNull(),
+  fileUrl: varchar("fileUrl", { length: 1024 }).notNull(),
+  mimeType: varchar("mimeType", { length: 255 }).notNull(),
+  fileSizeBytes: int("fileSizeBytes").default(0).notNull(),
+  uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+});
+export type LinkedCommitmentEvidence =
+  typeof linkedCommitmentEvidence.$inferSelect;
+export type InsertLinkedCommitmentEvidence =
+  typeof linkedCommitmentEvidence.$inferInsert;
+
+/**
+ * Acciones estructuradas de Programas. Sus contadores manuales anteriores se
+ * preservan para los programas que todavía no tienen actividades detalladas.
+ */
+export const programActions = mysqlTable(
+  "programActions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    programId: int("programId").notNull(),
+    companyId: int("companyId").notNull(),
+    // Sólo las filas provenientes de Excel reciben clave. Las acciones manuales
+    // conservan NULL y continúan permitiendo textos similares si se requieren.
+    importKey: varchar("importKey", { length: 512 }),
+    action: text("action").notNull(),
+    responsible: varchar("responsible", { length: 255 }),
+    implementationDate: date("implementationDate"),
+    completed: boolean("completed").notNull().default(false),
+    completedAt: timestamp("completedAt"),
+    orderIndex: int("orderIndex").notNull().default(0),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    uniqueProgramActionImport: unique("program_action_import_scope").on(
+      table.companyId,
+      table.programId,
+      table.importKey
+    ),
+  })
+);
+export type ProgramAction = typeof programActions.$inferSelect;
+export type InsertProgramAction = typeof programActions.$inferInsert;
+
+/**
  * Control de Auditorías — una fila por auditoría realizada.
  */
 export const audits = mysqlTable("audits", {
@@ -1847,7 +2011,8 @@ export const managementProgramFiles = mysqlTable("managementProgramFiles", {
   uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
 });
 export type ManagementProgramFile = typeof managementProgramFiles.$inferSelect;
-export type InsertManagementProgramFile = typeof managementProgramFiles.$inferInsert;
+export type InsertManagementProgramFile =
+  typeof managementProgramFiles.$inferInsert;
 
 /**
  * Stakeholder Surveys - Registra encuestas aplicadas a partes interesadas

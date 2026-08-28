@@ -4,7 +4,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
-import { Loader2, Plus, Trash2, Upload, Eye, ArrowLeft } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  Upload,
+  Eye,
+  ArrowLeft,
+  ClipboardCheck,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
@@ -39,8 +47,11 @@ function FileModal({
           <p className="text-slate-500 text-sm">No hay archivos subidos aún.</p>
         ) : (
           <ul className="space-y-2">
-            {files.map((f) => (
-              <li key={f.id} className="flex items-center justify-between gap-2 border rounded p-2">
+            {files.map(f => (
+              <li
+                key={f.id}
+                className="flex items-center justify-between gap-2 border rounded p-2"
+              >
                 <a
                   href={f.fileUrl}
                   target="_blank"
@@ -62,7 +73,9 @@ function FileModal({
           </ul>
         )}
         <div className="mt-4 flex justify-end">
-          <Button variant="outline" onClick={onClose}>Cerrar</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cerrar
+          </Button>
         </div>
       </div>
     </div>
@@ -71,8 +84,13 @@ function FileModal({
 
 export default function ManagementSystems() {
   const [, setLocation] = useLocation();
-  const { session: processLeaderSession, isLoading: plLoading } = useProcessLeaderAuth();
-  const { isManagerLogin, managerCompanyId, isLoading: managerLoading } = useManagerAuth();
+  const { session: processLeaderSession, isLoading: plLoading } =
+    useProcessLeaderAuth();
+  const {
+    isManagerLogin,
+    managerCompanyId,
+    isLoading: managerLoading,
+  } = useManagerAuth();
 
   const isAuthLoading = managerLoading || plLoading;
 
@@ -80,7 +98,9 @@ export default function ManagementSystems() {
   const companyId = useMemo<number | null>(() => {
     if (isManagerLogin && managerCompanyId) return managerCompanyId;
     if (processLeaderSession?.companyId) return processLeaderSession.companyId;
-    const stored = localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId");
+    const stored =
+      localStorage.getItem("managerCompanyId") ||
+      localStorage.getItem("selectedCompanyId");
     if (stored) return parseInt(stored, 10);
     return getCompanyIdFromLocationOrStorage();
   }, [isManagerLogin, managerCompanyId, processLeaderSession]);
@@ -91,39 +111,72 @@ export default function ManagementSystems() {
     fileType: "certification" | "checklist";
     mode: "view" | "upload";
   } | null>(null);
-  const [modalFiles, setModalFiles] = useState<{ id: number; fileName: string; fileUrl: string }[]>([]);
+  const [modalFiles, setModalFiles] = useState<
+    { id: number; fileName: string; fileUrl: string }[]
+  >([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveTimers = useRef<Record<number, NodeJS.Timeout>>({});
 
-  const { data, isLoading, refetch } = trpc.auditsInspections.listManagementSystems.useQuery(
-    { companyId: companyId! },
-    { enabled: !!companyId }
+  const { data, isLoading, refetch } =
+    trpc.auditsInspections.listManagementSystems.useQuery(
+      { companyId: companyId! },
+      { enabled: !!companyId }
+    );
+  const checklistSummariesQuery =
+    trpc.managementSystemChecklist.getChecklistSummaries.useQuery(
+      { companyId: companyId ?? 0 },
+      { enabled: !!companyId }
+    );
+  const checklistSummaryBySystem = useMemo(
+    () =>
+      new Map(
+        (checklistSummariesQuery.data || []).map(summary => [
+          summary.managementSystemId,
+          summary,
+        ])
+      ),
+    [checklistSummariesQuery.data]
   );
 
-  const createMutation = trpc.auditsInspections.createManagementSystem.useMutation({
-    onSuccess: () => refetch(),
-    onError: () => toast.error("Error al crear el sistema de gestión"),
-  });
+  const createMutation =
+    trpc.auditsInspections.createManagementSystem.useMutation({
+      onSuccess: () => refetch(),
+      onError: () => toast.error("Error al crear el sistema de gestión"),
+    });
 
-  const updateMutation = trpc.auditsInspections.updateManagementSystem.useMutation({
-    onError: () => toast.error("Error al guardar"),
-  });
+  const updateMutation =
+    trpc.auditsInspections.updateManagementSystem.useMutation({
+      onError: () => toast.error("Error al guardar"),
+    });
 
-  const deleteMutation = trpc.auditsInspections.deleteManagementSystem.useMutation({
-    onSuccess: () => { refetch(); toast.success("Eliminado correctamente"); },
-    onError: () => toast.error("Error al eliminar"),
-  });
+  const deleteMutation =
+    trpc.auditsInspections.deleteManagementSystem.useMutation({
+      onSuccess: () => {
+        refetch();
+        toast.success("Eliminado correctamente");
+      },
+      onError: () => toast.error("Error al eliminar"),
+    });
 
-  const listFilesMutation = trpc.auditsInspections.listManagementSystemFiles.useQuery(
-    { managementSystemId: modal?.systemId ?? 0, companyId: companyId ?? 0, fileType: modal?.fileType ?? "certification" },
-    { enabled: !!modal && modal.mode === "view" }
-  );
+  const listFilesMutation =
+    trpc.auditsInspections.listManagementSystemFiles.useQuery(
+      {
+        managementSystemId: modal?.systemId ?? 0,
+        companyId: companyId ?? 0,
+        fileType: modal?.fileType ?? "certification",
+      },
+      { enabled: !!modal && modal.mode === "view" }
+    );
 
-  const deleteFileMutation = trpc.auditsInspections.deleteManagementSystemFile.useMutation({
-    onSuccess: () => { listFilesMutation.refetch(); toast.success("Archivo eliminado"); },
-    onError: () => toast.error("Error al eliminar el archivo"),
-  });
+  const deleteFileMutation =
+    trpc.auditsInspections.deleteManagementSystemFile.useMutation({
+      onSuccess: () => {
+        listFilesMutation.refetch();
+        toast.success("Archivo eliminado");
+      },
+      onError: () => toast.error("Error al eliminar el archivo"),
+    });
 
   useEffect(() => {
     if (data) setRows(data as ManagementSystemRow[]);
@@ -131,13 +184,21 @@ export default function ManagementSystems() {
 
   useEffect(() => {
     if (modal?.mode === "view" && listFilesMutation.data) {
-      setModalFiles(listFilesMutation.data as { id: number; fileName: string; fileUrl: string }[]);
+      setModalFiles(
+        listFilesMutation.data as {
+          id: number;
+          fileName: string;
+          fileUrl: string;
+        }[]
+      );
     }
   }, [modal, listFilesMutation.data]);
 
   const handleFieldChange = useCallback(
     (id: number, field: "systemName" | "certification", value: string) => {
-      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
+      setRows(prev =>
+        prev.map(r => (r.id === id ? { ...r, [field]: value } : r))
+      );
       if (saveTimers.current[id]) clearTimeout(saveTimers.current[id]);
       saveTimers.current[id] = setTimeout(() => {
         updateMutation.mutate({ id, companyId: companyId!, [field]: value });
@@ -152,16 +213,23 @@ export default function ManagementSystems() {
   };
 
   const handleDelete = (id: number) => {
-    if (!confirm("¿Eliminar este sistema de gestión y todos sus archivos?")) return;
+    if (!confirm("¿Eliminar este sistema de gestión y todos sus archivos?"))
+      return;
     deleteMutation.mutate({ id, companyId: companyId! });
   };
 
-  const handleUploadClick = (systemId: number, fileType: "certification" | "checklist") => {
+  const handleUploadClick = (
+    systemId: number,
+    fileType: "certification" | "checklist"
+  ) => {
     setModal({ systemId, fileType, mode: "upload" });
     setTimeout(() => fileInputRef.current?.click(), 100);
   };
 
-  const handleViewClick = (systemId: number, fileType: "certification" | "checklist") => {
+  const handleViewClick = (
+    systemId: number,
+    fileType: "certification" | "checklist"
+  ) => {
     setModal({ systemId, fileType, mode: "view" });
   };
 
@@ -195,13 +263,18 @@ export default function ManagementSystems() {
         method: "POST",
         body: formData,
       });
-      const result = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      const result = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
       if (!response.ok || !result?.ok) {
         throw new Error(result?.error || "Error al subir el archivo");
       }
       toast.success("Archivo subido correctamente");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error al subir el archivo");
+      toast.error(
+        error instanceof Error ? error.message : "Error al subir el archivo"
+      );
     } finally {
       setIsUploading(false);
       setModal(null);
@@ -223,7 +296,11 @@ export default function ManagementSystems() {
   if (!companyId) {
     return (
       <DashboardLayout>
-        <Card><CardContent className="pt-6"><Loader2 className="animate-spin" /></CardContent></Card>
+        <Card>
+          <CardContent className="pt-6">
+            <Loader2 className="animate-spin" />
+          </CardContent>
+        </Card>
       </DashboardLayout>
     );
   }
@@ -244,16 +321,23 @@ export default function ManagementSystems() {
             >
               <ArrowLeft size={16} className="mr-1" /> Volver
             </Button>
-            <h1 className="text-xl font-bold text-slate-800">Sistema de Gestión</h1>
+            <h1 className="text-xl font-bold text-slate-800">
+              Sistema de Gestión
+            </h1>
           </div>
         </div>
 
         {isLoading ? (
-          <div className="flex items-center gap-2 text-slate-500"><Loader2 className="animate-spin" size={18} /> Cargando...</div>
+          <div className="flex items-center gap-2 text-slate-500">
+            <Loader2 className="animate-spin" size={18} /> Cargando...
+          </div>
         ) : (
           <div className="space-y-4">
-            {rows.map((row) => (
-              <Card key={row.id} className="border-2 border-teal-200 bg-teal-50">
+            {rows.map(row => (
+              <Card
+                key={row.id}
+                className="border-2 border-teal-200 bg-teal-50"
+              >
                 <CardContent className="pt-5 pb-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
@@ -262,7 +346,13 @@ export default function ManagementSystems() {
                       </label>
                       <Input
                         value={row.systemName}
-                        onChange={(e) => handleFieldChange(row.id, "systemName", e.target.value)}
+                        onChange={e =>
+                          handleFieldChange(
+                            row.id,
+                            "systemName",
+                            e.target.value
+                          )
+                        }
                         placeholder="Nombre del sistema..."
                         className="border-teal-200 focus:border-teal-400"
                       />
@@ -273,14 +363,61 @@ export default function ManagementSystems() {
                       </label>
                       <Input
                         value={row.certification}
-                        onChange={(e) => handleFieldChange(row.id, "certification", e.target.value)}
+                        onChange={e =>
+                          handleFieldChange(
+                            row.id,
+                            "certification",
+                            e.target.value
+                          )
+                        }
                         placeholder="Nombre de la certificación..."
                         className="border-teal-200 focus:border-teal-400"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-teal-200 bg-white/70 px-3 py-2">
+                    {(() => {
+                      const summary = checklistSummaryBySystem.get(row.id);
+                      return summary && summary.total > 0 ? (
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-teal-100 px-2 py-1 font-semibold text-teal-800">
+                            <ClipboardCheck size={13} /> Implementación:{" "}
+                            {summary.percentage}%
+                          </span>
+                          <span className="text-slate-600">
+                            {summary.compliant} de {summary.applicable}{" "}
+                            estándares cumplidos
+                          </span>
+                          {(summary.pending > 0 || summary.expired > 0) && (
+                            <span className="font-medium text-amber-700">
+                              {summary.expired > 0
+                                ? `${summary.expired} vencidos`
+                                : `${summary.pending} pendientes`}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500">
+                          Aún no hay checklist operativo importado.
+                        </p>
+                      );
+                    })()}
+                    <Button
+                      size="sm"
+                      className="bg-teal-700 text-xs hover:bg-teal-800"
+                      onClick={() =>
+                        setLocation(
+                          `/audits-inspections/management-systems/checklist?managementSystemId=${row.id}&companyId=${companyId}`
+                        )
+                      }
+                    >
+                      <ClipboardCheck size={13} className="mr-1" />
+                      Trabajar sobre checklist
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -288,7 +425,8 @@ export default function ManagementSystems() {
                       onClick={() => handleUploadClick(row.id, "certification")}
                       disabled={isUploading}
                     >
-                      <Upload size={13} className="mr-1" /> Subir Archivos de Certificación
+                      <Upload size={13} className="mr-1" /> Subir archivo de
+                      certificación
                     </Button>
                     <Button
                       variant="outline"
@@ -296,7 +434,8 @@ export default function ManagementSystems() {
                       className="border-teal-300 text-teal-700 hover:bg-teal-50 text-xs"
                       onClick={() => handleViewClick(row.id, "certification")}
                     >
-                      <Eye size={13} className="mr-1" /> Ver Archivos de Certificación
+                      <Eye size={13} className="mr-1" /> Ver archivo de
+                      certificación
                     </Button>
                     <Button
                       variant="outline"
@@ -305,7 +444,8 @@ export default function ManagementSystems() {
                       onClick={() => handleUploadClick(row.id, "checklist")}
                       disabled={isUploading}
                     >
-                      <Upload size={13} className="mr-1" /> Subir Check List de Auditoría
+                      <Upload size={13} className="mr-1" /> Subir checklist de
+                      certificación
                     </Button>
                     <Button
                       variant="outline"
@@ -313,7 +453,8 @@ export default function ManagementSystems() {
                       className="border-teal-300 text-teal-700 hover:bg-teal-50 text-xs"
                       onClick={() => handleViewClick(row.id, "checklist")}
                     >
-                      <Eye size={13} className="mr-1" /> Ver Check List de Auditoría
+                      <Eye size={13} className="mr-1" /> Ver checklist de
+                      certificación
                     </Button>
                   </div>
 
@@ -337,7 +478,11 @@ export default function ManagementSystems() {
               onClick={handleAdd}
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? <Loader2 size={16} className="animate-spin mr-2" /> : <Plus size={16} className="mr-2" />}
+              {createMutation.isPending ? (
+                <Loader2 size={16} className="animate-spin mr-2" />
+              ) : (
+                <Plus size={16} className="mr-2" />
+              )}
               + Agregar nuevo Sistema de Gestión
             </Button>
           </div>
@@ -355,10 +500,16 @@ export default function ManagementSystems() {
         {/* File View Modal */}
         {modal?.mode === "view" && (
           <FileModal
-            title={modal.fileType === "certification" ? "Archivos de Certificación" : "Check Lists de Auditoría"}
+            title={
+              modal.fileType === "certification"
+                ? "Archivos de certificación"
+                : "Checklists de certificación"
+            }
             files={modalFiles}
             onClose={() => setModal(null)}
-            onDelete={(id) => deleteFileMutation.mutate({ id, companyId: companyId! })}
+            onDelete={id =>
+              deleteFileMutation.mutate({ id, companyId: companyId! })
+            }
           />
         )}
       </div>

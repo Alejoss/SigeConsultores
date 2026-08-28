@@ -88,6 +88,8 @@ import AxisEstrategia from "./pages/AxisEstrategia";
 import AxisGestion from "./pages/AxisGestion";
 import AxisDesempeno from "./pages/AxisDesempeno";
 import ManagementSystems from "./pages/ManagementSystems";
+import ManagementSystemChecklist from "./pages/ManagementSystemChecklist";
+import LinkedCommitments from "./pages/LinkedCommitments";
 import ManagementPrograms from "./pages/ManagementPrograms";
 import AuditControl from "./pages/AuditControl";
 import InspectionControl from "./pages/InspectionControl";
@@ -110,7 +112,9 @@ function RootRedirect() {
       }
 
       try {
-        const res = await fetch("/api/auth/session/me", { credentials: "include" });
+        const res = await fetch("/api/auth/session/me", {
+          credentials: "include",
+        });
         const data = (await res.json()) as
           | { authenticated: true; kind: "process_leader"; processId: number }
           | { authenticated: true; kind: "company_manager" }
@@ -142,7 +146,7 @@ function RootRedirect() {
       cancelled = true;
     };
   }, [setLocation]);
-  
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="text-center">
@@ -162,14 +166,21 @@ function Router() {
       <Route path={"/company-info"} component={CompanyInfo} />
       <Route path={"/values"} component={Values} />
       <Route path={"/process-map"} component={ProcessMap} />
-      <Route path={"/process-characterization"} component={ProcessCharacterization} />
+      <Route
+        path={"/process-characterization"}
+        component={ProcessCharacterization}
+      />
       <Route path={"/subprocess-map"} component={SubprocessMap} />
       <Route path={"/policy"} component={Policy} />
       <Route path={"/policy-objectives"} component={PolicyObjectives} />
       <Route path={"/flowchart"} component={Flowchart} />
       <Route path={"/process-participants"} component={ProcessParticipants} />
       <Route path={"/process-resources"} component={ProcessResources} />
-      <Route path={"/process-planning-cycles"} component={ProcessPlanningCycles} />
+      <Route
+        path={"/process-planning-cycles"}
+        component={ProcessPlanningCycles}
+      />
+      <Route path={"/linked-commitments"} component={LinkedCommitments} />
       <Route path={"/404"} component={NotFound} />
       <Route path={"/indicators"} component={Indicators} />
       <Route path={"/criticality-matrix"} component={CriticalityMatrix} />
@@ -182,10 +193,16 @@ function Router() {
       <Route path={"/consolidated-schedule"} component={ConsolidatedSchedule} />
       <Route path={"/company"} component={Company} />
       <Route path={"/strategic-objectives"} component={StrategicObjectives} />
-      <Route path={"/process-stakeholder-criticality"} component={ProcessStakeholderCriticality} />
+      <Route
+        path={"/process-stakeholder-criticality"}
+        component={ProcessStakeholderCriticality}
+      />
       <Route path={"/process-foda"} component={ProcessFODA} />
       <Route path={"/process-risk-matrix"} component={ProcessRiskMatrix} />
-      <Route path={"/process-tactical-objectives"} component={ProcessTacticalObjectives} />
+      <Route
+        path={"/process-tactical-objectives"}
+        component={ProcessTacticalObjectives}
+      />
       <Route path={"/tactical-definition"} component={TacticalDefinition} />
       <Route path={"/tactical-planning"} component={TacticalPlanning} />
       <Route path={"/process-compliances"} component={ProcessCompliances} />
@@ -197,15 +214,33 @@ function Router() {
       <Route path={"/setup-password"} component={SetupManagerPassword} />
       <Route path={"/change-password"} component={ChangePassword} />
       <Route path={"/forgot-password"} component={ForgotPassword} />
-      <Route path={"/setup-process-leader-password"} component={SetupProcessLeaderPassword} />
-      <Route path={"/setup-process-leader-pin"} component={SetupProcessLeaderPIN} />
-      <Route path={"/reset-process-leader-pin"} component={ResetProcessLeaderPIN} />
+      <Route
+        path={"/setup-process-leader-password"}
+        component={SetupProcessLeaderPassword}
+      />
+      <Route
+        path={"/setup-process-leader-pin"}
+        component={SetupProcessLeaderPIN}
+      />
+      <Route
+        path={"/reset-process-leader-pin"}
+        component={ResetProcessLeaderPIN}
+      />
       <Route path={"/admin-dashboard"} component={AdminDashboard} />
-      <Route path={"/request-access-protected"} component={RequestCompanyAccessProtected} />
+      <Route
+        path={"/request-access-protected"}
+        component={RequestCompanyAccessProtected}
+      />
       <Route path={"/debug-user-info"} component={DebugUserInfo} />
       <Route path={"/process-dashboard"} component={ProcessDashboard} />
-      <Route path={"/process-leader-pin-recovery"} component={ProcessLeaderPINRecovery} />
-      <Route path={"/process-leader-dashboard"} component={ProcessLeaderDashboard} />
+      <Route
+        path={"/process-leader-pin-recovery"}
+        component={ProcessLeaderPINRecovery}
+      />
+      <Route
+        path={"/process-leader-dashboard"}
+        component={ProcessLeaderDashboard}
+      />
       <Route path={"/access-denied"} component={AccessDenied} />
       <Route path={"/setup-company"} component={SetupCompany} />
       <Route path={"/customize-modules"} component={ModuleCustomizationPanel} />
@@ -213,22 +248,46 @@ function Router() {
       <Route path={"/manager-company-admin"} component={ManagerCompanyAdmin} />
       <Route path={"/admin-jefes"} component={AdminJefes} />
       <Route path={"/admin-storage"} component={AdminStorage} />
-      <Route path={"/process-owner-invitation"} component={ProcessOwnerInvitationAccept} />
+      <Route
+        path={"/process-owner-invitation"}
+        component={ProcessOwnerInvitationAccept}
+      />
       <Route path={"/policy-documents"} component={PolicyDocuments} />
       <Route path={"/values-documents"} component={ValuesDocuments} />
-      <Route path={"/strategic-objectives-documents"} component={StrategicObjectivesDocuments} />
-      <Route path={"/forgot-password-manager"} component={ForgotPasswordManager} />
+      <Route
+        path={"/strategic-objectives-documents"}
+        component={StrategicObjectivesDocuments}
+      />
+      <Route
+        path={"/forgot-password-manager"}
+        component={ForgotPasswordManager}
+      />
       <Route path={"/manager-access"} component={ManagerAccess} />
       <Route path={"/manager-dashboard"} component={ManagerDashboard} />
       <Route path={"/manager-team-access"} component={ManagerTeamAccess} />
-      <Route path={"/process-leader-profile"} component={ProcessLeaderProfile} />
+      <Route
+        path={"/process-leader-profile"}
+        component={ProcessLeaderProfile}
+      />
       <Route path={"/manager-confirmation"} component={ManagerConfirmation} />
-      <Route path={"/manager-access-success"} component={ManagerAccessSuccess} />
-      <Route path={"/process-leader-access-success"} component={ProcessLeaderAccessSuccess} />
-      <Route path={"/process-leader-invitation-link"} component={ProcessLeaderInvitationLink} />
+      <Route
+        path={"/manager-access-success"}
+        component={ManagerAccessSuccess}
+      />
+      <Route
+        path={"/process-leader-access-success"}
+        component={ProcessLeaderAccessSuccess}
+      />
+      <Route
+        path={"/process-leader-invitation-link"}
+        component={ProcessLeaderInvitationLink}
+      />
       <Route path={"/manager-edit-profile"} component={ManagerEditProfile} />
       <Route path={"/organization-chart"} component={OrganizationChart} />
-      <Route path={"/organization-chart/view"} component={OrganizationChartView} />
+      <Route
+        path={"/organization-chart/view"}
+        component={OrganizationChartView}
+      />
       <Route path={"/payroll"} component={Payroll} />
       <Route path={"/payroll-inactive"} component={PayrollInactive} />
       <Route path={"/performance"} component={Performance} />
@@ -237,10 +296,23 @@ function Router() {
       <Route path={"/axis-gestion"} component={AxisGestion} />
       <Route path={"/axis-desempeno"} component={AxisDesempeno} />
       <Route path={"/audits-inspections"} component={AuditsInspections} />
-      <Route path={"/audits-inspections/management-systems"} component={ManagementSystems} />
-      <Route path={"/audits-inspections/programs"} component={ManagementPrograms} />
+      <Route
+        path={"/audits-inspections/management-systems"}
+        component={ManagementSystems}
+      />
+      <Route
+        path={"/audits-inspections/management-systems/checklist"}
+        component={ManagementSystemChecklist}
+      />
+      <Route
+        path={"/audits-inspections/programs"}
+        component={ManagementPrograms}
+      />
       <Route path={"/audits-inspections/audits"} component={AuditControl} />
-      <Route path={"/audits-inspections/inspections"} component={InspectionControl} />
+      <Route
+        path={"/audits-inspections/inspections"}
+        component={InspectionControl}
+      />
 
       <Route path={"/home"} component={Home} />
       <Route path={"/404"} component={NotFound} />
@@ -266,4 +338,3 @@ function App() {
 }
 
 export default App;
-

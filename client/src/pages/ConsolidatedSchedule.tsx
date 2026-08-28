@@ -4,13 +4,31 @@ import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Clock, CalendarDays, HelpCircle, BarChart2 } from "lucide-react";
-import { SimpleGanttChart, SimpleGanttActivity } from "@/components/SimpleGanttChart";
+import {
+  ChevronLeft,
+  ChevronRight,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  CalendarDays,
+  HelpCircle,
+  BarChart2,
+} from "lucide-react";
+import {
+  SimpleGanttChart,
+  SimpleGanttActivity,
+} from "@/components/SimpleGanttChart";
 import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
 
 interface ScheduleActivity {
   id: string;
-  type: "stakeholder" | "foda" | "objective" | "compliance" | "training";
+  type:
+    | "stakeholder"
+    | "foda"
+    | "objective"
+    | "compliance"
+    | "training"
+    | "linked_commitment";
   element: string;
   action: string;
   dueDate: Date | string;
@@ -23,8 +41,18 @@ interface ScheduleActivity {
 }
 
 const MONTHS = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
 ];
 
 function IcsHelpTooltip() {
@@ -46,11 +74,23 @@ function IcsHelpTooltip() {
         <div className="absolute right-0 top-6 z-50 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs text-gray-700">
           <p className="font-semibold text-gray-900 mb-2">¿Cómo importar?</p>
           <ol className="space-y-1 list-decimal list-inside">
-            <li>Descarga el archivo <span className="font-medium">.ics</span></li>
-            <li>Abre <span className="font-medium">Google Calendar</span> → Configuración → Importar y exportar → Importar</li>
-            <li>Selecciona el archivo descargado y haz clic en <span className="font-medium">Importar</span></li>
+            <li>
+              Descarga el archivo <span className="font-medium">.ics</span>
+            </li>
+            <li>
+              Abre <span className="font-medium">Google Calendar</span> →
+              Configuración → Importar y exportar → Importar
+            </li>
+            <li>
+              Selecciona el archivo descargado y haz clic en{" "}
+              <span className="font-medium">Importar</span>
+            </li>
           </ol>
-          <p className="mt-2 text-gray-500">También funciona con Outlook, Apple Calendar y cualquier app de calendario estándar. Al reimportar, los eventos existentes se actualizan sin duplicarse.</p>
+          <p className="mt-2 text-gray-500">
+            También funciona con Outlook, Apple Calendar y cualquier app de
+            calendario estándar. Al reimportar, los eventos existentes se
+            actualizan sin duplicarse.
+          </p>
         </div>
       )}
     </div>
@@ -61,10 +101,10 @@ export default function ConsolidatedSchedule() {
   const [, navigate] = useLocation();
   const searchParams = useSearch();
   const { session: processLeaderSession } = useProcessLeaderAuth();
-  
+
   // Resolve processId from query params, ProcessLeader context, or localStorage
   let resolvedProcessId = 0;
-  
+
   // 1. Check query params (?processId=123)
   const queryParams = new URLSearchParams(searchParams);
   const queryProcessId = queryParams.get("processId");
@@ -80,54 +120,63 @@ export default function ConsolidatedSchedule() {
     const selectedProcessId = localStorage.getItem("selectedProcessId");
     resolvedProcessId = selectedProcessId ? parseInt(selectedProcessId) : 0;
   }
-  
+
   const processId = resolvedProcessId;
 
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [showGantt, setShowGantt] = useState(false);
 
-  const { data: consolidatedData, isLoading } = trpc.consolidatedSchedule.getConsolidatedSchedule.useQuery(
-    { processId },
-    { 
-      enabled: processId > 0,
-      staleTime: 0,
-      gcTime: 0,
-      refetchOnMount: true,
-      refetchOnWindowFocus: true,
-    }
-  );
+  const { data: consolidatedData, isLoading } =
+    trpc.consolidatedSchedule.getConsolidatedSchedule.useQuery(
+      { processId },
+      {
+        enabled: processId > 0,
+        staleTime: 0,
+        gcTime: 0,
+        refetchOnMount: true,
+        refetchOnWindowFocus: true,
+      }
+    );
 
   // Normalize badges directly from fresh server data
   const activities = useMemo(() => {
     if (!consolidatedData) return [];
     return (consolidatedData as ScheduleActivity[]).map(a => ({
       ...a,
-      badge: a.type === "objective" ? "OTE" :
-             a.type === "compliance" ? "Cumplimientos" :
-             a.type === "stakeholder" ? "Gestión con Partes Interesadas" :
-             a.badge,
+      badge:
+        a.type === "objective"
+          ? "OTE"
+          : a.type === "compliance"
+            ? "Cumplimientos"
+            : a.type === "stakeholder"
+              ? "Gestión con Partes Interesadas"
+              : a.badge,
     }));
   }, [consolidatedData]);
 
   // ─── Convertir actividades a SimpleGanttActivity ───────────────────────────
   const ganttActivities: SimpleGanttActivity[] = useMemo(() => {
     if (!activities || activities.length === 0) return [];
-    return activities.map(a => {
-      const raw = a.dueDate;
-      const date = typeof raw === 'string'
-        ? new Date(raw.includes('T') ? raw : raw + 'T12:00:00')
-        : new Date(raw);
-      const label = a.action.length > 50 ? a.action.slice(0, 47) + '…' : a.action;
-      return {
-        id: a.id,
-        label,
-        badge: a.badge,
-        badgeColor: a.badgeColor || '#6b7280',
-        dueDate: date,
-        completed: a.completed === 'SI',
-      } as SimpleGanttActivity;
-    }).sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+    return activities
+      .map(a => {
+        const raw = a.dueDate;
+        const date =
+          typeof raw === "string"
+            ? new Date(raw.includes("T") ? raw : raw + "T12:00:00")
+            : new Date(raw);
+        const label =
+          a.action.length > 50 ? a.action.slice(0, 47) + "…" : a.action;
+        return {
+          id: a.id,
+          label,
+          badge: a.badge,
+          badgeColor: a.badgeColor || "#6b7280",
+          dueDate: date,
+          completed: a.completed === "SI",
+        } as SimpleGanttActivity;
+      })
+      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   }, [activities]);
 
   // Filter activities by current month and year.
@@ -137,21 +186,56 @@ export default function ConsolidatedSchedule() {
   const monthActivities = activities.filter(activity => {
     // Parse date string as local date to avoid UTC offset shifting the day
     const raw = activity.dueDate;
-    const activityDate = typeof raw === 'string'
-      ? new Date(raw.includes('T') ? raw : raw + 'T12:00:00')
-      : new Date(raw);
-    return activityDate.getMonth() === currentMonth && activityDate.getFullYear() === currentYear;
+    const activityDate =
+      typeof raw === "string"
+        ? new Date(raw.includes("T") ? raw : raw + "T12:00:00")
+        : new Date(raw);
+    return (
+      activityDate.getMonth() === currentMonth &&
+      activityDate.getFullYear() === currentYear
+    );
   });
 
   // Calculate statistics
   const totalActivities = activities.length;
-  const completedActivities = activities.filter(a => a.completed === "SI").length;
-  const percentageCompleted = totalActivities > 0 ? Math.round((completedActivities / totalActivities) * 100) : 0;
+  const completedActivities = activities.filter(
+    a => a.completed === "SI"
+  ).length;
+  const percentageCompleted =
+    totalActivities > 0
+      ? Math.round((completedActivities / totalActivities) * 100)
+      : 0;
 
-  const monthCompletedActivities = monthActivities.filter(a => a.completed === "SI").length;
-  const monthPercentageCompleted = monthActivities.length > 0
-    ? Math.round((monthCompletedActivities / monthActivities.length) * 100)
-    : 0;
+  const monthCompletedActivities = monthActivities.filter(
+    a => a.completed === "SI"
+  ).length;
+  const monthPercentageCompleted =
+    monthActivities.length > 0
+      ? Math.round((monthCompletedActivities / monthActivities.length) * 100)
+      : 0;
+  // El listado principal se organiza por mes, pero este resumen evita que los
+  // compromisos de meses futuros pasen inadvertidos al Jefe de Proceso.
+  const pendingLinkedCommitments = activities
+    .filter(
+      activity =>
+        activity.type === "linked_commitment" && activity.completed === "NO"
+    )
+    .sort(
+      (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+    );
+  const nextLinkedCommitment = pendingLinkedCommitments[0];
+  const goToActivityMonth = (activity: ScheduleActivity) => {
+    const date =
+      typeof activity.dueDate === "string"
+        ? new Date(
+            activity.dueDate.includes("T")
+              ? activity.dueDate
+              : `${activity.dueDate}T12:00:00`
+          )
+        : new Date(activity.dueDate);
+    setCurrentMonth(date.getMonth());
+    setCurrentYear(date.getFullYear());
+  };
 
   const handlePreviousMonth = () => {
     if (currentMonth === 0) {
@@ -176,29 +260,37 @@ export default function ConsolidatedSchedule() {
     if (!activities || activities.length === 0) return;
 
     const escapeICS = (str: string) =>
-      (str || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+      (str || "")
+        .replace(/\\/g, "\\\\")
+        .replace(/;/g, "\\;")
+        .replace(/,/g, "\\,")
+        .replace(/\n/g, "\\n");
 
     const formatDate = (d: Date | string) => {
-      const date = typeof d === 'string'
-        ? new Date(d.includes('T') ? d : d + 'T12:00:00')
-        : new Date(d);
+      const date =
+        typeof d === "string"
+          ? new Date(d.includes("T") ? d : d + "T12:00:00")
+          : new Date(d);
       const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
       return `${y}${m}${day}`;
     };
 
     const now = new Date();
-    const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const stamp = now
+      .toISOString()
+      .replace(/[-:]/g, "")
+      .replace(/\.\d{3}/, "");
 
     const lines: string[] = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//ISGE 360//Cronograma Consolidado//ES',
-      'CALSCALE:GREGORIAN',
-      'METHOD:PUBLISH',
-      'X-WR-CALNAME:Cronograma ISGE 360',
-      'X-WR-TIMEZONE:America/Bogota',
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//ISGE 360//Cronograma Consolidado//ES",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+      "X-WR-CALNAME:Cronograma ISGE 360",
+      "X-WR-TIMEZONE:America/Bogota",
     ];
 
     activities.forEach(activity => {
@@ -208,29 +300,33 @@ export default function ConsolidatedSchedule() {
       const summary = escapeICS(`[${activity.badge}] ${activity.action}`);
       const description = escapeICS(
         `Módulo: ${activity.badge}\n` +
-        (activity.element ? `Elemento: ${activity.element}\n` : '') +
-        `Estado: ${activity.completed === 'SI' ? 'Completada' : 'Pendiente'}\n` +
-        `Seguimiento: ${activity.completionField}`
+          (activity.element ? `Elemento: ${activity.element}\n` : "") +
+          `Estado: ${activity.completed === "SI" ? "Completada" : "Pendiente"}\n` +
+          `Seguimiento: ${activity.completionField}`
       );
 
-      lines.push('BEGIN:VEVENT');
+      lines.push("BEGIN:VEVENT");
       lines.push(`UID:${uid}`);
       lines.push(`DTSTAMP:${stamp}`);
       lines.push(`DTSTART;VALUE=DATE:${dateStr}`);
       lines.push(`DTEND;VALUE=DATE:${dateStr}`);
       lines.push(`SUMMARY:${summary}`);
       lines.push(`DESCRIPTION:${description}`);
-      lines.push(`STATUS:${activity.completed === 'SI' ? 'COMPLETED' : 'NEEDS-ACTION'}`);
-      if (activity.completed === 'SI') lines.push(`COMPLETED:${stamp}`);
-      lines.push('END:VEVENT');
+      lines.push(
+        `STATUS:${activity.completed === "SI" ? "COMPLETED" : "NEEDS-ACTION"}`
+      );
+      if (activity.completed === "SI") lines.push(`COMPLETED:${stamp}`);
+      lines.push("END:VEVENT");
     });
 
-    lines.push('END:VCALENDAR');
+    lines.push("END:VCALENDAR");
 
-    const icsContent = lines.join('\r\n');
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const icsContent = lines.join("\r\n");
+    const blob = new Blob([icsContent], {
+      type: "text/calendar;charset=utf-8",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `cronograma-sige-proceso-${processId}.ics`;
     document.body.appendChild(a);
@@ -239,7 +335,9 @@ export default function ConsolidatedSchedule() {
     URL.revokeObjectURL(url);
   };
 
-  const getDaysStatus = (dueDate: Date | string): { days: number; status: "upcoming" | "overdue" | "today" } => {
+  const getDaysStatus = (
+    dueDate: Date | string
+  ): { days: number; status: "upcoming" | "overdue" | "today" } => {
     const date = new Date(dueDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -259,7 +357,14 @@ export default function ConsolidatedSchedule() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <div className="flex flex-wrap items-center gap-3"><h1 className="text-4xl font-bold text-gray-900">Cronograma Consolidado</h1><ActivePlanningCycleBadge companyId={Number(localStorage.getItem("selectedCompanyId"))} /></div>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-4xl font-bold text-gray-900">
+                Cronograma Consolidado
+              </h1>
+              <ActivePlanningCycleBadge
+                companyId={Number(localStorage.getItem("selectedCompanyId"))}
+              />
+            </div>
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
@@ -289,29 +394,69 @@ export default function ConsolidatedSchedule() {
           </div>
 
           {/* Statistics Cards */}
-          <div className="grid grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 gap-4 mb-8 lg:grid-cols-5">
             <Card className="bg-white border-l-4 border-l-slate-500">
               <CardContent className="pt-6">
-                <div className="text-sm text-gray-600 mb-1">Total de Actividades</div>
-                <div className="text-3xl font-bold text-slate-600">{totalActivities}</div>
+                <div className="text-sm text-gray-600 mb-1">
+                  Total de Actividades
+                </div>
+                <div className="text-3xl font-bold text-slate-600">
+                  {totalActivities}
+                </div>
               </CardContent>
             </Card>
             <Card className="bg-white border-l-4 border-l-green-500">
               <CardContent className="pt-6">
                 <div className="text-sm text-gray-600 mb-1">Completadas</div>
-                <div className="text-3xl font-bold text-green-600">{completedActivities}</div>
+                <div className="text-3xl font-bold text-green-600">
+                  {completedActivities}
+                </div>
               </CardContent>
             </Card>
             <Card className="bg-white border-l-4 border-l-orange-500">
               <CardContent className="pt-6">
                 <div className="text-sm text-gray-600 mb-1">Pendientes</div>
-                <div className="text-3xl font-bold text-orange-600">{totalActivities - completedActivities}</div>
+                <div className="text-3xl font-bold text-orange-600">
+                  {totalActivities - completedActivities}
+                </div>
               </CardContent>
             </Card>
             <Card className="bg-white border-l-4 border-l-blue-500">
               <CardContent className="pt-6">
-                <div className="text-sm text-gray-600 mb-1">% Cumplimiento General</div>
-                <div className="text-3xl font-bold text-blue-600">{percentageCompleted}%</div>
+                <div className="text-sm text-gray-600 mb-1">
+                  % Cumplimiento General
+                </div>
+                <div className="text-3xl font-bold text-blue-600">
+                  {percentageCompleted}%
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-l-4 border-l-teal-500 bg-teal-50">
+              <CardContent className="pt-4 pb-4">
+                <div className="text-sm font-semibold text-teal-800">
+                  Compromisos vinculados
+                </div>
+                <div className="mt-1 text-3xl font-bold text-teal-700">
+                  {pendingLinkedCommitments.length}
+                </div>
+                {nextLinkedCommitment ? (
+                  <button
+                    type="button"
+                    className="mt-1 text-left text-xs font-medium text-teal-800 underline hover:text-teal-950"
+                    onClick={() => goToActivityMonth(nextLinkedCommitment)}
+                  >
+                    Ver próximo:{" "}
+                    {typeof nextLinkedCommitment.dueDate === "string"
+                      ? nextLinkedCommitment.dueDate.slice(0, 10)
+                      : new Date(
+                          nextLinkedCommitment.dueDate
+                        ).toLocaleDateString("es-EC")}
+                  </button>
+                ) : (
+                  <p className="mt-1 text-xs text-teal-700">
+                    No hay pendientes
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -321,7 +466,9 @@ export default function ConsolidatedSchedule() {
         {showGantt && ganttActivities.length === 0 && (
           <Card className="bg-white mb-6">
             <CardContent className="pt-6 pb-6 text-center text-gray-500">
-              No hay actividades cargadas para mostrar en el diagrama. Asegúrate de acceder al Cronograma Consolidado desde la Caracterización de Procesos de un proceso específico.
+              No hay actividades cargadas para mostrar en el diagrama. Asegúrate
+              de acceder al Cronograma Consolidado desde la Caracterización de
+              Procesos de un proceso específico.
             </CardContent>
           </Card>
         )}
@@ -333,7 +480,9 @@ export default function ConsolidatedSchedule() {
                   <BarChart2 className="w-5 h-5 text-blue-600" />
                   Diagrama de Gantt — Todas las actividades
                 </CardTitle>
-                <span className="text-xs text-gray-500">{ganttActivities.length} actividades · Vista mensual</span>
+                <span className="text-xs text-gray-500">
+                  {ganttActivities.length} actividades · Vista mensual
+                </span>
               </div>
             </CardHeader>
             <CardContent className="pt-4 pb-2">
@@ -347,43 +496,47 @@ export default function ConsolidatedSchedule() {
           <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handlePreviousMonth}
-                >
+                <Button variant="ghost" size="sm" onClick={handlePreviousMonth}>
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <h2 key={`${currentYear}-${currentMonth}`} className="text-2xl font-semibold min-w-[200px]">
+                <h2
+                  key={`${currentYear}-${currentMonth}`}
+                  className="text-2xl font-semibold min-w-[200px]"
+                >
                   {MONTHS[currentMonth]} de {currentYear}
                 </h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleNextMonth}
-                >
+                <Button variant="ghost" size="sm" onClick={handleNextMonth}>
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
               <div className="text-sm text-gray-600">
-                {monthActivities.length} actividades | {monthPercentageCompleted}% cumplidas
+                {monthActivities.length} actividades |{" "}
+                {monthPercentageCompleted}% cumplidas
               </div>
             </div>
           </CardHeader>
           <CardContent className="pt-6">
             {isLoading ? (
-              <div className="text-center py-8 text-gray-500">Cargando actividades...</div>
+              <div className="text-center py-8 text-gray-500">
+                Cargando actividades...
+              </div>
             ) : monthActivities.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No hay actividades planificadas para {MONTHS[currentMonth].toLowerCase()} de {currentYear}
+                No hay actividades planificadas para{" "}
+                {MONTHS[currentMonth].toLowerCase()} de {currentYear}
               </div>
             ) : (
               <div key={`${currentYear}-${currentMonth}`} className="space-y-4">
-                {monthActivities.map((activity) => {
+                {monthActivities.map(activity => {
                   const { days, status } = getDaysStatus(activity.dueDate);
-                  const isOverdue = activity.completed === "NO" && status === "overdue";
-                  const isToday = activity.completed === "NO" && status === "today";
-                  const isUpcoming = activity.completed === "NO" && days <= 7 && status === "upcoming";
+                  const isOverdue =
+                    activity.completed === "NO" && status === "overdue";
+                  const isToday =
+                    activity.completed === "NO" && status === "today";
+                  const isUpcoming =
+                    activity.completed === "NO" &&
+                    days <= 7 &&
+                    status === "upcoming";
 
                   let statusBadge = "";
                   let statusColor = "bg-gray-100 text-gray-700";
@@ -417,67 +570,95 @@ export default function ConsolidatedSchedule() {
                         isOverdue
                           ? "border-red-300 bg-red-50"
                           : isToday || isUpcoming
-                          ? "border-yellow-300 bg-yellow-50"
-                          : activity.completed === "SI"
-                          ? "border-green-300 bg-green-50"
-                          : "border-gray-200 hover:bg-gray-50"
+                            ? "border-yellow-300 bg-yellow-50"
+                            : activity.completed === "SI"
+                              ? "border-green-300 bg-green-50"
+                              : "border-gray-200 hover:bg-gray-50"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
                           {/* Module Badge - Prominently displayed */}
                           <div className="mb-3 flex items-center gap-2">
-                            <span translate="no" className={`px-3 py-1 rounded-full text-xs font-bold border ${activity.badgeColor}`}>
+                            <span
+                              translate="no"
+                              className={`px-3 py-1 rounded-full text-xs font-bold border ${activity.badgeColor}`}
+                            >
                               {activity.badge}
                             </span>
-                            {activity.completionPercentage !== undefined && activity.type === "objective" && (
-                              <span className="text-xs font-semibold text-gray-600">
-                                {activity.completionPercentage}% completado
-                              </span>
-                            )}
-                            {activity.completionPercentage !== undefined && activity.type === "compliance" && (
-                              <span className="text-xs font-semibold text-gray-600">
-                                {activity.completionPercentage}% completado
-                              </span>
-                            )}
+                            {activity.completionPercentage !== undefined &&
+                              activity.type === "objective" && (
+                                <span className="text-xs font-semibold text-gray-600">
+                                  {activity.completionPercentage}% completado
+                                </span>
+                              )}
+                            {activity.completionPercentage !== undefined &&
+                              activity.type === "compliance" && (
+                                <span className="text-xs font-semibold text-gray-600">
+                                  {activity.completionPercentage}% completado
+                                </span>
+                              )}
                           </div>
 
                           {/* Element/Category */}
                           {activity.element && (
-                            <div translate="no" className="text-xs text-gray-500 mb-1">
+                            <div
+                              translate="no"
+                              className="text-xs text-gray-500 mb-1"
+                            >
                               {activity.element}
                             </div>
                           )}
 
                           {/* Action Description */}
-                          <h3 className="font-semibold text-gray-900 mb-3">{activity.action}</h3>
+                          <h3 className="font-semibold text-gray-900 mb-3">
+                            {activity.action}
+                          </h3>
 
                           {/* Details Grid */}
                           <div className="grid grid-cols-3 gap-4 text-sm">
                             <div>
-                              <span className="text-gray-500 text-xs">Fecha límite:</span>
+                              <span className="text-gray-500 text-xs">
+                                Fecha límite:
+                              </span>
                               <p className="text-gray-900 font-medium">
-                                {new Date(activity.dueDate).toLocaleDateString("es-ES")}
+                                {new Date(activity.dueDate).toLocaleDateString(
+                                  "es-ES"
+                                )}
                               </p>
                             </div>
                             <div>
-                              <span className="text-gray-500 text-xs">Campo de seguimiento:</span>
-                              <p className="text-gray-900 font-medium">{activity.completionField}</p>
+                              <span className="text-gray-500 text-xs">
+                                Campo de seguimiento:
+                              </span>
+                              <p className="text-gray-900 font-medium">
+                                {activity.completionField}
+                              </p>
                             </div>
                             <div>
-                              <span className="text-gray-500 text-xs">Estado:</span>
-                              <p className={`font-medium flex items-center gap-1 mt-1 ${
-                                activity.completed === "SI" ? "text-green-700" : "text-orange-700"
-                              }`}>
+                              <span className="text-gray-500 text-xs">
+                                Estado:
+                              </span>
+                              <p
+                                className={`font-medium flex items-center gap-1 mt-1 ${
+                                  activity.completed === "SI"
+                                    ? "text-green-700"
+                                    : "text-orange-700"
+                                }`}
+                              >
                                 {statusIcon && statusIcon}
-                                {activity.completed === "SI" ? "Completada" : "Pendiente"}
+                                {activity.completed === "SI"
+                                  ? "Completada"
+                                  : "Pendiente"}
                               </p>
                             </div>
                           </div>
                         </div>
 
                         {/* Days Status Badge */}
-                        <div className={`px-4 py-2 rounded font-semibold text-sm text-center whitespace-nowrap ${statusColor}`}>
+                        <div
+                          className={`px-4 py-2 rounded font-semibold text-sm text-center whitespace-nowrap ${statusColor}`}
+                        >
                           {statusBadge}
                         </div>
                       </div>
@@ -495,7 +676,10 @@ export default function ConsolidatedSchedule() {
             <CardTitle className="text-lg">Elementos Consolidados</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <div translate="no" className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div
+              translate="no"
+              className="grid grid-cols-2 md:grid-cols-4 gap-3"
+            >
               <div className="px-3 py-2 rounded border text-sm font-semibold text-center bg-blue-100 text-blue-700 border-blue-300">
                 Gestión con Partes Interesadas
               </div>
@@ -517,6 +701,9 @@ export default function ConsolidatedSchedule() {
               <div className="px-3 py-2 rounded border text-sm font-semibold text-center bg-pink-100 text-pink-700 border-pink-300">
                 Cumplimientos
               </div>
+              <div className="px-3 py-2 rounded border text-sm font-semibold text-center bg-teal-100 text-teal-800 border-teal-300">
+                Compromisos vinculados
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -525,12 +712,17 @@ export default function ConsolidatedSchedule() {
         <Card className="bg-blue-50 border-blue-200 mt-6">
           <CardContent className="pt-6">
             <p className="text-sm text-blue-900">
-              <strong>Nota:</strong> Este cronograma es una vista consolidada de todas tus planificaciones. 
-              Los badges de color identifican el módulo de origen de cada actividad. 
-              Para completar o actualizar la información de cada actividad, dirígete al módulo específico 
-              (Gestión de Partes Interesadas, Matriz FODA, Objetivos Tácticos de Gestión, Objetivos Tácticos Estratégicos o Cumplimientos).
-              El botón <strong>"Exportar a Calendario (.ics)"</strong> descarga un archivo compatible con Google Calendar, Outlook, Apple Calendar y cualquier aplicación de calendario estándar.
-              Al reimportar el archivo, los eventos existentes se actualizan sin duplicarse.
+              <strong>Nota:</strong> Este cronograma es una vista consolidada de
+              todas tus planificaciones. Los badges de color identifican el
+              módulo de origen de cada actividad. Para completar o actualizar la
+              información de cada actividad, dirígete al módulo específico
+              (Gestión de Partes Interesadas, Matriz FODA, Objetivos Tácticos de
+              Gestión, Objetivos Tácticos Estratégicos, Cumplimientos o
+              Compromisos vinculados). El botón{" "}
+              <strong>"Exportar a Calendario (.ics)"</strong> descarga un
+              archivo compatible con Google Calendar, Outlook, Apple Calendar y
+              cualquier aplicación de calendario estándar. Al reimportar el
+              archivo, los eventos existentes se actualizan sin duplicarse.
             </p>
           </CardContent>
         </Card>

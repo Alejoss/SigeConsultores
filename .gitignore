@@ -63,6 +63,12 @@ todo.md
 backups/
 *.sql
 *.sql.gz
+# Migraciones funcionales pendientes; los scripts de recuperación permanecen excluidos.
+!drizzle/0078_management_system_operational_checklist.sql
+!drizzle/0079_management_system_checklist_long_description.sql
+!drizzle/0080_linked_commitments.sql
+!drizzle/0081_company_compliance_evidence_columns.sql
+!drizzle/0082_program_actions_import_key.sql
 
 # IDE settings (user-specific)
 .vscode/settings.json

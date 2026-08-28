@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { ChevronUp, ExternalLink, FileText, Upload } from "lucide-react";
+import { ChevronUp, ExternalLink, FileText, Link2, Upload } from "lucide-react";
+import { ProcessLinkDialog } from "@/components/ProcessLinkDialog";
+import { SourceEvidenceButton } from "@/components/SourceEvidenceButton";
 
 const MONTHS = [
   "Ene",
@@ -224,7 +226,11 @@ export default function Compliances() {
     validUntil: "",
   });
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingOriginal, setEditingOriginal] = useState<Compliance | null>(
+    null
+  );
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [linkCompliance, setLinkCompliance] = useState<Compliance | null>(null);
 
   const { data: compliancesData, isLoading } =
     trpc.companyCompliances.list.useQuery(
@@ -355,23 +361,42 @@ export default function Compliances() {
     }
   };
 
+  const dateInputValue = (value: unknown) => {
+    if (!value) return "";
+    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value))
+      return value.slice(0, 10);
+    const parsed = value instanceof Date ? value : new Date(String(value));
+    return Number.isNaN(parsed.getTime())
+      ? ""
+      : parsed.toISOString().slice(0, 10);
+  };
+
+  const buildComplianceUpdate = (id: number) => ({
+    id,
+    requirement: formData.requirement,
+    description: formData.description || undefined,
+    obligationType: formData.obligationType as any,
+    otherObligationType: formData.otherObligationType || undefined,
+    responsible: formData.responsible || undefined,
+    plannedMonths: serializeMonths(formData.plannedMonths) || undefined,
+    completedMonths: serializeMonths(formData.completedMonths) || undefined,
+    observations: formData.observations || undefined,
+    evaluationMode: formData.evaluationMode,
+    // Al editar un Cumplimiento ya vinculado, las fechas sólo se transmiten
+    // cuando el usuario las cambia realmente. La renovación se mantiene bajo
+    // control del proceso responsable desde Compromisos vinculados.
+    ...(formData.validFrom !== dateInputValue(editingOriginal?.validFrom) && {
+      validFrom: formData.validFrom || null,
+    }),
+    ...(formData.validUntil !== dateInputValue(editingOriginal?.validUntil) && {
+      validUntil: formData.validUntil || null,
+    }),
+  });
+
   const handleUpdateCompliance = async (id: number) => {
     if (!formData.requirement || !formData.obligationType) return;
     try {
-      await updateMutation.mutateAsync({
-        id,
-        requirement: formData.requirement,
-        description: formData.description || undefined,
-        obligationType: formData.obligationType as any,
-        otherObligationType: formData.otherObligationType || undefined,
-        responsible: formData.responsible || undefined,
-        plannedMonths: serializeMonths(formData.plannedMonths) || undefined,
-        completedMonths: serializeMonths(formData.completedMonths) || undefined,
-        observations: formData.observations || undefined,
-        evaluationMode: formData.evaluationMode,
-        validFrom: formData.validFrom || null,
-        validUntil: formData.validUntil || null,
-      });
+      await updateMutation.mutateAsync(buildComplianceUpdate(id));
       await utils.companyCompliances.list.invalidate({ companyId });
     } catch {
       // silencioso en autosave
@@ -384,26 +409,17 @@ export default function Compliances() {
       return;
     }
     try {
-      await updateMutation.mutateAsync({
-        id: editingId,
-        requirement: formData.requirement,
-        description: formData.description || undefined,
-        obligationType: formData.obligationType as any,
-        otherObligationType: formData.otherObligationType || undefined,
-        responsible: formData.responsible || undefined,
-        plannedMonths: serializeMonths(formData.plannedMonths) || undefined,
-        completedMonths: serializeMonths(formData.completedMonths) || undefined,
-        observations: formData.observations || undefined,
-        evaluationMode: formData.evaluationMode,
-        validFrom: formData.validFrom || null,
-        validUntil: formData.validUntil || null,
-      });
+      await updateMutation.mutateAsync(buildComplianceUpdate(editingId));
       toast.success("Obligación actualizada exitosamente");
       resetForm();
       setEditingId(null);
       await utils.companyCompliances.list.invalidate({ companyId });
-    } catch {
-      toast.error("Error al actualizar la obligación");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "No fue posible actualizar la obligación."
+      );
     }
   };
 
@@ -430,13 +446,10 @@ export default function Compliances() {
       completedMonths: parseMonths(compliance.completedMonths),
       observations: compliance.observations || "",
       evaluationMode: compliance.evaluationMode ?? "meses",
-      validFrom: compliance.validFrom
-        ? String(compliance.validFrom).substring(0, 10)
-        : "",
-      validUntil: compliance.validUntil
-        ? String(compliance.validUntil).substring(0, 10)
-        : "",
+      validFrom: dateInputValue(compliance.validFrom),
+      validUntil: dateInputValue(compliance.validUntil),
     });
+    setEditingOriginal(compliance);
     setEditingId(compliance.id);
     setEvidenceFile(null);
     setExpandedId(null);
@@ -457,6 +470,7 @@ export default function Compliances() {
       validUntil: "",
     });
     setEvidenceFile(null);
+    setEditingOriginal(null);
   };
 
   return (
@@ -771,6 +785,28 @@ export default function Compliances() {
                           </div>
                         )}
 
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3">
+                          <div>
+                            <p className="text-sm font-semibold text-teal-900">
+                              Asignar responsabilidad a un proceso
+                            </p>
+                            <p className="text-xs text-teal-700">
+                              Seleccione uno, varios o todos los procesos que
+                              deben atender este cumplimiento.
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-teal-400 bg-white font-semibold text-teal-900 hover:bg-teal-100"
+                            onClick={() => setLinkCompliance(compliance)}
+                          >
+                            <Link2 className="mr-1 h-4 w-4" />
+                            Vincular a procesos
+                          </Button>
+                        </div>
+
                         {/* % Cumplimiento */}
                         <div>
                           <label className="text-sm font-semibold text-gray-700">
@@ -823,9 +859,16 @@ export default function Compliances() {
                         </div>
 
                         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                          <p className="text-sm font-semibold text-slate-700">
-                            Respaldo documental
-                          </p>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-slate-700">
+                              Respaldo documental
+                            </p>
+                            <SourceEvidenceButton
+                              companyId={companyId}
+                              sourceType="company_compliance"
+                              sourceId={compliance.id}
+                            />
+                          </div>
                           {compliance.evidencePdfUrl ? (
                             <div className="mt-2 flex flex-wrap items-center gap-2">
                               <FileText className="h-4 w-4 text-red-600" />
@@ -893,6 +936,19 @@ export default function Compliances() {
             })
           )}
         </div>
+
+        {linkCompliance && (
+          <ProcessLinkDialog
+            companyId={companyId}
+            sourceType="company_compliance"
+            sourceId={linkCompliance.id}
+            title={linkCompliance.requirement}
+            onClose={() => setLinkCompliance(null)}
+            onLinked={() =>
+              utils.companyCompliances.list.invalidate({ companyId })
+            }
+          />
+        )}
 
         {/* FORMULARIO NUEVA / EDITAR OBLIGACIÓN */}
         <Card className="mb-8 bg-white">

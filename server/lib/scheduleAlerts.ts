@@ -60,16 +60,25 @@ function urgencyText(daysRemaining: number): string {
 }
 
 function urgencyStyle(daysRemaining: number): string {
-  if (daysRemaining === 0) return "background:#fef2f2;border-left:4px solid #dc2626;";
-  if (daysRemaining <= 3) return "background:#fff7ed;border-left:4px solid #ea580c;";
+  if (daysRemaining === 0)
+    return "background:#fef2f2;border-left:4px solid #dc2626;";
+  if (daysRemaining <= 3)
+    return "background:#fff7ed;border-left:4px solid #ea580c;";
   return "background:#f0fdf4;border-left:4px solid #16a34a;";
 }
 
 function getProcessBadge(element: string): { label: string; color: string } {
   const normalized = element.toLowerCase();
   if (normalized.includes("ote")) return { label: "OTE", color: "#b45309" };
-  if (normalized.includes("parte")) return { label: "PARTES INTERESADAS", color: "#6d28d9" };
-  if (normalized.includes("cumpl")) return { label: "CUMPLIMIENTO", color: "#0e7490" };
+  if (normalized.includes("parte"))
+    return { label: "PARTES INTERESADAS", color: "#6d28d9" };
+  if (normalized.includes("cumpl"))
+    return { label: "CUMPLIMIENTO", color: "#0e7490" };
+  if (
+    normalized.includes("compromiso") ||
+    normalized.includes("planificacion propia")
+  )
+    return { label: "COMPROMISO VINCULADO", color: "#0f766e" };
   if (normalized.includes("foda")) return { label: "FODA", color: "#475569" };
   return { label: element || "ACTIVIDAD", color: "#475569" };
 }
@@ -84,7 +93,11 @@ async function getUpcomingConsolidatedActivitiesForProcess(
 ): Promise<ProcessAlertActivity[]> {
   const consolidated = await getConsolidatedScheduleActivities(processId);
   return consolidated
-    .filter((activity) => activity.completed !== "SI" && isWithinNextDays(activity.dueDate, WINDOW_DAYS))
+    .filter(
+      activity =>
+        activity.completed !== "SI" &&
+        isWithinNextDays(activity.dueDate, WINDOW_DAYS)
+    )
     .map((activity: ConsolidatedScheduleActivity) => ({
       element: activity.badge || activity.element,
       action: activity.action,
@@ -111,11 +124,11 @@ async function getUpcomingManagementCompliances(
     .where(eq(companyCompliances.companyId, companyId));
 
   return (compliances as any[])
-    .filter((compliance) => {
+    .filter(compliance => {
       if (compliance.completed === "SI" || !compliance.validUntil) return false;
       return isWithinNextDays(new Date(compliance.validUntil), WINDOW_DAYS);
     })
-    .map((compliance) => {
+    .map(compliance => {
       const dueDate = new Date(compliance.validUntil);
       return {
         requirement: compliance.requirement || "Cumplimiento sin descripción",
@@ -155,10 +168,12 @@ function buildProcessLeaderEmailHtml(
   activities: ProcessAlertActivity[],
   dashboardUrl: string
 ): string {
-  const highPriority = activities.filter((activity) => activity.daysRemaining <= 3).length;
+  const highPriority = activities.filter(
+    activity => activity.daysRemaining <= 3
+  ).length;
   const rows = activities
     .sort((a, b) => a.daysRemaining - b.daysRemaining)
-    .map((activity) => {
+    .map(activity => {
       const badge = getProcessBadge(activity.element);
       return `<tr>
         <td style="padding:13px 14px;${urgencyStyle(activity.daysRemaining)}border-bottom:1px solid #e2e8f0;">
@@ -183,7 +198,11 @@ function buildProcessLeaderEmailHtml(
     <a href="${dashboardUrl}" style="display:inline-block;margin-top:25px;padding:13px 20px;border-radius:8px;color:#ffffff;background:#00599D;font-size:13px;font-weight:700;text-decoration:none;">Abrir Cronograma Consolidado</a>
     <p style="margin:20px 0 0;color:#64748b;font-size:12px;line-height:1.55;">Recibirás este resumen únicamente cuando existan actividades próximas a vencer en tu proceso.</p>
   </div>`;
-  return emailShell("Agenda semanal del proceso", `${companyName} · ${processName}`, body);
+  return emailShell(
+    "Agenda semanal del proceso",
+    `${companyName} · ${processName}`,
+    body
+  );
 }
 
 function buildExecutiveComplianceEmailHtml(
@@ -192,13 +211,15 @@ function buildExecutiveComplianceEmailHtml(
   dashboardUrl: string
 ): string {
   const rows = compliances
-    .map((compliance) => `<tr>
+    .map(
+      compliance => `<tr>
       <td style="padding:13px 14px;${urgencyStyle(compliance.daysRemaining)}border-bottom:1px solid #e2e8f0;">
         <span style="display:inline-block;margin-bottom:7px;padding:4px 8px;border-radius:99px;color:#0e7490;background:#cffafe;font-size:10px;font-weight:700;">${compliance.obligationType.toUpperCase()}</span>
         <div style="margin-bottom:4px;color:#172033;font-size:14px;font-weight:700;line-height:1.4;">${compliance.requirement}</div>
         <div style="color:#64748b;font-size:12px;">Responsable: <strong>${compliance.responsible}</strong><br>Válido hasta: <strong>${formatDate(compliance.dueDate)}</strong> &nbsp;|&nbsp; <strong style="color:#c2410c;">${urgencyText(compliance.daysRemaining)}</strong></div>
       </td>
-    </tr>`)
+    </tr>`
+    )
     .join("");
 
   const body = `<div style="padding:30px 34px;">
@@ -220,7 +241,11 @@ async function runWeeklyAlerts(): Promise<void> {
     return;
   }
 
-  const frontendUrl = (process.env.FRONTEND_URL || process.env.VITE_FRONTEND_URL || "http://localhost:3000").replace(/\/$/, "");
+  const frontendUrl = (
+    process.env.FRONTEND_URL ||
+    process.env.VITE_FRONTEND_URL ||
+    "http://localhost:3000"
+  ).replace(/\/$/, "");
   const allCompanies = await db.select().from(companies);
 
   for (const company of allCompanies as any[]) {
@@ -229,7 +254,9 @@ async function runWeeklyAlerts(): Promise<void> {
         .select()
         .from(companyInfo)
         .where(eq(companyInfo.companyId, company.id));
-      const adminEmail = companyInfoRows[0] ? (companyInfoRows[0] as any).adminAlertEmail || "" : "";
+      const adminEmail = companyInfoRows[0]
+        ? (companyInfoRows[0] as any).adminAlertEmail || ""
+        : "";
 
       // 1. Jefes de Proceso: actividades que ya forman parte de su Cronograma Consolidado.
       const companyProcesses = await db
@@ -237,7 +264,10 @@ async function runWeeklyAlerts(): Promise<void> {
         .from(processes)
         .where(eq(processes.companyId, company.id));
       for (const process of companyProcesses as any[]) {
-        const activities = await getUpcomingConsolidatedActivitiesForProcess(process.id, process.name);
+        const activities = await getUpcomingConsolidatedActivitiesForProcess(
+          process.id,
+          process.name
+        );
         if (activities.length === 0) continue;
 
         const characterizationRows = await db
@@ -246,7 +276,8 @@ async function runWeeklyAlerts(): Promise<void> {
           .where(eq(processCharacterizations.processId, process.id));
         const characterization: any = characterizationRows[0];
         const responsibleEmail = characterization?.responsibleEmail || "";
-        const responsibleName = characterization?.responsible || "Responsable del Proceso";
+        const responsibleName =
+          characterization?.responsible || "Responsable del Proceso";
         if (!responsibleEmail || !responsibleEmail.includes("@")) continue;
 
         const htmlContent = buildProcessLeaderEmailHtml(
@@ -261,12 +292,20 @@ async function runWeeklyAlerts(): Promise<void> {
           subject: `Agenda semanal del proceso — ${process.name}`,
           htmlContent,
         });
-        console.log(`[ScheduleAlerts] Agenda semanal enviada a ${process.name}: ${responsibleEmail}`);
+        console.log(
+          `[ScheduleAlerts] Agenda semanal enviada a ${process.name}: ${responsibleEmail}`
+        );
       }
 
       // 2. Gerente General: exclusivamente Cumplimientos de Sistemas de Gestión.
-      const managementCompliances = await getUpcomingManagementCompliances(company.id);
-      if (adminEmail && adminEmail.includes("@") && managementCompliances.length > 0) {
+      const managementCompliances = await getUpcomingManagementCompliances(
+        company.id
+      );
+      if (
+        adminEmail &&
+        adminEmail.includes("@") &&
+        managementCompliances.length > 0
+      ) {
         const htmlContent = buildExecutiveComplianceEmailHtml(
           company.name,
           managementCompliances,
@@ -277,10 +316,15 @@ async function runWeeklyAlerts(): Promise<void> {
           subject: `Alerta de Cumplimientos — ${company.name}`,
           htmlContent,
         });
-        console.log(`[ScheduleAlerts] Alerta ejecutiva de Cumplimientos enviada: ${adminEmail}`);
+        console.log(
+          `[ScheduleAlerts] Alerta ejecutiva de Cumplimientos enviada: ${adminEmail}`
+        );
       }
     } catch (error) {
-      console.error(`[ScheduleAlerts] Error procesando empresa ${company.id}:`, error);
+      console.error(
+        `[ScheduleAlerts] Error procesando empresa ${company.id}:`,
+        error
+      );
     }
   }
 
@@ -292,7 +336,7 @@ export function registerScheduleAlertsCron(): void {
   cron.schedule(
     "0 7 * * 1",
     () => {
-      runWeeklyAlerts().catch((error) => {
+      runWeeklyAlerts().catch(error => {
         console.error("[ScheduleAlerts] Error en cron job:", error);
       });
     },
