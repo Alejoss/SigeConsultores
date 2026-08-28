@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { getDb } from "../db";
-import { companyCompliances } from "../../drizzle/schema";
+import { companyCompliances, linkedCommitments } from "../../drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { storagePut } from "../storage";
@@ -92,6 +92,36 @@ export const companyCompliancesRouter = router({
       const db = await getDb();
       if (!db) throw new Error("No DB");
       const { id, validFrom, validUntil, ...rest } = input;
+      const [current] = await db
+        .select({ companyId: companyCompliances.companyId })
+        .from(companyCompliances)
+        .where(eq(companyCompliances.id, id))
+        .limit(1);
+      if (!current)
+        throw new Error("No se encontró el Cumplimiento seleccionado.");
+      const changesTracking =
+        input.completed !== undefined ||
+        validFrom !== undefined ||
+        validUntil !== undefined ||
+        input.completedMonths !== undefined;
+      if (changesTracking) {
+        const links = await db
+          .select({ id: linkedCommitments.id })
+          .from(linkedCommitments)
+          .where(
+            and(
+              eq(linkedCommitments.companyId, current.companyId),
+              eq(linkedCommitments.sourceType, "company_compliance"),
+              eq(linkedCommitments.sourceId, id),
+              eq(linkedCommitments.sourceSubId, id)
+            )
+          )
+          .limit(1);
+        if (links[0])
+          throw new Error(
+            "Este Cumplimiento está vinculado a procesos. Su avance y vigencia se actualizan desde Compromisos vinculados."
+          );
+      }
       const dateFields = {
         ...(validFrom !== undefined
           ? { validFrom: validFrom ? new Date(validFrom) : null }
@@ -170,6 +200,29 @@ export const companyCompliancesRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("No DB");
+      const [compliance] = await db
+        .select({ companyId: companyCompliances.companyId })
+        .from(companyCompliances)
+        .where(eq(companyCompliances.id, input.id))
+        .limit(1);
+      if (!compliance)
+        throw new Error("No se encontró el Cumplimiento seleccionado.");
+      const links = await db
+        .select({ id: linkedCommitments.id })
+        .from(linkedCommitments)
+        .where(
+          and(
+            eq(linkedCommitments.companyId, compliance.companyId),
+            eq(linkedCommitments.sourceType, "company_compliance"),
+            eq(linkedCommitments.sourceId, input.id),
+            eq(linkedCommitments.sourceSubId, input.id)
+          )
+        )
+        .limit(1);
+      if (links[0])
+        throw new Error(
+          "No se puede eliminar un Cumplimiento con compromisos vinculados. Retire primero sus vínculos."
+        );
       await db
         .delete(companyCompliances)
         .where(eq(companyCompliances.id, input.id));

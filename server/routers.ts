@@ -119,7 +119,9 @@ import { resourcesPDFRouter } from "./routers/resourcesPDF";
 import { organizationChartRouter } from "./routers/organizationChart";
 import { payrollRouter } from "./routers/payroll";
 import { auditsInspectionsRouter } from "./routers/auditsInspections";
+import { managementSystemChecklistRouter } from "./routers/managementSystemChecklist";
 import { managementProgramsRouter } from "./routers/managementPrograms";
+import { linkedCommitmentsRouter } from "./routers/linkedCommitments";
 import { stakeholderSurveysRouter } from "./routers/stakeholderSurveys";
 import { strategicTrendsRouter } from "./routers/strategicTrends";
 import { planningCyclesRouter } from "./routers/planningCycles";
@@ -1083,7 +1085,9 @@ export const appRouter = router({
   hierarchicalAccess: hierarchicalAccessRouter,
   documents: documentsRouter,
   auditsInspections: auditsInspectionsRouter,
+  managementSystemChecklist: managementSystemChecklistRouter,
   managementPrograms: managementProgramsRouter,
+  linkedCommitments: linkedCommitmentsRouter,
   stakeholderSurveys: stakeholderSurveysRouter,
   strategicTrends: strategicTrendsRouter,
 
@@ -1259,12 +1263,13 @@ export const appRouter = router({
         // La coincidencia no depende de mayúsculas, tildes ni espacios accidentales.
         // Se prioriza nombre + fecha planificada; si la fecha fue corregida, se usa
         // únicamente el nombre cuando existe una sola capacitación con ese nombre.
-        const normalizeName = (value: string) => value
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .trim()
-          .replace(/\s+/g, " ")
-          .toLowerCase();
+        const normalizeName = (value: string) =>
+          value
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim()
+            .replace(/\s+/g, " ")
+            .toLowerCase();
         const dateKey = (value: Date | string | null | undefined) => {
           if (!value) return "";
           const date = value instanceof Date ? value : new Date(value);
@@ -1281,8 +1286,14 @@ export const appRouter = router({
         for (const training of existing) {
           const normalizedName = normalizeName(training.name);
           const exactKey = `${normalizedName}|${dateKey(training.plannedDate)}`;
-          byExactKey.set(exactKey, [...(byExactKey.get(exactKey) ?? []), training]);
-          byName.set(normalizedName, [...(byName.get(normalizedName) ?? []), training]);
+          byExactKey.set(exactKey, [
+            ...(byExactKey.get(exactKey) ?? []),
+            training,
+          ]);
+          byName.set(normalizedName, [
+            ...(byName.get(normalizedName) ?? []),
+            training,
+          ]);
         }
 
         let inserted = 0;
@@ -1292,41 +1303,68 @@ export const appRouter = router({
           const exactKey = `${normalizedName}|${dateKey(row.plannedDate)}`;
           const exactMatches = byExactKey.get(exactKey) ?? [];
           const nameMatches = byName.get(normalizedName) ?? [];
-          const target = exactMatches.length === 1
-            ? exactMatches[0]
-            : nameMatches.length === 1
-              ? nameMatches[0]
-              : undefined;
+          const target =
+            exactMatches.length === 1
+              ? exactMatches[0]
+              : nameMatches.length === 1
+                ? nameMatches[0]
+                : undefined;
 
           if (target) {
             // Una celda vacía en la planilla no borra el dato que ya estaba registrado.
-            const effectivePlanned = row.plannedAttendees ?? target.plannedAttendees ?? 0;
-            const effectiveActual = row.actualAttendees ?? target.actualAttendees ?? 0;
+            const effectivePlanned =
+              row.plannedAttendees ?? target.plannedAttendees ?? 0;
+            const effectiveActual =
+              row.actualAttendees ?? target.actualAttendees ?? 0;
             const updateData = {
               ...(row.name ? { name: row.name } : {}),
               ...(row.type !== undefined ? { type: row.type } : {}),
-              ...(row.objective !== undefined ? { objective: row.objective } : {}),
+              ...(row.objective !== undefined
+                ? { objective: row.objective }
+                : {}),
               ...(row.audience !== undefined ? { audience: row.audience } : {}),
-              ...(row.plannedAttendees !== undefined ? { plannedAttendees: row.plannedAttendees } : {}),
+              ...(row.plannedAttendees !== undefined
+                ? { plannedAttendees: row.plannedAttendees }
+                : {}),
               ...(row.modality !== undefined ? { modality: row.modality } : {}),
-              ...(row.responsible !== undefined ? { responsible: row.responsible } : {}),
-              ...(row.plannedDate !== undefined ? { plannedDate: new Date(row.plannedDate) } : {}),
-              ...(row.completed !== undefined ? { completed: row.completed } : {}),
-              ...(row.conductedDate !== undefined ? { conductedDate: new Date(row.conductedDate) } : {}),
-              ...(row.actualAttendees !== undefined ? { actualAttendees: row.actualAttendees } : {}),
-              ...(row.plannedAttendees !== undefined || row.actualAttendees !== undefined
-                ? { attendancePercentage: effectivePlanned > 0 ? Math.round((effectiveActual / effectivePlanned) * 100) : 0 }
+              ...(row.responsible !== undefined
+                ? { responsible: row.responsible }
+                : {}),
+              ...(row.plannedDate !== undefined
+                ? { plannedDate: new Date(row.plannedDate) }
+                : {}),
+              ...(row.completed !== undefined
+                ? { completed: row.completed }
+                : {}),
+              ...(row.conductedDate !== undefined
+                ? { conductedDate: new Date(row.conductedDate) }
+                : {}),
+              ...(row.actualAttendees !== undefined
+                ? { actualAttendees: row.actualAttendees }
+                : {}),
+              ...(row.plannedAttendees !== undefined ||
+              row.actualAttendees !== undefined
+                ? {
+                    attendancePercentage:
+                      effectivePlanned > 0
+                        ? Math.round((effectiveActual / effectivePlanned) * 100)
+                        : 0,
+                  }
                 : {}),
               updatedAt: new Date(),
             };
-            await db.update(companyTrainings).set(updateData).where(eq(companyTrainings.id, target.id));
+            await db
+              .update(companyTrainings)
+              .set(updateData)
+              .where(eq(companyTrainings.id, target.id));
             updated += 1;
             continue;
           }
 
           const planned = row.plannedAttendees ?? 0;
           const actual = row.actualAttendees ?? 0;
-          const attendance = planned > 0 ? Math.round((actual / planned) * 100) : 0;
+          const attendance =
+            planned > 0 ? Math.round((actual / planned) * 100) : 0;
           await db.insert(companyTrainings).values({
             companyId: input.companyId,
             name: row.name,
@@ -1338,7 +1376,9 @@ export const appRouter = router({
             responsible: row.responsible || null,
             plannedDate: row.plannedDate ? new Date(row.plannedDate) : null,
             completed: row.completed || null,
-            conductedDate: row.conductedDate ? new Date(row.conductedDate) : null,
+            conductedDate: row.conductedDate
+              ? new Date(row.conductedDate)
+              : null,
             actualAttendees: actual,
             attendancePercentage: attendance,
           });

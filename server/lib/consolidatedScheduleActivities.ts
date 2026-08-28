@@ -3,6 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   criticalityMatrix,
+  linkedCommitments,
   processCompliances,
   processFODA,
   processTacticalObjectives,
@@ -11,7 +12,12 @@ import {
 
 export interface ConsolidatedScheduleActivity {
   id: string;
-  type: "stakeholder" | "foda" | "objective" | "compliance";
+  type:
+    | "stakeholder"
+    | "foda"
+    | "objective"
+    | "compliance"
+    | "linked_commitment";
   element: string;
   action: string;
   dueDate: Date;
@@ -31,20 +37,56 @@ function calculateDaysRemaining(dueDate: Date): number {
   return Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function getBadgeInfo(type: ConsolidatedScheduleActivity["type"], fodaType?: string) {
+function getBadgeInfo(
+  type: ConsolidatedScheduleActivity["type"],
+  fodaType?: string
+) {
   switch (type) {
     case "stakeholder":
-      return { badge: "Gestión con Partes Interesadas", color: "bg-blue-100 text-blue-700 border-blue-300" };
+      return {
+        badge: "Gestión con Partes Interesadas",
+        color: "bg-blue-100 text-blue-700 border-blue-300",
+      };
     case "foda":
-      if (fodaType === "Fortaleza") return { badge: "Fortaleza", color: "bg-green-100 text-green-700 border-green-300" };
-      if (fodaType === "Oportunidad") return { badge: "Oportunidad", color: "bg-orange-100 text-orange-700 border-orange-300" };
-      if (fodaType === "Debilidad") return { badge: "Debilidad", color: "bg-red-100 text-red-700 border-red-300" };
-      if (fodaType === "Amenaza") return { badge: "Amenaza", color: "bg-purple-100 text-purple-700 border-purple-300" };
-      return { badge: "FODA", color: "bg-gray-100 text-gray-700 border-gray-300" };
+      if (fodaType === "Fortaleza")
+        return {
+          badge: "Fortaleza",
+          color: "bg-green-100 text-green-700 border-green-300",
+        };
+      if (fodaType === "Oportunidad")
+        return {
+          badge: "Oportunidad",
+          color: "bg-orange-100 text-orange-700 border-orange-300",
+        };
+      if (fodaType === "Debilidad")
+        return {
+          badge: "Debilidad",
+          color: "bg-red-100 text-red-700 border-red-300",
+        };
+      if (fodaType === "Amenaza")
+        return {
+          badge: "Amenaza",
+          color: "bg-purple-100 text-purple-700 border-purple-300",
+        };
+      return {
+        badge: "FODA",
+        color: "bg-gray-100 text-gray-700 border-gray-300",
+      };
     case "objective":
-      return { badge: "OTE", color: "bg-yellow-100 text-yellow-700 border-yellow-300" };
+      return {
+        badge: "OTE",
+        color: "bg-yellow-100 text-yellow-700 border-yellow-300",
+      };
     case "compliance":
-      return { badge: "Cumplimientos", color: "bg-pink-100 text-pink-700 border-pink-300" };
+      return {
+        badge: "Cumplimientos",
+        color: "bg-pink-100 text-pink-700 border-pink-300",
+      };
+    case "linked_commitment":
+      return {
+        badge: "Compromisos vinculados",
+        color: "bg-teal-100 text-teal-800 border-teal-300",
+      };
   }
 }
 
@@ -69,7 +111,9 @@ export async function getConsolidatedScheduleActivities(
     .select()
     .from(stakeholders)
     .where(eq(stakeholders.processId, processId));
-  const stakeholderMap = new Map(stakeholderRows.map((s: any) => [s.id, s.name]));
+  const stakeholderMap = new Map(
+    stakeholderRows.map((s: any) => [s.id, s.name])
+  );
   const uniqueStakeholders = new Map<string, any>();
 
   for (const entry of criticalityRows as any[]) {
@@ -82,7 +126,10 @@ export async function getConsolidatedScheduleActivities(
       .replace(/[^a-z0-9áéíóúñü\s]/gi, "");
     const key = `${entry.stakeholderId}|${normalizedAction}`;
     const existing = uniqueStakeholders.get(key);
-    if (!existing || new Date(entry.endDate).getTime() > new Date(existing.endDate).getTime()) {
+    if (
+      !existing ||
+      new Date(entry.endDate).getTime() > new Date(existing.endDate).getTime()
+    ) {
       uniqueStakeholders.set(key, entry);
     }
   }
@@ -90,7 +137,9 @@ export async function getConsolidatedScheduleActivities(
   for (const entry of Array.from(uniqueStakeholders.values())) {
     const dueDate = new Date(entry.endDate);
     const contentId = createHash("sha256")
-      .update(`${entry.stakeholderId}-${entry.actionToTake.trim().toLowerCase().replace(/\s+/g, " ")}`)
+      .update(
+        `${entry.stakeholderId}-${entry.actionToTake.trim().toLowerCase().replace(/\s+/g, " ")}`
+      )
       .digest("hex")
       .substring(0, 12);
     const badge = getBadgeInfo("stakeholder");
@@ -119,18 +168,30 @@ export async function getConsolidatedScheduleActivities(
   const latestFoda: any = latestFodaRows[0];
   if (latestFoda?.matrixData) {
     try {
-      const matrixRows = typeof latestFoda.matrixData === "string"
-        ? JSON.parse(latestFoda.matrixData)
-        : latestFoda.matrixData;
+      const matrixRows =
+        typeof latestFoda.matrixData === "string"
+          ? JSON.parse(latestFoda.matrixData)
+          : latestFoda.matrixData;
       if (Array.isArray(matrixRows)) {
         for (const row of matrixRows) {
-          const action = row.accionATomar || row.accionDeAprovechamiento || row.description || "";
+          const action =
+            row.accionATomar ||
+            row.accionDeAprovechamiento ||
+            row.description ||
+            "";
           if (!action || !row.fechaFinalPrevista) continue;
           const dueDate = new Date(row.fechaFinalPrevista);
           const badge = getBadgeInfo("foda", row.foda || "FODA");
-          const completed = row.objetivoLogrado === "SI" || row.mejoraImplementada === "SI" || row.implementacionCumplio === "SI" ? "SI" : "NO";
+          const completed =
+            row.objetivoLogrado === "SI" ||
+            row.mejoraImplementada === "SI" ||
+            row.implementacionCumplio === "SI"
+              ? "SI"
+              : "NO";
           const contentId = createHash("sha256")
-            .update(`${action}-${dueDate.toISOString()}-${row.elemento || row.name || ""}`)
+            .update(
+              `${action}-${dueDate.toISOString()}-${row.elemento || row.name || ""}`
+            )
             .digest("hex")
             .substring(0, 12);
           activities.push({
@@ -160,11 +221,16 @@ export async function getConsolidatedScheduleActivities(
   for (const objective of objectives as any[]) {
     if (!objective.planningData) continue;
     try {
-      const planningData = typeof objective.planningData === "string"
-        ? JSON.parse(objective.planningData)
-        : objective.planningData;
+      const planningData =
+        typeof objective.planningData === "string"
+          ? JSON.parse(objective.planningData)
+          : objective.planningData;
       if (!Array.isArray(planningData?.resultKeys)) continue;
-      for (let resultKeyIndex = 0; resultKeyIndex < planningData.resultKeys.length; resultKeyIndex++) {
+      for (
+        let resultKeyIndex = 0;
+        resultKeyIndex < planningData.resultKeys.length;
+        resultKeyIndex++
+      ) {
         const resultKey = planningData.resultKeys[resultKeyIndex];
         const tasks = Array.isArray(resultKey.tasks) ? resultKey.tasks : [];
         const badge = getBadgeInfo("objective");
@@ -189,7 +255,10 @@ export async function getConsolidatedScheduleActivities(
             });
           }
         } else {
-          const dateValue = resultKey.endDate || resultKey.implementationDate || resultKey.startDate;
+          const dateValue =
+            resultKey.endDate ||
+            resultKey.implementationDate ||
+            resultKey.startDate;
           if (!resultKey.description || !dateValue) continue;
           const dueDate = new Date(dateValue);
           const completionPercentage = resultKey.porcentajeAlcanzado || 0;
@@ -237,10 +306,42 @@ export async function getConsolidatedScheduleActivities(
     });
   }
 
+  // 5. Compromisos recibidos desde la empresa y planificación propia del proceso.
+  // Se consultan desde la tabla transversal para que calendario, exportación y
+  // alertas usen exactamente la misma agenda, sin reconstruirla en la interfaz.
+  const linkedRows = await db
+    .select()
+    .from(linkedCommitments)
+    .where(eq(linkedCommitments.processId, processId));
+  for (const commitment of linkedRows) {
+    if (!commitment.dueDate) continue;
+    const dueDate = new Date(commitment.dueDate);
+    if (Number.isNaN(dueDate.getTime())) continue;
+    const badge = getBadgeInfo("linked_commitment");
+    activities.push({
+      id: `linked-commitment-${commitment.id}`,
+      type: "linked_commitment",
+      element:
+        commitment.sourceType === "own"
+          ? "Planificación propia"
+          : "Compromiso vinculado",
+      action: commitment.title,
+      dueDate,
+      completed: commitment.status === "completed" ? "SI" : "NO",
+      completionField: commitment.kind === "vigency" ? "Vigencia" : "Estado",
+      badge: badge.badge,
+      badgeColor: badge.color,
+      daysRemaining: calculateDaysRemaining(dueDate),
+      completionPercentage: commitment.status === "completed" ? 100 : 0,
+    });
+  }
+
   const uniqueActivities = new Map<string, ConsolidatedScheduleActivity>();
   for (const activity of activities) {
-    if (!uniqueActivities.has(activity.id)) uniqueActivities.set(activity.id, activity);
+    if (!uniqueActivities.has(activity.id))
+      uniqueActivities.set(activity.id, activity);
   }
-  return Array.from(uniqueActivities.values())
-    .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+  return Array.from(uniqueActivities.values()).sort(
+    (a, b) => a.dueDate.getTime() - b.dueDate.getTime()
+  );
 }
