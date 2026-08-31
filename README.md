@@ -14,7 +14,7 @@ Plataforma para mapear y caracterizar procesos, riesgos, FODA, cumplimiento e in
 | Runtime local / CI | Node.js **20**, **pnpm** (ver `package.json` → `packageManager`) |
 | Imagen de producción | Node 20 Alpine (`Dockerfile`) |
 
-Servicios externos habituales: proveedor OAuth, Brevo (correo), AWS S3 (respaldos y archivos). Detalle en [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md).
+Servicios externos habituales: proveedor OAuth, Amazon SES (correo transaccional), AWS S3 (respaldos y archivos). Detalle en [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) y [docs/TRANSACTIONAL_EMAIL.md](docs/TRANSACTIONAL_EMAIL.md).
 
 ## Requisitos
 

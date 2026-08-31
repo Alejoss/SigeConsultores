@@ -20,7 +20,7 @@
  *   - DATABASE_URL: MySQL connection string
  *   - AWS_ACCESS_KEY_ID: AWS credentials
  *   - AWS_SECRET_ACCESS_KEY: AWS credentials
- *   - AWS_REGION: AWS region (default: us-east-2)
+ *   - AWS_S3_REGION or AWS_REGION: AWS region for the backups bucket (default: us-east-2)
  *   - AWS_S3_BUCKET: S3 bucket name (default: sige-backups)
  */
 
@@ -41,7 +41,7 @@ const config = {
   databaseUrl: process.env.DATABASE_URL,
   awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
   awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  awsRegion: process.env.AWS_REGION || 'us-east-2',
+  awsRegion: process.env.AWS_S3_REGION || process.env.AWS_REGION || 'us-east-2',
   s3Bucket: process.env.AWS_S3_BUCKET || 'sige-backups',
   backupDir: '/tmp',
 };

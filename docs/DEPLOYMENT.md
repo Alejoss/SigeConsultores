@@ -149,7 +149,7 @@ Qué hace `deploy-prod.sh`:
 
 ### Variables en el servidor
 
-- **`.env.production`** — MySQL, JWT, OAuth, AWS, `FRONTEND_URL`, **`APP_IMAGE`**, **`GHCR_USERNAME`**, **`GHCR_TOKEN`** (plantilla: `.env.production.example`)
+- **`.env.production`** — MySQL, JWT, OAuth, AWS S3, Amazon SES (`SES_*`), `FRONTEND_URL`, **`APP_IMAGE`**, **`GHCR_USERNAME`**, **`GHCR_TOKEN`** (plantilla: `.env.production.example`). Correo: [TRANSACTIONAL_EMAIL.md](./TRANSACTIONAL_EMAIL.md).
 
 #### ¿Cambia `APP_IMAGE` en cada build?
 

@@ -3,12 +3,12 @@ import { useEffect } from "react";
 /**
  * ManagerConfirmation page
  * Receives a confirmation token and redirects to /login with manager-invitation=true
- * This page acts as a bridge to avoid Brevo email link rewriting issues
+ * This page acts as a bridge to avoid email-client link rewriting issues
  */
 export default function ManagerConfirmation() {
   useEffect(() => {
     // Redirect directly to unified login
-    // This page acts as a bridge to avoid Brevo email link rewriting issues
+    // This page acts as a bridge to avoid email-client link rewriting issues
     window.location.href = "/login";
   }, []);
 

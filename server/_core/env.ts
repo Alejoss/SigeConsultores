@@ -19,13 +19,11 @@ export const ENV = {
   s3PublicEndpoint: process.env.S3_PUBLIC_ENDPOINT ?? process.env.S3_ENDPOINT ?? "",
   // Frontend URL for invitation links
   frontendUrl: process.env.FRONTEND_URL ?? process.env.VITE_FRONTEND_URL ?? "http://localhost:3000",
-  // AWS SES Configuration (deprecated - use Brevo instead)
-  awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
-  awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
-  awsRegion: process.env.AWS_REGION ?? "us-east-1",
-  sesFromEmail: process.env.SES_FROM_EMAIL ?? "noreply@sige.platform",
-  // Brevo transactional API — key from https://app.brevo.com/settings/keys/api
-  brevoApiKey: process.env.BREVO_API_KEY ?? "",
-  brevoFromEmail: process.env.BREVO_FROM_EMAIL ?? "",
-  brevoFromName: process.env.BREVO_FROM_NAME ?? "ISGE 360",
+  // AWS SES — transactional email. Region is independent of S3 (typically Ohio).
+  // Prefer SES_* keys so the dedicated IAM user is not mixed with S3 credentials.
+  sesRegion: process.env.AWS_SES_REGION ?? process.env.AWS_REGION ?? "us-west-2",
+  sesAccessKeyId: process.env.SES_ACCESS_KEY_ID ?? process.env.AWS_ACCESS_KEY_ID ?? "",
+  sesSecretAccessKey: process.env.SES_SECRET_ACCESS_KEY ?? process.env.AWS_SECRET_ACCESS_KEY ?? "",
+  sesFromEmail: process.env.SES_FROM_EMAIL ?? "",
+  sesFromName: process.env.SES_FROM_NAME ?? "ISGE 360",
 };

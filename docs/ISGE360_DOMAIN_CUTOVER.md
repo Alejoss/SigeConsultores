@@ -19,7 +19,9 @@ En el archivo privado `.env.production` del servidor deben quedar los siguientes
 ```dotenv
 FRONTEND_URL=https://isge360.com
 VITE_FRONTEND_URL=https://isge360.com
-BREVO_FROM_NAME=ISGE 360
+AWS_SES_REGION=us-west-2
+SES_FROM_EMAIL=noreply@isge360.com
+SES_FROM_NAME=ISGE 360
 ```
 
 No se deben almacenar ni publicar secretos en este documento.

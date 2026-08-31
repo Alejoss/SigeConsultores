@@ -1,13 +1,14 @@
 import crypto from "crypto";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { ENV } from "./env";
 
 /**
- * Email service for sending notifications via Brevo transactional HTTP API.
+ * Email service for sending notifications via Amazon SES (API, not SMTP).
  *
- * Requires `BREVO_API_KEY`. Auth and endpoint per Brevo docs:
- * @see https://developers.brevo.com/reference/quickstart-reference
- * @see https://developers.brevo.com/docs/api-key-authentication
- * @see https://developers.brevo.com/reference/send-transac-email
+ * Requires `SES_FROM_EMAIL` (verified identity) and credentials
+ * (`SES_ACCESS_KEY_ID` / `SES_SECRET_ACCESS_KEY`, falling back to `AWS_*`).
+ * Identities are regional — use the same region as the verified domain
+ * (`AWS_SES_REGION` or `AWS_REGION`, default `us-west-2`).
  */
 
 function maskRecipient(raw: string): string {
@@ -25,37 +26,56 @@ function summarizeRecipients(to: string | string[]): string {
   return list.map(maskRecipient).join(", ");
 }
 
-/** Base `servers[0].url` + `paths./smtp/email` from Brevo OpenAPI. */
-const BREVO_TRANSACTIONAL_API_URL = "https://api.brevo.com/v3/smtp/email";
+let _sesClient: SESClient | null = null;
+
+function getSesClient(): SESClient {
+  if (_sesClient) return _sesClient;
+  _sesClient = new SESClient({
+    region: ENV.sesRegion,
+    credentials: {
+      accessKeyId: ENV.sesAccessKeyId,
+      secretAccessKey: ENV.sesSecretAccessKey,
+    },
+  });
+  return _sesClient;
+}
+
+function hasSesCredentials(): boolean {
+  return Boolean(ENV.sesAccessKeyId?.trim() && ENV.sesSecretAccessKey?.trim());
+}
 
 /** Log-friendly env check (no secrets). */
-function logBrevoConfigDiagnostics(reason: string): void {
-  const apiSet = Boolean(ENV.brevoApiKey?.trim());
-  console.warn("[EmailService] Brevo diagnostics:", {
+function logSesConfigDiagnostics(reason: string): void {
+  const keySet = Boolean(ENV.sesAccessKeyId?.trim());
+  console.warn("[EmailService] SES diagnostics:", {
     reason,
-    BREVO_API_KEY: apiSet ? "set (length " + ENV.brevoApiKey.trim().length + ")" : "MISSING",
-    BREVO_FROM_EMAIL: ENV.brevoFromEmail || "MISSING — sending may fail",
-    BREVO_FROM_NAME: ENV.brevoFromName || "(default)",
+    SES_ACCESS_KEY_ID: keySet ? "set (length " + ENV.sesAccessKeyId.trim().length + ")" : "MISSING",
+    SES_FROM_EMAIL: ENV.sesFromEmail || "MISSING — sending will fail",
+    SES_FROM_NAME: ENV.sesFromName || "(default)",
+    AWS_SES_REGION: ENV.sesRegion || "MISSING",
     NODE_ENV: process.env.NODE_ENV,
   });
 }
 
-function logBrevoApiFailure(attempt: number, err: unknown): void {
+function logSesApiFailure(attempt: number, err: unknown): void {
   if (err instanceof Error) {
-    console.error("[EmailService] Brevo API failure details:", {
+    const meta = err as Error & { $metadata?: { httpStatusCode?: number; requestId?: string } };
+    console.error("[EmailService] SES API failure details:", {
       attempt,
       name: err.name,
       message: err.message,
+      httpStatusCode: meta.$metadata?.httpStatusCode,
+      requestId: meta.$metadata?.requestId,
     });
     return;
   }
-  console.error("[EmailService] Brevo API failure (non-Error):", err);
+  console.error("[EmailService] SES API failure (non-Error):", err);
 }
 
 /** Parse `Name <email@x.com>` or plain email; default to ENV sender. */
 function resolveSender(fromOverride?: string): { name: string; email: string } {
-  const name = ENV.brevoFromName;
-  const email = ENV.brevoFromEmail.trim();
+  const name = ENV.sesFromName;
+  const email = ENV.sesFromEmail.trim();
   const fallback = { name, email };
   const raw = fromOverride?.trim();
   if (!raw) return fallback;
@@ -73,86 +93,59 @@ function resolveSender(fromOverride?: string): { name: string; email: string } {
   return fallback;
 }
 
+function formatSesSource(sender: { name: string; email: string }): string {
+  if (sender.name) {
+    return `${sender.name} <${sender.email}>`;
+  }
+  return sender.email;
+}
+
 /**
- * Send one transactional email via Brevo REST API (not marketing `EmailCampaignsApi`).
- * Request shape matches `SendSmtpEmail`: `sender`, `to`, `subject`, `htmlContent`, optional `textContent`.
+ * Send one transactional email via Amazon SES SendEmail.
  */
-async function sendOneBrevoTransactionalApi(
+async function sendOneSesTransactional(
   options: EmailOptions,
   correlationId: string,
   attempt: number
 ): Promise<void> {
-  const apiKey = ENV.brevoApiKey.trim();
   const sender = resolveSender(options.from);
   if (!sender.email) {
-    throw new Error("BREVO_FROM_EMAIL is required for Brevo API sends");
+    throw new Error("SES_FROM_EMAIL is required for SES sends");
   }
   const toAddresses = Array.isArray(options.to) ? options.to : [options.to];
-  const to = toAddresses.map((addr) => ({ email: addr.trim() }));
   const textContent =
     options.textContent || options.htmlContent.replace(/<[^>]*>/g, "");
 
-  const payload = {
-    sender: { name: sender.name, email: sender.email },
-    to,
-    subject: options.subject,
-    htmlContent: options.htmlContent,
-    textContent,
-  };
-
-  console.log("[EmailService] Attempting send via Brevo transactional API", {
+  console.log("[EmailService] Attempting send via Amazon SES", {
     correlationId,
     attempt,
-    endpoint: BREVO_TRANSACTIONAL_API_URL,
-    from: `${sender.name} <${sender.email}>`,
+    region: ENV.sesRegion,
+    from: formatSesSource(sender),
     toMasked: summarizeRecipients(toAddresses),
     subject: options.subject,
     htmlLength: options.htmlContent.length,
   });
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25000);
-  let res: Response;
-  try {
-    res = await fetch(BREVO_TRANSACTIONAL_API_URL, {
-      method: "POST",
-      headers: {
-        // Required by Brevo: https://developers.brevo.com/docs/api-key-authentication
-        "api-key": apiKey,
-        "content-type": "application/json",
-        accept: "application/json",
+  const response = await getSesClient().send(
+    new SendEmailCommand({
+      Source: formatSesSource(sender),
+      Destination: {
+        ToAddresses: toAddresses.map((addr) => addr.trim()),
       },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+      Message: {
+        Subject: { Data: options.subject, Charset: "UTF-8" },
+        Body: {
+          Html: { Data: options.htmlContent, Charset: "UTF-8" },
+          Text: { Data: textContent, Charset: "UTF-8" },
+        },
+      },
+    })
+  );
 
-  const rawBody = await res.text();
-  // Brevo documents 201 Created on success; treat any 2xx as OK.
-  if (!res.ok) {
-    let detail = rawBody.slice(0, 600);
-    try {
-      const j = JSON.parse(rawBody) as { code?: string; message?: string };
-      detail = [j.code, j.message].filter(Boolean).join(" — ") || detail;
-    } catch {
-      /* use raw snippet */
-    }
-    throw new Error(`Brevo API HTTP ${res.status}: ${detail}`);
-  }
-
-  let messageId: string | undefined;
-  try {
-    messageId = (JSON.parse(rawBody) as { messageId?: string }).messageId;
-  } catch {
-    /* empty or non-JSON */
-  }
-  console.log("[EmailService] Email accepted by Brevo API", {
+  console.log("[EmailService] Email accepted by SES", {
     correlationId,
     attempt,
-    messageId,
-    status: res.status,
+    messageId: response.MessageId,
   });
 }
 
@@ -172,7 +165,7 @@ export interface PasswordResetEmailOptions {
 }
 
 /**
- * Send email via Brevo API (non-blocking). Retries run in the background.
+ * Send email via Amazon SES (non-blocking). Retries run in the background.
  */
 export function sendEmail(options: EmailOptions): boolean {
   const correlationId = crypto.randomBytes(4).toString("hex");
@@ -183,7 +176,7 @@ export function sendEmail(options: EmailOptions): boolean {
   });
   sendEmailWithRetries(options, correlationId).catch((error) => {
     console.error("[EmailService] Background email send failed:", { correlationId, error });
-    logBrevoApiFailure(0, error);
+    logSesApiFailure(0, error);
   });
 
   return true;
@@ -191,7 +184,7 @@ export function sendEmail(options: EmailOptions): boolean {
 
 /**
  * Blocking variant for critical flows (e.g. password reset).
- * Returns true only if Brevo accepted the message.
+ * Returns true only if SES accepted the message.
  */
 export async function sendEmailStrict(options: EmailOptions): Promise<boolean> {
   const correlationId = crypto.randomBytes(4).toString("hex");
@@ -204,41 +197,39 @@ export async function sendEmailStrict(options: EmailOptions): Promise<boolean> {
 }
 
 /**
- * Internal function that handles actual email sending with retries
- * Runs in background without blocking the response
+ * Internal function that handles actual email sending with retries.
  */
 async function sendEmailWithRetries(options: EmailOptions, correlationId: string): Promise<boolean> {
   const maxRetries = 3;
-  let lastError: any = null;
+  let lastError: unknown = null;
 
-  if (!ENV.brevoApiKey?.trim()) {
-    logBrevoConfigDiagnostics("missing BREVO_API_KEY");
+  if (!hasSesCredentials()) {
+    logSesConfigDiagnostics("missing SES_ACCESS_KEY_ID / SES_SECRET_ACCESS_KEY");
     return false;
   }
 
-  if (!ENV.brevoFromEmail?.trim()) {
-    console.warn(
-      "[EmailService] BREVO_FROM_EMAIL is empty. Brevo may reject the message. Set it to a verified sender."
-    );
+  if (!ENV.sesFromEmail?.trim()) {
+    logSesConfigDiagnostics("missing SES_FROM_EMAIL");
+    return false;
   }
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`[EmailService] Brevo API send`, {
+      console.log(`[EmailService] SES send`, {
         correlationId,
         attempt: `${attempt}/${maxRetries}`,
       });
-      await sendOneBrevoTransactionalApi(options, correlationId, attempt);
+      await sendOneSesTransactional(options, correlationId, attempt);
       return true;
     } catch (error) {
       lastError = error;
       console.error(`[EmailService] Error sending email`, { correlationId, attempt, maxRetries });
-      logBrevoApiFailure(attempt, error);
+      logSesApiFailure(attempt, error);
       if (error instanceof Error) {
         console.error("[EmailService] Error stack:", error.stack);
       }
       if (attempt === 1) {
-        logBrevoConfigDiagnostics("first send attempt failed — check env inside the running container");
+        logSesConfigDiagnostics("first send attempt failed — check env inside the running container");
       }
 
       if (attempt < maxRetries) {
@@ -249,8 +240,8 @@ async function sendEmailWithRetries(options: EmailOptions, correlationId: string
   }
 
   console.error("[EmailService] All email send attempts failed", { correlationId, lastError });
-  logBrevoApiFailure(maxRetries, lastError);
-  logBrevoConfigDiagnostics("all retries exhausted");
+  logSesApiFailure(maxRetries, lastError);
+  logSesConfigDiagnostics("all retries exhausted");
   return false;
 }
 

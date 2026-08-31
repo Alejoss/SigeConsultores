@@ -26,9 +26,10 @@ Antes de modificar cualquier archivo, **lee en este orden** (no es opcional):
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | **Único CI en `main`**; staging sin CI; CD solo si CI pasa |
 | [TESTING.md](./TESTING.md) | Cómo correr y actualizar pruebas (crítico con cambios de esquema) |
 | [GITHUB_SETUP.md](./GITHUB_SETUP.md) | Workflows de GitHub Actions, secretos, permisos |
-| [INFRASTRUCTURE.md](./INFRASTRUCTURE.md) | Arquitectura: droplet, Docker, OAuth, S3, correo |
+| [INFRASTRUCTURE.md](./INFRASTRUCTURE.md) | Arquitectura: droplet, Docker, OAuth, S3, correo (SES) |
 | [BACKUP_SYSTEM.md](./BACKUP_SYSTEM.md) | Respaldos diarios y restauración |
 | [FILE_STORAGE.md](./FILE_STORAGE.md) | Subida de archivos a S3 |
+| [TRANSACTIONAL_EMAIL.md](./TRANSACTIONAL_EMAIL.md) | Amazon SES: variables `SES_*`, IAM, sandbox |
 
 ### Variables de entorno
 

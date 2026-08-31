@@ -70,7 +70,7 @@ export const passwordResetRouter = router({
       if (!sent) {
         return {
           success: false,
-          message: "No se pudo enviar el correo de recuperación. Verifica la configuración de Brevo.",
+          message: "No se pudo enviar el correo de recuperación. Verifica la configuración de Amazon SES.",
         };
       }
 

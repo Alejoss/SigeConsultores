@@ -20,7 +20,7 @@ Visión operativa del sistema tal como está definido en este repositorio (Docke
                │                               │
                ▼                               ▼
      ┌──────────────────┐           ┌──────────────────┐
-     │  OAuth (externo) │           │  Brevo (email)   │
+     │  OAuth (externo) │           │  Amazon SES      │
      └──────────────────┘           └──────────────────┘
                │
                ▼
@@ -43,7 +43,7 @@ Visión operativa del sistema tal como está definido en este repositorio (Docke
 | GitHub Actions | CI (`ci.yml`); CD (`deploy-production.yml`) solo tras CI verde en `main` |
 | S3 | Respaldos automatizados y almacenamiento de archivos (mismo bucket configurable; ver [FILE_STORAGE.md](./FILE_STORAGE.md)) |
 | Proveedor OAuth | Login; URLs y claves en `VITE_APP_ID`, `OAUTH_SERVER_URL`, `VITE_OAUTH_PORTAL_URL` |
-| Brevo | Correo transaccional (`BREVO_API_KEY`, etc., según implementación) |
+| Amazon SES | Correo transaccional (`us-west-2`; ver [TRANSACTIONAL_EMAIL.md](./TRANSACTIONAL_EMAIL.md)) |
 
 No versionar credenciales: usar `.env.production` en el servidor y secretos de GitHub para CI.
 
@@ -80,4 +80,10 @@ Procedimientos orientativos en [BACKUP_SYSTEM.md](./BACKUP_SYSTEM.md) (restaurar
 
 ---
 
-Última revisión de esta página: mayo 2026 (producción única en `main`).
+## Correo transaccional
+
+Amazon SES en **us-west-2**, identidad de dominio `isge360.com`. Variables `SES_*` (IAM dedicado, no las keys de S3). Guía: [TRANSACTIONAL_EMAIL.md](./TRANSACTIONAL_EMAIL.md).
+
+---
+
+Última revisión de esta página: agosto 2026 (producción única en `main`).

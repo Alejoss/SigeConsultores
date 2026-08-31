@@ -1,4 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("@aws-sdk/client-ses", () => ({
+  SESClient: class {
+    send = vi.fn().mockResolvedValue({ MessageId: "mock-message-id" });
+  },
+  SendEmailCommand: class {
+    constructor(public input: unknown) {}
+  },
+}));
+
 import {
   sendEmail,
   sendAccessInvitationEmail,
@@ -10,11 +20,10 @@ import {
 } from "../_core/emailService";
 
 /**
- * Email Service Tests
- * Tests for Brevo transactional email (API) helpers
+ * Tests for Amazon SES transactional email helpers
  */
 
-describe("Email Service - Brevo Integration", () => {
+describe("Email Service - SES Integration", () => {
   describe("sendEmail - Base Email Function", () => {
     it("should accept valid email options", async () => {
       const options: EmailOptions = {

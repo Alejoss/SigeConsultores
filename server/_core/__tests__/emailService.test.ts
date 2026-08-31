@@ -1,6 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("@aws-sdk/client-ses", () => ({
+  SESClient: class {
+    send = vi.fn().mockResolvedValue({ MessageId: "mock-message-id" });
+  },
+  SendEmailCommand: class {
+    constructor(public input: unknown) {}
+  },
+}));
+
 import {
   sendEmail,
+  sendEmailStrict,
   sendManagerAccessInvitationEmail,
   sendManagerAccessConfirmationEmail,
   sendProcessLeaderAccessConfirmationEmail,
@@ -36,6 +47,15 @@ describe("Email Service - Non-blocking Optimization", () => {
       // Should return synchronously
       expect(typeof result).toBe("boolean");
       expect(result).toBe(true);
+    });
+
+    it("sendEmailStrict resolves to a boolean without throwing", async () => {
+      const result = await sendEmailStrict({
+        to: "test@example.com",
+        subject: "Test",
+        htmlContent: "<p>Test</p>",
+      });
+      expect(typeof result).toBe("boolean");
     });
   });
 

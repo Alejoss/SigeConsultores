@@ -21,6 +21,7 @@
 | [INFRASTRUCTURE.md](./INFRASTRUCTURE.md) | Arquitectura de servicios (droplet, contenedores, S3, correo, OAuth) |
 | [BACKUP_SYSTEM.md](./BACKUP_SYSTEM.md) | Respaldos diarios a S3, cron, restauración |
 | [FILE_STORAGE.md](./FILE_STORAGE.md) | Subidas a S3, prefijos `uploads/`, URLs firmadas |
+| [TRANSACTIONAL_EMAIL.md](./TRANSACTIONAL_EMAIL.md) | Amazon SES: variables, IAM, sandbox vs producción |
 
 Documentos de producto / estrategia (no operativos de despliegue):
 
