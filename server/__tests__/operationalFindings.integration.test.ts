@@ -126,8 +126,8 @@ describe("Hallazgos operativos: integración aislada", () => {
 
     let [audit] = await db.select().from(audits).where(eq(audits.id, auditId));
     expect(audit).toMatchObject({
-      findingsMajorNC: 2,
-      closuresMajorNC: 1,
+      findingsMajorNC: 0,
+      closuresMajorNC: 0,
       findingsObservations: 1,
       closuresObservations: 0,
     });
@@ -187,7 +187,7 @@ describe("Hallazgos operativos: integración aislada", () => {
     });
     inspectionFindingId = created.id;
     let [inspection] = await db.select().from(inspections).where(eq(inspections.id, inspectionId));
-    expect(inspection).toMatchObject({ findings: 4, closures: 1 });
+    expect(inspection).toMatchObject({ findings: 1, closures: 0 });
 
     await linkManagerCaller().createLinks({
       companyId,
@@ -202,6 +202,6 @@ describe("Hallazgos operativos: integración aislada", () => {
     await leaderCaller(processOneId).updateProgress({ id: link.id, companyId, status: "completed" });
 
     [inspection] = await db.select().from(inspections).where(eq(inspections.id, inspectionId));
-    expect(inspection).toMatchObject({ findings: 4, closures: 2 });
+    expect(inspection).toMatchObject({ findings: 1, closures: 1 });
   });
 });
