@@ -177,7 +177,7 @@ function FindingCard({
             variant="ghost"
             className="text-red-600 hover:bg-red-50 hover:text-red-700"
             onClick={() => {
-              if (confirm("¿Eliminar este hallazgo? No será posible eliminarlo si tiene procesos vinculados.")) remove.mutate({ id: value.id, companyId });
+              if (confirm("¿Eliminar este hallazgo? Si tiene procesos vinculados, también se retirará esa responsabilidad de cada proceso y sus evidencias asociadas.")) remove.mutate({ id: value.id, companyId });
             }}
           >
             <Trash2 className="h-4 w-4" />

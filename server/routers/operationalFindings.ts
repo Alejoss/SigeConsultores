@@ -1,7 +1,13 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { audits, inspections, linkedCommitments, operationalFindings } from "../../drizzle/schema";
+import {
+  audits,
+  inspections,
+  linkedCommitmentEvidence,
+  linkedCommitments,
+  operationalFindings,
+} from "../../drizzle/schema";
 import { getDb } from "../db";
 import type { TrpcContext } from "../_core/context";
 import { companyProcedure, router } from "../_core/trpc";
@@ -237,13 +243,26 @@ export const operationalFindingsRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de datos no disponible." });
       const finding = await findFinding(db, input.companyId, input.id);
-      if ((await activeLinks(db, input.companyId, finding)).length) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "No puede eliminar un hallazgo que tiene procesos vinculados.",
-        });
-      }
-      await db.delete(operationalFindings).where(eq(operationalFindings.id, finding.id));
+      const links = await activeLinks(db, input.companyId, finding);
+      await db.transaction(async tx => {
+        if (links.length) {
+          const linkedCommitmentIds = links.map(link => link.id);
+          // El origen es la única pantalla autorizada para retirar una responsabilidad
+          // asignada. Así se evita dejar tarjetas huérfanas en los procesos.
+          await tx
+            .delete(linkedCommitmentEvidence)
+            .where(
+              and(
+                eq(linkedCommitmentEvidence.companyId, input.companyId),
+                inArray(linkedCommitmentEvidence.linkedCommitmentId, linkedCommitmentIds)
+              )
+            );
+          await tx
+            .delete(linkedCommitments)
+            .where(inArray(linkedCommitments.id, linkedCommitmentIds));
+        }
+        await tx.delete(operationalFindings).where(eq(operationalFindings.id, finding.id));
+      });
       await synchronizeOperationalFindingSummary(db, input.companyId, finding.sourceType as FindingSourceType, finding.sourceId);
       return { success: true };
     }),

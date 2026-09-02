@@ -174,6 +174,26 @@ describe("Hallazgos operativos: integración aislada", () => {
     expect(schedule.some(item => item.id === `linked-commitment-${rows[0].id}`)).toBe(true);
   });
 
+  it("elimina desde Auditorías el hallazgo y todas sus responsabilidades vinculadas", async () => {
+    const manager = managerCaller();
+    await manager.delete({ id: auditFindingId, companyId });
+
+    const deletedFinding = await db
+      .select()
+      .from(operationalFindings)
+      .where(eq(operationalFindings.id, auditFindingId));
+    expect(deletedFinding).toHaveLength(0);
+    const remainingLinks = await db
+      .select()
+      .from(linkedCommitments)
+      .where(and(eq(linkedCommitments.companyId, companyId), eq(linkedCommitments.sourceType, "audit_finding")));
+    expect(remainingLinks).toHaveLength(0);
+    const [audit] = await db.select().from(audits).where(eq(audits.id, auditId));
+    expect(audit).toMatchObject({ findingsObservations: 0, closuresObservations: 0 });
+    const schedule = await getConsolidatedScheduleActivities(processOneId);
+    expect(schedule.some(item => item.id.startsWith("linked-commitment-"))).toBe(false);
+  });
+
   it("aplica el mismo detalle y cierre automático en Inspecciones y Simulacros", async () => {
     const manager = managerCaller();
     const created = await manager.create({
