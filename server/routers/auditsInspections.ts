@@ -192,11 +192,27 @@ export const auditsInspectionsRouter = router({
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
-      return db
+      const rows = await db
         .select()
         .from(audits)
         .where(eq(audits.companyId, input.companyId))
         .orderBy(asc(audits.orderIndex));
+      const details = await db
+        .select({ sourceId: operationalFindings.sourceId, classification: operationalFindings.classification, completed: operationalFindings.completed })
+        .from(operationalFindings)
+        .where(and(eq(operationalFindings.companyId, input.companyId), eq(operationalFindings.sourceType, "audit")));
+      const totals = new Map<number, Record<string, number>>();
+      for (const detail of details) {
+        const total = totals.get(detail.sourceId) || { findingsMajorNC: 0, findingsMinorNC: 0, findingsObservations: 0, findingsOM: 0, closuresMajorNC: 0, closuresMinorNC: 0, closuresObservations: 0, closuresOM: 0 };
+        const suffix = detail.classification === "major_nc" ? "MajorNC" : detail.classification === "minor_nc" ? "MinorNC" : detail.classification === "observation" ? "Observations" : "OM";
+        total[`findings${suffix}`] += 1;
+        if (detail.completed) total[`closures${suffix}`] += 1;
+        totals.set(detail.sourceId, total);
+      }
+      return rows.map(row => ({
+        ...row,
+        ...(totals.get(row.id) || { findingsMajorNC: 0, findingsMinorNC: 0, findingsObservations: 0, findingsOM: 0, closuresMajorNC: 0, closuresMinorNC: 0, closuresObservations: 0, closuresOM: 0 }),
+      }));
     }),
 
   /** Crear nueva auditoría */
@@ -240,15 +256,7 @@ export const auditsInspectionsRouter = router({
       managementSystem: z.string().optional(),
       auditDate: z.string().optional(),
       auditType: z.enum(["Interna", "Externa"]).optional(),
-      findingsObservations: z.number().optional(),
-      findingsMajorNC: z.number().optional(),
-      findingsMinorNC: z.number().optional(),
-      findingsOM: z.number().optional(),
-      closuresObservations: z.number().optional(),
-      closuresMajorNC: z.number().optional(),
-      closuresMinorNC: z.number().optional(),
-      closuresOM: z.number().optional(),
-    }))
+    }).strict())
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB no disponible" });
@@ -383,11 +391,23 @@ export const auditsInspectionsRouter = router({
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
-      return db
+      const rows = await db
         .select()
         .from(inspections)
         .where(eq(inspections.companyId, input.companyId))
         .orderBy(asc(inspections.orderIndex));
+      const details = await db
+        .select({ sourceId: operationalFindings.sourceId, completed: operationalFindings.completed })
+        .from(operationalFindings)
+        .where(and(eq(operationalFindings.companyId, input.companyId), eq(operationalFindings.sourceType, "inspection")));
+      const totals = new Map<number, { findings: number; closures: number }>();
+      for (const detail of details) {
+        const total = totals.get(detail.sourceId) || { findings: 0, closures: 0 };
+        total.findings += 1;
+        if (detail.completed) total.closures += 1;
+        totals.set(detail.sourceId, total);
+      }
+      return rows.map(row => ({ ...row, ...(totals.get(row.id) || { findings: 0, closures: 0 }) }));
     }),
 
   /** Crear nueva inspección */
@@ -425,9 +445,7 @@ export const auditsInspectionsRouter = router({
       managementSystem: z.string().optional(),
       inspectionDate: z.string().optional(),
       area: z.string().optional(),
-      findings: z.number().optional(),
-      closures: z.number().optional(),
-    }))
+    }).strict())
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB no disponible" });

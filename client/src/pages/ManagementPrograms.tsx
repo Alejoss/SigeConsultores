@@ -941,8 +941,6 @@ export default function ManagementPrograms() {
       companyId,
       programName: "Nuevo Programa",
       managementSystem: "Calidad",
-      plannedActions: 0,
-      completedActions: 0,
     });
   };
 
@@ -1197,37 +1195,17 @@ export default function ManagementPrograms() {
                         <label className="mb-1 block text-xs font-semibold text-slate-500">
                           # Acciones Planificadas
                         </label>
-                        <Input
-                          type="number"
-                          min={0}
-                          defaultValue={planned}
-                          onBlur={event =>
-                            handleUpdate(
-                              program.id,
-                              "plannedActions",
-                              parseInt(event.target.value, 10) || 0
-                            )
-                          }
-                          className="text-sm"
-                        />
+                        <div className="rounded border border-slate-200 bg-slate-50 p-2 text-center text-sm font-bold text-slate-700" title="Indicador automático: se calcula desde Acciones planificadas">
+                          {planned}
+                        </div>
                       </div>
                       <div>
                         <label className="mb-1 block text-xs font-semibold text-slate-500">
                           # Acciones Realizadas
                         </label>
-                        <Input
-                          type="number"
-                          min={0}
-                          defaultValue={completed}
-                          onBlur={event =>
-                            handleUpdate(
-                              program.id,
-                              "completedActions",
-                              parseInt(event.target.value, 10) || 0
-                            )
-                          }
-                          className="text-sm"
-                        />
+                        <div className="rounded border border-slate-200 bg-slate-50 p-2 text-center text-sm font-bold text-slate-700" title="Indicador automático: se actualiza cuando el proceso responsable confirma el cumplimiento">
+                          {completed}
+                        </div>
                       </div>
                       <div>
                         <label className="mb-1 block text-xs font-semibold text-slate-500">

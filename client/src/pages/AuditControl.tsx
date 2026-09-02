@@ -134,9 +134,6 @@ export default function AuditControl() {
 
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [openFileModal, setOpenFileModal] = useState<number | null>(null);
-  const [fixedScrollPosition, setFixedScrollPosition] = useState(0);
-  const tableScrollRef = useRef<HTMLDivElement>(null);
-  const tableContentRef = useRef<HTMLTableElement>(null);
   const saveTimers = useRef<Record<number, NodeJS.Timeout>>({});
 
   const { data, isLoading, refetch } = trpc.auditsInspections.listAudits.useQuery(
@@ -180,29 +177,14 @@ export default function AuditControl() {
     [companyId, updateMutation]
   );
 
-  const syncFixedSliderFromTable = () => {
-    const tableScroller = tableScrollRef.current;
-    if (!tableScroller) return;
-    const range = tableScroller.scrollWidth - tableScroller.clientWidth;
-    setFixedScrollPosition(range > 0 ? Math.round((tableScroller.scrollLeft / range) * 1000) : 0);
-  };
-
-  const moveTableFromFixedSlider = (value: number) => {
-    const tableScroller = tableScrollRef.current;
-    if (!tableScroller) return;
-    const range = tableScroller.scrollWidth - tableScroller.clientWidth;
-    tableScroller.scrollLeft = Math.round((value / 1000) * range);
-    setFixedScrollPosition(value);
-  };
-
-  const numInput = (id: number, field: keyof AuditRow, value: number) => (
-    <Input
-      type="number"
-      min={0}
-      value={value}
-      onChange={(e) => handleChange(id, field, parseInt(e.target.value) || 0)}
-      className="w-16 text-center border-blue-200 focus:border-blue-400 px-1"
-    />
+  const derivedCount = (label: string, value: number) => (
+    <div
+      className="flex h-8 w-full flex-col items-center justify-center rounded border border-blue-100 bg-blue-50/50 leading-none"
+      title="Indicador automático: se calcula desde Gestionar hallazgos y los cierres confirmados por los procesos vinculados"
+    >
+      <span className="text-[8px] font-semibold text-blue-600">{label}</span>
+      <span className="mt-0.5 text-xs font-bold text-slate-700">{value}</span>
+    </div>
   );
 
   if (!companyId) {
@@ -229,108 +211,102 @@ export default function AuditControl() {
         ) : (
           <Card className="border-2 border-blue-100">
             <CardContent className="pt-4 pb-4">
-              <div
-                ref={tableScrollRef}
-                className="overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-                onScroll={syncFixedSliderFromTable}
-              >
-              <table ref={tableContentRef} className="min-w-[1320px] w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="min-w-[960px] table-fixed border-collapse text-xs" style={{ width: "calc(100% - 12px)" }}>
+                <colgroup>
+                  <col style={{ width: "15%" }} />
+                  <col style={{ width: "9.5%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "4.6%" }} /><col style={{ width: "4.6%" }} /><col style={{ width: "4.6%" }} /><col style={{ width: "4.6%" }} />
+                  <col style={{ width: "4.6%" }} /><col style={{ width: "4.6%" }} /><col style={{ width: "4.6%" }} /><col style={{ width: "4.6%" }} />
+                  <col style={{ width: "4.2%" }} />
+                  <col style={{ width: "21%" }} />
+                  <col style={{ width: "4.5%" }} />
+                </colgroup>
                 <thead>
-                  <tr className="text-blue-700 font-semibold text-xs uppercase">
-                    <th className="text-left p-2 min-w-[130px]">Sistema de Gestión</th>
-                    <th className="text-left p-2 min-w-[110px]">Fecha</th>
-                    <th className="text-left p-2 min-w-[110px]">Interna / Externa</th>
-                    <th colSpan={4} className="text-center p-2 border-l border-blue-100">
+                  <tr className="text-blue-700 font-semibold text-[10px] uppercase">
+                    <th className="text-left p-1">Sistema de Gestión</th>
+                    <th className="text-left p-1">Fecha</th>
+                    <th className="text-left p-1">Interna / Externa</th>
+                    <th colSpan={4} className="text-center p-1 border-l border-blue-100">
                       # Hallazgos
                     </th>
-                    <th colSpan={4} className="text-center p-2 border-l border-blue-100">
+                    <th colSpan={4} className="text-center p-1 border-l border-blue-100">
                       # Cierres
                     </th>
-                    <th className="text-center p-2 border-l border-blue-100 min-w-[50px]">%</th>
-                    <th className="text-center p-2 border-l border-blue-100 min-w-[160px]">Archivos Hallazgos</th>
-                    <th className="p-2"></th>
-                  </tr>
-                  <tr className="text-blue-600 text-xs">
-                    <th></th><th></th><th></th>
-                    <th className="text-center p-1 border-l border-blue-100">NC Mayor</th>
-                    <th className="text-center p-1">NC Menor</th>
-                    <th className="text-center p-1">Obs.</th>
-                    <th className="text-center p-1">OM</th>
-                    <th className="text-center p-1 border-l border-blue-100">NC Mayor</th>
-                    <th className="text-center p-1">NC Menor</th>
-                    <th className="text-center p-1">Obs.</th>
-                    <th className="text-center p-1">OM</th>
-                    <th></th><th></th><th></th>
+                    <th className="text-center p-1 border-l border-blue-100">%</th>
+                    <th className="text-center p-1 border-l border-blue-100">Archivos Hallazgos</th>
+                    <th className="p-1"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((row) => (
                     <Fragment key={row.id}>
                     <tr className="border-t border-blue-50 hover:bg-blue-50/30">
-                      <td className="p-2">
+                      <td className="p-1">
                         <Input
                           value={row.managementSystem}
                           onChange={(e) => handleChange(row.id, "managementSystem", e.target.value)}
                           placeholder="Sistema..."
-                          className="border-blue-200 focus:border-blue-400 text-sm"
+                          className="h-8 w-full min-w-0 border-blue-200 text-xs focus:border-blue-400"
                         />
                       </td>
-                      <td className="p-2">
+                      <td className="p-1">
                         <Input
                           value={row.auditDate}
                           onChange={(e) => handleChange(row.id, "auditDate", e.target.value)}
                           placeholder="dd-mm-aaaa"
-                          className="border-blue-200 focus:border-blue-400 text-sm w-32"
+                          className="h-8 w-full min-w-0 border-blue-200 text-xs focus:border-blue-400"
                         />
                       </td>
-                      <td className="p-2">
+                      <td className="p-1">
                         <select
                           value={row.auditType}
                           onChange={(e) => handleChange(row.id, "auditType", e.target.value as "Interna" | "Externa")}
-                          className="border border-blue-200 rounded px-2 py-1 text-sm focus:border-blue-400 focus:outline-none bg-white"
+                          className="h-8 w-full min-w-0 border border-blue-200 rounded px-1 text-xs focus:border-blue-400 focus:outline-none bg-white"
                         >
                           <option value="Interna">Interna</option>
                           <option value="Externa">Externa</option>
                         </select>
                       </td>
-                      {/* Hallazgos: NC Mayor, NC Menor, Obs., OM */}
-                      <td className="p-2 border-l border-blue-50">{numInput(row.id, "findingsMajorNC", row.findingsMajorNC)}</td>
-                      <td className="p-2">{numInput(row.id, "findingsMinorNC", row.findingsMinorNC)}</td>
-                      <td className="p-2">{numInput(row.id, "findingsObservations", row.findingsObservations)}</td>
-                      <td className="p-2">{numInput(row.id, "findingsOM", row.findingsOM)}</td>
-                      {/* Cierres: NC Mayor, NC Menor, Obs., OM */}
-                      <td className="p-2 border-l border-blue-50">{numInput(row.id, "closuresMajorNC", row.closuresMajorNC)}</td>
-                      <td className="p-2">{numInput(row.id, "closuresMinorNC", row.closuresMinorNC)}</td>
-                      <td className="p-2">{numInput(row.id, "closuresObservations", row.closuresObservations)}</td>
-                      <td className="p-2">{numInput(row.id, "closuresOM", row.closuresOM)}</td>
-                      <td className="p-2 text-center font-semibold text-blue-700 border-l border-blue-50">
+                      {/* Indicadores automáticos: cada etiqueta se repite por fila. */}
+                      <td className="p-1 border-l border-blue-50">{derivedCount("NC Mayor", row.findingsMajorNC)}</td>
+                      <td className="p-1">{derivedCount("NC Menor", row.findingsMinorNC)}</td>
+                      <td className="p-1">{derivedCount("Obs.", row.findingsObservations)}</td>
+                      <td className="p-1">{derivedCount("OM", row.findingsOM)}</td>
+                      <td className="p-1 border-l border-blue-50">{derivedCount("NC Mayor", row.closuresMajorNC)}</td>
+                      <td className="p-1">{derivedCount("NC Menor", row.closuresMinorNC)}</td>
+                      <td className="p-1">{derivedCount("Obs.", row.closuresObservations)}</td>
+                      <td className="p-1">{derivedCount("OM", row.closuresOM)}</td>
+                      <td className="p-1 text-center font-semibold text-blue-700 border-l border-blue-50">
                         {calcPercent(row)}
                       </td>
-                      <td className="p-2 border-l border-blue-50">
-                        <div className="flex gap-1 justify-center">
+                      <td className="p-1 border-l border-blue-50">
+                        <div className="flex gap-0.5 justify-center whitespace-nowrap">
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-xs border-blue-300 text-blue-700 hover:bg-blue-50"
+                            className="h-8 px-1 text-[10px] border-blue-300 text-blue-700 hover:bg-blue-50"
+                            title="Subir archivo de hallazgos"
                             onClick={() => setOpenFileModal(row.id)}
                           >
-                            <Upload size={12} className="mr-1" /> Subir archivo
+                            <Upload size={11} className="mr-0.5" /> Subir
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-xs border-blue-300 text-blue-700 hover:bg-blue-50"
+                            className="h-8 px-1.5 text-[10px] border-blue-300 text-blue-700 hover:bg-blue-50"
                             onClick={() => setOpenFileModal(row.id)}
                           >
                             <Eye size={12} className="mr-1" /> Ver archivo
                           </Button>
                         </div>
                       </td>
-                      <td className="p-2">
+                      <td className="p-1">
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-red-400 hover:text-red-600"
+                          className="h-8 w-full min-w-0 p-0 text-red-400 hover:text-red-600"
                           onClick={() => {
                             if (confirm("¿Eliminar esta auditoría?"))
                               deleteMutation.mutate({ id: row.id, companyId: companyId! });
@@ -370,22 +346,6 @@ export default function AuditControl() {
               </div>
             </CardContent>
           </Card>
-        )}
-
-        {rows.length > 0 && (
-          <div className="fixed bottom-12 left-3 right-3 z-50 rounded-md border border-blue-200 bg-white/95 px-3 py-2 shadow-md lg:left-52">
-            <label htmlFor="audit-table-horizontal-slider" className="sr-only">Desplazamiento horizontal de la tabla de auditorías</label>
-            <input
-              id="audit-table-horizontal-slider"
-              type="range"
-              min="0"
-              max="1000"
-              value={fixedScrollPosition}
-              onChange={(event) => moveTableFromFixedSlider(Number(event.target.value))}
-              className="block h-3 w-full cursor-ew-resize accent-blue-600"
-              aria-label="Desplazamiento horizontal de la tabla de auditorías"
-            />
-          </div>
         )}
 
         {openFileModal !== null && (

@@ -111,7 +111,7 @@ afterAll(async () => {
 });
 
 describe("Hallazgos operativos: integración aislada", () => {
-  it("preserva el histórico de Auditoría y actualiza automáticamente el cierre detallado", async () => {
+  it("preserva el histórico de Auditoría y bloquea cierres manuales fuera del proceso vinculado", async () => {
     const manager = managerCaller();
     const created = await manager.create({
       companyId,
@@ -132,14 +132,14 @@ describe("Hallazgos operativos: integración aislada", () => {
       closuresObservations: 0,
     });
 
-    await manager.update({ id: auditFindingId, companyId, completed: true });
+    await expect(manager.update({ id: auditFindingId, companyId, completed: true })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
     [audit] = await db.select().from(audits).where(eq(audits.id, auditId));
-    expect(audit.closuresObservations).toBe(1);
+    expect(audit.closuresObservations).toBe(0);
   });
 
   it("solo cierra el hallazgo de Auditoría cuando todos los procesos vinculados cumplen y lo muestra en Cronograma", async () => {
-    const manager = managerCaller();
-    await manager.update({ id: auditFindingId, companyId, completed: false });
     const links = await linkManagerCaller().createLinks({
       companyId,
       sourceType: "audit_finding",

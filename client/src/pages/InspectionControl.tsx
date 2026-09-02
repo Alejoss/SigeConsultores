@@ -226,22 +226,16 @@ export default function InspectionControl() {
                         />
                       </td>
                       <td className="p-2 text-center">
-                        <Input
-                          type="number"
-                          min={0}
-                          value={row.findings}
-                          onChange={(e) => handleChange(row.id, "findings", parseInt(e.target.value) || 0)}
-                          className="w-16 text-center border-blue-200 focus:border-blue-400 px-1 mx-auto"
-                        />
+                        <div className="mx-auto flex h-9 w-16 flex-col items-center justify-center rounded border border-blue-100 bg-blue-50/50 leading-none" title="Indicador automático: se calcula desde Gestionar hallazgos">
+                          <span className="text-[9px] font-semibold text-blue-600">Hallazgos</span>
+                          <span className="mt-0.5 text-sm font-bold text-slate-700">{row.findings}</span>
+                        </div>
                       </td>
                       <td className="p-2 text-center">
-                        <Input
-                          type="number"
-                          min={0}
-                          value={row.closures}
-                          onChange={(e) => handleChange(row.id, "closures", parseInt(e.target.value) || 0)}
-                          className="w-16 text-center border-blue-200 focus:border-blue-400 px-1 mx-auto"
-                        />
+                        <div className="mx-auto flex h-9 w-16 flex-col items-center justify-center rounded border border-blue-100 bg-blue-50/50 leading-none" title="Indicador automático: se actualiza cuando el proceso responsable confirma el cumplimiento">
+                          <span className="text-[9px] font-semibold text-blue-600">Cierres</span>
+                          <span className="mt-0.5 text-sm font-bold text-slate-700">{row.closures}</span>
+                        </div>
                       </td>
                       <td className="p-2 text-center font-semibold text-blue-700">
                         {calcPercent(row)}
