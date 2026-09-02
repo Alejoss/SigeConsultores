@@ -5,6 +5,7 @@
 export const integrationTestFiles = [
   "server/__tests__/consolidatedIndicators.test.ts",
   "server/__tests__/linkedCommitments.integration.test.ts",
+  "server/__tests__/operationalFindings.integration.test.ts",
   "server/__tests__/criticalityDuplicationFix.test.ts",
   "server/__tests__/getUserCompaniesFix.test.ts",
   "server/__tests__/hierarchicalAccess.test.ts",
