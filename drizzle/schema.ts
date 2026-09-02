@@ -1598,6 +1598,8 @@ export const payrollEmployees = mysqlTable(
       .default("activo")
       .notNull(),
     terminationDate: date("terminationDate"),
+    /** Marca de eliminación lógica: oculta registros retirados sin destruir su historial. */
+    deletedAt: timestamp("deletedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -1610,6 +1612,26 @@ export const payrollEmployees = mysqlTable(
 
 export type PayrollEmployee = typeof payrollEmployees.$inferSelect;
 export type InsertPayrollEmployee = typeof payrollEmployees.$inferInsert;
+
+/**
+ * Periodos laborales cerrados. Se crea una fila al reincorporar a una persona,
+ * preservando el vínculo anterior sin duplicar la cédula en Nómina.
+ */
+export const payrollEmploymentPeriods = mysqlTable("payrollEmploymentPeriods", {
+  id: int("id").autoincrement().primaryKey(),
+  payrollEmployeeId: int("payrollEmployeeId").notNull(),
+  companyId: int("companyId").notNull(),
+  fullName: varchar("fullName", { length: 255 }).notNull(),
+  identityCard: varchar("identityCard", { length: 20 }).notNull(),
+  hireDate: date("hireDate").notNull(),
+  terminationDate: date("terminationDate").notNull(),
+  area: varchar("area", { length: 255 }).notNull(),
+  position: varchar("position", { length: 255 }).notNull(),
+  closedAt: timestamp("closedAt").defaultNow().notNull(),
+});
+
+export type PayrollEmploymentPeriod = typeof payrollEmploymentPeriods.$inferSelect;
+export type InsertPayrollEmploymentPeriod = typeof payrollEmploymentPeriods.$inferInsert;
 
 /**
  * Organization Chart - Stores organization structure for each company

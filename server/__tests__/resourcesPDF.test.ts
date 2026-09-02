@@ -22,7 +22,7 @@ describe('Resources PDF Export', () => {
       scopeDescription: 'Test Scope',
     });
 
-    testProcessCharacterizationId = (charResult as any).insertId || 1;
+    testProcessCharacterizationId = Number(charResult[0].insertId);
 
     const participantResult = await db.insert(processParticipants).values({
       processCharacterizationId: testProcessCharacterizationId,
@@ -30,7 +30,7 @@ describe('Resources PDF Export', () => {
       orderIndex: 1,
     });
 
-    testParticipantId = (participantResult as any).insertId || 1;
+    testParticipantId = Number(participantResult[0].insertId);
 
     const resourceResult = await db.insert(processResources).values({
       processCharacterizationId: testProcessCharacterizationId,
@@ -41,7 +41,7 @@ describe('Resources PDF Export', () => {
       orderIndex: 1,
     });
 
-    testResourceId = (resourceResult as any).insertId || 1;
+    testResourceId = Number(resourceResult[0].insertId);
   });
 
   afterAll(async () => {
@@ -96,7 +96,7 @@ describe('Resources PDF Export', () => {
       orderIndex: 2,
     });
 
-    const resource2Id = (resource2Result as any).insertId;
+    const resource2Id = Number(resource2Result[0].insertId);
 
     // Verify both resources exist
     const allResources = await db.select().from(processResources)

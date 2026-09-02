@@ -1,10 +1,11 @@
 import { z } from "zod";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import {
   participantWorkerAssignments,
   participantWorkerKpis,
   participantWorkerKpiValues,
   payrollEmployees,
+  payrollEmploymentPeriods,
   processParticipants,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
@@ -49,6 +50,39 @@ const average = (values: number[]) =>
   values.length
     ? values.reduce((sum, value) => sum + value, 0) / values.length
     : null;
+
+const archiveClosedEmploymentPeriod = async (
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  employee: {
+    id: number;
+    companyId: number;
+    fullName: string;
+    identityCard: string;
+    hireDate: Date | string;
+    terminationDate: Date | string | null;
+    area: string;
+    position: string;
+  }
+) => {
+  if (!employee.terminationDate) {
+    throw new Error(
+      "Corrige la fecha de desvinculación antes de reincorporar al trabajador."
+    );
+  }
+  await db.insert(payrollEmploymentPeriods).values({
+    payrollEmployeeId: employee.id,
+    companyId: employee.companyId,
+    fullName: employee.fullName,
+    identityCard: employee.identityCard,
+    hireDate: employee.hireDate instanceof Date ? employee.hireDate : toDate(String(employee.hireDate)),
+    terminationDate:
+      employee.terminationDate instanceof Date
+        ? employee.terminationDate
+        : toDate(String(employee.terminationDate)),
+    area: employee.area,
+    position: employee.position,
+  });
+};
 
 type SyncAction =
   | "new_active"
@@ -285,7 +319,8 @@ export const payrollRouter = router({
         .where(
           and(
             eq(payrollEmployees.companyId, input.companyId),
-            eq(payrollEmployees.status, input.status)
+            eq(payrollEmployees.status, input.status),
+            isNull(payrollEmployees.deletedAt)
           )
         )
         .orderBy(asc(payrollEmployees.fullName));
@@ -329,11 +364,33 @@ export const payrollRouter = router({
         )
       );
     if (existing.length > 0) {
-      throw new Error(
-        existing[0].status === "pasivo"
-          ? "La C.I. ya pertenece a personal pasivo. No se puede duplicar el historial."
-          : "Ya existe un trabajador activo con esta C.I."
-      );
+      const [employee] = await db
+        .select()
+        .from(payrollEmployees)
+        .where(eq(payrollEmployees.id, existing[0].id));
+      if (!employee) throw new Error("No se encontró el trabajador existente.");
+      if (employee.status === "activo" && employee.deletedAt === null) {
+        throw new Error("Ya existe un trabajador activo con esta C.I.");
+      }
+      if (employee.terminationDate) {
+        await archiveClosedEmploymentPeriod(db, employee);
+      }
+      await db
+        .update(payrollEmployees)
+        .set({
+          fullName: input.fullName.trim(),
+          identityCard,
+          hireDate: toDate(input.hireDate),
+          area: input.area.trim(),
+          position: input.position.trim(),
+          status: "activo",
+          terminationDate: null,
+          currentProcessParticipantId: null,
+          deletedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(payrollEmployees.id, employee.id));
+      return { success: true, id: employee.id, reactivated: true };
     }
     const result = await db.insert(payrollEmployees).values({
       companyId: input.companyId,
@@ -344,7 +401,7 @@ export const payrollRouter = router({
       position: input.position.trim(),
       status: "activo",
     });
-    return { success: true, id: Number(result[0].insertId) };
+    return { success: true, id: Number(result[0].insertId), reactivated: false };
   }),
 
   update: companyProcedure
@@ -379,7 +436,8 @@ export const payrollRouter = router({
           and(
             eq(payrollEmployees.id, input.id),
             eq(payrollEmployees.companyId, input.companyId),
-            eq(payrollEmployees.status, "activo")
+            eq(payrollEmployees.status, "activo"),
+            isNull(payrollEmployees.deletedAt)
           )
         );
       return { success: true };
@@ -396,20 +454,130 @@ export const payrollRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("No DB");
+      const [employee] = await db
+        .select()
+        .from(payrollEmployees)
+        .where(
+          and(
+            eq(payrollEmployees.id, input.id),
+            eq(payrollEmployees.companyId, input.companyId),
+            eq(payrollEmployees.status, "activo"),
+            isNull(payrollEmployees.deletedAt)
+          )
+        );
+      if (!employee) throw new Error("No se encontró el trabajador activo.");
+      if (input.terminationDate.slice(0, 10) < dateKey(employee.hireDate)) {
+        throw new Error("La fecha de salida no puede ser anterior a la fecha de ingreso.");
+      }
       await db
         .update(payrollEmployees)
         .set({
           status: "pasivo",
           terminationDate: toDate(input.terminationDate),
+          currentProcessParticipantId: null,
           updatedAt: new Date(),
         })
+        .where(eq(payrollEmployees.id, employee.id));
+      return { success: true };
+    }),
+
+  updateInactiveTermination: companyProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        companyId: z.number(),
+        terminationDate: z.string().min(8),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("No DB");
+      const [employee] = await db
+        .select()
+        .from(payrollEmployees)
         .where(
           and(
             eq(payrollEmployees.id, input.id),
             eq(payrollEmployees.companyId, input.companyId),
-            eq(payrollEmployees.status, "activo")
+            eq(payrollEmployees.status, "pasivo"),
+            isNull(payrollEmployees.deletedAt)
           )
         );
+      if (!employee) throw new Error("No se encontró el trabajador pasivo.");
+      if (input.terminationDate.slice(0, 10) < dateKey(employee.hireDate)) {
+        throw new Error("La fecha de salida no puede ser anterior a la fecha de ingreso.");
+      }
+      await db
+        .update(payrollEmployees)
+        .set({ terminationDate: toDate(input.terminationDate), updatedAt: new Date() })
+        .where(eq(payrollEmployees.id, employee.id));
+      return { success: true };
+    }),
+
+  reactivateInactive: companyProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        companyId: z.number(),
+        hireDate: z.string().min(8),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("No DB");
+      const [employee] = await db
+        .select()
+        .from(payrollEmployees)
+        .where(
+          and(
+            eq(payrollEmployees.id, input.id),
+            eq(payrollEmployees.companyId, input.companyId),
+            eq(payrollEmployees.status, "pasivo"),
+            isNull(payrollEmployees.deletedAt)
+          )
+        );
+      if (!employee) throw new Error("No se encontró el trabajador pasivo.");
+      if (!employee.terminationDate) {
+        throw new Error("Corrige la fecha de salida antes de reincorporar al trabajador.");
+      }
+      if (input.hireDate.slice(0, 10) < dateKey(employee.terminationDate)) {
+        throw new Error("La nueva fecha de ingreso no puede ser anterior a la fecha de salida.");
+      }
+      await archiveClosedEmploymentPeriod(db, employee);
+      await db
+        .update(payrollEmployees)
+        .set({
+          hireDate: toDate(input.hireDate),
+          status: "activo",
+          terminationDate: null,
+          currentProcessParticipantId: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(payrollEmployees.id, employee.id));
+      return { success: true };
+    }),
+
+  deleteInactive: companyProcedure
+    .input(z.object({ id: z.number().int().positive(), companyId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("No DB");
+      const [employee] = await db
+        .select({ id: payrollEmployees.id })
+        .from(payrollEmployees)
+        .where(
+          and(
+            eq(payrollEmployees.id, input.id),
+            eq(payrollEmployees.companyId, input.companyId),
+            eq(payrollEmployees.status, "pasivo"),
+            isNull(payrollEmployees.deletedAt)
+          )
+        );
+      if (!employee) throw new Error("No se encontró el trabajador pasivo.");
+      await db
+        .update(payrollEmployees)
+        .set({ deletedAt: new Date(), currentProcessParticipantId: null, updatedAt: new Date() })
+        .where(eq(payrollEmployees.id, employee.id));
       return { success: true };
     }),
 
@@ -424,7 +592,8 @@ export const payrollRouter = router({
           and(
             eq(payrollEmployees.id, input.id),
             eq(payrollEmployees.companyId, input.companyId),
-            eq(payrollEmployees.status, "activo")
+            eq(payrollEmployees.status, "activo"),
+            isNull(payrollEmployees.deletedAt)
           )
         );
       return { success: true };
@@ -440,7 +609,8 @@ export const payrollRouter = router({
         .where(
           and(
             eq(payrollEmployees.companyId, input.companyId),
-            eq(payrollEmployees.status, "activo")
+            eq(payrollEmployees.status, "activo"),
+            isNull(payrollEmployees.deletedAt)
           )
         );
       return { success: true };
@@ -607,7 +777,12 @@ export const payrollRouter = router({
       const allEmployees = await db
         .select()
         .from(payrollEmployees)
-        .where(eq(payrollEmployees.companyId, input.companyId));
+        .where(
+          and(
+            eq(payrollEmployees.companyId, input.companyId),
+            isNull(payrollEmployees.deletedAt)
+          )
+        );
 
       const areas = Array.from(
         new Set(allEmployees.map(employee => employee.area).filter(Boolean))
