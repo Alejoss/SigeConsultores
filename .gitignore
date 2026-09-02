@@ -69,6 +69,7 @@ backups/
 !drizzle/0080_linked_commitments.sql
 !drizzle/0081_company_compliance_evidence_columns.sql
 !drizzle/0082_program_actions_import_key.sql
+!drizzle/0083_operational_findings.sql
 
 # IDE settings (user-specific)
 .vscode/settings.json

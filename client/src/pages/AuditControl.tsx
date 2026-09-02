@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { Fragment, useState, useEffect, useRef, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
+import { OperationalFindingsPanel } from "@/components/OperationalFindingsPanel";
 
 type AuditRow = {
   id: number;
@@ -133,6 +134,9 @@ export default function AuditControl() {
 
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [openFileModal, setOpenFileModal] = useState<number | null>(null);
+  const [fixedScrollPosition, setFixedScrollPosition] = useState(0);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const tableContentRef = useRef<HTMLTableElement>(null);
   const saveTimers = useRef<Record<number, NodeJS.Timeout>>({});
 
   const { data, isLoading, refetch } = trpc.auditsInspections.listAudits.useQuery(
@@ -176,6 +180,21 @@ export default function AuditControl() {
     [companyId, updateMutation]
   );
 
+  const syncFixedSliderFromTable = () => {
+    const tableScroller = tableScrollRef.current;
+    if (!tableScroller) return;
+    const range = tableScroller.scrollWidth - tableScroller.clientWidth;
+    setFixedScrollPosition(range > 0 ? Math.round((tableScroller.scrollLeft / range) * 1000) : 0);
+  };
+
+  const moveTableFromFixedSlider = (value: number) => {
+    const tableScroller = tableScrollRef.current;
+    if (!tableScroller) return;
+    const range = tableScroller.scrollWidth - tableScroller.clientWidth;
+    tableScroller.scrollLeft = Math.round((value / 1000) * range);
+    setFixedScrollPosition(value);
+  };
+
   const numInput = (id: number, field: keyof AuditRow, value: number) => (
     <Input
       type="number"
@@ -209,8 +228,13 @@ export default function AuditControl() {
           <div className="flex items-center gap-2 text-slate-500"><Loader2 className="animate-spin" size={18} /> Cargando...</div>
         ) : (
           <Card className="border-2 border-blue-100">
-            <CardContent className="pt-4 pb-4 overflow-x-auto">
-              <table className="w-full text-sm">
+            <CardContent className="pt-4 pb-4">
+              <div
+                ref={tableScrollRef}
+                className="overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                onScroll={syncFixedSliderFromTable}
+              >
+              <table ref={tableContentRef} className="min-w-[1320px] w-full text-sm">
                 <thead>
                   <tr className="text-blue-700 font-semibold text-xs uppercase">
                     <th className="text-left p-2 min-w-[130px]">Sistema de Gestión</th>
@@ -241,7 +265,8 @@ export default function AuditControl() {
                 </thead>
                 <tbody>
                   {rows.map((row) => (
-                    <tr key={row.id} className="border-t border-blue-50 hover:bg-blue-50/30">
+                    <Fragment key={row.id}>
+                    <tr className="border-t border-blue-50 hover:bg-blue-50/30">
                       <td className="p-2">
                         <Input
                           value={row.managementSystem}
@@ -315,9 +340,22 @@ export default function AuditControl() {
                         </Button>
                       </td>
                     </tr>
+                    <tr className="border-t border-blue-50 bg-slate-50/50">
+                      <td colSpan={14} className="px-2 pb-3 pt-1">
+                        <OperationalFindingsPanel
+                          companyId={companyId!}
+                          sourceType="audit"
+                          sourceId={row.id}
+                          title="Gestionar hallazgos"
+                          onSummaryChanged={refetch}
+                        />
+                      </td>
+                    </tr>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
+              </div>
 
               <div className="mt-4">
                 <Button
@@ -332,6 +370,22 @@ export default function AuditControl() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {rows.length > 0 && (
+          <div className="fixed bottom-12 left-3 right-3 z-50 rounded-md border border-blue-200 bg-white/95 px-3 py-2 shadow-md lg:left-52">
+            <label htmlFor="audit-table-horizontal-slider" className="sr-only">Desplazamiento horizontal de la tabla de auditorías</label>
+            <input
+              id="audit-table-horizontal-slider"
+              type="range"
+              min="0"
+              max="1000"
+              value={fixedScrollPosition}
+              onChange={(event) => moveTableFromFixedSlider(Number(event.target.value))}
+              className="block h-3 w-full cursor-ew-resize accent-blue-600"
+              aria-label="Desplazamiento horizontal de la tabla de auditorías"
+            />
+          </div>
         )}
 
         {openFileModal !== null && (

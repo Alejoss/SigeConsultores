@@ -122,6 +122,7 @@ import { auditsInspectionsRouter } from "./routers/auditsInspections";
 import { managementSystemChecklistRouter } from "./routers/managementSystemChecklist";
 import { managementProgramsRouter } from "./routers/managementPrograms";
 import { linkedCommitmentsRouter } from "./routers/linkedCommitments";
+import { operationalFindingsRouter } from "./routers/operationalFindings";
 import { stakeholderSurveysRouter } from "./routers/stakeholderSurveys";
 import { strategicTrendsRouter } from "./routers/strategicTrends";
 import { planningCyclesRouter } from "./routers/planningCycles";
@@ -1088,6 +1089,7 @@ export const appRouter = router({
   managementSystemChecklist: managementSystemChecklistRouter,
   managementPrograms: managementProgramsRouter,
   linkedCommitments: linkedCommitmentsRouter,
+  operationalFindings: operationalFindingsRouter,
   stakeholderSurveys: stakeholderSurveysRouter,
   strategicTrends: strategicTrendsRouter,
 

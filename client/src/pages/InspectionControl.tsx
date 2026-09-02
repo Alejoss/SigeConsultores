@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { Fragment, useState, useEffect, useRef, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
+import { OperationalFindingsPanel } from "@/components/OperationalFindingsPanel";
 
 type InspectionRow = {
   id: number;
@@ -198,7 +199,8 @@ export default function InspectionControl() {
                 </thead>
                 <tbody>
                   {rows.map((row) => (
-                    <tr key={row.id} className="border-t border-blue-50 hover:bg-blue-50/30">
+                    <Fragment key={row.id}>
+                    <tr className="border-t border-blue-50 hover:bg-blue-50/30">
                       <td className="p-2">
                         <Input
                           value={row.managementSystem}
@@ -278,6 +280,18 @@ export default function InspectionControl() {
                         </Button>
                       </td>
                     </tr>
+                    <tr className="border-t border-blue-50 bg-slate-50/50">
+                      <td colSpan={8} className="px-2 pb-3 pt-1">
+                        <OperationalFindingsPanel
+                          companyId={companyId!}
+                          sourceType="inspection"
+                          sourceId={row.id}
+                          title="Gestionar hallazgos"
+                          onSummaryChanged={refetch}
+                        />
+                      </td>
+                    </tr>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

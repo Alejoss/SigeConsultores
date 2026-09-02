@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, companyProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, inArray } from "drizzle-orm";
 import {
   managementSystems,
   managementSystemFiles,
@@ -10,6 +10,9 @@ import {
   auditFiles,
   inspections,
   inspectionFiles,
+  linkedCommitments,
+  operationalFindingBaselines,
+  operationalFindings,
 } from "../../drizzle/schema";
 import { storagePut, storageGet, storageDelete } from "../storage";
 import { randomUUID } from "crypto";
@@ -267,11 +270,43 @@ export const auditsInspectionsRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB no disponible" });
+      const findings = await db
+        .select({ id: operationalFindings.id })
+        .from(operationalFindings)
+        .where(and(
+          eq(operationalFindings.companyId, input.companyId),
+          eq(operationalFindings.sourceType, "audit"),
+          eq(operationalFindings.sourceId, input.id)
+        ));
+      if (findings.length) {
+        const links = await db
+          .select({ id: linkedCommitments.id })
+          .from(linkedCommitments)
+          .where(and(
+            eq(linkedCommitments.companyId, input.companyId),
+            eq(linkedCommitments.sourceType, "audit_finding"),
+            inArray(linkedCommitments.sourceId, findings.map(finding => finding.id))
+          ))
+          .limit(1);
+        if (links.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "No puede eliminar esta auditoría porque tiene hallazgos vinculados a procesos." });
+        }
+        await db.delete(operationalFindings).where(and(
+          eq(operationalFindings.companyId, input.companyId),
+          eq(operationalFindings.sourceType, "audit"),
+          eq(operationalFindings.sourceId, input.id)
+        ));
+      }
       const files = await db.select().from(auditFiles).where(eq(auditFiles.auditId, input.id));
-      for (const f of files) {
-        try { await storageDelete(f.fileKey); } catch { /* ignorar */ }
+      for (const file of files) {
+        try { await storageDelete(file.fileKey); } catch { /* ignorar */ }
       }
       await db.delete(auditFiles).where(eq(auditFiles.auditId, input.id));
+      await db.delete(operationalFindingBaselines).where(and(
+        eq(operationalFindingBaselines.companyId, input.companyId),
+        eq(operationalFindingBaselines.sourceType, "audit"),
+        eq(operationalFindingBaselines.sourceId, input.id)
+      ));
       await db.delete(audits).where(and(eq(audits.id, input.id), eq(audits.companyId, input.companyId)));
       return { success: true };
     }),
@@ -414,11 +449,43 @@ export const auditsInspectionsRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB no disponible" });
+      const findings = await db
+        .select({ id: operationalFindings.id })
+        .from(operationalFindings)
+        .where(and(
+          eq(operationalFindings.companyId, input.companyId),
+          eq(operationalFindings.sourceType, "inspection"),
+          eq(operationalFindings.sourceId, input.id)
+        ));
+      if (findings.length) {
+        const links = await db
+          .select({ id: linkedCommitments.id })
+          .from(linkedCommitments)
+          .where(and(
+            eq(linkedCommitments.companyId, input.companyId),
+            eq(linkedCommitments.sourceType, "inspection_finding"),
+            inArray(linkedCommitments.sourceId, findings.map(finding => finding.id))
+          ))
+          .limit(1);
+        if (links.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "No puede eliminar esta inspección o simulacro porque tiene hallazgos vinculados a procesos." });
+        }
+        await db.delete(operationalFindings).where(and(
+          eq(operationalFindings.companyId, input.companyId),
+          eq(operationalFindings.sourceType, "inspection"),
+          eq(operationalFindings.sourceId, input.id)
+        ));
+      }
       const files = await db.select().from(inspectionFiles).where(eq(inspectionFiles.inspectionId, input.id));
-      for (const f of files) {
-        try { await storageDelete(f.fileKey); } catch { /* ignorar */ }
+      for (const file of files) {
+        try { await storageDelete(file.fileKey); } catch { /* ignorar */ }
       }
       await db.delete(inspectionFiles).where(eq(inspectionFiles.inspectionId, input.id));
+      await db.delete(operationalFindingBaselines).where(and(
+        eq(operationalFindingBaselines.companyId, input.companyId),
+        eq(operationalFindingBaselines.sourceType, "inspection"),
+        eq(operationalFindingBaselines.sourceId, input.id)
+      ));
       await db.delete(inspections).where(and(eq(inspections.id, input.id), eq(inspections.companyId, input.companyId)));
       return { success: true };
     }),
