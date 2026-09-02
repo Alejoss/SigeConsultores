@@ -206,10 +206,10 @@ export const operationalFindingsRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de datos no disponible." });
       const current = await findFinding(db, input.companyId, input.id);
       const links = await activeLinks(db, input.companyId, current);
-      if (links.length && input.completed !== undefined) {
+      if (input.completed !== undefined) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Este hallazgo está vinculado. Su cierre se actualiza desde el proceso responsable.",
+          message: "El cierre del hallazgo se confirma únicamente desde el proceso responsable vinculado.",
         });
       }
       const updateData: Record<string, unknown> = {};

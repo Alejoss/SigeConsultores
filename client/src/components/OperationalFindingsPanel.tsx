@@ -97,7 +97,6 @@ function FindingCard({
   const hasLinks = (progress.data?.total || 0) > 0;
   const change = <K extends keyof typeof draft>(field: K, next: (typeof draft)[K]) => {
     setDraft(current => ({ ...current, [field]: next }));
-    if (field === "completed" && hasLinks) return;
     window.setTimeout(() => {
       update.mutate({
         id: value.id,
@@ -156,15 +155,11 @@ function FindingCard({
           Responsable de referencia <span className="font-normal text-slate-400">(opcional)</span>
           <Input value={draft.referenceResponsible} onChange={event => change("referenceResponsible", event.target.value)} placeholder="Nombre o cargo" />
         </label>
-        <label className="flex min-h-10 items-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-medium text-slate-700">
-          <input
-            type="checkbox"
-            checked={draft.completed}
-            disabled={hasLinks || update.isPending}
-            onChange={event => change("completed", event.target.checked)}
-          />
-          Cumplido
-        </label>
+        <div className={`flex min-h-10 items-center rounded-md border px-3 text-sm font-medium ${hasLinks ? "border-teal-200 bg-teal-50 text-teal-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+          {hasLinks
+            ? `Cierre: ${progress.data?.fulfilled || 0} de ${progress.data?.total || 0}`
+            : "Pendiente de vincular"}
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" className="border-teal-300 text-teal-800 hover:bg-teal-50" onClick={() => setLinkDialog(true)}>
             <Link2 className="mr-1 h-4 w-4" /> Vincular
@@ -189,7 +184,11 @@ function FindingCard({
           </Button>
         </div>
       </div>
-      {hasLinks && <p className="mt-2 text-xs text-teal-800">El cierre se gestiona desde el proceso responsable para mantener la sincronización.</p>}
+      <p className={`mt-2 text-xs ${hasLinks ? "text-teal-800" : "text-amber-800"}`}>
+        {hasLinks
+          ? "El cierre se confirma desde el proceso responsable vinculado y actualiza automáticamente el indicador."
+          : "Para cerrar este hallazgo, seleccione Vincular y asígnelo al proceso responsable."}
+      </p>
       {linkDialog && (
         <ProcessLinkDialog
           companyId={companyId}

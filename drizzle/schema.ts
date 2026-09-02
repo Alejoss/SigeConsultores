@@ -1875,6 +1875,30 @@ export type ProgramAction = typeof programActions.$inferSelect;
 export type InsertProgramAction = typeof programActions.$inferInsert;
 
 /**
+ * Conteos históricos preservados una sola vez al convertir un Programa al
+ * seguimiento operativo por acciones. Evita que las acciones nuevas borren
+ * información anterior que no disponía de detalle individual.
+ */
+export const programActionBaselines = mysqlTable(
+  "programActionBaselines",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    programId: int("programId").notNull(),
+    legacyPlannedActions: int("legacyPlannedActions").notNull().default(0),
+    legacyCompletedActions: int("legacyCompletedActions").notNull().default(0),
+    capturedAt: timestamp("capturedAt").defaultNow().notNull(),
+  },
+  table => ({
+    uniqueProgramBaseline: unique("program_action_baseline_scope").on(
+      table.companyId,
+      table.programId
+    ),
+  })
+);
+export type ProgramActionBaseline = typeof programActionBaselines.$inferSelect;
+
+/**
  * Control de Auditorías — una fila por auditoría realizada.
  */
 export const audits = mysqlTable("audits", {

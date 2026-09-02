@@ -7,6 +7,7 @@ import {
   linkedCommitments,
   managementProgramFiles,
   managementPrograms,
+  programActionBaselines,
   programActions,
 } from "../../drizzle/schema";
 import { storageDelete, storageGet, storagePut } from "../storage";
@@ -82,11 +83,66 @@ const importedProgramActionInput = z.object({
   completed: z.boolean().optional(),
 });
 
-async function refreshProgramMetrics(
+async function ensureProgramActionBaseline(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  companyId: number,
+  programId: number,
+  captureLegacyCounts: boolean
+) {
+  const [existing] = await db
+    .select()
+    .from(programActionBaselines)
+    .where(
+      and(
+        eq(programActionBaselines.companyId, companyId),
+        eq(programActionBaselines.programId, programId)
+      )
+    )
+    .limit(1);
+  if (existing) return existing;
+
+  const [program] = await db
+    .select({
+      plannedActions: managementPrograms.plannedActions,
+      completedActions: managementPrograms.completedActions,
+    })
+    .from(managementPrograms)
+    .where(
+      and(
+        eq(managementPrograms.companyId, companyId),
+        eq(managementPrograms.id, programId)
+      )
+    )
+    .limit(1);
+  if (!program) throw new TRPCError({ code: "NOT_FOUND", message: "Programa no encontrado" });
+
+  // Al convertir un Programa sin acciones detalladas, se conserva su histórico.
+  // Si ya hay acciones de versiones anteriores, sus contadores ya son derivados.
+  await db.insert(programActionBaselines).values({
+    companyId,
+    programId,
+    legacyPlannedActions: captureLegacyCounts ? (program.plannedActions || 0) : 0,
+    legacyCompletedActions: captureLegacyCounts ? (program.completedActions || 0) : 0,
+  });
+  const [created] = await db
+    .select()
+    .from(programActionBaselines)
+    .where(
+      and(
+        eq(programActionBaselines.companyId, companyId),
+        eq(programActionBaselines.programId, programId)
+      )
+    )
+    .limit(1);
+  return created!;
+}
+
+export async function refreshProgramMetrics(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   companyId: number,
   programId: number
 ) {
+  const baseline = await ensureProgramActionBaseline(db, companyId, programId, false);
   const actions = await db
     .select({ completed: programActions.completed })
     .from(programActions)
@@ -96,12 +152,17 @@ async function refreshProgramMetrics(
         eq(programActions.programId, programId)
       )
     );
+  // El histórico queda preservado, pero al existir acciones detalladas el
+  // indicador principal refleja exclusivamente las acciones trazables y sus
+  // cierres confirmados desde los procesos responsables.
+  const hasOperationalActions = actions.length > 0;
   await db
     .update(managementPrograms)
     .set({
-      plannedActions: actions.length,
-      completedActions: actions.filter(action => Boolean(action.completed))
-        .length,
+      plannedActions: hasOperationalActions ? actions.length : baseline.legacyPlannedActions,
+      completedActions: hasOperationalActions
+        ? actions.filter(action => Boolean(action.completed)).length
+        : baseline.legacyCompletedActions,
       updatedAt: new Date(),
     })
     .where(
@@ -123,11 +184,26 @@ export const managementProgramsRouter = router({
           code: "INTERNAL_SERVER_ERROR",
           message: "DB no disponible",
         });
-      return db
+      const programs = await db
         .select()
         .from(managementPrograms)
         .where(eq(managementPrograms.companyId, input.companyId))
         .orderBy(asc(managementPrograms.createdAt));
+      const actions = await db
+        .select({ programId: programActions.programId, completed: programActions.completed })
+        .from(programActions)
+        .where(eq(programActions.companyId, input.companyId));
+      const totals = new Map<number, { planned: number; completed: number }>();
+      for (const action of actions) {
+        const total = totals.get(action.programId) || { planned: 0, completed: 0 };
+        total.planned += 1;
+        if (action.completed) total.completed += 1;
+        totals.set(action.programId, total);
+      }
+      return programs.map(program => {
+        const total = totals.get(program.id) || { planned: 0, completed: 0 };
+        return { ...program, plannedActions: total.planned, completedActions: total.completed };
+      });
     }),
 
   /** Crear un nuevo programa */
@@ -137,9 +213,7 @@ export const managementProgramsRouter = router({
         companyId: z.number(),
         programName: z.string().min(1),
         managementSystem: z.string().default("Calidad"),
-        plannedActions: z.number().default(0),
-        completedActions: z.number().default(0),
-      })
+      }).strict()
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -152,8 +226,8 @@ export const managementProgramsRouter = router({
         companyId: input.companyId,
         programName: input.programName,
         managementSystem: input.managementSystem,
-        plannedActions: input.plannedActions,
-        completedActions: input.completedActions,
+        plannedActions: 0,
+        completedActions: 0,
       });
       const [inserted] = await db
         .select()
@@ -170,9 +244,7 @@ export const managementProgramsRouter = router({
         companyId: z.number(),
         programName: z.string().optional(),
         managementSystem: z.string().optional(),
-        plannedActions: z.number().optional(),
-        completedActions: z.number().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -182,27 +254,6 @@ export const managementProgramsRouter = router({
           message: "DB no disponible",
         });
       const { id, companyId, ...updateData } = input;
-      if (
-        updateData.plannedActions !== undefined ||
-        updateData.completedActions !== undefined
-      ) {
-        const actions = await db
-          .select({ id: programActions.id })
-          .from(programActions)
-          .where(
-            and(
-              eq(programActions.programId, id),
-              eq(programActions.companyId, companyId)
-            )
-          )
-          .limit(1);
-        if (actions[0])
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message:
-              "Este Programa usa acciones detalladas. Sus contadores se actualizan automáticamente desde ellas.",
-          });
-      }
       await db
         .update(managementPrograms)
         .set(updateData)
@@ -407,6 +458,12 @@ export const managementProgramsRouter = router({
             eq(programActions.companyId, input.companyId)
           )
         );
+      await ensureProgramActionBaseline(
+        db,
+        input.companyId,
+        input.programId,
+        existing.length === 0
+      );
       const result = await db.insert(programActions).values({
         companyId: input.companyId,
         programId: input.programId,
@@ -592,6 +649,12 @@ export const managementProgramsRouter = router({
             eq(programActions.companyId, input.companyId)
           )
         );
+      await ensureProgramActionBaseline(
+        db,
+        input.companyId,
+        input.programId,
+        existing.length === 0
+      );
       const byImportKey = new Map(
         existing
           .filter(action => action.importKey)

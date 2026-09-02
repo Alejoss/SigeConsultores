@@ -146,7 +146,11 @@ export async function ensureOperationalFindingBaseline(
   return created;
 }
 
-/** Recalcula el resumen del origen como histórico preservado + hallazgos detallados. */
+/**
+ * Recalcula el resumen operativo del origen. El histórico se resguarda para
+ * consulta, pero deja de mezclarse con el indicador principal cuando existen
+ * hallazgos detallados gestionados dentro de la plataforma.
+ */
 export async function synchronizeOperationalFindingSummary(
   db: Db,
   companyId: number,
@@ -187,7 +191,10 @@ export async function synchronizeOperationalFindingSummary(
       completed: Boolean(detail.completed),
     });
   }
-  const summary = plus(baseline, detailed);
+  // Un origen sin detalle conserva su histórico. En cuanto se registra el
+  // primer hallazgo operativo, la tarjeta principal pasa a reflejar solamente
+  // registros con trazabilidad y cierres confirmados por procesos.
+  const summary = details.length > 0 ? detailed : baseline;
 
   if (sourceType === "audit") {
     await db

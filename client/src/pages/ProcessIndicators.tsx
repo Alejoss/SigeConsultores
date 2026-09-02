@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { TrendingUp, Target, Settings, Users, CheckSquare, ArrowLeft, Camera, ChevronLeft } from "lucide-react";
+import { TrendingUp, Target, Settings, Users, CheckSquare, ArrowLeft, Camera, ChevronLeft, Link2 } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis as RadarAngleAxis, Tooltip } from "recharts";
@@ -483,19 +483,26 @@ function StakeholdersPanel({ processId, partesValue }: { processId: number; part
   );
 }
 
-type PanelType = "ote" | "otg" | "partes" | "cumplimientos" | null;
+type PanelType = "ote" | "otg" | "partes" | "cumplimientos" | "compromisos" | null;
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function ProcessIndicators() {
   const [, navigate] = useLocation();
+  const urlParams = new URLSearchParams(window.location.search);
   const selectedProcessId = localStorage.getItem("selectedProcessId");
-  const processId = selectedProcessId ? parseInt(selectedProcessId) : 0;
+  const processIdFromUrl = Number(urlParams.get("processId")) || 0;
+  const processId = processIdFromUrl || (selectedProcessId ? parseInt(selectedProcessId) : 0);
+  const companyIdFromUrl = Number(urlParams.get("companyId")) || 0;
   const [activePanel, setActivePanel] = useState<PanelType>(null);
   const exportRef = useRef<HTMLDivElement>(null);
 
   const { data: indicatorsData, isLoading } = trpc.consolidatedIndicators.getConsolidatedIndicators.useQuery(
     { processId },
     { enabled: processId > 0 }
+  );
+  const { data: linkedCommitmentsData, isLoading: isLoadingLinkedCommitments } = trpc.linkedCommitments.listByProcess.useQuery(
+    { processId, companyId: companyIdFromUrl },
+    { enabled: processId > 0 && companyIdFromUrl > 0 }
   );
 
   // Extraer datos del backend
@@ -509,8 +516,17 @@ export default function ProcessIndicators() {
   const otgValue = otgData?.compliance ?? 0;
   const partesValue = partesData?.value ?? 0;
   const cumplimientosValue = cumplimientosData?.value ?? 0;
-
-  const totalAverage = Math.round((oteValue + otgValue + partesValue + cumplimientosValue) / 4);
+  const receivedCommitments = useMemo(
+    () => (linkedCommitmentsData || []).filter((commitment: any) => commitment.sourceType !== "own"),
+    [linkedCommitmentsData]
+  );
+  const completedLinkedCommitments = receivedCommitments.filter((commitment: any) => commitment.status === "completed").length;
+  const linkedCommitmentsValue = receivedCommitments.length > 0
+    ? Math.round((completedLinkedCommitments / receivedCommitments.length) * 100)
+    : 0;
+  const totalComponents = [oteValue, otgValue, partesValue, cumplimientosValue];
+  if (receivedCommitments.length > 0) totalComponents.push(linkedCommitmentsValue);
+  const totalAverage = Math.round(totalComponents.reduce((total, value) => total + value, 0) / totalComponents.length);
 
   // Exportar como imagen usando html2canvas
   const handleExportImage = async () => {
@@ -550,6 +566,7 @@ export default function ProcessIndicators() {
       otg: "Objetivos Tácticos de Gestión (OTG)",
       partes: "Gestión con Partes Interesadas",
       cumplimientos: "Cumplimientos",
+      compromisos: "Compromisos vinculados",
     };
 
     return (
@@ -655,6 +672,46 @@ export default function ProcessIndicators() {
               <StakeholdersPanel processId={processId} partesValue={partesValue} />
             )}
 
+            {/* Compromisos vinculados */}
+            {activePanel === "compromisos" && !isLoadingLinkedCommitments && (
+              <div>
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="rounded-xl p-4 text-center" style={{ backgroundColor: C.veryLightGreen }}>
+                    <p className="text-xs font-semibold mb-1" style={{ color: C.textSecondary }}>Cumplidos</p>
+                    <p className={`text-3xl font-bold ${pctColor(linkedCommitmentsValue)}`}>{linkedCommitmentsValue}%</p>
+                  </div>
+                  <div className="rounded-xl p-4 text-center" style={{ backgroundColor: C.veryLightGreen }}>
+                    <p className="text-xs font-semibold mb-1" style={{ color: C.textSecondary }}>Recibidos</p>
+                    <p className="text-3xl font-bold" style={{ color: C.darkGreen }}>{receivedCommitments.length}</p>
+                  </div>
+                  <div className="rounded-xl p-4 text-center" style={{ backgroundColor: C.veryLightGreen }}>
+                    <p className="text-xs font-semibold mb-1" style={{ color: C.textSecondary }}>Pendientes</p>
+                    <p className="text-3xl font-bold text-amber-600">{receivedCommitments.length - completedLinkedCommitments}</p>
+                  </div>
+                </div>
+                {receivedCommitments.length === 0 ? (
+                  <div className="text-center py-10 text-gray-400">
+                    <Link2 size={40} className="mx-auto mb-3 opacity-30" />
+                    <p>No hay compromisos vinculados recibidos para este proceso</p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border overflow-hidden" style={{ borderColor: C.lightGreenBg }}>
+                    <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wide" style={{ backgroundColor: C.veryLightGreen, color: C.textSecondary }}>Detalle de compromisos recibidos</div>
+                    <div className="divide-y" style={{ borderColor: C.lightGreenBg }}>
+                      {receivedCommitments.map((commitment: any) => (
+                        <div key={commitment.id} className="px-4 py-3 bg-white flex items-center gap-3">
+                          <div className={commitment.status === "completed" ? "w-7 h-7 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold" : "w-7 h-7 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center font-bold"}>{commitment.status === "completed" ? "✓" : "!"}</div>
+                          <div className="flex-1 min-w-0"><p className="text-sm font-semibold text-slate-800 truncate">{commitment.title}</p><p className="text-xs text-slate-500 truncate">{commitment.description || "Compromiso asignado al proceso"}</p></div>
+                          <span className={commitment.status === "completed" ? "text-xs font-bold text-green-600" : "text-xs font-bold text-amber-600"}>{commitment.status === "completed" ? "Cumplido" : "Pendiente"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="mt-5 text-right"><Button onClick={() => navigate(`/linked-commitments?processId=${processId}&companyId=${companyIdFromUrl}`)} className="text-sm" style={{ backgroundColor: C.darkGreen }}>Gestionar compromisos</Button></div>
+              </div>
+            )}
+
             {/* Cumplimientos */}
             {activePanel === "cumplimientos" && !isLoading && (
               <div className="text-center py-8">
@@ -712,6 +769,16 @@ export default function ProcessIndicators() {
       value: cumplimientosValue,
       extra: "",
     },
+    {
+      id: "compromisos" as PanelType,
+      title: "Compromisos vinculados",
+      subtitle: "Responsabilidades recibidas",
+      description: "% de responsabilidades asignadas desde otros módulos y completadas por el proceso",
+      icon: <Link2 size={32} style={{ color: C.medGreen }} />,
+      value: linkedCommitmentsValue,
+      extra: isLoadingLinkedCommitments ? "Cargando..." : `${completedLinkedCommitments} de ${receivedCommitments.length} cumplidos`,
+      status: receivedCommitments.length > 0 ? pctLabel(linkedCommitmentsValue) : "Sin compromisos",
+    },
   ];
 
   return (
@@ -759,7 +826,7 @@ export default function ProcessIndicators() {
                     {panel.icon}
                   </div>
                   <span className={`text-xs font-bold px-2 py-1 rounded-full ${pctBadge(panel.value)}`}>
-                    {pctLabel(panel.value)}
+                    {panel.status || pctLabel(panel.value)}
                   </span>
                 </div>
                 <h3 className="text-lg font-bold text-gray-800 mb-0.5" translate="no">{panel.title}</h3>

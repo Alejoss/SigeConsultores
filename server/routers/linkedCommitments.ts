@@ -13,6 +13,7 @@ import {
   processes,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { refreshProgramMetrics } from "./managementPrograms";
 import { synchronizeOperationalFindingSummary } from "../lib/operationalFindings";
 import { storageDelete, storageGet } from "../storage";
 import type { TrpcContext } from "../_core/context";
@@ -376,29 +377,7 @@ async function synchronizeSource(
         completedAt: completed ? new Date() : null,
       })
       .where(eq(programActions.id, sourceId));
-    const actions = await db
-      .select({ completed: programActions.completed })
-      .from(programActions)
-      .where(
-        and(
-          eq(programActions.programId, action.programId),
-          eq(programActions.companyId, companyId)
-        )
-      );
-    await db
-      .update(managementPrograms)
-      .set({
-        plannedActions: actions.length,
-        completedActions: actions.filter(item => Boolean(item.completed))
-          .length,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(managementPrograms.id, action.programId),
-          eq(managementPrograms.companyId, companyId)
-        )
-      );
+    await refreshProgramMetrics(db, companyId, action.programId);
     return {
       completed,
       total: links.length,
