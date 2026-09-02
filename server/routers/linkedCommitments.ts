@@ -6,12 +6,14 @@ import {
   linkedCommitmentEvidence,
   linkedCommitments,
   managementPrograms,
+  operationalFindings,
   managementSystemChecklistActions,
   managementSystemChecklistItems,
   programActions,
   processes,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { synchronizeOperationalFindingSummary } from "../lib/operationalFindings";
 import { storageDelete, storageGet } from "../storage";
 import type { TrpcContext } from "../_core/context";
 import { companyProcedure, router } from "../_core/trpc";
@@ -21,6 +23,8 @@ const sourceTypeSchema = z.enum([
   "checklist_vigency",
   "program_action",
   "company_compliance",
+  "audit_finding",
+  "inspection_finding",
   "own",
 ]);
 const commitmentStatusSchema = z.enum(["pending", "completed"]);
@@ -228,6 +232,42 @@ async function resolveSource(
     };
   }
 
+  if (sourceType === "audit_finding" || sourceType === "inspection_finding") {
+    const findingSourceType = sourceType === "audit_finding" ? "audit" : "inspection";
+    const [finding] = await db
+      .select()
+      .from(operationalFindings)
+      .where(
+        and(
+          eq(operationalFindings.id, sourceId),
+          eq(operationalFindings.companyId, companyId),
+          eq(operationalFindings.sourceType, findingSourceType)
+        )
+      )
+      .limit(1);
+    if (!finding)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "El hallazgo de origen no existe en esta empresa.",
+      });
+    const classification = {
+      major_nc: "No conformidad mayor",
+      minor_nc: "No conformidad menor",
+      observation: "Observación",
+      improvement_opportunity: "Oportunidad de mejora",
+    }[finding.classification];
+    return {
+      sourceType,
+      sourceId: finding.id,
+      sourceSubId: finding.id,
+      kind: "action",
+      title: finding.closureTask.slice(0, 500),
+      description: `${classification} — ${finding.finding}`,
+      dueDate: dateValue(finding.targetDate),
+      referenceResponsible: finding.referenceResponsible,
+    };
+  }
+
   const [compliance] = await db
     .select()
     .from(companyCompliances)
@@ -358,6 +398,37 @@ async function synchronizeSource(
           eq(managementPrograms.id, action.programId),
           eq(managementPrograms.companyId, companyId)
         )
+      );
+    return {
+      completed,
+      total: links.length,
+      fulfilled: links.filter(link => link.status === "completed").length,
+    };
+  }
+
+  if (sourceType === "audit_finding" || sourceType === "inspection_finding") {
+    const findingSourceType = sourceType === "audit_finding" ? "audit" : "inspection";
+    await db
+      .update(operationalFindings)
+      .set({ completed, completedAt: completed ? new Date() : null })
+      .where(
+        and(
+          eq(operationalFindings.id, sourceId),
+          eq(operationalFindings.companyId, companyId),
+          eq(operationalFindings.sourceType, findingSourceType)
+        )
+      );
+    const [finding] = await db
+      .select({ sourceId: operationalFindings.sourceId })
+      .from(operationalFindings)
+      .where(eq(operationalFindings.id, sourceId))
+      .limit(1);
+    if (finding)
+      await synchronizeOperationalFindingSummary(
+        db,
+        companyId,
+        findingSourceType,
+        finding.sourceId
       );
     return {
       completed,
@@ -546,6 +617,8 @@ export const linkedCommitmentsRouter = router({
           "checklist_vigency",
           "program_action",
           "company_compliance",
+          "audit_finding",
+          "inspection_finding",
         ]),
         sourceId: z.number().int().positive(),
       })
@@ -589,6 +662,8 @@ export const linkedCommitmentsRouter = router({
           "checklist_vigency",
           "program_action",
           "company_compliance",
+          "audit_finding",
+          "inspection_finding",
         ]),
         sourceId: z.number().int().positive(),
       })
@@ -668,6 +743,8 @@ export const linkedCommitmentsRouter = router({
           "checklist_vigency",
           "program_action",
           "company_compliance",
+          "audit_finding",
+          "inspection_finding",
         ]),
         sourceId: z.number().int().positive(),
         processIds: z.array(z.number().int().positive()).min(1).max(100),

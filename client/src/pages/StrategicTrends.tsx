@@ -170,6 +170,7 @@ function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }
   const ref = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const [activeSubView, setActiveSubView] = useState<"overview" | "timeline" | "heatmap">("overview");
+  const [activeObjectiveTooltip, setActiveObjectiveTooltip] = useState<number | null>(null);
 
   const { data: oeData, isLoading } = trpc.strategicTrends.getStrategicObjectivesBreakdown.useQuery(
     { companyId },
@@ -297,15 +298,26 @@ function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }
                       {objectives.map((oe: any, idx: number) => (
                         <th
                           key={oe.id}
-                          className="p-2 font-semibold text-slate-600 bg-slate-50 border border-slate-200 min-w-[80px] text-center relative group cursor-help"
-                          title={oe.name}
+                          className="p-2 font-semibold text-slate-600 bg-slate-50 border border-slate-200 min-w-[80px] text-center relative cursor-help"
+                          tabIndex={0}
+                          onMouseEnter={() => setActiveObjectiveTooltip(oe.id)}
+                          onMouseLeave={() => setActiveObjectiveTooltip(null)}
+                          onFocus={() => setActiveObjectiveTooltip(oe.id)}
+                          onBlur={() => setActiveObjectiveTooltip(null)}
+                          aria-describedby={activeObjectiveTooltip === oe.id ? `oe-tooltip-${oe.id}` : undefined}
                         >
                           OE {idx + 1}
-                          {/* Tooltip con enunciado completo */}
-                          <div className="absolute z-50 hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white text-xs rounded-lg p-2 shadow-xl pointer-events-none">
-                            <span className="font-bold text-slate-300">OE {idx + 1}:</span> {oe.name}
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
-                          </div>
+                          {activeObjectiveTooltip === oe.id && (
+                            <div
+                              id={`oe-tooltip-${oe.id}`}
+                              role="tooltip"
+                              className="absolute left-1/2 top-full z-[70] mt-2 w-64 -translate-x-1/2 rounded-lg bg-slate-800 px-3 py-2 text-left text-xs font-normal leading-relaxed text-white shadow-xl pointer-events-none"
+                            >
+                              <span className="font-bold text-slate-300">Objetivo estratégico {idx + 1}</span>
+                              <p className="mt-1">{oe.name || "Sin nombre"}</p>
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-slate-800" />
+                            </div>
+                          )}
                         </th>
                       ))}
                     </tr>

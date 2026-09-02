@@ -1787,6 +1787,8 @@ export const linkedCommitments = mysqlTable(
       "checklist_vigency",
       "program_action",
       "company_compliance",
+      "audit_finding",
+      "inspection_finding",
       "own",
     ]).notNull(),
     // Las actividades propias no tienen fuente y mantienen ambos valores nulos.
@@ -1899,6 +1901,64 @@ export const audits = mysqlTable("audits", {
 });
 export type Audit = typeof audits.$inferSelect;
 export type InsertAudit = typeof audits.$inferInsert;
+
+/**
+ * Hallazgos gestionables de Auditorías, Inspecciones y Simulacros. Se añaden
+ * sin reemplazar los conteos históricos de sus registros principales.
+ */
+export const operationalFindings = mysqlTable("operationalFindings", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  sourceType: mysqlEnum("sourceType", ["audit", "inspection"]).notNull(),
+  sourceId: int("sourceId").notNull(),
+  classification: mysqlEnum("classification", [
+    "major_nc",
+    "minor_nc",
+    "observation",
+    "improvement_opportunity",
+  ]).notNull(),
+  finding: text("finding").notNull(),
+  closureTask: text("closureTask").notNull(),
+  referenceResponsible: varchar("referenceResponsible", { length: 255 }),
+  targetDate: date("targetDate"),
+  completed: boolean("completed").notNull().default(false),
+  completedAt: timestamp("completedAt"),
+  orderIndex: int("orderIndex").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type OperationalFinding = typeof operationalFindings.$inferSelect;
+export type InsertOperationalFinding = typeof operationalFindings.$inferInsert;
+
+/**
+ * Resumen existente al iniciar la gestión detallada. Conserva íntegramente
+ * los hallazgos y cierres cargados antes del nuevo módulo operativo.
+ */
+export const operationalFindingBaselines = mysqlTable(
+  "operationalFindingBaselines",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    sourceType: mysqlEnum("sourceType", ["audit", "inspection"]).notNull(),
+    sourceId: int("sourceId").notNull(),
+    findingsMajorNC: int("findingsMajorNC").notNull().default(0),
+    findingsMinorNC: int("findingsMinorNC").notNull().default(0),
+    findingsObservations: int("findingsObservations").notNull().default(0),
+    findingsOM: int("findingsOM").notNull().default(0),
+    closuresMajorNC: int("closuresMajorNC").notNull().default(0),
+    closuresMinorNC: int("closuresMinorNC").notNull().default(0),
+    closuresObservations: int("closuresObservations").notNull().default(0),
+    closuresOM: int("closuresOM").notNull().default(0),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    uniqueOperationalFindingBaseline: unique(
+      "operational_finding_baseline_source_unique"
+    ).on(table.companyId, table.sourceType, table.sourceId),
+  })
+);
+export type OperationalFindingBaseline = typeof operationalFindingBaselines.$inferSelect;
+export type InsertOperationalFindingBaseline = typeof operationalFindingBaselines.$inferInsert;
 
 /**
  * Archivos de hallazgos de auditorías (Excel o PDF por fila de auditoría).

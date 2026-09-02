@@ -9,7 +9,9 @@ type LinkableSourceType =
   | "checklist_action"
   | "checklist_vigency"
   | "program_action"
-  | "company_compliance";
+  | "company_compliance"
+  | "audit_finding"
+  | "inspection_finding";
 
 export function ProcessLinkDialog({
   companyId,
