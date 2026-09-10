@@ -15,6 +15,7 @@ import { useRef } from "react";
 import { getAxisBackPathForRole } from "@/lib/sessionScope";
 import { toast } from "sonner";
 import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
+import { ProcessCharacterizationCopyDialog } from "@/components/ProcessCharacterizationCopyDialog";
 
 interface ProcessData {
   macroProcess: string;
@@ -365,35 +366,47 @@ export default function ProcessCharacterization() {
             <ActivePlanningCycleBadge companyId={Number(companyId)} />
           </div>
           {activeModule !== "procedimientos" && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (isProcessLeader) {
-                  // Jefe de Proceso: vuelve al mapa con su processId para que el filtro funcione
-                  const url =
-                    companyId && selectedProcessId
-                      ? `/process-map?companyId=${companyId}&processId=${selectedProcessId}`
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {!isProcessLeader &&
+                (isManagerAccess || user?.role === "admin") &&
+                companyId &&
+                processId && (
+                  <ProcessCharacterizationCopyDialog
+                    companyId={Number(companyId)}
+                    sourceProcessId={processId}
+                    sourceProcessName={displayedProcessName}
+                  />
+                )}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (isProcessLeader) {
+                    // Jefe de Proceso: vuelve al mapa con su processId para que el filtro funcione
+                    const url =
+                      companyId && selectedProcessId
+                        ? `/process-map?companyId=${companyId}&processId=${selectedProcessId}`
+                        : "/process-map";
+                    setLocation(url);
+                  } else if (isManagerAccess) {
+                    // Gerente: vuelve al mapa SIN processId para ver todos los procesos
+                    const url = companyId
+                      ? `/process-map?companyId=${companyId}`
                       : "/process-map";
-                  setLocation(url);
-                } else if (isManagerAccess) {
-                  // Gerente: vuelve al mapa SIN processId para ver todos los procesos
-                  const url = companyId
-                    ? `/process-map?companyId=${companyId}`
-                    : "/process-map";
-                  setLocation(url);
-                } else {
-                  // Admin/usuario normal: vuelve al mapa SIN processId
-                  const url = companyId
-                    ? `/process-map?companyId=${companyId}`
-                    : "/process-map";
-                  setLocation(url);
-                }
-              }}
-              className="gap-2"
-            >
-              <ArrowLeft size={16} />
-              VOLVER
-            </Button>
+                    setLocation(url);
+                  } else {
+                    // Admin/usuario normal: vuelve al mapa SIN processId
+                    const url = companyId
+                      ? `/process-map?companyId=${companyId}`
+                      : "/process-map";
+                    setLocation(url);
+                  }
+                }}
+                className="gap-2"
+              >
+                <ArrowLeft size={16} />
+                VOLVER
+              </Button>
+            </div>
           )}
         </div>
 

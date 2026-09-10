@@ -94,6 +94,7 @@ import { policyObjectivesRouter } from "./routers/policyObjectives";
 import { processParticipantsRouter } from "./routers/processParticipants";
 import { processResourcesRouter } from "./routers/processResources";
 import { processCharacterizationRouter } from "./routers/processCharacterization";
+import { processCharacterizationCopyRouter } from "./routers/processCharacterizationCopy";
 import { consolidatedScheduleRouter } from "./routers/consolidatedSchedule";
 import { indicatorsRouter } from "./routers/indicators";
 import { consolidatedIndicatorsRouter } from "./routers/consolidatedIndicators";
@@ -493,6 +494,7 @@ export const appRouter = router({
 
   // Process Characterization
   processCharacterization: processCharacterizationRouter,
+  processCharacterizationCopy: processCharacterizationCopyRouter,
   planningCycles: planningCyclesRouter,
 
   // Stakeholder Criticality
