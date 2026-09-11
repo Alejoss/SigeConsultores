@@ -108,3 +108,11 @@ La corrección es aditiva y no cambia, mueve ni borra puestos históricos. El or
 Después de una previsualización que confirmó 10 puestos disponibles y 0 en Yambo, se completó exclusivamente el módulo Participantes de Aliaga a Yambo. El mapa de subprocesos existente no se tocó. La verificación visual local confirmó en Yambo 10 puestos de trabajo —incluidos Jefe de Finca, Técnico de cultivo, Supervisores, Bodeguero y los demás—, cero trabajadores vinculados y cero KPI, conforme a las exclusiones. También se abrió el detalle de Jefe de Finca y se verificó que contiene el objetivo, las responsabilidades y la autoridad copiados desde Aliaga.
 
 No se desplegó nada a producción. La siguiente acción segura es que el usuario recargue la página local de Participantes de Yambo y confirme visualmente los puestos. Para copias hacia otras fincas, debe usarse la opción de copia selectiva con previsualización; si algún módulo ya fue copiado, el sistema lo omitirá y no duplicará ni reemplazará información.
+
+## Corrección de CI durante el despliegue (11 de septiembre de 2026)
+
+La primera integración hacia `main` fue aceptada, pero la cadena de CI detuvo el despliegue antes de cualquier cambio en producción. El chequeo de tipos, la compilación y las pruebas unitarias aprobaron; el único fallo fue una prueba de integración que creaba un `TRIGGER` temporal para provocar un error de Recursos. El MySQL de GitHub Actions tiene binary logging activo y, correctamente, no concede el privilegio especial requerido para crear ese tipo de trigger.
+
+La prueba se sustituyó por una verificación portable que usa una transacción real de Drizzle —la misma primitiva usada por el ejecutor de copia—, inserta un puesto temporal y fuerza una excepción dentro de esa transacción. La prueba confirma que no persiste ningún puesto ni recurso del destino de rollback y que el destino previamente copiado se conserva intacto. Este enfoque no requiere permisos administrativos ni altera el esquema.
+
+Después de la corrección volvieron a aprobar la integración local completa (30 archivos y 129 pruebas), el chequeo de tipos y la suite unitaria/de interfaz (55 archivos y 543 pruebas). La corrección se publicará como una entrega adicional para que CI vuelva a validar antes de que cualquier CD pueda alcanzar producción.
