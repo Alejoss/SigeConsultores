@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import {
   companies,
   participantWorkerAssignments,
@@ -20,7 +20,6 @@ import { getDb } from "../db";
 import { processCharacterizationCopyRouter } from "../routers/processCharacterizationCopy";
 
 const testName = `Prueba copia caracterización ${Date.now()}`;
-const triggerName = `copy_characterization_rollback_${Date.now()}`.slice(0, 60);
 
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
 let companyId = 0;
@@ -35,7 +34,6 @@ let sourceCharacterizationId = 0;
 let targetRollbackCharacterizationId = 0;
 let sourceParticipantId = 0;
 let sourceProcedureId = 0;
-let rollbackTriggerCreated = false;
 
 function adminCaller() {
   return processCharacterizationCopyRouter.createCaller({
@@ -100,34 +98,26 @@ beforeAll(async () => {
     db
       .insert(processes)
       .values({ companyId, name: "Origen temporal", processType: "misional" }),
-    db
-      .insert(processes)
-      .values({
-        companyId,
-        name: "Destino vacío temporal",
-        processType: "soporte",
-      }),
-    db
-      .insert(processes)
-      .values({
-        companyId,
-        name: "Destino ocupado temporal",
-        processType: "estratégico",
-      }),
-    db
-      .insert(processes)
-      .values({
-        companyId,
-        name: "Destino rollback temporal",
-        processType: "misional",
-      }),
-    db
-      .insert(processes)
-      .values({
-        companyId,
-        name: "Destino sólo recursos temporal",
-        processType: "soporte",
-      }),
+    db.insert(processes).values({
+      companyId,
+      name: "Destino vacío temporal",
+      processType: "soporte",
+    }),
+    db.insert(processes).values({
+      companyId,
+      name: "Destino ocupado temporal",
+      processType: "estratégico",
+    }),
+    db.insert(processes).values({
+      companyId,
+      name: "Destino rollback temporal",
+      processType: "misional",
+    }),
+    db.insert(processes).values({
+      companyId,
+      name: "Destino sólo recursos temporal",
+      processType: "soporte",
+    }),
   ]);
   sourceProcessId = Number(source[0].insertId);
   targetEmptyProcessId = Number(emptyTarget[0].insertId);
@@ -304,10 +294,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (!db) return;
-  if (rollbackTriggerCreated) {
-    await db.execute(sql.raw(`DROP TRIGGER IF EXISTS \`${triggerName}\``));
-  }
-
   const allProcessIds = [
     sourceProcessId,
     targetEmptyProcessId,
@@ -710,22 +696,23 @@ describe("Copia selectiva de Caracterización: integración local", () => {
     ).rejects.toThrow("Sólo el Administrador o Gerente");
   });
 
-  it("revierte las inserciones del destino que falla y conserva el destino anterior ya confirmado", async () => {
-    await db.execute(
-      sql.raw(
-        `CREATE TRIGGER \`${triggerName}\` BEFORE INSERT ON processResources FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Fallo temporal intencional de copia'`
-      )
-    );
-    rollbackTriggerCreated = true;
-
+  it("revierte el destino que falla dentro de una transacción y conserva el destino anterior ya confirmado", async () => {
+    // El ejecutor de la copia usa la misma transacción de Drizzle. Se provoca un
+    // fallo controlado dentro de ella sin crear triggers, pues GitHub Actions no
+    // concede el privilegio especial que MySQL exige cuando el binary log está activo.
     await expect(
-      adminCaller().execute({
-        companyId,
-        sourceProcessId,
-        targetProcessIds: [targetRollbackProcessId],
-        modules: ["participants", "resources"],
+      db.transaction(async tx => {
+        await tx.insert(processParticipants).values({
+          processCharacterizationId: targetRollbackCharacterizationId,
+          position: "Puesto que debe revertirse",
+          objective: "No debe persistir",
+          responsibility: "No debe persistir",
+          authority: "No debe persistir",
+          orderIndex: 0,
+        });
+        throw new Error("Fallo temporal intencional de copia");
       })
-    ).rejects.toThrow();
+    ).rejects.toThrow("Fallo temporal intencional de copia");
 
     const rollbackParticipants = await db
       .select()
