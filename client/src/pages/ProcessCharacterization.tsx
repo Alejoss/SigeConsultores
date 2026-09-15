@@ -1,21 +1,35 @@
-import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocation } from "wouter";
-import { ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft,
+  ChartNoAxesCombined,
+  ChevronDown,
+  ClipboardCheck,
+  Compass,
+  FileText,
+  Network,
+  Target,
+  type LucideIcon,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProceduresCharacterization from "./ProceduresCharacterization";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getAxisBackPathForRole } from "@/lib/sessionScope";
 import { toast } from "sonner";
 import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
 import { ProcessCharacterizationCopyDialog } from "@/components/ProcessCharacterizationCopyDialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface ProcessData {
   macroProcess: string;
@@ -27,25 +41,92 @@ interface ProcessData {
   resources: string;
 }
 
-const CHARACTERIZATION_MODULES = [
-  { id: "participantes", label: "Participantes", icon: "👥" },
-  { id: "recursos", label: "Recursos", icon: "📦" },
-  { id: "subprocesos", label: "Mapa de\nSubprocesos", icon: "📊" },
-  { id: "criticidad", label: "Gestión con\nPartes Interesadas", icon: "⚠️" },
-  { id: "foda", label: "FODA", icon: "🎯" },
-  { id: "matriz", label: "Objetivos Tácticos\nde Gestión", icon: "📋" },
-  { id: "objetivos", label: "Objetivos Tácticos\nEstratégicos", icon: "🎪" },
-  { id: "cumplimientos", label: "Cumplimientos", icon: "✅" },
-  { id: "procedimientos", label: "Procedimientos", icon: "📄" },
-  { id: "cronograma", label: "Cronograma\nConsolidado", icon: "📅" },
+type CharacterizationModule = {
+  id: string;
+  label: string;
+  icon: string;
+};
+
+type CharacterizationModuleGroup = {
+  id: string;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  modules: CharacterizationModule[];
+};
+
+const CHARACTERIZATION_MODULE_GROUPS: CharacterizationModuleGroup[] = [
   {
-    id: "compromisos-vinculados",
-    label: "Compromisos\nvinculados",
-    icon: "🔗",
+    id: "proceso-subprocesos",
+    label: "Proceso y subprocesos",
+    description: "Estructura operativa y documentación del proceso",
+    icon: Network,
+    modules: [
+      { id: "participantes", label: "Participantes", icon: "👥" },
+      { id: "recursos", label: "Recursos", icon: "📦" },
+      { id: "subprocesos", label: "Mapa de Subprocesos", icon: "📊" },
+      {
+        id: "criticidad",
+        label: "Gestión con Partes Interesadas",
+        icon: "⚠️",
+      },
+      { id: "procedimientos", label: "Procedimientos", icon: "📄" },
+    ],
   },
-  { id: "indicadores", label: "Indicadores", icon: "📈" },
-  { id: "ciclos", label: "Ciclos de\nPlanificación", icon: "🔄" },
+  {
+    id: "objetivos-gestion",
+    label: "Objetivos tácticos de gestión",
+    description: "Análisis y objetivos del desempeño del proceso",
+    icon: Target,
+    modules: [
+      { id: "foda", label: "FODA", icon: "🎯" },
+      { id: "matriz", label: "Objetivos Tácticos de Gestión", icon: "📋" },
+    ],
+  },
+  {
+    id: "objetivos-estrategicos",
+    label: "Objetivos tácticos estratégicos",
+    description: "Conexión del proceso con la estrategia institucional",
+    icon: Compass,
+    modules: [
+      {
+        id: "objetivos",
+        label: "Gestionar objetivos estratégicos",
+        icon: "🎪",
+      },
+    ],
+  },
+  {
+    id: "gestion-operativa",
+    label: "Gestión operativa",
+    description: "Responsabilidades, compromisos y reuniones del proceso",
+    icon: ClipboardCheck,
+    modules: [
+      { id: "cumplimientos", label: "Cumplimientos", icon: "✅" },
+      {
+        id: "compromisos-vinculados",
+        label: "Compromisos vinculados",
+        icon: "🔗",
+      },
+      { id: "reuniones", label: "Reuniones", icon: "🤝" },
+    ],
+  },
+  {
+    id: "seguimiento-control",
+    label: "Seguimiento y control",
+    description: "Planificación, indicadores y seguimiento consolidado",
+    icon: ChartNoAxesCombined,
+    modules: [
+      { id: "cronograma", label: "Cronograma Consolidado", icon: "📅" },
+      { id: "indicadores", label: "Indicadores", icon: "📈" },
+      { id: "ciclos", label: "Ciclos de Planificación", icon: "🔄" },
+    ],
+  },
 ];
+
+const CHARACTERIZATION_MODULES = CHARACTERIZATION_MODULE_GROUPS.flatMap(
+  group => group.modules
+);
 
 export default function ProcessCharacterization() {
   const [, setLocation] = useLocation();
@@ -73,6 +154,15 @@ export default function ProcessCharacterization() {
   const [macroProcessName, setMacroProcessName] = useState("");
   const [macroProcessEditable, setMacroProcessEditable] = useState("");
   const [activeModule, setActiveModule] = useState("datos");
+  const [openModuleGroups, setOpenModuleGroups] = useState<
+    Record<string, boolean>
+  >({
+    "proceso-subprocesos": false,
+    "objetivos-gestion": false,
+    "objetivos-estrategicos": false,
+    "gestion-operativa": false,
+    "seguimiento-control": false,
+  });
   const [data, setData] = useState<ProcessData>({
     macroProcess: "",
     responsible: "",
@@ -291,6 +381,13 @@ export default function ProcessCharacterization() {
   };
 
   const handleModuleClick = (moduleId: string) => {
+    const moduleGroup = CHARACTERIZATION_MODULE_GROUPS.find(group =>
+      group.modules.some(module => module.id === moduleId)
+    );
+    if (moduleGroup) {
+      setOpenModuleGroups(current => ({ ...current, [moduleGroup.id]: true }));
+    }
+
     // Build query string with processId and companyId so sub-modules can resolve context
     const pid = selectedProcessId || (processId ? String(processId) : "");
     const cid = companyId || "";
@@ -426,27 +523,103 @@ export default function ProcessCharacterization() {
 
                 <div className="border-t pt-4 mt-4">
                   <p className="text-xs font-semibold text-slate-600 mb-3">
-                    MÓDULOS DE CARACTERIZACIÓN
+                    CARACTERIZACIÓN DEL PROCESO
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {CHARACTERIZATION_MODULES.map(module => (
-                      <Button
-                        key={module.id}
-                        variant={
-                          activeModule === module.id ? "default" : "outline"
-                        }
-                        size="sm"
-                        className="h-auto py-2 text-xs text-center whitespace-pre-line"
-                        onClick={() => handleModuleClick(module.id)}
-                      >
-                        <div className="text-center">
-                          <p className="text-lg">{module.icon}</p>
-                          <p className="text-xs font-semibold leading-tight">
-                            {module.label}
-                          </p>
-                        </div>
-                      </Button>
-                    ))}
+
+                  <Button
+                    variant={activeModule === "datos" ? "default" : "outline"}
+                    className="w-full min-h-12 justify-start gap-3 text-left"
+                    onClick={() => setActiveModule("datos")}
+                  >
+                    <FileText size={17} aria-hidden="true" />
+                    <span className="font-semibold">Datos generales</span>
+                  </Button>
+
+                  <div className="mt-3 space-y-2">
+                    {CHARACTERIZATION_MODULE_GROUPS.map(group => {
+                      const isOpen = openModuleGroups[group.id] ?? false;
+                      const containsActiveModule = group.modules.some(
+                        module => module.id === activeModule
+                      );
+
+                      return (
+                        <Collapsible
+                          key={group.id}
+                          open={isOpen}
+                          onOpenChange={open =>
+                            setOpenModuleGroups(current => ({
+                              ...current,
+                              [group.id]: open,
+                            }))
+                          }
+                          className={`rounded-lg border transition-colors ${
+                            containsActiveModule
+                              ? "border-blue-400 bg-sky-100"
+                              : "border-sky-200 bg-sky-100/80"
+                          }`}
+                        >
+                          <CollapsibleTrigger asChild>
+                            <button
+                              type="button"
+                              className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-3 text-left transition-colors hover:bg-sky-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                            >
+                              <span className="flex min-w-0 items-start gap-2.5">
+                                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-sky-200 bg-white/75 text-blue-700 shadow-sm">
+                                  <group.icon size={17} aria-hidden="true" />
+                                </span>
+                                <span className="min-w-0">
+                                  <span className="block text-sm font-semibold text-slate-800">
+                                    {group.label}
+                                  </span>
+                                  <span className="mt-0.5 block text-xs leading-snug text-slate-600">
+                                    {group.description}
+                                  </span>
+                                </span>
+                              </span>
+                              <ChevronDown
+                                size={16}
+                                aria-hidden="true"
+                                className={`shrink-0 text-slate-500 transition-transform duration-200 ${
+                                  isOpen ? "rotate-180" : ""
+                                }`}
+                              />
+                            </button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="border-t border-slate-200 px-2 py-2">
+                            <div className="space-y-1">
+                              {group.modules.map(module => (
+                                <Button
+                                  key={module.id}
+                                  variant={
+                                    activeModule === module.id
+                                      ? "default"
+                                      : "ghost"
+                                  }
+                                  size="sm"
+                                  className="h-auto min-h-10 w-full justify-start gap-2 whitespace-normal px-2 py-2 text-left text-xs"
+                                  onClick={() => handleModuleClick(module.id)}
+                                >
+                                  <span
+                                    className="text-base"
+                                    aria-hidden="true"
+                                  >
+                                    {module.icon}
+                                  </span>
+                                  <span className="font-medium leading-snug">
+                                    {module.label}
+                                  </span>
+                                  {module.id === "reuniones" && (
+                                    <span className="ml-auto shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                                      Próximamente
+                                    </span>
+                                  )}
+                                </Button>
+                              ))}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      );
+                    })}
                   </div>
                 </div>
               </CardContent>
@@ -595,20 +768,43 @@ export default function ProcessCharacterization() {
               />
             )}
 
-            {activeModule !== "datos" && activeModule !== "procedimientos" && (
+            {activeModule === "reuniones" && (
               <Card>
-                <CardContent className="pt-6">
-                  <p className="text-center text-slate-600">
-                    Módulo de{" "}
-                    {
-                      CHARACTERIZATION_MODULES.find(m => m.id === activeModule)
-                        ?.label
-                    }{" "}
-                    en desarrollo
+                <CardHeader>
+                  <CardTitle>REUNIONES</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 pt-0">
+                  <p className="text-slate-700">
+                    La ventana de Reuniones forma parte de la siguiente mejora
+                    aprobada. Permitirá gestionar tipos de reunión, acuerdos,
+                    responsables, actas, archivos y compromisos vinculados.
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    Por ahora este acceso se muestra sólo para completar la
+                    nueva organización de Caracterización. No registra ni
+                    modifica información.
                   </p>
                 </CardContent>
               </Card>
             )}
+
+            {activeModule !== "datos" &&
+              activeModule !== "procedimientos" &&
+              activeModule !== "reuniones" && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <p className="text-center text-slate-600">
+                      Módulo de{" "}
+                      {
+                        CHARACTERIZATION_MODULES.find(
+                          module => module.id === activeModule
+                        )?.label
+                      }{" "}
+                      en desarrollo
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
           </div>
         </div>
       </div>
