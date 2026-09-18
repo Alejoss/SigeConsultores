@@ -30,6 +30,9 @@ type SourceType =
   | "checklist_vigency"
   | "program_action"
   | "company_compliance"
+  | "audit_finding"
+  | "inspection_finding"
+  | "meeting_agreement"
   | "own";
 type LinkedCommitment = {
   id: number;
@@ -54,6 +57,9 @@ const SOURCE_LABEL: Record<SourceType, string> = {
   checklist_vigency: "Sistema de Gestión · Vigencia",
   program_action: "Programa · Acción",
   company_compliance: "Cumplimiento empresarial",
+  audit_finding: "Auditoría · Hallazgo",
+  inspection_finding: "Inspección · Hallazgo",
+  meeting_agreement: "Reunión · Acuerdo",
   own: "Planificación propia",
 };
 

@@ -90,6 +90,7 @@ import AxisDesempeno from "./pages/AxisDesempeno";
 import ManagementSystems from "./pages/ManagementSystems";
 import ManagementSystemChecklist from "./pages/ManagementSystemChecklist";
 import LinkedCommitments from "./pages/LinkedCommitments";
+import ProcessMeetings from "./pages/ProcessMeetings";
 import ManagementPrograms from "./pages/ManagementPrograms";
 import AuditControl from "./pages/AuditControl";
 import InspectionControl from "./pages/InspectionControl";
@@ -181,6 +182,7 @@ function Router() {
         component={ProcessPlanningCycles}
       />
       <Route path={"/linked-commitments"} component={LinkedCommitments} />
+      <Route path={"/process-meetings"} component={ProcessMeetings} />
       <Route path={"/404"} component={NotFound} />
       <Route path={"/indicators"} component={Indicators} />
       <Route path={"/criticality-matrix"} component={CriticalityMatrix} />

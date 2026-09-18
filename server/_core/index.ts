@@ -10,6 +10,7 @@ import { registerFileUploadRoutes } from "./fileUploadRoutes";
 import { registerManagementProgramUploadRoutes } from "../managementProgramUploadRoutes";
 import { registerManagementSystemUploadRoutes } from "../managementSystemUploadRoutes";
 import { registerLinkedCommitmentUploadRoutes } from "../linkedCommitmentUploadRoutes";
+import { registerMeetingUploadRoutes } from "../meetingUploadRoutes";
 import { registerPublicApiRoutes } from "./publicApiRoutes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -46,6 +47,7 @@ async function startServer() {
   registerManagementProgramUploadRoutes(app);
   registerManagementSystemUploadRoutes(app);
   registerLinkedCommitmentUploadRoutes(app);
+  registerMeetingUploadRoutes(app);
   registerPublicApiRoutes(app);
   // tRPC API
   app.use(
