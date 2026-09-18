@@ -9,6 +9,8 @@ import {
   operationalFindings,
   managementSystemChecklistActions,
   managementSystemChecklistItems,
+  meetingAgreements,
+  processMeetings,
   programActions,
   processes,
 } from "../../drizzle/schema";
@@ -26,6 +28,7 @@ const sourceTypeSchema = z.enum([
   "company_compliance",
   "audit_finding",
   "inspection_finding",
+  "meeting_agreement",
   "own",
 ]);
 const commitmentStatusSchema = z.enum(["pending", "completed"]);
@@ -269,6 +272,50 @@ async function resolveSource(
     };
   }
 
+  if (sourceType === "meeting_agreement") {
+    const [agreement] = await db
+      .select()
+      .from(meetingAgreements)
+      .where(
+        and(
+          eq(meetingAgreements.id, sourceId),
+          eq(meetingAgreements.companyId, companyId)
+        )
+      )
+      .limit(1);
+    if (!agreement)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "El acuerdo de reunión de origen no existe en esta empresa.",
+      });
+    const [meeting] = await db
+      .select({ id: processMeetings.id, processId: processMeetings.processId })
+      .from(processMeetings)
+      .where(
+        and(
+          eq(processMeetings.id, agreement.meetingId),
+          eq(processMeetings.companyId, companyId),
+          eq(processMeetings.processId, agreement.processId)
+        )
+      )
+      .limit(1);
+    if (!meeting)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "La reunión de origen del acuerdo no existe.",
+      });
+    return {
+      sourceType,
+      sourceId: agreement.id,
+      sourceSubId: meeting.id,
+      kind: "action",
+      title: agreement.description.slice(0, 500),
+      description: `Acuerdo de reunión #${meeting.id}`,
+      dueDate: dateValue(agreement.dueDate),
+      referenceResponsible: agreement.responsibleName,
+    };
+  }
+
   const [compliance] = await db
     .select()
     .from(companyCompliances)
@@ -409,6 +456,35 @@ async function synchronizeSource(
         findingSourceType,
         finding.sourceId
       );
+    return {
+      completed,
+      total: links.length,
+      fulfilled: links.filter(link => link.status === "completed").length,
+    };
+  }
+
+  if (sourceType === "meeting_agreement") {
+    const [agreement] = await db
+      .select()
+      .from(meetingAgreements)
+      .where(
+        and(
+          eq(meetingAgreements.id, sourceId),
+          eq(meetingAgreements.companyId, companyId),
+          eq(meetingAgreements.meetingId, sourceSubId)
+        )
+      )
+      .limit(1);
+    if (agreement && agreement.status !== "cancelled") {
+      await db
+        .update(meetingAgreements)
+        .set({
+          status: completed ? "completed" : "pending",
+          completedAt: completed ? new Date() : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(meetingAgreements.id, agreement.id));
+    }
     return {
       completed,
       total: links.length,
@@ -598,6 +674,7 @@ export const linkedCommitmentsRouter = router({
           "company_compliance",
           "audit_finding",
           "inspection_finding",
+          "meeting_agreement",
         ]),
         sourceId: z.number().int().positive(),
       })
@@ -643,6 +720,7 @@ export const linkedCommitmentsRouter = router({
           "company_compliance",
           "audit_finding",
           "inspection_finding",
+          "meeting_agreement",
         ]),
         sourceId: z.number().int().positive(),
       })
@@ -724,6 +802,7 @@ export const linkedCommitmentsRouter = router({
           "company_compliance",
           "audit_finding",
           "inspection_finding",
+          "meeting_agreement",
         ]),
         sourceId: z.number().int().positive(),
         processIds: z.array(z.number().int().positive()).min(1).max(100),

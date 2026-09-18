@@ -1811,6 +1811,7 @@ export const linkedCommitments = mysqlTable(
       "company_compliance",
       "audit_finding",
       "inspection_finding",
+      "meeting_agreement",
       "own",
     ]).notNull(),
     // Las actividades propias no tienen fuente y mantienen ambos valores nulos.
@@ -1862,6 +1863,125 @@ export type LinkedCommitmentEvidence =
   typeof linkedCommitmentEvidence.$inferSelect;
 export type InsertLinkedCommitmentEvidence =
   typeof linkedCommitmentEvidence.$inferInsert;
+
+/**
+ * Tipos definidos por cada proceso para organizar sus reuniones: Staff, Área,
+ * Extraordinaria, etc. Las reuniones empresariales se administran desde el
+ * proceso Estrategia, sin crear una zona empresarial adicional.
+ */
+export const meetingTypes = mysqlTable("meetingTypes", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  processId: int("processId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  isArchived: boolean("isArchived").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type MeetingType = typeof meetingTypes.$inferSelect;
+export type InsertMeetingType = typeof meetingTypes.$inferInsert;
+
+/**
+ * Reuniones concretas de un tipo. La anulación conserva el registro, sus
+ * acuerdos y evidencias, pero lo excluye del cálculo de pendientes activos.
+ */
+export const processMeetings = mysqlTable("processMeetings", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  processId: int("processId").notNull(),
+  meetingTypeId: int("meetingTypeId").notNull(),
+  meetingDate: date("meetingDate").notNull(),
+  objective: text("objective").notNull(),
+  participants: text("participants"),
+  locationOrMedium: varchar("locationOrMedium", { length: 255 }),
+  notes: text("notes"),
+  minutesText: text("minutesText"),
+  status: mysqlEnum("status", ["active", "annulled"])
+    .default("active")
+    .notNull(),
+  annulledAt: timestamp("annulledAt"),
+  annulmentReason: text("annulmentReason"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProcessMeeting = typeof processMeetings.$inferSelect;
+export type InsertProcessMeeting = typeof processMeetings.$inferInsert;
+
+/**
+ * Acuerdos documentados en una reunión. El tipo de responsable define si se
+ * controla de forma local o mediante un compromiso vinculado en un proceso.
+ */
+export const meetingAgreements = mysqlTable("meetingAgreements", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  processId: int("processId").notNull(),
+  meetingId: int("meetingId").notNull(),
+  description: text("description").notNull(),
+  responsibleType: mysqlEnum("responsibleType", [
+    "same_process_employee",
+    "same_process_owner",
+    "other_process",
+  ]).notNull(),
+  responsibleName: varchar("responsibleName", { length: 255 }),
+  responsibleEmail: varchar("responsibleEmail", { length: 320 }),
+  targetProcessId: int("targetProcessId"),
+  dueDate: date("dueDate"),
+  status: mysqlEnum("status", ["pending", "completed", "cancelled"])
+    .default("pending")
+    .notNull(),
+  completedAt: timestamp("completedAt"),
+  notes: text("notes"),
+  communicationStatus: mysqlEnum("communicationStatus", [
+    "not_requested",
+    "pending",
+    "sent",
+    "failed",
+  ])
+    .default("not_requested")
+    .notNull(),
+  communicationLastAttemptAt: timestamp("communicationLastAttemptAt"),
+  communicationError: text("communicationError"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type MeetingAgreement = typeof meetingAgreements.$inferSelect;
+export type InsertMeetingAgreement = typeof meetingAgreements.$inferInsert;
+
+/** Archivos de respaldo adjuntos directamente a la reunión. */
+export const meetingFiles = mysqlTable("meetingFiles", {
+  id: int("id").autoincrement().primaryKey(),
+  meetingId: int("meetingId").notNull(),
+  companyId: int("companyId").notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileKey: varchar("fileKey", { length: 1024 }).notNull(),
+  fileUrl: varchar("fileUrl", { length: 1024 }).notNull(),
+  mimeType: varchar("mimeType", { length: 255 }).notNull(),
+  fileSizeBytes: int("fileSizeBytes").default(0).notNull(),
+  uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+});
+export type MeetingFile = typeof meetingFiles.$inferSelect;
+export type InsertMeetingFile = typeof meetingFiles.$inferInsert;
+
+/** Evidencias del acuerdo que no está vinculado a otro proceso. */
+export const meetingAgreementEvidence = mysqlTable(
+  "meetingAgreementEvidence",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    meetingAgreementId: int("meetingAgreementId").notNull(),
+    companyId: int("companyId").notNull(),
+    fileName: varchar("fileName", { length: 255 }).notNull(),
+    fileKey: varchar("fileKey", { length: 1024 }).notNull(),
+    fileUrl: varchar("fileUrl", { length: 1024 }).notNull(),
+    mimeType: varchar("mimeType", { length: 255 }).notNull(),
+    fileSizeBytes: int("fileSizeBytes").default(0).notNull(),
+    uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+  }
+);
+export type MeetingAgreementEvidence =
+  typeof meetingAgreementEvidence.$inferSelect;
+export type InsertMeetingAgreementEvidence =
+  typeof meetingAgreementEvidence.$inferInsert;
 
 /**
  * Acciones estructuradas de Programas. Sus contadores manuales anteriores se

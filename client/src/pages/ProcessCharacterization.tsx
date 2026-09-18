@@ -402,6 +402,7 @@ export default function ProcessCharacterization() {
       cumplimientos: `/process-compliances${qs}`,
       cronograma: `/consolidated-schedule${qs}`,
       "compromisos-vinculados": `/linked-commitments${qs}`,
+      reuniones: `/process-meetings${qs}`,
       indicadores: `/process-indicators${qs}`,
       participantes: `/process-participants${qs}`,
       recursos: `/process-resources${qs}`,
@@ -608,11 +609,6 @@ export default function ProcessCharacterization() {
                                   <span className="font-medium leading-snug">
                                     {module.label}
                                   </span>
-                                  {module.id === "reuniones" && (
-                                    <span className="ml-auto shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-                                      Próximamente
-                                    </span>
-                                  )}
                                 </Button>
                               ))}
                             </div>
@@ -766,26 +762,6 @@ export default function ProcessCharacterization() {
                 processName={processName}
                 onVolver={() => setActiveModule("datos")}
               />
-            )}
-
-            {activeModule === "reuniones" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>REUNIONES</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 pt-0">
-                  <p className="text-slate-700">
-                    La ventana de Reuniones forma parte de la siguiente mejora
-                    aprobada. Permitirá gestionar tipos de reunión, acuerdos,
-                    responsables, actas, archivos y compromisos vinculados.
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    Por ahora este acceso se muestra sólo para completar la
-                    nueva organización de Caracterización. No registra ni
-                    modifica información.
-                  </p>
-                </CardContent>
-              </Card>
             )}
 
             {activeModule !== "datos" &&
