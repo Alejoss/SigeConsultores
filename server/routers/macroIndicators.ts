@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
+import { calculateActivityProgress } from "../lib/processActivities";
 import {
   processes,
   processTacticalObjectives,
@@ -163,7 +164,7 @@ export const macroIndicatorsRouter = router({
               objetivosTacticosAlcanzado = Math.round(totalPonderado);
             }
 
-            // 4. Cumplimientos
+            // 4. Actividades del proceso
             const compliances = await db
               .select()
               .from(processCompliances)
@@ -171,8 +172,12 @@ export const macroIndicatorsRouter = router({
 
             let cumplimientosPromedio = 0;
             if (compliances.length > 0) {
-              const completed = compliances.filter(c => c.completed === "SI").length;
-              cumplimientosPromedio = Math.round((completed / compliances.length) * 100);
+              cumplimientosPromedio = Math.round(
+                compliances.reduce(
+                  (total, activity) => total + calculateActivityProgress(activity as any),
+                  0
+                ) / compliances.length
+              );
             }
 
             // Calculate compliance percentage as simple average of 4 indicators
@@ -313,18 +318,23 @@ export const macroIndicatorsRouter = router({
             ? Math.round(totalPonderadoOT)
             : 0;
 
-        // 4. Cumplimientos
+        // 4. Actividades del proceso
         const compliances = await db
           .select()
           .from(processCompliances)
           .where(eq(processCompliances.processId, input.processId));
 
         const completedCompliances = compliances.filter(
-          (c) => c.completed === "SI"
+          activity => calculateActivityProgress(activity as any) >= 100
         ).length;
         const compliancesPercentage =
           compliances.length > 0
-            ? Math.round((completedCompliances / compliances.length) * 100)
+            ? Math.round(
+              compliances.reduce(
+                (total, activity) => total + calculateActivityProgress(activity as any),
+                0
+              ) / compliances.length
+            )
             : 0;
 
         return {
@@ -350,7 +360,7 @@ export const macroIndicatorsRouter = router({
               unit: "%",
             },
             compliances: {
-              name: "Cumplimientos",
+              name: "Actividades",
               value: compliancesPercentage,
               total: compliances.length,
               completed: completedCompliances,

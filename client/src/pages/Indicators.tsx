@@ -313,7 +313,7 @@ export default function Indicators() {
                           </p>
                         </div>
 
-                        {/* Indicator 4: Cumplimientos */}
+                        {/* Indicator 4: Actividades */}
                         <div className={`p-4 rounded-lg bg-gray-50 ${getIndicatorColor(processIndicators.indicators.compliances.value)}`}>
                           <div className="flex items-center justify-between mb-2">
                             <h4 className="font-semibold text-gray-900">
@@ -324,7 +324,7 @@ export default function Indicators() {
                             </span>
                           </div>
                           <p className="text-xs text-gray-600">
-                            {processIndicators.indicators.compliances.completed}/{processIndicators.indicators.compliances.total} obligaciones cumplidas
+                            {processIndicators.indicators.compliances.completed}/{processIndicators.indicators.compliances.total} actividades con avance completo
                           </p>
                         </div>
 

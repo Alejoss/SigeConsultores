@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,787 +6,610 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { ChevronUp } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronDown,
+  ClipboardCheck,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
 
 const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"] as const;
+const WEEKDAYS = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+] as const;
 
-function parseMonths(value: string | null | undefined): number[] {
-  if (!value) return [];
-  return value.split(",").map(Number).filter((n) => n >= 1 && n <= 12);
+const TRACKING_LABELS = {
+  puntual: "Puntual (valor directo)",
+  mensual_sumatoria: "Mensual sumatoria (12 meses)",
+  mensual_promedio: "Mensual promedio (12 meses)",
+  mensual_checklist: "Lista de verificación mensual",
+} as const;
+
+type ScheduleType = "once" | "weekly" | "monthly";
+type TrackingType = keyof typeof TRACKING_LABELS;
+
+type ActivityOccurrence = {
+  date: string;
+  completed: boolean;
+};
+
+interface Activity {
+  id: number;
+  processId: number;
+  requirement: string;
+  description: string | null;
+  responsible: string | null;
+  observations: string | null;
+  dueDate: string | null;
+  scheduleType: ScheduleType;
+  scheduleStartDate: string | null;
+  scheduleEndDate: string | null;
+  scheduleWeekday: number | null;
+  scheduleDayOfMonth: number | null;
+  trackingType: TrackingType;
+  trackingStartValue: string | number | null;
+  trackingTargetValue: string | number | null;
+  trackingCurrentValue: string | number | null;
+  trackingUnit: string | null;
+  monthlyTrackingValues: string | null;
+  monthlyChecklistValues: string | null;
+  completedOccurrenceDates: string | null;
+  progress: number;
+  isCompleted: boolean;
+  trackingSummary: string;
+  scheduleSummary: string;
+  occurrences: ActivityOccurrence[];
+  occurrenceCompleted: number;
+  occurrenceTotal: number;
+  evaluationMode?: "meses" | "vigencia";
+  validFrom?: string | null;
+  validUntil?: string | null;
 }
 
-function serializeMonths(months: number[]): string {
-  return months.sort((a, b) => a - b).join(",");
+interface ActivityForm {
+  requirement: string;
+  description: string;
+  responsible: string;
+  observations: string;
+  scheduleType: ScheduleType;
+  dueDate: string;
+  scheduleStartDate: string;
+  scheduleEndDate: string;
+  scheduleWeekday: number;
+  scheduleDayOfMonth: number;
+  trackingType: TrackingType;
+  trackingStartValue: number;
+  trackingTargetValue: number;
+  trackingCurrentValue: number;
+  trackingUnit: string;
+  monthlyTrackingValues: number[];
+  monthlyChecklistValues: boolean[];
 }
 
-function calcPercentageMonths(planned: number[], completed: number[]): number {
-  if (planned.length === 0) return 0;
-  const fulfilled = completed.filter((m) => planned.includes(m)).length;
-  return Math.round((fulfilled / planned.length) * 100);
-}
-
-function calcVigencia(validUntil: string | null | undefined): {
-  pct: number;
-  status: "vigente" | "por_vencer" | "vencido" | "sin_fecha";
-  daysLeft: number;
-} {
-  if (!validUntil) return { pct: 0, status: "sin_fecha", daysLeft: 0 };
+function todayText() {
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const until = new Date(validUntil);
-  until.setHours(0, 0, 0, 0);
-  const daysLeft = Math.ceil((until.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  if (daysLeft < 0) return { pct: 0, status: "vencido", daysLeft };
-  if (daysLeft <= 30) return { pct: 100, status: "por_vencer", daysLeft };
-  return { pct: 100, status: "vigente", daysLeft };
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
-function VigenciaBadge({ status, daysLeft }: { status: string; daysLeft: number }) {
-  if (status === "vigente")
-    return <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-300">✓ Vigente</span>;
-  if (status === "por_vencer")
-    return <span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-300">⚠ Por vencer ({daysLeft}d)</span>;
-  if (status === "vencido")
-    return <span className="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-300">✗ Vencido</span>;
-  return <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-300">Sin fecha</span>;
+function numberValue(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function MonthGrid({
-  label,
-  selected,
-  onChange,
-  colorClass,
+function parseMonthlyNumbers(value: string | null): number[] {
+  if (!value) return Array(12).fill(0);
+  try {
+    const parsed = JSON.parse(value);
+    return Array.from({ length: 12 }, (_, index) => numberValue(parsed?.[index]));
+  } catch {
+    return Array(12).fill(0);
+  }
+}
+
+function parseMonthlyChecklist(value: string | null): boolean[] {
+  if (!value) return Array(12).fill(false);
+  try {
+    const parsed = JSON.parse(value);
+    return Array.from({ length: 12 }, (_, index) => Boolean(parsed?.[index]));
+  } catch {
+    return Array(12).fill(false);
+  }
+}
+
+function calculateFormProgress(form: ActivityForm): number {
+  const start = form.trackingStartValue;
+  const target = form.trackingTargetValue;
+  const calculate = (current: number) => {
+    if (target === start) return current >= target ? 100 : 0;
+    return Math.max(0, Math.min(100, Math.round(((current - start) / (target - start)) * 100)));
+  };
+  if (form.trackingType === "mensual_checklist") {
+    return Math.round((form.monthlyChecklistValues.filter(Boolean).length / 12) * 100);
+  }
+  if (form.trackingType === "mensual_sumatoria") {
+    return calculate(form.monthlyTrackingValues.reduce((total, value) => total + value, 0));
+  }
+  if (form.trackingType === "mensual_promedio") {
+    const registered = form.monthlyTrackingValues.filter(value => value !== 0);
+    const average = registered.length
+      ? registered.reduce((total, value) => total + value, 0) / registered.length
+      : 0;
+    return calculate(average);
+  }
+  return calculate(form.trackingCurrentValue);
+}
+
+function emptyForm(): ActivityForm {
+  const today = todayText();
+  return {
+    requirement: "",
+    description: "",
+    responsible: "",
+    observations: "",
+    scheduleType: "once",
+    dueDate: today,
+    scheduleStartDate: today,
+    scheduleEndDate: "",
+    scheduleWeekday: new Date(`${today}T12:00:00`).getDay(),
+    scheduleDayOfMonth: new Date(`${today}T12:00:00`).getDate(),
+    trackingType: "puntual",
+    trackingStartValue: 0,
+    trackingTargetValue: 100,
+    trackingCurrentValue: 0,
+    trackingUnit: "%",
+    monthlyTrackingValues: Array(12).fill(0),
+    monthlyChecklistValues: Array(12).fill(false),
+  };
+}
+
+function formFromActivity(activity: Activity): ActivityForm {
+  const fallbackDate = activity.scheduleStartDate || activity.dueDate || todayText();
+  const fallbackDateValue = new Date(`${fallbackDate}T12:00:00`);
+  return {
+    requirement: activity.requirement,
+    description: activity.description || "",
+    responsible: activity.responsible || "",
+    observations: activity.observations || "",
+    scheduleType: activity.scheduleType || "once",
+    dueDate: activity.dueDate || fallbackDate,
+    scheduleStartDate: activity.scheduleStartDate || fallbackDate,
+    scheduleEndDate: activity.scheduleEndDate || "",
+    scheduleWeekday: activity.scheduleWeekday ?? fallbackDateValue.getDay(),
+    scheduleDayOfMonth: activity.scheduleDayOfMonth ?? fallbackDateValue.getDate(),
+    trackingType: activity.trackingType || "puntual",
+    trackingStartValue: numberValue(activity.trackingStartValue),
+    trackingTargetValue: numberValue(activity.trackingTargetValue, 100),
+    trackingCurrentValue: numberValue(activity.trackingCurrentValue, activity.progress),
+    trackingUnit: activity.trackingUnit || "%",
+    monthlyTrackingValues: parseMonthlyNumbers(activity.monthlyTrackingValues),
+    monthlyChecklistValues: parseMonthlyChecklist(activity.monthlyChecklistValues),
+  };
+}
+
+function formatDate(value: string) {
+  return new Date(`${value}T12:00:00`).toLocaleDateString("es-EC", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function progressClass(progress: number) {
+  if (progress >= 80) return "bg-green-500";
+  if (progress >= 50) return "bg-yellow-400";
+  return "bg-red-400";
+}
+
+function progressTextClass(progress: number) {
+  if (progress >= 80) return "text-green-700";
+  if (progress >= 50) return "text-yellow-700";
+  return "text-red-700";
+}
+
+function TrackingInputs({
+  form,
+  setForm,
 }: {
-  label: string;
-  selected: number[];
-  onChange: (months: number[]) => void;
-  colorClass: string;
+  form: ActivityForm;
+  setForm: (form: ActivityForm) => void;
 }) {
-  const toggle = (month: number) => {
-    if (selected.includes(month)) {
-      onChange(selected.filter((m) => m !== month));
-    } else {
-      onChange([...selected, month]);
-    }
+  const updateMonthlyValue = (index: number, value: number) => {
+    const monthlyTrackingValues = [...form.monthlyTrackingValues];
+    monthlyTrackingValues[index] = value;
+    setForm({ ...form, monthlyTrackingValues });
+  };
+  const toggleMonthlyChecklist = (index: number) => {
+    const monthlyChecklistValues = [...form.monthlyChecklistValues];
+    monthlyChecklistValues[index] = !monthlyChecklistValues[index];
+    setForm({ ...form, monthlyChecklistValues });
   };
 
   return (
-    <div>
-      <p className="text-xs font-semibold text-gray-600 mb-1">{label}</p>
-      <div className="flex flex-wrap gap-1">
-        {MONTHS.map((name, i) => {
-          const month = i + 1;
-          const isSelected = selected.includes(month);
-          return (
-            <button
-              key={month}
-              type="button"
-              onClick={() => toggle(month)}
-              translate="no"
-              className={`w-9 h-9 rounded text-xs font-semibold border transition-colors
-                ${isSelected
-                  ? `${colorClass} text-white border-transparent`
-                  : "bg-white text-gray-600 border-gray-300 hover:border-gray-400"
-                }`}
-            >
-              {name}
-            </button>
-          );
-        })}
+    <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 space-y-4">
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de seguimiento</label>
+        <select
+          value={form.trackingType}
+          onChange={event => setForm({ ...form, trackingType: event.target.value as TrackingType })}
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {Object.entries(TRACKING_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Punto de partida</label>
+          <Input type="number" value={form.trackingStartValue} onChange={event => setForm({ ...form, trackingStartValue: numberValue(event.target.value) })} />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Meta</label>
+          <Input type="number" value={form.trackingTargetValue} onChange={event => setForm({ ...form, trackingTargetValue: numberValue(event.target.value, 100) })} />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Unidad de medida</label>
+          <Input value={form.trackingUnit} onChange={event => setForm({ ...form, trackingUnit: event.target.value })} placeholder="%, visitas, unidades…" />
+        </div>
+        {form.trackingType === "puntual" && (
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Avance actual</label>
+            <Input type="number" value={form.trackingCurrentValue} onChange={event => setForm({ ...form, trackingCurrentValue: numberValue(event.target.value) })} />
+          </div>
+        )}
+      </div>
+
+      {(form.trackingType === "mensual_sumatoria" || form.trackingType === "mensual_promedio") && (
+        <div>
+          <p className="text-xs font-semibold text-slate-600 mb-2">Valores mensuales</p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-12 gap-2">
+            {MONTHS.map((month, index) => (
+              <label key={month} className="text-center text-xs text-slate-600">
+                <span className="mb-1 block font-semibold">{month}</span>
+                <Input className="h-8 px-1 text-center" type="number" value={form.monthlyTrackingValues[index]} onChange={event => updateMonthlyValue(index, numberValue(event.target.value))} />
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {form.trackingType === "mensual_checklist" && (
+        <div>
+          <p className="text-xs font-semibold text-slate-600 mb-2">Lista de verificación mensual</p>
+          <div className="flex flex-wrap gap-2">
+            {MONTHS.map((month, index) => {
+              const selected = form.monthlyChecklistValues[index];
+              return (
+                <button
+                  type="button"
+                  key={month}
+                  onClick={() => toggleMonthlyChecklist(index)}
+                  className={`h-10 w-12 rounded border text-xs font-semibold transition-colors ${selected ? "border-green-600 bg-green-500 text-white" : "border-gray-300 bg-white text-gray-600 hover:border-green-400"}`}
+                >
+                  {selected ? "✓ " : ""}{month}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 rounded bg-white p-3 text-sm">
+        <span className="font-semibold text-gray-700">Avance calculado</span>
+        <span className={`text-lg font-bold ${progressTextClass(calculateFormProgress(form))}`}>{calculateFormProgress(form)}%</span>
       </div>
     </div>
   );
 }
 
-interface Compliance {
-  id: number;
-  processId: number;
-  requirement: string;
-  description: string | null;
-  obligationType: "Legal" | "Reglamentaria" | "Concesion" | "Sistema de Gestion" | "Otros";
-  otherObligationType: string | null;
-  dueDate: Date | null;
-  responsible: string | null;
-  completed: "SI" | "NO";
-  plannedMonths: string | null;
-  completedMonths: string | null;
-  observations: string | null;
-  evaluationMode: "meses" | "vigencia";
-  validFrom: string | null;
-  validUntil: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
+function ScheduleInputs({
+  form,
+  setForm,
+}: {
+  form: ActivityForm;
+  setForm: (form: ActivityForm) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 space-y-4">
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-2">Programación</label>
+        <select
+          value={form.scheduleType}
+          onChange={event => setForm({ ...form, scheduleType: event.target.value as ScheduleType })}
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="once">Una vez (fecha puntual)</option>
+          <option value="weekly">Semanal</option>
+          <option value="monthly">Mensual</option>
+        </select>
+      </div>
 
-interface FormData {
-  requirement: string;
-  description: string;
-  obligationType: "Legal" | "Reglamentaria" | "Concesion" | "Sistema de Gestion" | "Otros" | "";
-  otherObligationType: string;
-  responsible: string;
-  plannedMonths: number[];
-  completedMonths: number[];
-  observations: string;
-  evaluationMode: "meses" | "vigencia";
-  validFrom: string;
-  validUntil: string;
+      {form.scheduleType === "once" ? (
+        <div className="max-w-sm">
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Fecha de la actividad *</label>
+          <Input type="date" value={form.dueDate} onChange={event => setForm({ ...form, dueDate: event.target.value, scheduleStartDate: event.target.value })} />
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Programar desde *</label>
+              <Input type="date" value={form.scheduleStartDate} onChange={event => setForm({ ...form, scheduleStartDate: event.target.value, dueDate: event.target.value })} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Programar hasta *</label>
+              <Input type="date" value={form.scheduleEndDate} onChange={event => setForm({ ...form, scheduleEndDate: event.target.value })} />
+            </div>
+          </div>
+          {form.scheduleType === "weekly" ? (
+            <div className="max-w-sm">
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Día de la semana</label>
+              <select value={form.scheduleWeekday} onChange={event => setForm({ ...form, scheduleWeekday: numberValue(event.target.value) })} className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">
+                {WEEKDAYS.map((weekday, index) => <option key={weekday} value={index}>{weekday}</option>)}
+              </select>
+            </div>
+          ) : (
+            <div className="max-w-sm">
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Día de cada mes</label>
+              <Input type="number" min="1" max="31" value={form.scheduleDayOfMonth} onChange={event => setForm({ ...form, scheduleDayOfMonth: Math.min(31, Math.max(1, numberValue(event.target.value, 1))) })} />
+            </div>
+          )}
+        </>
+      )}
+      <p className="text-xs text-indigo-700">La programación alimenta el Cronograma consolidado. El Tipo de seguimiento mide el avance de la actividad.</p>
+    </div>
+  );
 }
 
 export default function ProcessCompliances() {
   const [, navigate] = useLocation();
-
-  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const queryProcessId = searchParams.get("processId");
   const queryCompanyId = searchParams.get("companyId");
   const selectedProcessId = queryProcessId || localStorage.getItem("selectedProcessId");
-  const processId = selectedProcessId ? parseInt(selectedProcessId) : 0;
-
+  const processId = selectedProcessId ? Number.parseInt(selectedProcessId, 10) : 0;
   const backUrl = queryProcessId
     ? `/process-characterization?processId=${queryProcessId}${queryCompanyId ? `&companyId=${queryCompanyId}` : ""}`
     : "/process-characterization";
 
-  const [compliances, setCompliances] = useState<Compliance[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<FormData>({
-    requirement: "",
-    description: "",
-    obligationType: "",
-    otherObligationType: "",
-    responsible: "",
-    plannedMonths: [],
-    completedMonths: [],
-    observations: "",
-    evaluationMode: "meses",
-    validFrom: "",
-    validUntil: "",
-  });
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState<ActivityForm>(emptyForm);
+  const [lastFormSnapshot, setLastFormSnapshot] = useState("");
 
-  const { data: compliancesData, isLoading } = trpc.processCompliances.list.useQuery(
+  const { data: activitiesData, isLoading } = trpc.processCompliances.list.useQuery(
     { processId },
     { enabled: processId > 0 }
   );
-
   const createMutation = trpc.processCompliances.create.useMutation();
   const updateMutation = trpc.processCompliances.update.useMutation();
   const deleteMutation = trpc.processCompliances.delete.useMutation();
+  const occurrenceMutation = trpc.processCompliances.setOccurrenceCompleted.useMutation();
   const utils = trpc.useUtils();
 
   useEffect(() => {
-    if (compliancesData) {
-      setCompliances(compliancesData as Compliance[]);
-    }
-  }, [compliancesData]);
+    if (activitiesData) setActivities(activitiesData as unknown as Activity[]);
+  }, [activitiesData]);
 
-  // Guardado automático con debouncing
+  const summary = useMemo(() => {
+    const total = activities.length;
+    const average = total
+      ? Math.round(activities.reduce((sum, activity) => sum + activity.progress, 0) / total)
+      : 0;
+    const completed = activities.filter(activity => activity.progress >= 100).length;
+    return { total, average, completed };
+  }, [activities]);
+
+  const buildPayload = () => ({
+    processId,
+    requirement: form.requirement.trim(),
+    description: form.description.trim() || undefined,
+    responsible: form.responsible.trim() || undefined,
+    observations: form.observations.trim() || undefined,
+    scheduleType: form.scheduleType,
+    dueDate: form.dueDate || "",
+    scheduleStartDate: form.scheduleStartDate || "",
+    scheduleEndDate: form.scheduleEndDate || "",
+    scheduleWeekday: form.scheduleType === "weekly" ? form.scheduleWeekday : null,
+    scheduleDayOfMonth: form.scheduleType === "monthly" ? form.scheduleDayOfMonth : null,
+    trackingType: form.trackingType,
+    trackingStartValue: form.trackingStartValue,
+    trackingTargetValue: form.trackingTargetValue,
+    trackingCurrentValue: form.trackingCurrentValue,
+    trackingUnit: form.trackingUnit.trim() || "%",
+    monthlyTrackingValues: form.monthlyTrackingValues,
+    monthlyChecklistValues: form.monthlyChecklistValues,
+  });
+
+  const validateForm = () => {
+    if (!form.requirement.trim()) {
+      toast.error("Escriba el nombre de la actividad.");
+      return false;
+    }
+    if (form.scheduleType === "once" && !form.dueDate) {
+      toast.error("Defina la fecha de la actividad.");
+      return false;
+    }
+    if (form.scheduleType !== "once" && (!form.scheduleStartDate || !form.scheduleEndDate)) {
+      toast.error("Defina las fechas inicial y final de la programación.");
+      return false;
+    }
+    return true;
+  };
+
+  const refreshActivities = async () => {
+    await utils.processCompliances.list.invalidate({ processId });
+  };
+
+  const addActivity = async () => {
+    if (!validateForm()) return;
+    try {
+      await createMutation.mutateAsync(buildPayload());
+      toast.success("Actividad agregada correctamente");
+      setForm(emptyForm());
+      setLastFormSnapshot("");
+      await refreshActivities();
+    } catch (error: any) {
+      toast.error(error?.message || "No se pudo agregar la actividad.");
+    }
+  };
+
+  const saveActivity = async (silent = false) => {
+    if (!editingId || !validateForm()) return;
+    try {
+      await updateMutation.mutateAsync({ id: editingId, ...buildPayload() });
+      setLastFormSnapshot(JSON.stringify(form));
+      if (!silent) toast.success("Actividad actualizada correctamente");
+      await refreshActivities();
+    } catch (error: any) {
+      if (!silent) toast.error(error?.message || "No se pudo actualizar la actividad.");
+    }
+  };
+
   useEffect(() => {
-    if (!editingId || !formData.requirement) return;
-    const timer = setTimeout(() => {
-      handleUpdateCompliance(editingId);
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [formData, editingId]);
+    if (!editingId || !form.requirement.trim()) return;
+    const snapshot = JSON.stringify(form);
+    if (snapshot === lastFormSnapshot) return;
+    const timer = window.setTimeout(() => void saveActivity(true), 1400);
+    return () => window.clearTimeout(timer);
+  }, [form, editingId, lastFormSnapshot]);
 
-  function getCompliancePct(c: Compliance): number {
-    if (c.evaluationMode === "vigencia") {
-      return calcVigencia(c.validUntil).pct;
-    }
-    const planned = parseMonths(c.plannedMonths);
-    const completed = parseMonths(c.completedMonths);
-    return calcPercentageMonths(planned, completed);
-  }
-
-  const { totalCompliances, averageCompliance } = useMemo(() => {
-    const total = compliances.length;
-    if (total === 0) return { totalCompliances: 0, averageCompliance: 0 };
-    const sum = compliances.reduce((acc, c) => acc + getCompliancePct(c), 0);
-    return { totalCompliances: total, averageCompliance: Math.round(sum / total) };
-  }, [compliances]);
-
-  const handleAddCompliance = async () => {
-    if (!formData.requirement || !formData.obligationType) {
-      toast.error("Por favor completa los campos requeridos");
-      return;
-    }
-    try {
-      await createMutation.mutateAsync({
-        processId,
-        requirement: formData.requirement,
-        description: formData.description || undefined,
-        obligationType: formData.obligationType as any,
-        otherObligationType: formData.otherObligationType || undefined,
-        responsible: formData.responsible || undefined,
-        completed: "NO",
-        plannedMonths: serializeMonths(formData.plannedMonths) || undefined,
-        completedMonths: serializeMonths(formData.completedMonths) || undefined,
-        observations: formData.observations || undefined,
-        evaluationMode: formData.evaluationMode,
-        validFrom: formData.validFrom || null,
-        validUntil: formData.validUntil || null,
-      });
-      toast.success("Obligación creada exitosamente");
-      resetForm();
-      await utils.processCompliances.list.invalidate({ processId });
-    } catch {
-      toast.error("Error al crear la obligación");
-    }
-  };
-
-  const handleUpdateCompliance = async (id: number) => {
-    if (!formData.requirement || !formData.obligationType) return;
-    try {
-      await updateMutation.mutateAsync({
-        id,
-        requirement: formData.requirement,
-        description: formData.description || undefined,
-        obligationType: formData.obligationType as any,
-        otherObligationType: formData.otherObligationType || undefined,
-        responsible: formData.responsible || undefined,
-        completed: "NO",
-        plannedMonths: serializeMonths(formData.plannedMonths) || undefined,
-        completedMonths: serializeMonths(formData.completedMonths) || undefined,
-        observations: formData.observations || undefined,
-        evaluationMode: formData.evaluationMode,
-        validFrom: formData.validFrom || null,
-        validUntil: formData.validUntil || null,
-      });
-      await utils.processCompliances.list.invalidate({ processId });
-    } catch {
-      // silencioso en autosave
-    }
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingId || !formData.requirement || !formData.obligationType) {
-      toast.error("Por favor completa los campos requeridos");
-      return;
-    }
-    try {
-      await updateMutation.mutateAsync({
-        id: editingId,
-        requirement: formData.requirement,
-        description: formData.description || undefined,
-        obligationType: formData.obligationType as any,
-        otherObligationType: formData.otherObligationType || undefined,
-        responsible: formData.responsible || undefined,
-        completed: "NO",
-        plannedMonths: serializeMonths(formData.plannedMonths) || undefined,
-        completedMonths: serializeMonths(formData.completedMonths) || undefined,
-        observations: formData.observations || undefined,
-        evaluationMode: formData.evaluationMode,
-        validFrom: formData.validFrom || null,
-        validUntil: formData.validUntil || null,
-      });
-      toast.success("Obligación actualizada exitosamente");
-      resetForm();
-      setEditingId(null);
-      await utils.processCompliances.list.invalidate({ processId });
-    } catch {
-      toast.error("Error al actualizar la obligación");
-    }
-  };
-
-  const handleDeleteCompliance = async (id: number) => {
-    if (!confirm("¿Estás seguro de que deseas eliminar esta obligación?")) return;
-    try {
-      await deleteMutation.mutateAsync({ id });
-      toast.success("Obligación eliminada exitosamente");
-      await utils.processCompliances.list.invalidate({ processId });
-    } catch {
-      toast.error("Error al eliminar la obligación");
-    }
-  };
-
-  const handleEditCompliance = (compliance: Compliance) => {
-    setFormData({
-      requirement: compliance.requirement,
-      description: compliance.description || "",
-      obligationType: compliance.obligationType,
-      otherObligationType: compliance.otherObligationType || "",
-      responsible: compliance.responsible || "",
-      plannedMonths: parseMonths(compliance.plannedMonths),
-      completedMonths: parseMonths(compliance.completedMonths),
-      observations: compliance.observations || "",
-      evaluationMode: compliance.evaluationMode ?? "meses",
-      validFrom: compliance.validFrom ? String(compliance.validFrom).substring(0, 10) : "",
-      validUntil: compliance.validUntil ? String(compliance.validUntil).substring(0, 10) : "",
-    });
-    setEditingId(compliance.id);
+  const editActivity = (activity: Activity) => {
+    const nextForm = formFromActivity(activity);
+    setForm(nextForm);
+    setLastFormSnapshot(JSON.stringify(nextForm));
+    setEditingId(activity.id);
     setExpandedId(null);
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   };
 
-  const resetForm = () => {
-    setFormData({
-      requirement: "",
-      description: "",
-      obligationType: "",
-      otherObligationType: "",
-      responsible: "",
-      plannedMonths: [],
-      completedMonths: [],
-      observations: "",
-      evaluationMode: "meses",
-      validFrom: "",
-      validUntil: "",
-    });
+  const deleteActivity = async (activity: Activity) => {
+    if (!confirm(`¿Eliminar la actividad “${activity.requirement}”? Esta acción no se puede deshacer.`)) return;
+    try {
+      await deleteMutation.mutateAsync({ id: activity.id });
+      toast.success("Actividad eliminada correctamente");
+      if (editingId === activity.id) {
+        setEditingId(null);
+        setForm(emptyForm());
+      }
+      await refreshActivities();
+    } catch (error: any) {
+      toast.error(error?.message || "No se pudo eliminar la actividad.");
+    }
   };
+
+  const toggleOccurrence = async (activity: Activity, occurrence: ActivityOccurrence) => {
+    try {
+      await occurrenceMutation.mutateAsync({
+        id: activity.id,
+        occurrenceDate: occurrence.date,
+        completed: !occurrence.completed,
+      });
+      await refreshActivities();
+    } catch (error: any) {
+      toast.error(error?.message || "No se pudo actualizar la ocurrencia.");
+    }
+  };
+
+  if (!processId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6 flex items-center justify-center">
+        <Card className="max-w-md"><CardContent className="pt-6 text-center"><p className="text-gray-600 mb-4">Seleccione un proceso antes de gestionar actividades.</p><Button onClick={() => navigate("/process-characterization")}>Volver</Button></CardContent></Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <div className="flex flex-wrap items-center gap-3"><h1 className="text-4xl font-bold text-gray-900">Cumplimientos del Proceso</h1><ActivePlanningCycleBadge companyId={Number(localStorage.getItem("selectedCompanyId"))} /></div>
-            <Button variant="outline" onClick={() => navigate(backUrl)}>
-              ← Volver
-            </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-4xl font-bold text-gray-900">Actividades del proceso</h1>
+              <ActivePlanningCycleBadge companyId={Number(queryCompanyId || localStorage.getItem("selectedCompanyId"))} />
+            </div>
+            <Button variant="outline" onClick={() => navigate(backUrl)}>← Volver</Button>
           </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <Card className="bg-white border-l-4 border-l-green-500">
-              <CardContent className="pt-6">
-                <div className="text-sm text-gray-600 mb-1">Total de Obligaciones</div>
-                <div className="text-3xl font-bold text-green-600">{totalCompliances}</div>
-              </CardContent>
-            </Card>
-            <Card className="bg-white border-l-4 border-l-blue-500">
-              <CardContent className="pt-6">
-                <div className="text-sm text-gray-600 mb-1">% Promedio de Cumplimiento</div>
-                <div className="text-3xl font-bold text-blue-600">{averageCompliance}%</div>
-              </CardContent>
-            </Card>
+          <p className="max-w-3xl text-sm text-slate-600">Planifique las actividades diarias, semanales o mensuales del proceso. Cada programación se refleja automáticamente en el Cronograma consolidado.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+            <Card className="bg-white border-l-4 border-l-green-500"><CardContent className="pt-5"><p className="text-sm text-gray-600">Total de actividades</p><p className="mt-1 text-3xl font-bold text-green-600">{summary.total}</p></CardContent></Card>
+            <Card className="bg-white border-l-4 border-l-blue-500"><CardContent className="pt-5"><p className="text-sm text-gray-600">% promedio de avance</p><p className="mt-1 text-3xl font-bold text-blue-600">{summary.average}%</p></CardContent></Card>
+            <Card className="bg-white border-l-4 border-l-emerald-500"><CardContent className="pt-5"><p className="text-sm text-gray-600">Actividades completadas</p><p className="mt-1 text-3xl font-bold text-emerald-600">{summary.completed}</p></CardContent></Card>
           </div>
         </div>
 
-        {/* OBLIGACIONES REGISTRADAS */}
-        <div className="space-y-4 mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Obligaciones Registradas</h2>
-          {isLoading ? (
-            <div className="text-center py-8 text-gray-500">Cargando obligaciones...</div>
-          ) : compliances.length === 0 ? (
-            <Card className="bg-white">
-              <CardContent className="pt-6 text-center text-gray-500">
-                No hay obligaciones registradas aún
-              </CardContent>
-            </Card>
+        <section className="mb-8">
+          <div className="mb-4 flex items-center gap-2"><ClipboardCheck className="h-5 w-5 text-blue-700" /><h2 className="text-2xl font-bold text-gray-900">Actividades registradas</h2></div>
+          {isLoading ? <Card><CardContent className="py-8 text-center text-gray-500">Cargando actividades…</CardContent></Card> : activities.length === 0 ? (
+            <Card className="bg-white"><CardContent className="py-10 text-center text-gray-500"><CalendarDays className="mx-auto mb-3 h-10 w-10 text-slate-300" /><p>No hay actividades registradas aún.</p></CardContent></Card>
           ) : (
-            compliances.map((compliance) => {
-              const mode = compliance.evaluationMode ?? "meses";
-              const planned = parseMonths(compliance.plannedMonths);
-              const completed = parseMonths(compliance.completedMonths);
-              const pctMeses = calcPercentageMonths(planned, completed);
-              const vigInfo = calcVigencia(compliance.validUntil);
-              const pct = mode === "vigencia" ? vigInfo.pct : pctMeses;
-
-              return (
-                <Card key={compliance.id} className="bg-white">
-                  <div
-                    className="p-6 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between"
-                    onClick={() => setExpandedId(expandedId === compliance.id ? null : compliance.id)}
-                  >
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 mb-2">{compliance.requirement}</h3>
-                      <div className="flex flex-wrap gap-3 text-sm text-gray-600 items-center">
-                        <span className="px-2 py-1 bg-gray-100 rounded">{compliance.obligationType}</span>
-                        {mode === "vigencia" ? (
-                          <span className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-xs font-medium border border-indigo-200">Por Vigencia</span>
-                        ) : (
-                          <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs font-medium border border-blue-200">Por Meses</span>
-                        )}
-                        {mode === "vigencia" && (
-                          <VigenciaBadge status={vigInfo.status} daysLeft={vigInfo.daysLeft} />
-                        )}
-                        <div className="flex items-center gap-2">
-                          <div className="w-28 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all ${
-                                pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-yellow-400" : "bg-red-400"
-                              }`}
-                              style={{ width: `${pct}%` }}
-                            />
+            <div className="space-y-3">
+              {activities.map(activity => {
+                const expanded = expandedId === activity.id;
+                const shownOccurrences = activity.occurrences.slice(0, 24);
+                return (
+                  <Card key={activity.id} className="bg-white overflow-hidden">
+                    <button type="button" onClick={() => setExpandedId(expanded ? null : activity.id)} className="w-full p-5 text-left hover:bg-slate-50 transition-colors">
+                      <div className="flex items-start gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-semibold text-gray-900">{activity.requirement}</h3>
+                            <span className="rounded-full bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700">{activity.scheduleSummary}</span>
                           </div>
-                          <span className={`font-semibold ${
-                            pct >= 80 ? "text-green-700" : pct >= 50 ? "text-yellow-600" : "text-red-600"
-                          }`}>
-                            {pct}%
-                          </span>
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                            <span>Seguimiento: {activity.trackingSummary}</span>
+                            {activity.responsible && <span>Responsable: {activity.responsible}</span>}
+                            {activity.occurrenceTotal > 1 && <span>{activity.occurrenceCompleted} de {activity.occurrenceTotal} ocurrencias registradas</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="w-24"><div className="mb-1 flex justify-between text-xs font-semibold"><span>Avance</span><span className={progressTextClass(activity.progress)}>{activity.progress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-gray-200"><div className={`h-full ${progressClass(activity.progress)}`} style={{ width: `${activity.progress}%` }} /></div></div>
+                          <ChevronDown className={`h-5 w-5 text-slate-500 transition-transform ${expanded ? "rotate-180" : ""}`} />
                         </div>
                       </div>
-                    </div>
-                    <ChevronUp
-                      className={`w-5 h-5 text-gray-400 transition-transform ${
-                        expandedId === compliance.id ? "rotate-180" : ""
-                      }`}
-                    />
-                  </div>
-
-                  {expandedId === compliance.id && (
-                    <CardContent className="pt-0 pb-6 border-t">
-                      <div className="space-y-4 mt-4">
-                        {compliance.description && (
-                          <div>
-                            <label className="text-sm font-semibold text-gray-700">Descripción</label>
-                            <p className="text-gray-600 whitespace-pre-wrap">{compliance.description}</p>
-                          </div>
-                        )}
-                        {compliance.obligationType === "Otros" && compliance.otherObligationType && (
-                          <div>
-                            <label className="text-sm font-semibold text-gray-700">Tipo Específico</label>
-                            <p className="text-gray-600">{compliance.otherObligationType}</p>
-                          </div>
-                        )}
-                        {compliance.responsible && (
-                          <div>
-                            <label className="text-sm font-semibold text-gray-700">Responsable</label>
-                            <p className="text-gray-600">{compliance.responsible}</p>
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-700">Modo de Evaluación:</span>
-                          {mode === "vigencia" ? (
-                            <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-semibold border border-indigo-200">Acciones por Vigencia</span>
-                          ) : (
-                            <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-semibold border border-blue-200">Acciones por Meses</span>
-                          )}
-                        </div>
-
-                        {mode === "meses" ? (
-                          <div className="space-y-3">
-                            <div>
-                              <p className="text-xs font-semibold text-gray-600 mb-1">Planificado</p>
-                              <div className="flex flex-wrap gap-1">
-                                {MONTHS.map((name, i) => {
-                                  const month = i + 1;
-                                  const isPlanned = planned.includes(month);
-                                  return (
-                                    <div
-                                      key={month}
-                                      className={`w-9 h-9 rounded text-xs font-semibold border flex items-center justify-center
-                                        ${isPlanned ? "bg-blue-500 text-white border-transparent" : "bg-gray-50 text-gray-400 border-gray-200"}`}
-                                    >
-                                      {name}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                            <div>
-                              <p className="text-xs font-semibold text-gray-600 mb-1">Cumplimiento</p>
-                              <div className="flex flex-wrap gap-1">
-                                {MONTHS.map((name, i) => {
-                                  const month = i + 1;
-                                  const isDone = completed.includes(month);
-                                  const wasPlanned = planned.includes(month);
-                                  return (
-                                    <div
-                                      key={month}
-                                      className={`w-9 h-9 rounded text-xs font-semibold border flex items-center justify-center
-                                        ${isDone && wasPlanned
-                                          ? "bg-green-500 text-white border-transparent"
-                                          : isDone && !wasPlanned
-                                          ? "bg-yellow-400 text-white border-transparent"
-                                          : "bg-gray-50 text-gray-400 border-gray-200"}`}
-                                    >
-                                      {name}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="border border-indigo-100 rounded-lg p-4 bg-indigo-50 space-y-3">
-                            <div className="grid grid-cols-2 gap-4">
-                              {compliance.validFrom && (
-                                <div>
-                                  <p className="text-xs font-semibold text-gray-600 mb-1">Vigente desde</p>
-                                  <p className="text-sm text-gray-800 font-medium">
-                                    {new Date(compliance.validFrom).toLocaleDateString("es-EC", { day: "2-digit", month: "long", year: "numeric" })}
-                                  </p>
-                                </div>
-                              )}
-                              {compliance.validUntil && (
-                                <div>
-                                  <p className="text-xs font-semibold text-gray-600 mb-1">Vigente hasta</p>
-                                  <p className="text-sm text-gray-800 font-medium">
-                                    {new Date(compliance.validUntil).toLocaleDateString("es-EC", { day: "2-digit", month: "long", year: "numeric" })}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <VigenciaBadge status={vigInfo.status} daysLeft={vigInfo.daysLeft} />
-                              {vigInfo.status === "vigente" && <span className="text-xs text-gray-500">Vence en {vigInfo.daysLeft} días</span>}
-                              {vigInfo.status === "por_vencer" && <span className="text-xs text-yellow-700 font-medium">¡Renovar pronto!</span>}
-                              {vigInfo.status === "vencido" && <span className="text-xs text-red-700 font-medium">Venció hace {Math.abs(vigInfo.daysLeft)} días</span>}
-                            </div>
-                          </div>
-                        )}
-
-                        <div>
-                          <label className="text-sm font-semibold text-gray-700">% Cumplimiento</label>
-                          <div className="flex items-center gap-3 mt-1">
-                            <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all ${
-                                  pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-yellow-400" : "bg-red-400"
-                                }`}
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-                            <span className={`text-lg font-bold min-w-[3rem] text-right ${
-                              pct >= 80 ? "text-green-700" : pct >= 50 ? "text-yellow-600" : "text-red-600"
-                            }`}>
-                              {pct}%
-                            </span>
-                          </div>
-                          {mode === "meses" && planned.length > 0 && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              {completed.filter((m) => planned.includes(m)).length} de {planned.length} meses planificados cumplidos
-                            </p>
-                          )}
-                          {mode === "vigencia" && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              {vigInfo.status === "vigente" || vigInfo.status === "por_vencer"
-                                ? "Documento vigente — 100% de cumplimiento"
-                                : vigInfo.status === "vencido"
-                                ? "Documento vencido — 0% de cumplimiento"
-                                : "Sin fecha de vigencia registrada"}
-                            </p>
-                          )}
-                        </div>
-
-                        {compliance.observations && (
-                          <div>
-                            <label className="text-sm font-semibold text-gray-700">Observaciones</label>
-                            <p className="text-gray-600 whitespace-pre-wrap">{compliance.observations}</p>
-                          </div>
-                        )}
-
-                        <div className="flex gap-2 pt-4">
-                          <Button variant="outline" size="sm" onClick={() => handleEditCompliance(compliance)}>
-                            Editar
-                          </Button>
-                          <Button variant="destructive" size="sm" onClick={() => handleDeleteCompliance(compliance.id)}>
-                            Eliminar
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  )}
-                </Card>
-              );
-            })
+                    </button>
+                    {expanded && (
+                      <CardContent className="border-t pt-5 space-y-5">
+                        {activity.description && <div><p className="text-sm font-semibold text-slate-700">Descripción de la actividad</p><p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">{activity.description}</p></div>}
+                        {activity.observations && <div><p className="text-sm font-semibold text-slate-700">Observaciones</p><p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">{activity.observations}</p></div>}
+                        <div className="rounded-lg border border-sky-100 bg-sky-50 p-4"><p className="text-sm font-semibold text-sky-900">Tipo de seguimiento: {activity.trackingSummary}</p><p className="mt-1 text-sm text-sky-800">Avance calculado: <strong>{activity.progress}%</strong>{activity.trackingUnit ? ` · Unidad: ${activity.trackingUnit}` : ""}</p></div>
+                        {activity.evaluationMode === "vigencia" && activity.validUntil && <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">Dato histórico de vigencia: {activity.validFrom ? `desde ${formatDate(activity.validFrom)} ` : ""}hasta {formatDate(activity.validUntil)}.</div>}
+                        {shownOccurrences.length > 0 && <div><p className="mb-2 text-sm font-semibold text-slate-700">Programación</p><div className="flex flex-wrap gap-2">{shownOccurrences.map(occurrence => <button type="button" key={occurrence.date} onClick={() => void toggleOccurrence(activity, occurrence)} disabled={occurrenceMutation.isPending} className={`rounded-md border px-3 py-2 text-xs font-semibold transition-colors ${occurrence.completed ? "border-green-600 bg-green-500 text-white" : "border-slate-300 bg-white text-slate-700 hover:border-green-400"}`} title="Marcar o desmarcar como realizada">{occurrence.completed ? "✓ " : ""}{formatDate(occurrence.date)}</button>)}</div>{activity.occurrenceTotal > shownOccurrences.length && <p className="mt-2 text-xs text-slate-500">Se muestran las primeras 24 ocurrencias; el Cronograma consolidado conserva toda la programación.</p>}</div>}
+                        <div className="flex flex-wrap gap-2 border-t pt-4"><Button variant="outline" size="sm" onClick={() => editActivity(activity)}><Pencil className="mr-1 h-4 w-4" />Editar</Button><Button variant="destructive" size="sm" onClick={() => void deleteActivity(activity)}><Trash2 className="mr-1 h-4 w-4" />Eliminar</Button></div>
+                      </CardContent>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
           )}
-        </div>
+        </section>
 
-        {/* FORMULARIO NUEVA / EDITAR OBLIGACIÓN */}
-        <Card className="mb-8 bg-white">
-          <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50 border-b">
-            <CardTitle>{editingId ? "Editar Obligación" : "Nueva Obligación"}</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6 space-y-5">
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Obligación *</label>
-              <Textarea
-                value={formData.requirement}
-                onChange={(e) => setFormData({ ...formData, requirement: e.target.value })}
-                placeholder="Nombre o título de la obligación"
-                className="min-h-[80px]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Descripción de la obligación</label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Describe a qué se refiere esta obligación"
-                className="min-h-[80px]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Obligación *</label>
-              <select
-                value={formData.obligationType}
-                onChange={(e) => setFormData({ ...formData, obligationType: e.target.value as any })}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="" disabled>Selecciona el tipo de obligación</option>
-                <option value="Legal">Legal</option>
-                <option value="Reglamentaria">Reglamentaria</option>
-                <option value="Concesion">Concesión</option>
-                <option value="Sistema de Gestion">Sistema de Gestión</option>
-                <option value="Otros">Otros</option>
-              </select>
-            </div>
-
-            {formData.obligationType === "Otros" && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Especifica el tipo de obligación</label>
-                <Input
-                  value={formData.otherObligationType}
-                  onChange={(e) => setFormData({ ...formData, otherObligationType: e.target.value })}
-                  placeholder="Describe el tipo de obligación"
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Responsable</label>
-              <Input
-                value={formData.responsible}
-                onChange={(e) => setFormData({ ...formData, responsible: e.target.value })}
-                placeholder="Nombre del responsable"
-              />
-            </div>
-
-            {/* Selector de modo de evaluación */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Modo de Evaluación</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, evaluationMode: "meses" })}
-                  className={`flex-1 py-2 px-4 rounded-lg border text-sm font-semibold transition-colors ${
-                    formData.evaluationMode === "meses"
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-white text-gray-600 border-gray-300 hover:border-blue-400"
-                  }`}
-                >
-                  📅 Acciones por Meses
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, evaluationMode: "vigencia" })}
-                  className={`flex-1 py-2 px-4 rounded-lg border text-sm font-semibold transition-colors ${
-                    formData.evaluationMode === "vigencia"
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "bg-white text-gray-600 border-gray-300 hover:border-indigo-400"
-                  }`}
-                >
-                  🗓 Acciones por Vigencia
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {formData.evaluationMode === "meses"
-                  ? "Ideal para obligaciones recurrentes (reportes mensuales, inspecciones periódicas, etc.)"
-                  : "Ideal para permisos, licencias o documentos con fecha de vencimiento (Permiso IATA, nombramientos, etc.)"}
-              </p>
-            </div>
-
-            {formData.evaluationMode === "meses" ? (
-              <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50">
-                <MonthGrid
-                  label="Planificado — marca los meses en que planificas cumplir"
-                  selected={formData.plannedMonths}
-                  onChange={(months) => setFormData({ ...formData, plannedMonths: months })}
-                  colorClass="bg-blue-500"
-                />
-                <MonthGrid
-                  label="Cumplimiento — marca los meses en que efectivamente cumpliste"
-                  selected={formData.completedMonths}
-                  onChange={(months) => setFormData({ ...formData, completedMonths: months })}
-                  colorClass="bg-green-500"
-                />
-                {formData.plannedMonths.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-gray-600 mb-1">% Cumplimiento</p>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${
-                            calcPercentageMonths(formData.plannedMonths, formData.completedMonths) >= 80
-                              ? "bg-green-500"
-                              : calcPercentageMonths(formData.plannedMonths, formData.completedMonths) >= 50
-                              ? "bg-yellow-400"
-                              : "bg-red-400"
-                          }`}
-                          style={{ width: `${calcPercentageMonths(formData.plannedMonths, formData.completedMonths)}%` }}
-                        />
-                      </div>
-                      <span className={`text-lg font-bold min-w-[3rem] text-right ${
-                        calcPercentageMonths(formData.plannedMonths, formData.completedMonths) >= 80
-                          ? "text-green-700"
-                          : calcPercentageMonths(formData.plannedMonths, formData.completedMonths) >= 50
-                          ? "text-yellow-600"
-                          : "text-red-600"
-                      }`}>
-                        {calcPercentageMonths(formData.plannedMonths, formData.completedMonths)}%
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {formData.completedMonths.filter((m) => formData.plannedMonths.includes(m)).length} de {formData.plannedMonths.length} meses planificados cumplidos
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="border border-indigo-200 rounded-lg p-4 space-y-4 bg-indigo-50">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Vigente desde</label>
-                    <Input
-                      type="date"
-                      value={formData.validFrom}
-                      onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
-                      className="bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Vigente hasta *</label>
-                    <Input
-                      type="date"
-                      value={formData.validUntil}
-                      onChange={(e) => setFormData({ ...formData, validUntil: e.target.value })}
-                      className="bg-white"
-                    />
-                  </div>
-                </div>
-                {formData.validUntil && (() => {
-                  const v = calcVigencia(formData.validUntil);
-                  return (
-                    <div className="flex items-center gap-3">
-                      <VigenciaBadge status={v.status} daysLeft={v.daysLeft} />
-                      <span className="text-sm font-bold">{v.pct}% de cumplimiento</span>
-                      {v.status === "vigente" && <span className="text-xs text-gray-500">Vence en {v.daysLeft} días</span>}
-                      {v.status === "por_vencer" && <span className="text-xs text-yellow-700 font-semibold">¡Renovar pronto!</span>}
-                      {v.status === "vencido" && <span className="text-xs text-red-700 font-semibold">Venció hace {Math.abs(v.daysLeft)} días</span>}
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Observaciones</label>
-              <Textarea
-                value={formData.observations}
-                onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
-                placeholder="Agrega observaciones si lo requieres"
-                className="min-h-[80px]"
-              />
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              {editingId ? (
-                <>
-                  <Button onClick={handleSaveEdit} className="bg-blue-600 hover:bg-blue-700">
-                    Actualizar
-                  </Button>
-                  <Button variant="outline" onClick={() => { resetForm(); setEditingId(null); }}>
-                    Cancelar
-                  </Button>
-                </>
-              ) : (
-                <Button onClick={handleAddCompliance} className="bg-green-600 hover:bg-green-700">
-                  Agregar Obligación
-                </Button>
-              )}
+        <Card className="mb-8 bg-white" id="activity-form">
+          <CardHeader className="border-b bg-gradient-to-r from-green-50 to-blue-50"><CardTitle>{editingId ? "Editar actividad" : "Nueva actividad"}</CardTitle></CardHeader>
+          <CardContent className="space-y-5 pt-6">
+            <div><label className="mb-2 block text-sm font-semibold text-gray-700">Actividad *</label><Textarea value={form.requirement} onChange={event => setForm({ ...form, requirement: event.target.value })} placeholder="Nombre o título de la actividad" className="min-h-[80px]" /></div>
+            <div><label className="mb-2 block text-sm font-semibold text-gray-700">Descripción de la actividad</label><Textarea value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} placeholder="Describe qué se debe realizar" className="min-h-[80px]" /></div>
+            <div className="max-w-xl"><label className="mb-2 block text-sm font-semibold text-gray-700">Responsable</label><Input value={form.responsible} onChange={event => setForm({ ...form, responsible: event.target.value })} placeholder="Nombre del responsable" /></div>
+            <ScheduleInputs form={form} setForm={setForm} />
+            <TrackingInputs form={form} setForm={setForm} />
+            <div><label className="mb-2 block text-sm font-semibold text-gray-700">Observaciones</label><Textarea value={form.observations} onChange={event => setForm({ ...form, observations: event.target.value })} placeholder="Agrega observaciones si lo requieres" className="min-h-[80px]" /></div>
+            <div className="flex flex-wrap gap-2 pt-2">
+              {editingId ? <><Button onClick={() => void saveActivity(false)} disabled={updateMutation.isPending} className="bg-blue-600 hover:bg-blue-700">{updateMutation.isPending ? "Actualizando…" : "Actualizar actividad"}</Button><Button variant="outline" onClick={() => { setEditingId(null); setForm(emptyForm()); setLastFormSnapshot(""); }}>Cancelar</Button><span className="self-center text-xs text-slate-500">Los cambios se guardan automáticamente mientras edita.</span></> : <Button onClick={() => void addActivity()} disabled={createMutation.isPending} className="bg-green-600 hover:bg-green-700"><Plus className="mr-1 h-4 w-4" />{createMutation.isPending ? "Agregando…" : "Agregar actividad"}</Button>}
             </div>
           </CardContent>
         </Card>

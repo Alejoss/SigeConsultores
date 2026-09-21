@@ -124,6 +124,7 @@ import { managementSystemChecklistRouter } from "./routers/managementSystemCheck
 import { managementProgramsRouter } from "./routers/managementPrograms";
 import { linkedCommitmentsRouter } from "./routers/linkedCommitments";
 import { meetingsRouter } from "./routers/meetings";
+import { processActivitiesRouter } from "./routers/processActivities";
 import { operationalFindingsRouter } from "./routers/operationalFindings";
 import { stakeholderSurveysRouter } from "./routers/stakeholderSurveys";
 import { strategicTrendsRouter } from "./routers/strategicTrends";
@@ -574,135 +575,9 @@ export const appRouter = router({
       }),
   }),
 
-  // Process Compliances
-  processCompliances: router({
-    create: companyProcedure
-      .input(
-        z.object({
-          processId: z.number(),
-          tacticalObjectiveId: z.number().optional(),
-          requirement: z.string(),
-          description: z.string().optional(),
-          obligationType: z.enum([
-            "Legal",
-            "Reglamentaria",
-            "Concesion",
-            "Sistema de Gestion",
-            "Otros",
-          ]),
-          otherObligationType: z.string().optional(),
-          regulation: z.string().optional(),
-          status: z
-            .enum(["Planificado", "En Progreso", "Completado"])
-            .optional(),
-          dueDate: z.string().optional(),
-          responsible: z.string().optional(),
-          completed: z.enum(["SI", "NO"]).optional(),
-          plannedMonths: z.string().optional(),
-          completedMonths: z.string().optional(),
-          observations: z.string().optional(),
-          evidence: z.string().optional(),
-          completionPercentage: z.number().optional(),
-          evaluationMode: z.enum(["meses", "vigencia"]).optional(),
-          validFrom: z.string().nullable().optional(),
-          validUntil: z.string().nullable().optional(),
-        })
-      )
-      .mutation(async ({ input }) => {
-        await createProcessCompliance(input.processId, {
-          tacticalObjectiveId: input.tacticalObjectiveId,
-          requirement: input.requirement,
-          description: input.description || null,
-          obligationType: input.obligationType,
-          otherObligationType: input.otherObligationType || null,
-          regulation: input.regulation,
-          status: input.status,
-          dueDate: input.dueDate ? new Date(input.dueDate) : undefined,
-          responsible: input.responsible,
-          completed: input.completed,
-          plannedMonths: input.plannedMonths || null,
-          completedMonths: input.completedMonths || null,
-          observations: input.observations || null,
-          evidence: input.evidence,
-          completionPercentage: input.completionPercentage,
-          evaluationMode: input.evaluationMode,
-          validFrom: input.validFrom ?? null,
-          validUntil: input.validUntil ?? null,
-        });
-        return { success: true };
-      }),
-
-    list: companyProcedure
-      .input(z.object({ processId: z.number() }))
-      .query(async ({ input }) => {
-        return getProcessCompliancesList(input.processId);
-      }),
-
-    delete: companyProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        await deleteProcessCompliance(input.id);
-        return { success: true };
-      }),
-
-    update: companyProcedure
-      .input(
-        z.object({
-          id: z.number(),
-          tacticalObjectiveId: z.number().optional(),
-          requirement: z.string().optional(),
-          description: z.string().optional(),
-          obligationType: z
-            .enum([
-              "Legal",
-              "Reglamentaria",
-              "Concesion",
-              "Sistema de Gestion",
-              "Otros",
-            ])
-            .optional(),
-          otherObligationType: z.string().optional(),
-          regulation: z.string().optional(),
-          status: z
-            .enum(["Planificado", "En Progreso", "Completado"])
-            .optional(),
-          dueDate: z.string().optional(),
-          responsible: z.string().optional(),
-          completed: z.enum(["SI", "NO"]).optional(),
-          plannedMonths: z.string().optional(),
-          completedMonths: z.string().optional(),
-          observations: z.string().optional(),
-          evidence: z.string().optional(),
-          completionPercentage: z.number().optional(),
-          evaluationMode: z.enum(["meses", "vigencia"]).optional(),
-          validFrom: z.string().nullable().optional(),
-          validUntil: z.string().nullable().optional(),
-        })
-      )
-      .mutation(async ({ input }) => {
-        await updateProcessCompliance(input.id, {
-          tacticalObjectiveId: input.tacticalObjectiveId,
-          requirement: input.requirement,
-          description: input.description,
-          obligationType: input.obligationType,
-          otherObligationType: input.otherObligationType,
-          regulation: input.regulation,
-          status: input.status,
-          dueDate: input.dueDate ? new Date(input.dueDate) : undefined,
-          responsible: input.responsible,
-          completed: input.completed,
-          plannedMonths: input.plannedMonths,
-          completedMonths: input.completedMonths,
-          observations: input.observations,
-          evidence: input.evidence,
-          completionPercentage: input.completionPercentage,
-          evaluationMode: input.evaluationMode,
-          validFrom: input.validFrom,
-          validUntil: input.validUntil,
-        });
-        return { success: true };
-      }),
-  }),
+  // Actividades del proceso (antes Cumplimientos). Mantiene la ruta pública
+  // para no romper enlaces existentes, pero ahora valida empresa y proceso.
+  processCompliances: processActivitiesRouter,
 
   // Company-level Compliances (Sistema de Gestión)
   companyCompliances: companyCompliancesRouter,
