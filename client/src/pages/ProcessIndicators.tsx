@@ -565,7 +565,7 @@ export default function ProcessIndicators() {
       ote: "Objetivos Tácticos Estratégicos (OTE)",
       otg: "Objetivos Tácticos de Gestión (OTG)",
       partes: "Gestión con Partes Interesadas",
-      cumplimientos: "Cumplimientos",
+      cumplimientos: "Actividades",
       compromisos: "Compromisos vinculados",
     };
 
@@ -712,16 +712,16 @@ export default function ProcessIndicators() {
               </div>
             )}
 
-            {/* Cumplimientos */}
+            {/* Actividades */}
             {activePanel === "cumplimientos" && !isLoading && (
               <div className="text-center py-8">
                 <div className="inline-flex items-center justify-center w-24 h-24 rounded-full mb-4" style={{ backgroundColor: C.veryLightGreen }}>
                   <p className={`text-3xl font-bold ${pctColor(cumplimientosValue)}`}>{cumplimientosValue}%</p>
                 </div>
-                <p className="text-lg font-semibold text-gray-700 mb-2">% Cumplimientos completados</p>
+                <p className="text-lg font-semibold text-gray-700 mb-2">% promedio de avance de actividades</p>
                 <span className={`text-sm font-bold px-4 py-2 rounded-full ${pctBadge(cumplimientosValue)}`}>{pctLabel(cumplimientosValue)}</span>
                 <p className="text-sm mt-4" style={{ color: C.textSecondary }}>
-                  Porcentaje de requisitos legales, reglamentarios y de sistema de gestión marcados como completados.
+                  Promedio de avance de las actividades planificadas para el proceso.
                 </p>
               </div>
             )}
@@ -762,9 +762,9 @@ export default function ProcessIndicators() {
     },
     {
       id: "cumplimientos" as PanelType,
-      title: "Cumplimientos",
-      subtitle: "Requisitos y Cumplimientos",
-      description: "% de requisitos legales y de sistema completados",
+      title: "Actividades",
+      subtitle: "Planificación operativa",
+      description: "% promedio de avance de actividades planificadas",
       icon: <CheckSquare size={32} style={{ color: C.medGreen }} />,
       value: cumplimientosValue,
       extra: "",

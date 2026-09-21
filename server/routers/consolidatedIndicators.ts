@@ -3,6 +3,7 @@ import { companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { processFODA, processCompliances, criticalityMatrix, processTacticalObjectives } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { calculateActivityProgress } from "../lib/processActivities";
 
 // ─── Helpers de cálculo (replicados del frontend) ────────────────────────────
 
@@ -295,14 +296,18 @@ export const consolidatedIndicatorsRouter = router({
           objetivosTacticosMetaAlcanzada = Math.round(totalPonderado);
         }
 
-        // ── Cumplimientos ─────────────────────────────────────────────────────
+        // ── Actividades del proceso ───────────────────────────────────────────
         const compliances = await db.select().from(processCompliances)
           .where(eq(processCompliances.processId, input.processId));
 
         let cumplimientosPromedio = 0;
         if (compliances.length > 0) {
-          const completed = compliances.filter(c => c.completed === "SI").length;
-          cumplimientosPromedio = Math.round((completed / compliances.length) * 100);
+          cumplimientosPromedio = Math.round(
+            compliances.reduce(
+              (total, activity) => total + calculateActivityProgress(activity as any),
+              0
+            ) / compliances.length
+          );
         }
 
         return [
@@ -339,8 +344,8 @@ export const consolidatedIndicatorsRouter = router({
           },
           {
             id: "promedio_cumplimiento",
-            name: "Cumplimientos",
-            indicator: "%Cumplidos",
+            name: "Actividades",
+            indicator: "% promedio de avance",
             value: cumplimientosPromedio,
             performance: cumplimientosPromedio
           }

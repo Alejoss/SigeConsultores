@@ -2,6 +2,12 @@ import { createHash } from "node:crypto";
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import {
+  calculateActivityProgress,
+  dateAtNoon,
+  getActivityOccurrences,
+  getActivityTrackingSummary,
+} from "./processActivities";
+import {
   criticalityMatrix,
   linkedCommitments,
   processCompliances,
@@ -79,7 +85,7 @@ function getBadgeInfo(
       };
     case "compliance":
       return {
-        badge: "Cumplimientos",
+        badge: "Actividades",
         color: "bg-pink-100 text-pink-700 border-pink-300",
       };
     case "linked_commitment":
@@ -282,28 +288,34 @@ export async function getConsolidatedScheduleActivities(
     }
   }
 
-  // 4. Cumplimientos del proceso.
+  // 4. Actividades del proceso (antes Cumplimientos). Cada recurrencia genera
+  // una actividad concreta del cronograma sin crear una agenda paralela.
   const processComplianceRows = await db
     .select()
     .from(processCompliances)
     .where(eq(processCompliances.processId, processId));
-  for (const compliance of processComplianceRows as any[]) {
-    if (!compliance.requirement || !compliance.dueDate) continue;
-    const dueDate = new Date(compliance.dueDate);
+  for (const activity of processComplianceRows as any[]) {
+    if (!activity.requirement) continue;
+    const occurrences = getActivityOccurrences(activity);
+    const progress = calculateActivityProgress(activity);
+    const trackingSummary = getActivityTrackingSummary(activity);
     const badge = getBadgeInfo("compliance");
-    activities.push({
-      id: `compliance-${compliance.id}`,
-      type: "compliance",
-      element: "Cumplimiento",
-      action: compliance.requirement,
-      dueDate,
-      completed: compliance.completed === "SI" ? "SI" : "NO",
-      completionField: "Estado",
-      badge: badge.badge,
-      badgeColor: badge.color,
-      daysRemaining: calculateDaysRemaining(dueDate),
-      completionPercentage: compliance.completionPercentage || 0,
-    });
+    for (const occurrence of occurrences) {
+      const dueDate = dateAtNoon(occurrence.date);
+      activities.push({
+        id: `activity-${activity.id}-${occurrence.date}`,
+        type: "compliance",
+        element: "Actividad del proceso",
+        action: activity.requirement,
+        dueDate,
+        completed: occurrence.completed ? "SI" : "NO",
+        completionField: `${trackingSummary} · ${progress}%`,
+        badge: badge.badge,
+        badgeColor: badge.color,
+        daysRemaining: calculateDaysRemaining(dueDate),
+        completionPercentage: progress,
+      });
+    }
   }
 
   // 5. Compromisos recibidos desde la empresa y planificación propia del proceso.

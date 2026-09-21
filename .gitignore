@@ -71,6 +71,7 @@ backups/
 !drizzle/0082_program_actions_import_key.sql
 !drizzle/0083_operational_findings.sql
 !drizzle/0086_manual_process_meetings.sql
+!drizzle/0087_process_activities_schedule_tracking.sql
 
 # IDE settings (user-specific)
 .vscode/settings.json

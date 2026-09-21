@@ -102,7 +102,7 @@ const CHARACTERIZATION_MODULE_GROUPS: CharacterizationModuleGroup[] = [
     description: "Responsabilidades, compromisos y reuniones del proceso",
     icon: ClipboardCheck,
     modules: [
-      { id: "cumplimientos", label: "Cumplimientos", icon: "✅" },
+      { id: "cumplimientos", label: "Actividades", icon: "✅" },
       {
         id: "compromisos-vinculados",
         label: "Compromisos vinculados",
@@ -562,28 +562,28 @@ export default function ProcessCharacterization() {
                           <CollapsibleTrigger asChild>
                             <button
                               type="button"
-                              className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-3 text-left transition-colors hover:bg-sky-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                              className="block w-full rounded-lg px-3 py-3 text-left transition-colors hover:bg-sky-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                             >
-                              <span className="flex min-w-0 items-start gap-2.5">
-                                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-sky-200 bg-white/75 text-blue-700 shadow-sm">
+                              <span className="block min-w-0">
+                                <span className="mb-2 flex size-8 items-center justify-center rounded-md border border-sky-200 bg-white/75 text-blue-700 shadow-sm">
                                   <group.icon size={17} aria-hidden="true" />
                                 </span>
-                                <span className="min-w-0">
-                                  <span className="block text-sm font-semibold text-slate-800">
+                                <span className="flex min-w-0 items-start justify-between gap-2">
+                                  <span className="min-w-0 text-sm font-semibold text-slate-800">
                                     {group.label}
                                   </span>
-                                  <span className="mt-0.5 block text-xs leading-snug text-slate-600">
-                                    {group.description}
-                                  </span>
+                                  <ChevronDown
+                                    size={16}
+                                    aria-hidden="true"
+                                    className={`mt-0.5 shrink-0 text-slate-500 transition-transform duration-200 ${
+                                      isOpen ? "rotate-180" : ""
+                                    }`}
+                                  />
+                                </span>
+                                <span className="mt-0.5 block text-xs leading-snug text-slate-600">
+                                  {group.description}
                                 </span>
                               </span>
-                              <ChevronDown
-                                size={16}
-                                aria-hidden="true"
-                                className={`shrink-0 text-slate-500 transition-transform duration-200 ${
-                                  isOpen ? "rotate-180" : ""
-                                }`}
-                              />
                             </button>
                           </CollapsibleTrigger>
                           <CollapsibleContent className="border-t border-slate-200 px-2 py-2">

@@ -148,7 +148,7 @@ export default function ConsolidatedSchedule() {
         a.type === "objective"
           ? "OTE"
           : a.type === "compliance"
-            ? "Cumplimientos"
+            ? "Actividades"
             : a.type === "stakeholder"
               ? "Gestión con Partes Interesadas"
               : a.badge,
@@ -699,7 +699,7 @@ export default function ConsolidatedSchedule() {
                 OTE
               </div>
               <div className="px-3 py-2 rounded border text-sm font-semibold text-center bg-pink-100 text-pink-700 border-pink-300">
-                Cumplimientos
+                Actividades
               </div>
               <div className="px-3 py-2 rounded border text-sm font-semibold text-center bg-teal-100 text-teal-800 border-teal-300">
                 Compromisos vinculados
@@ -717,7 +717,7 @@ export default function ConsolidatedSchedule() {
               módulo de origen de cada actividad. Para completar o actualizar la
               información de cada actividad, dirígete al módulo específico
               (Gestión de Partes Interesadas, Matriz FODA, Objetivos Tácticos de
-              Gestión, Objetivos Tácticos Estratégicos, Cumplimientos o
+              Gestión, Objetivos Tácticos Estratégicos, Actividades o
               Compromisos vinculados). El botón{" "}
               <strong>"Exportar a Calendario (.ics)"</strong> descarga un
               archivo compatible con Google Calendar, Outlook, Apple Calendar y

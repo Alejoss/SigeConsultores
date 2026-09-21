@@ -739,6 +739,37 @@ export const processCompliances = mysqlTable("processCompliances", {
     .notNull(),
   validFrom: date("validFrom"),
   validUntil: date("validUntil"),
+  // Campos aditivos para Actividades. Los Cumplimientos históricos mantienen
+  // sus columnas originales y se interpretan como programación puntual.
+  scheduleType: mysqlEnum("scheduleType", ["once", "weekly", "monthly"])
+    .default("once")
+    .notNull(),
+  scheduleStartDate: date("scheduleStartDate"),
+  scheduleEndDate: date("scheduleEndDate"),
+  scheduleWeekday: int("scheduleWeekday"),
+  scheduleDayOfMonth: int("scheduleDayOfMonth"),
+  trackingType: mysqlEnum("trackingType", [
+    "puntual",
+    "mensual_sumatoria",
+    "mensual_promedio",
+    "mensual_checklist",
+  ]),
+  trackingStartValue: decimal("trackingStartValue", {
+    precision: 12,
+    scale: 2,
+  }),
+  trackingTargetValue: decimal("trackingTargetValue", {
+    precision: 12,
+    scale: 2,
+  }),
+  trackingCurrentValue: decimal("trackingCurrentValue", {
+    precision: 12,
+    scale: 2,
+  }),
+  trackingUnit: varchar("trackingUnit", { length: 100 }),
+  monthlyTrackingValues: longtext("monthlyTrackingValues"),
+  monthlyChecklistValues: longtext("monthlyChecklistValues"),
+  completedOccurrenceDates: longtext("completedOccurrenceDates"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
