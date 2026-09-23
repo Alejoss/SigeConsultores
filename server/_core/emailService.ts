@@ -3,7 +3,7 @@ import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { ENV } from "./env";
 
 /**
- * Email service for sending notifications via Amazon SES (API, not SMTP).
+ * Email service for sending notifications through the Amazon SES API.
  *
  * Requires `SES_FROM_EMAIL` (verified identity) and credentials
  * (`SES_ACCESS_KEY_ID` / `SES_SECRET_ACCESS_KEY`, falling back to `AWS_*`).
@@ -938,4 +938,3 @@ El equipo de ISGE 360
     textContent,
   });
 }
-
