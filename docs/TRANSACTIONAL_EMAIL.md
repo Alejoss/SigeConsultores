@@ -1,6 +1,6 @@
 # Correo transaccional — Amazon SES
 
-La plataforma envía invitaciones, confirmaciones, reset de contraseña y alertas de cronograma con **Amazon SES** (API `SendEmail`, no SMTP ni Brevo).
+La plataforma envía invitaciones, confirmaciones, restablecimientos de contraseña y alertas de cronograma con **Amazon SES** mediante la API `SendEmail`.
 
 Detalle de arquitectura: [INFRASTRUCTURE.md](./INFRASTRUCTURE.md). Variables de ejemplo: [`.env.production.example`](../.env.production.example).
 
@@ -32,7 +32,7 @@ SES_SECRET_ACCESS_KEY=
 
 El código lee `SES_*` y, si faltan, cae a `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`. En producción conviene el par `SES_*` del usuario IAM dedicado.
 
-No hace falta host SMTP, puerto ni `BREVO_*`.
+No hace falta host SMTP ni puerto.
 
 ## IAM
 
@@ -74,3 +74,7 @@ Busca `[EmailService]` en `docker compose logs app`. Si faltan keys o `SES_FROM_
 ## Verificación local (opcional)
 
 Con las mismas variables y el dominio verificado, un envío de prueba (reset de contraseña a un buzón verificado en sandbox) confirma la integración sin SMTP.
+
+## Prueba desde el Panel de Administración
+
+El Panel de Administración incluye **Probar correo Amazon SES**. La acción está limitada a administradores y remite un único mensaje al correo registrado de la cuenta administrativa que la ejecuta. No crea invitaciones, no genera enlaces de recuperación y no modifica contraseñas. La pantalla informa éxito únicamente si Amazon SES acepta el envío; si SES no lo confirma, muestra el fallo para revisar la configuración de producción.

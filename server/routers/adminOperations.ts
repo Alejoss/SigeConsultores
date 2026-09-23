@@ -23,6 +23,7 @@ import { protectedProcedure, companyProcedure, publicProcedure, router } from ".
 import { randomBytes } from "crypto";
 import { getDb } from "../db";
 import { getRoleIdBySlug } from "../accountAuth";
+import { sendEmailStrict } from "../_core/emailService";
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -31,7 +32,70 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
+const EMAIL_TEST_COOLDOWN_MS = 60_000;
+const lastEmailTestByAccount = new Map<number, number>();
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function maskEmail(value: string): string {
+  const at = value.indexOf("@");
+  if (at <= 0) return "***";
+  return `${value.slice(0, Math.min(2, at))}***${value.slice(at)}`;
+}
+
 export const adminOperationsRouter = router({
+  /**
+   * Sends a single transactional test only to the authenticated administrator's
+   * registered address. It does not create invitations or reset-password tokens.
+   */
+  testTransactionalEmail: adminProcedure.mutation(async ({ ctx }) => {
+    const recipient = ctx.user?.email?.trim().toLowerCase();
+    if (!recipient) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "La cuenta administrativa no tiene un correo registrado para la prueba.",
+      });
+    }
+
+    const now = Date.now();
+    const lastAttempt = lastEmailTestByAccount.get(ctx.user.id);
+    if (lastAttempt && now - lastAttempt < EMAIL_TEST_COOLDOWN_MS) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "Espere un minuto antes de volver a enviar una prueba de correo.",
+      });
+    }
+    lastEmailTestByAccount.set(ctx.user.id, now);
+
+    const safeRecipient = escapeHtml(recipient);
+    const accepted = await sendEmailStrict({
+      to: recipient,
+      subject: "Prueba de correo Amazon SES - ISGE 360",
+      textContent: [
+        "Prueba de correo de ISGE 360.",
+        "",
+        "Amazon SES aceptó este mensaje para verificar la configuración transaccional de la plataforma.",
+        "No se creó una invitación ni se modificó ninguna contraseña o dato de la plataforma.",
+      ].join("\n"),
+      htmlContent: `<main style="font-family:Arial,sans-serif;line-height:1.5;color:#1f2937;max-width:620px;margin:0 auto;padding:24px"><h1 style="color:#1e40af">Prueba de correo de ISGE 360</h1><p>Amazon SES aceptó este mensaje para verificar la configuración transaccional de la plataforma.</p><p>El destinatario de prueba es <strong>${safeRecipient}</strong>.</p><p style="background:#eff6ff;padding:12px;border-radius:8px">No se creó una invitación ni se modificó ninguna contraseña o dato de la plataforma.</p></main>`,
+    });
+
+    return {
+      success: accepted,
+      recipient: maskEmail(recipient),
+      message: accepted
+        ? "Amazon SES confirmó la aceptación del correo de prueba. Revise también Spam o No deseado."
+        : "Amazon SES no confirmó el envío. Revise la configuración SES de producción antes de intentar de nuevo.",
+    };
+  }),
+
   getCompanyAccessRequests: adminProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");

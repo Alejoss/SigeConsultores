@@ -21,9 +21,10 @@ import {
     Key,
     FileText,
     BarChart3,
-    Loader2,
-    ArrowLeft,
-  } from "lucide-react";
+  Loader2,
+  ArrowLeft,
+  MailCheck,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import CustomizeModulesPanel from "@/components/CustomizeModulesPanel";
 import CreateManagerInvitation from "@/components/CreateManagerInvitation";
@@ -39,6 +40,11 @@ export default function AdminDashboard() {
     contactEmail: "",
     expirationDays: 30,
   });
+  const [emailTestResult, setEmailTestResult] = useState<{
+    success: boolean;
+    recipient: string;
+    message: string;
+  } | null>(null);
 
   // Queries
   const companiesQuery = trpc.adminOperations.getCompaniesWithStats.useQuery();
@@ -47,6 +53,15 @@ export default function AdminDashboard() {
   const invitationsQuery = trpc.adminOperations.getProcessLeaderInvitations.useQuery();
   const accessInvitationsListQuery = trpc.accessInvitations.listInvitations.useQuery();
   const accessInvitationsStatsQuery = trpc.accessInvitations.getStatistics.useQuery();
+  const testTransactionalEmailMutation = trpc.adminOperations.testTransactionalEmail.useMutation({
+    onSuccess: (result) => setEmailTestResult(result),
+    onError: (error) =>
+      setEmailTestResult({
+        success: false,
+        recipient: "",
+        message: error.message || "No se pudo ejecutar la prueba de correo.",
+      }),
+  });
 
   const createInvitationMutation = trpc.accessInvitations.createInvitation.useMutation({
     onSuccess: () => {
@@ -71,6 +86,15 @@ export default function AdminDashboard() {
       contactEmail: newInvitation.contactEmail,
       expirationDays: newInvitation.expirationDays,
     });
+  };
+
+  const handleEmailTest = () => {
+    const accepted = window.confirm(
+      "Se enviará un único correo de prueba Amazon SES a su correo administrativo registrado. No se crearán invitaciones ni se cambiarán contraseñas. ¿Desea continuar?"
+    );
+    if (!accepted) return;
+    setEmailTestResult(null);
+    testTransactionalEmailMutation.mutate();
   };
 
   const formatDate = (date: Date | string) => {
@@ -123,6 +147,50 @@ export default function AdminDashboard() {
             isLoadingCompanies={companiesQuery.isLoading}
           />
         )}
+
+        <Card className="border-sky-200 bg-sky-50/60">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MailCheck className="h-5 w-5 text-sky-700" />
+              Correo transaccional
+            </CardTitle>
+            <CardDescription>
+              Verifique Amazon SES con un único mensaje enviado al correo registrado de su propia cuenta administrativa.
+              La prueba no crea invitaciones ni modifica contraseñas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              type="button"
+              onClick={handleEmailTest}
+              disabled={testTransactionalEmailMutation.isPending}
+              className="gap-2"
+            >
+              {testTransactionalEmailMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MailCheck className="h-4 w-4" />
+              )}
+              {testTransactionalEmailMutation.isPending
+                ? "Confirmando con Amazon SES..."
+                : "Probar correo Amazon SES"}
+            </Button>
+
+            {emailTestResult && (
+              <Alert variant={emailTestResult.success ? "default" : "destructive"}>
+                {emailTestResult.success ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
+                <AlertDescription>
+                  {emailTestResult.message}
+                  {emailTestResult.recipient ? ` Destinatario: ${emailTestResult.recipient}.` : ""}
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
