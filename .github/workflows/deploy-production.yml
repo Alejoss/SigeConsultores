@@ -150,8 +150,10 @@ jobs:
           SES_ACCESS_KEY_ID: ${{ secrets.SES_ACCESS_KEY_ID }}
           SES_SECRET_ACCESS_KEY: ${{ secrets.SES_SECRET_ACCESS_KEY }}
         run: |
+          # 644 so appleboy/scp-action (runs in a container) can read the file;
+          # the droplet step chmods 600 after install.
           node scripts/assemble-production-env.mjs > .env.production.assembled
-          chmod 600 .env.production.assembled
+          chmod 644 .env.production.assembled
 
       - name: Copy assembled env file to droplet
         if: needs.check-deploy-secrets.outputs.env_mode == 'assembled'
