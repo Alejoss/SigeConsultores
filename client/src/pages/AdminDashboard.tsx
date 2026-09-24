@@ -62,6 +62,15 @@ export default function AdminDashboard() {
         message: error.message || "No se pudo ejecutar la prueba de correo.",
       }),
   });
+  const testSandboxVerifiedEmailMutation = trpc.adminOperations.testSandboxVerifiedEmail.useMutation({
+    onSuccess: (result) => setEmailTestResult(result),
+    onError: (error) =>
+      setEmailTestResult({
+        success: false,
+        recipient: "",
+        message: error.message || "No se pudo ejecutar la prueba de correo para la identidad verificada.",
+      }),
+  });
 
   const createInvitationMutation = trpc.accessInvitations.createInvitation.useMutation({
     onSuccess: () => {
@@ -95,6 +104,15 @@ export default function AdminDashboard() {
     if (!accepted) return;
     setEmailTestResult(null);
     testTransactionalEmailMutation.mutate();
+  };
+
+  const handleSandboxVerifiedEmailTest = () => {
+    const accepted = window.confirm(
+      "Amazon SES está en modo sandbox. Se enviará un único correo de prueba exclusivamente a esteban@isge360.com, identidad ya verificada. No se crearán invitaciones ni se cambiarán contraseñas. ¿Desea continuar?"
+    );
+    if (!accepted) return;
+    setEmailTestResult(null);
+    testSandboxVerifiedEmailMutation.mutate();
   };
 
   const formatDate = (date: Date | string) => {
@@ -155,26 +173,46 @@ export default function AdminDashboard() {
               Correo transaccional
             </CardTitle>
             <CardDescription>
-              Verifique Amazon SES con un único mensaje enviado al correo registrado de su propia cuenta administrativa.
-              La prueba no crea invitaciones ni modifica contraseñas.
+              Verifique Amazon SES sin crear invitaciones ni modificar contraseñas. Mientras SES esté en modo sandbox,
+              use la prueba restringida a la identidad verificada.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button
-              type="button"
-              onClick={handleEmailTest}
-              disabled={testTransactionalEmailMutation.isPending}
-              className="gap-2"
-            >
-              {testTransactionalEmailMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <MailCheck className="h-4 w-4" />
-              )}
-              {testTransactionalEmailMutation.isPending
-                ? "Confirmando con Amazon SES..."
-                : "Probar correo Amazon SES"}
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                onClick={handleSandboxVerifiedEmailTest}
+                disabled={testTransactionalEmailMutation.isPending || testSandboxVerifiedEmailMutation.isPending}
+                className="gap-2"
+              >
+                {testSandboxVerifiedEmailMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MailCheck className="h-4 w-4" />
+                )}
+                {testSandboxVerifiedEmailMutation.isPending
+                  ? "Confirmando con Amazon SES..."
+                  : "Probar a esteban@isge360.com"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleEmailTest}
+                disabled={testTransactionalEmailMutation.isPending || testSandboxVerifiedEmailMutation.isPending}
+                className="gap-2"
+              >
+                {testTransactionalEmailMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MailCheck className="h-4 w-4" />
+                )}
+                Probar correo administrativo
+              </Button>
+            </div>
+            <p className="text-sm text-slate-600">
+              La primera prueba está limitada en el servidor a <strong>esteban@isge360.com</strong>; no permite escribir
+              ni enviar a otros destinatarios. Use la segunda opción únicamente después de salir del modo sandbox.
+            </p>
 
             {emailTestResult && (
               <Alert variant={emailTestResult.success ? "default" : "destructive"}>
