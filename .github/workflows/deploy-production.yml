@@ -1,6 +1,9 @@
 name: Deploy Production
 
 # Reusable CD: ci.yml calls this workflow only after every CI job succeeds.
+# Non-sensitive production config is baked in scripts/productionEnvManifest.mjs.
+# Operators maintain GitHub Actions Secrets only (passwords, keys, tokens).
+# ENV_PRODUCTION blob remains a temporary legacy fallback.
 on:
   workflow_call:
 
@@ -53,22 +56,55 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       ready: ${{ steps.check.outputs.ready }}
+      env_mode: ${{ steps.check.outputs.env_mode }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - id: check
         env:
+          # Optional overrides (baked defaults apply if empty)
           DROPLET_HOST: ${{ vars.DROPLET_HOST || secrets.DROPLET_HOST }}
           DROPLET_USER: ${{ vars.DROPLET_USER || secrets.DROPLET_USER }}
-          DROPLET_SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
-          ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
           GHCR_USERNAME: ${{ vars.GHCR_USERNAME || secrets.GHCR_USERNAME }}
+          # Required secrets
+          DROPLET_SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          OWNER_OPEN_ID: ${{ secrets.OWNER_OPEN_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          SES_ACCESS_KEY_ID: ${{ secrets.SES_ACCESS_KEY_ID }}
+          SES_SECRET_ACCESS_KEY: ${{ secrets.SES_SECRET_ACCESS_KEY }}
+          ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
         run: |
+          set +e
+          node scripts/assemble-production-env.mjs --check
+          assemble_ok=$?
+          set -e
+
+          # Resolve deploy target (baked defaults if GitHub vars empty)
+          eval "$(node -e "import('./scripts/productionEnvManifest.mjs').then(m=>{for (const k of ['DROPLET_HOST','DROPLET_USER','DEPLOY_PATH','GHCR_USERNAME']){const v=m.resolveEnvValue(k); console.log(k+'='+JSON.stringify(v))}})")"
+
+          env_mode="none"
+          if [ "$assemble_ok" -eq 0 ]; then
+            env_mode="assembled"
+          elif [ -n "$ENV_PRODUCTION" ]; then
+            env_mode="legacy_blob"
+            echo "WARNING: using obsolete ENV_PRODUCTION blob. Add individual secrets; defaults are already baked in code."
+          fi
+          echo "env_mode=$env_mode" >> "$GITHUB_OUTPUT"
+
           if [ -n "$DROPLET_HOST" ] && [ -n "$DROPLET_USER" ] && [ -n "$DROPLET_SSH_KEY" ] && \
-             [ -n "$DEPLOY_PATH" ] && [ -n "$ENV_PRODUCTION" ] && [ -n "$GHCR_USERNAME" ] && [ -n "$GHCR_TOKEN" ]; then
+             [ -n "$DEPLOY_PATH" ] && [ -n "$GHCR_USERNAME" ] && [ -n "$GHCR_TOKEN" ] && \
+             [ "$env_mode" != "none" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Deploy not ready: need DROPLET_SSH_KEY, GHCR_TOKEN, and either all app secrets (assembled) or ENV_PRODUCTION (legacy). See docs/GITHUB_SETUP.md."
           fi
 
   deploy-droplet:
@@ -79,22 +115,72 @@ jobs:
     timeout-minutes: 20
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve deploy target defaults
+        id: target
+        env:
+          DROPLET_HOST: ${{ vars.DROPLET_HOST || secrets.DROPLET_HOST }}
+          DROPLET_USER: ${{ vars.DROPLET_USER || secrets.DROPLET_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
+          GHCR_USERNAME: ${{ vars.GHCR_USERNAME || secrets.GHCR_USERNAME }}
+        run: |
+          node -e "
+            import('./scripts/productionEnvManifest.mjs').then((m) => {
+              const out = (k) => console.log(k + '=' + m.resolveEnvValue(k));
+              out('DROPLET_HOST');
+              out('DROPLET_USER');
+              out('DEPLOY_PATH');
+              out('GHCR_USERNAME');
+            });
+          " >> "$GITHUB_OUTPUT"
+
+      - name: Assemble .env.production from baked defaults + Secrets
+        if: needs.check-deploy-secrets.outputs.env_mode == 'assembled'
+        env:
+          GHCR_USERNAME: ${{ steps.target.outputs.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          OWNER_OPEN_ID: ${{ secrets.OWNER_OPEN_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          SES_ACCESS_KEY_ID: ${{ secrets.SES_ACCESS_KEY_ID }}
+          SES_SECRET_ACCESS_KEY: ${{ secrets.SES_SECRET_ACCESS_KEY }}
+        run: |
+          node scripts/assemble-production-env.mjs > .env.production.assembled
+          chmod 600 .env.production.assembled
+
+      - name: Copy assembled env file to droplet
+        if: needs.check-deploy-secrets.outputs.env_mode == 'assembled'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ steps.target.outputs.DROPLET_HOST }}
+          username: ${{ steps.target.outputs.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          source: .env.production.assembled
+          target: ${{ steps.target.outputs.DEPLOY_PATH }}/
+          overwrite: true
+
       - name: Deploy on droplet
         uses: appleboy/ssh-action@v1.2.0
         env:
           APP_IMAGE: ${{ needs.build-image.outputs.image_name }}:${{ github.sha }}
-          GHCR_USERNAME: ${{ vars.GHCR_USERNAME || secrets.GHCR_USERNAME }}
+          GHCR_USERNAME: ${{ steps.target.outputs.GHCR_USERNAME }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
-          ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
+          DEPLOY_PATH: ${{ steps.target.outputs.DEPLOY_PATH }}
           DEPLOY_SHA: ${{ github.sha }}
           REPO_SLUG: ${{ github.repository }}
+          ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
+          ENV_MODE: ${{ needs.check-deploy-secrets.outputs.env_mode }}
         with:
-          host: ${{ vars.DROPLET_HOST || secrets.DROPLET_HOST }}
-          username: ${{ vars.DROPLET_USER || secrets.DROPLET_USER }}
+          host: ${{ steps.target.outputs.DROPLET_HOST }}
+          username: ${{ steps.target.outputs.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script_stop: true
-          envs: APP_IMAGE,GHCR_USERNAME,GHCR_TOKEN,DEPLOY_PATH,ENV_PRODUCTION,DEPLOY_SHA,REPO_SLUG
+          envs: APP_IMAGE,GHCR_USERNAME,GHCR_TOKEN,DEPLOY_PATH,DEPLOY_SHA,REPO_SLUG,ENV_PRODUCTION,ENV_MODE
           script: |
             set -eu
             DEPLOY_PATH="${DEPLOY_PATH%/}"
@@ -119,7 +205,17 @@ jobs:
             git reset --hard "$DEPLOY_SHA"
             git remote set-url origin "$ORIGIN_PUBLIC"
 
-            printf '%s\n' "$ENV_PRODUCTION" > .env.production
+            if [ "$ENV_MODE" = "assembled" ]; then
+              if [ ! -f .env.production.assembled ]; then
+                echo "Missing .env.production.assembled (SCP step failed)." >&2
+                exit 1
+              fi
+              mv -f .env.production.assembled .env.production
+            else
+              echo "WARNING: writing .env.production from legacy ENV_PRODUCTION secret"
+              printf '%s\n' "$ENV_PRODUCTION" > .env.production
+            fi
+            chmod 600 .env.production
             chmod +x scripts/deploy-prod.sh
             ./scripts/deploy-prod.sh
 
@@ -131,4 +227,8 @@ jobs:
     steps:
       - name: Note
         run: |
-          echo "Image pushed to GHCR. Droplet deploy skipped — add GitHub Actions secrets (see docs/GITHUB_SETUP.md)."
+          echo "Image pushed to GHCR. Droplet deploy skipped."
+          echo "Add repository Secrets only (defaults are baked in scripts/productionEnvManifest.mjs):"
+          echo "  DROPLET_SSH_KEY, GHCR_TOKEN, MYSQL_ROOT_PASSWORD, MYSQL_PASSWORD, JWT_SECRET,"
+          echo "  AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, SES_ACCESS_KEY_ID, SES_SECRET_ACCESS_KEY"
+          echo "See docs/GITHUB_SETUP.md"
