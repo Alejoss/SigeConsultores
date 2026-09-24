@@ -157,6 +157,21 @@ export interface EmailOptions {
   from?: string;
 }
 
+export type SesDiagnosticCategory =
+  | "accepted"
+  | "credentials_missing"
+  | "sender_missing"
+  | "authentication_or_permissions"
+  | "identity_or_sandbox"
+  | "region_or_configuration"
+  | "transport_failure";
+
+export interface SesDiagnosticResult {
+  accepted: boolean;
+  category: SesDiagnosticCategory;
+  message: string;
+}
+
 export interface PasswordResetEmailOptions {
   to: string;
   resetToken: string;
@@ -194,6 +209,102 @@ export async function sendEmailStrict(options: EmailOptions): Promise<boolean> {
     subject: options.subject,
   });
   return sendEmailWithRetries(options, correlationId);
+}
+
+function classifySesFailure(error: unknown): Omit<SesDiagnosticResult, "accepted"> {
+  const name = error instanceof Error ? error.name : "";
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+
+  if (
+    /UnrecognizedClient|InvalidClientToken|SignatureDoesNotMatch|ExpiredToken|AccessDenied|Authorization/i.test(name) ||
+    /security token|access key|signature|not authorized|not authorized to perform/i.test(message)
+  ) {
+    return {
+      category: "authentication_or_permissions",
+      message:
+        "Amazon SES rechazó las credenciales o permisos de envío. Revise el usuario IAM de SES y las variables SES_ACCESS_KEY_ID / SES_SECRET_ACCESS_KEY en producción.",
+    };
+  }
+
+  if (
+    /MessageRejected|MailFromDomainNotVerified/i.test(name) ||
+    /not verified|identity|sandbox|email address is not verified|mail-from/i.test(message)
+  ) {
+    return {
+      category: "identity_or_sandbox",
+      message:
+        "Amazon SES rechazó una identidad de correo. Verifique el remitente noreply@isge360.com, el dominio isge360.com y, mientras la cuenta siga en sandbox, el destinatario en la región us-west-2.",
+    };
+  }
+
+  if (/RegionDisabled|InvalidParameter|ConfigurationSet/i.test(name) || /region|endpoint|configuration/i.test(message)) {
+    return {
+      category: "region_or_configuration",
+      message:
+        "Amazon SES rechazó la región o la configuración de envío. Confirme AWS_SES_REGION=us-west-2 y que las identidades estén verificadas en esa misma región.",
+    };
+  }
+
+  return {
+    category: "transport_failure",
+    message:
+      "Amazon SES no confirmó el envío. Revise los registros seguros del servidor para completar el diagnóstico de conectividad o configuración.",
+  };
+}
+
+/**
+ * Strict SES send with an administrator-safe diagnosis. It never returns a
+ * credential, request ID, raw AWS error message, or other sensitive detail.
+ */
+export async function sendEmailStrictWithDiagnostic(options: EmailOptions): Promise<SesDiagnosticResult> {
+  const correlationId = crypto.randomBytes(4).toString("hex");
+  console.log("[EmailService] sendEmailStrictWithDiagnostic (await)", {
+    correlationId,
+    to: summarizeRecipients(options.to),
+    subject: options.subject,
+  });
+
+  if (!hasSesCredentials()) {
+    logSesConfigDiagnostics("missing SES_ACCESS_KEY_ID / SES_SECRET_ACCESS_KEY");
+    return {
+      accepted: false,
+      category: "credentials_missing",
+      message:
+        "Faltan las credenciales de Amazon SES en producción. Configure SES_ACCESS_KEY_ID y SES_SECRET_ACCESS_KEY en el servidor.",
+    };
+  }
+
+  if (!ENV.sesFromEmail?.trim()) {
+    logSesConfigDiagnostics("missing SES_FROM_EMAIL");
+    return {
+      accepted: false,
+      category: "sender_missing",
+      message: "Falta configurar el remitente SES_FROM_EMAIL en producción.",
+    };
+  }
+
+  const maxRetries = 3;
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await sendOneSesTransactional(options, correlationId, attempt);
+      return {
+        accepted: true,
+        category: "accepted",
+        message: "Amazon SES confirmó la aceptación del correo de prueba. Revise también Spam o No deseado.",
+      };
+    } catch (error) {
+      lastError = error;
+      console.error(`[EmailService] Diagnostic SES send failed`, { correlationId, attempt, maxRetries });
+      logSesApiFailure(attempt, error);
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
+      }
+    }
+  }
+
+  logSesConfigDiagnostics("diagnostic send retries exhausted");
+  return { accepted: false, ...classifySesFailure(lastError) };
 }
 
 /**
