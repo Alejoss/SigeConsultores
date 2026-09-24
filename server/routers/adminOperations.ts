@@ -23,7 +23,7 @@ import { protectedProcedure, companyProcedure, publicProcedure, router } from ".
 import { randomBytes } from "crypto";
 import { getDb } from "../db";
 import { getRoleIdBySlug } from "../accountAuth";
-import { sendEmailStrict } from "../_core/emailService";
+import { sendEmailStrict, sendEmailStrictWithDiagnostic } from "../_core/emailService";
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -117,7 +117,7 @@ export const adminOperationsRouter = router({
     }
     lastEmailTestByAccount.set(cooldownKey, now);
 
-    const accepted = await sendEmailStrict({
+    const result = await sendEmailStrictWithDiagnostic({
       to: SES_SANDBOX_VERIFIED_TEST_RECIPIENT,
       subject: "Prueba de correo Amazon SES - ISGE 360",
       textContent: [
@@ -130,11 +130,11 @@ export const adminOperationsRouter = router({
     });
 
     return {
-      success: accepted,
+      success: result.accepted,
       recipient: SES_SANDBOX_VERIFIED_TEST_RECIPIENT,
-      message: accepted
+      message: result.accepted
         ? "Amazon SES confirmó la aceptación del correo de prueba para la identidad verificada. Revise también Spam o No deseado."
-        : "Amazon SES no confirmó el envío a la identidad verificada. Revise las credenciales, la región y el remitente configurado en producción.",
+        : result.message,
     };
   }),
 

@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { sendEmailStrictMock } = vi.hoisted(() => ({
+const { sendEmailStrictMock, sendEmailStrictWithDiagnosticMock } = vi.hoisted(() => ({
   sendEmailStrictMock: vi.fn(),
+  sendEmailStrictWithDiagnosticMock: vi.fn(),
 }));
 
 vi.mock("../../_core/emailService", () => ({
   sendEmailStrict: sendEmailStrictMock,
+  sendEmailStrictWithDiagnostic: sendEmailStrictWithDiagnosticMock,
 }));
 
 import { adminOperationsRouter } from "../adminOperations";
@@ -23,6 +25,7 @@ function callerFor(user: { id: number; role: string; email?: string | null }) {
 describe("Admin email test", () => {
   beforeEach(() => {
     sendEmailStrictMock.mockReset();
+    sendEmailStrictWithDiagnosticMock.mockReset();
   });
 
   it("sends only to the authenticated administrator address and reports SES acceptance", async () => {
@@ -67,7 +70,11 @@ describe("Admin email test", () => {
   });
 
   it("sends the sandbox diagnostic only to the fixed SES-verified identity", async () => {
-    sendEmailStrictMock.mockResolvedValue(true);
+    sendEmailStrictWithDiagnosticMock.mockResolvedValue({
+      accepted: true,
+      category: "accepted",
+      message: "Amazon SES confirmó la aceptación del correo de prueba.",
+    });
 
     const result = await callerFor({
       id: 981_004,
@@ -75,8 +82,8 @@ describe("Admin email test", () => {
       email: "unrelated.admin@isge360.com",
     }).testSandboxVerifiedEmail();
 
-    expect(sendEmailStrictMock).toHaveBeenCalledTimes(1);
-    expect(sendEmailStrictMock).toHaveBeenCalledWith(
+    expect(sendEmailStrictWithDiagnosticMock).toHaveBeenCalledTimes(1);
+    expect(sendEmailStrictWithDiagnosticMock).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "esteban@isge360.com",
         subject: "Prueba de correo Amazon SES - ISGE 360",
@@ -86,6 +93,28 @@ describe("Admin email test", () => {
       expect.objectContaining({
         success: true,
         recipient: "esteban@isge360.com",
+      })
+    );
+  });
+
+  it("returns a safe SES diagnostic for the sandbox-verified test", async () => {
+    sendEmailStrictWithDiagnosticMock.mockResolvedValue({
+      accepted: false,
+      category: "authentication_or_permissions",
+      message: "Amazon SES rechazó las credenciales o permisos de envío.",
+    });
+
+    const result = await callerFor({
+      id: 981_005,
+      role: "admin",
+      email: "unrelated.admin@isge360.com",
+    }).testSandboxVerifiedEmail();
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        success: false,
+        recipient: "esteban@isge360.com",
+        message: "Amazon SES rechazó las credenciales o permisos de envío.",
       })
     );
   });
