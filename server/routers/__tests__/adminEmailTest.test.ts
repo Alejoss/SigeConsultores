@@ -66,6 +66,30 @@ describe("Admin email test", () => {
     );
   });
 
+  it("sends the sandbox diagnostic only to the fixed SES-verified identity", async () => {
+    sendEmailStrictMock.mockResolvedValue(true);
+
+    const result = await callerFor({
+      id: 981_004,
+      role: "admin",
+      email: "unrelated.admin@isge360.com",
+    }).testSandboxVerifiedEmail();
+
+    expect(sendEmailStrictMock).toHaveBeenCalledTimes(1);
+    expect(sendEmailStrictMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "esteban@isge360.com",
+        subject: "Prueba de correo Amazon SES - ISGE 360",
+      })
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        success: true,
+        recipient: "esteban@isge360.com",
+      })
+    );
+  });
+
   it("rejects a non-administrator before sending a message", async () => {
     await expect(
       callerFor({ id: 981_003, role: "user", email: "user@isge360.com" }).testTransactionalEmail()

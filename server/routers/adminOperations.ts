@@ -34,6 +34,10 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 
 const EMAIL_TEST_COOLDOWN_MS = 60_000;
 const lastEmailTestByAccount = new Map<number, number>();
+// Amazon SES sandbox accepts sends only to verified identities. Keep this
+// diagnostic recipient fixed so the administrative panel cannot become a
+// general-purpose email sender.
+const SES_SANDBOX_VERIFIED_TEST_RECIPIENT = "esteban@isge360.com";
 
 function escapeHtml(value: string): string {
   return value
@@ -93,6 +97,44 @@ export const adminOperationsRouter = router({
       message: accepted
         ? "Amazon SES confirmó la aceptación del correo de prueba. Revise también Spam o No deseado."
         : "Amazon SES no confirmó el envío. Revise la configuración SES de producción antes de intentar de nuevo.",
+    };
+  }),
+
+  /**
+   * Sends one diagnostic email to the single SES-verified identity while the
+   * AWS account remains in sandbox. It is intentionally not configurable by
+   * the browser and does not create an invitation or change user data.
+   */
+  testSandboxVerifiedEmail: adminProcedure.mutation(async ({ ctx }) => {
+    const now = Date.now();
+    const cooldownKey = -ctx.user.id;
+    const lastAttempt = lastEmailTestByAccount.get(cooldownKey);
+    if (lastAttempt && now - lastAttempt < EMAIL_TEST_COOLDOWN_MS) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "Espere un minuto antes de volver a enviar una prueba de correo.",
+      });
+    }
+    lastEmailTestByAccount.set(cooldownKey, now);
+
+    const accepted = await sendEmailStrict({
+      to: SES_SANDBOX_VERIFIED_TEST_RECIPIENT,
+      subject: "Prueba de correo Amazon SES - ISGE 360",
+      textContent: [
+        "Prueba de correo de ISGE 360.",
+        "",
+        "Amazon SES aceptó este mensaje dirigido a la identidad verificada durante el modo sandbox.",
+        "No se creó una invitación ni se modificó ninguna contraseña o dato de la plataforma.",
+      ].join("\n"),
+      htmlContent: `<main style="font-family:Arial,sans-serif;line-height:1.5;color:#1f2937;max-width:620px;margin:0 auto;padding:24px"><h1 style="color:#1e40af">Prueba de correo de ISGE 360</h1><p>Amazon SES aceptó este mensaje dirigido a la identidad verificada durante el modo sandbox.</p><p>El destinatario de prueba es <strong>${SES_SANDBOX_VERIFIED_TEST_RECIPIENT}</strong>.</p><p style="background:#eff6ff;padding:12px;border-radius:8px">No se creó una invitación ni se modificó ninguna contraseña o dato de la plataforma.</p></main>`,
+    });
+
+    return {
+      success: accepted,
+      recipient: SES_SANDBOX_VERIFIED_TEST_RECIPIENT,
+      message: accepted
+        ? "Amazon SES confirmó la aceptación del correo de prueba para la identidad verificada. Revise también Spam o No deseado."
+        : "Amazon SES no confirmó el envío a la identidad verificada. Revise las credenciales, la región y el remitente configurado en producción.",
     };
   }),
 
