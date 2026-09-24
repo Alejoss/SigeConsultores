@@ -27,8 +27,8 @@ export const productionDefaults = {
   SES_FROM_NAME: "ISGE 360",
   AWS_S3_REGION: "us-east-2",
   AWS_S3_BUCKET: "sige-backups",
-  // MYSQL_DATABASE / MYSQL_USER are NOT baked: the live volume may use a
-  // different schema name than local docs. Provide them as GitHub Secrets.
+  MYSQL_DATABASE: "sige_platform",
+  MYSQL_USER: "sige",
   VITE_APP_ID: "proj_abc123def456",
   VITE_OAUTH_PORTAL_URL: "https://vida.butterfly-effect.dev",
   OAUTH_SERVER_URL: "https://vidabiz.butterfly-effect.dev",
@@ -63,8 +63,6 @@ export const githubSecrets = [
   { key: "GHCR_TOKEN", required: true, description: "PAT with read:packages + repo" },
   { key: "MYSQL_ROOT_PASSWORD", required: true },
   { key: "MYSQL_PASSWORD", required: true },
-  { key: "MYSQL_DATABASE", required: true, description: "Exact schema name on the live volume" },
-  { key: "MYSQL_USER", required: true },
   { key: "JWT_SECRET", required: true },
   { key: "OWNER_OPEN_ID", required: false },
   { key: "AWS_ACCESS_KEY_ID", required: true },

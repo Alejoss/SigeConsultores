@@ -51,8 +51,6 @@ Ruta: **Settings → Secrets and variables → Actions → Secrets**.
 | `GHCR_TOKEN` | PAT con `read:packages` + `repo` |
 | `MYSQL_ROOT_PASSWORD` | MySQL root |
 | `MYSQL_PASSWORD` | MySQL app user |
-| `MYSQL_DATABASE` | Nombre exacto del schema en el volumen live (p. ej. el de `.env.production`) |
-| `MYSQL_USER` | Usuario app MySQL (p. ej. `sige`) |
 | `JWT_SECRET` | Firma de sesión |
 | `OWNER_OPEN_ID` | opcional |
 | `AWS_ACCESS_KEY_ID` | S3 |
