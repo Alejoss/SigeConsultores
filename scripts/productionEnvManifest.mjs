@@ -27,7 +27,7 @@ export const productionDefaults = {
   SES_FROM_NAME: "ISGE 360",
   AWS_S3_REGION: "us-east-2",
   AWS_S3_BUCKET: "sige-backups",
-  MYSQL_DATABASE: "sige_platform",
+  MYSQL_DATABASE: "sige_platform_staging",
   MYSQL_USER: "sige",
   VITE_APP_ID: "proj_abc123def456",
   VITE_OAUTH_PORTAL_URL: "https://vida.butterfly-effect.dev",
