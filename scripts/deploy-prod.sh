@@ -49,6 +49,23 @@ echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 "${COMPOSE[@]}" pull app
 "${COMPOSE[@]}" up -d mysql
 
+# Wait until MySQL accepts connections (recreate after env change can take longer than a few seconds).
+echo "Waiting for MySQL to become ready..."
+MYSQL_READY=0
+for _ in $(seq 1 60); do
+  if "${COMPOSE[@]}" exec -T mysql sh -c 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1; then
+    MYSQL_READY=1
+    break
+  fi
+  sleep 2
+done
+if [ "$MYSQL_READY" -ne 1 ]; then
+  echo "MySQL did not become ready in time; deployment aborted." >&2
+  "${COMPOSE[@]}" logs mysql --tail 80 >&2 || true
+  exit 1
+fi
+echo "MySQL is ready."
+
 # Respaldo transaccional obligatorio antes de cambiar la versión de la aplicación.
 # Se conserva en el servidor de producción y se valida antes de continuar.
 BACKUP_DIR="${ROOT}/backups"
