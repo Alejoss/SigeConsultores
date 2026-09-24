@@ -37,34 +37,36 @@ Sin secretos: tras CI verde, el CD termina con *Deploy skipped*; la imagen **sí
 
 ## Secretos y variables para deploy al droplet
 
-### Variables (visibles, editables — no sensibles)
+**Lo no sensible está hardcodeado** en `scripts/productionEnvManifest.mjs` (`productionDefaults`: dominio, SES from, S3 region/bucket, MySQL db/user, OAuth URLs públicas, droplet host/path, etc.). El CD ensambla `.env.production` con esos defaults + **Secrets** de GitHub.
 
-**Settings → Secrets and variables → Actions → Variables → New repository variable**
+No hace falta crear decenas de Actions Variables. Solo mantén **Secrets**.
 
-| Variable | Valor |
-|----------|--------|
-| `DROPLET_HOST` | `167.172.127.47` |
-| `DROPLET_USER` | `root` |
-| `DEPLOY_PATH` | `/opt/sige-app-staging` |
-| `GHCR_USERNAME` | `Alejoss` |
+Ruta: **Settings → Secrets and variables → Actions → Secrets**.
 
-Las **variables** se pueden ver y editar después de crearlas (a diferencia de los secretos). Úsalas para paths, IPs y usuarios.
+### Secrets que debes tener (y solo estos)
 
-### Secretos (no visibles después de guardar)
+| Secreto | Uso |
+|---------|-----|
+| `DROPLET_SSH_KEY` | Clave privada SSH del droplet |
+| `GHCR_TOKEN` | PAT con `read:packages` + `repo` |
+| `MYSQL_ROOT_PASSWORD` | MySQL root |
+| `MYSQL_PASSWORD` | MySQL app user |
+| `JWT_SECRET` | Firma de sesión |
+| `OWNER_OPEN_ID` | opcional |
+| `AWS_ACCESS_KEY_ID` | S3 |
+| `AWS_SECRET_ACCESS_KEY` | S3 |
+| `SES_ACCESS_KEY_ID` | SES |
+| `SES_SECRET_ACCESS_KEY` | SES |
 
-**Settings → Secrets and variables → Actions → Secrets → New repository secret**
+Valores: cópialos desde `/opt/sige-app-staging/.env.production` en el droplet (`grep` / editor). Ya tienes `SES_*` y `DROPLET_SSH_KEY` / `GHCR_TOKEN` en muchos casos.
 
-| Secreto | Valor |
-|---------|--------|
-| `DROPLET_SSH_KEY` | Clave privada SSH (archivo completo, con `BEGIN`/`END`) |
-| `ENV_PRODUCTION` | Contenido completo de `.env.production` del servidor |
-| `GHCR_TOKEN` | PAT classic con `read:packages` y **`repo`** (pull GHCR + `git fetch` en repo privado) |
+**No** guardes `APP_IMAGE`. El workflow inyecta `ghcr.io/alejoss/sigeconsultores:<sha>`.
 
-Si ya tenías `DROPLET_HOST`, `DROPLET_USER`, `DEPLOY_PATH` o `GHCR_USERNAME` como secretos, créalos como **variables** y borra los secretos duplicados cuando migres. El workflow acepta variable o secreto (prioriza variable).
+Tras el primer deploy en modo **assembled**, puedes borrar el secreto obsoleto `ENV_PRODUCTION`. Mientras falten secrets individuales, el CD puede usar ese blob como fallback (`legacy_blob`).
+
+Overrides opcionales: una Actions Variable con el mismo nombre que una clave en `productionDefaults` sustituye el default (p. ej. cambiar `FRONTEND_URL` sin tocar código).
 
 La clave pública SSH debe estar en `~/.ssh/authorized_keys` del usuario en el droplet.
-
-`ENV_PRODUCTION` no debe incluir `APP_IMAGE`: el workflow la pasa como `ghcr.io/alejoss/sigeconsultores:<sha>` al ejecutar `deploy-prod.sh`.
 
 ### Permisos GHCR
 
@@ -76,11 +78,13 @@ La clave pública SSH debe estar en `~/.ssh/authorized_keys` del usuario en el d
 
 ## Qué hace el deploy en el droplet
 
-El job SSH **no** hace `docker build`. Solo:
+El job de CD **no** hace `docker build` en el droplet. Hace:
 
-1. `git fetch` + `git reset --hard` al commit desplegado (usa `GHCR_USERNAME` + `GHCR_TOKEN` con scope `repo` para repos privados)
-2. Escribe `.env.production` desde `ENV_PRODUCTION`
-3. Ejecuta `deploy-prod.sh` con `APP_IMAGE=ghcr.io/alejoss/sigeconsultores:<sha>` (el script prioriza esa variable sobre la del archivo)
+1. En el runner de GitHub: `node scripts/assemble-production-env.mjs` → archivo ensamblado desde Variables/Secrets
+2. SCP del archivo al droplet
+3. SSH: `git fetch` + `git reset --hard` al commit desplegado
+4. Sustituye `.env.production` por el archivo ensamblado
+5. Ejecuta `deploy-prod.sh` con `APP_IMAGE=ghcr.io/alejoss/sigeconsultores:<sha>`
 
 Detalle: [DEPLOYMENT.md](./DEPLOYMENT.md).
 
@@ -133,4 +137,4 @@ Guía completa: [TESTING.md](./TESTING.md).
 
 ---
 
-Última revisión: julio 2026.
+Última revisión: septiembre 2026 (defaults baked-in; solo Secrets en GitHub).

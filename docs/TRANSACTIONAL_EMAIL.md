@@ -18,7 +18,7 @@ S3 y SES usan **IAM users distintos**. No sustituyas `AWS_ACCESS_KEY_ID` (S3) po
 
 ## Variables de entorno
 
-En `.env.local` (dev) y `.env.production` (droplet):
+En producción, `SES_FROM_EMAIL` / región / nombre salen de defaults en `scripts/productionEnvManifest.mjs`; las keys IAM van como **Secrets** `SES_ACCESS_KEY_ID` / `SES_SECRET_ACCESS_KEY`. Detalle: [GITHUB_SETUP.md](./GITHUB_SETUP.md).
 
 ```dotenv
 AWS_SES_REGION=us-west-2

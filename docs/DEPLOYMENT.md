@@ -92,22 +92,13 @@ docker pull ghcr.io/alejoss/sigeconsultores:latest
 | 0 | GitHub Actions (CI) | `pnpm check` + `pnpm build` + tests unitarios e integración — **debe pasar** |
 | 1 | GitHub Actions (CI) | `needs` impide invocar el CD si algún job previo no fue `success` |
 | 2 | GitHub Actions | `docker build` + push a GHCR del mismo SHA que pasó CI |
-| 3 | SSH al droplet | `git reset --hard` al commit + escribe `.env.production` + `deploy-prod.sh` |
-| 4 | Droplet | `deploy-prod.sh`: login GHCR, `pull`, `up -d` |
+| 3 | GitHub Actions | Ensambla `.env.production` desde Variables + Secrets; SCP al droplet |
+| 4 | SSH al droplet | `git reset --hard` al commit + `deploy-prod.sh` |
+| 5 | Droplet | `deploy-prod.sh`: login GHCR, `pull`, backup MySQL, `up -d` |
 
-**Secretos** en GitHub (Settings → Secrets → Actions):
+**Configuración en GitHub** (Settings → Secrets and variables → Actions → **Secrets**): solo secretos sensibles. Lo demás está en `scripts/productionEnvManifest.mjs`. Guía: [GITHUB_SETUP.md](./GITHUB_SETUP.md).
 
-| Secreto | Uso |
-|---------|-----|
-| `DROPLET_HOST` | IP (`167.172.127.47`) |
-| `DROPLET_USER` | `deploy` o `root` |
-| `DROPLET_SSH_KEY` | Clave privada SSH |
-| `DEPLOY_PATH` | `/opt/sige-app-staging` |
-| `ENV_PRODUCTION` | Contenido completo de `.env.production` |
-| `GHCR_USERNAME` | Usuario GitHub |
-| `GHCR_TOKEN` | PAT con `read:packages` |
-
-Sin secretos: el workflow **sigue en verde**, sube la imagen a GHCR y muestra el job *Deploy skipped (configure secrets)*. No actualiza el droplet hasta que configures secretos y hagas **Re-run** del workflow.
+Sin la config completa: el workflow **sigue en verde**, sube la imagen a GHCR y muestra el job *Deploy skipped (configure secrets)*. No actualiza el droplet hasta que configures Variables/Secrets y hagas **Re-run** del workflow.
 
 Permisos del paquete: **Packages → sigeconsultores → Package settings → Manage Actions access** → acceso al repo.
 
@@ -149,7 +140,8 @@ Qué hace `deploy-prod.sh`:
 
 ### Variables en el servidor
 
-- **`.env.production`** — MySQL, JWT, OAuth, AWS S3, Amazon SES (`SES_*`), `FRONTEND_URL`, **`APP_IMAGE`**, **`GHCR_USERNAME`**, **`GHCR_TOKEN`** (plantilla: `.env.production.example`). Correo: [TRANSACTIONAL_EMAIL.md](./TRANSACTIONAL_EMAIL.md).
+- **`.env.production`** — lo escribe el CD desde Variables/Secrets de GitHub (no editar a mano como fuente de verdad). Plantilla de claves: `.env.production.example`. Correo: [TRANSACTIONAL_EMAIL.md](./TRANSACTIONAL_EMAIL.md).
+- Para actualizar un valor (p. ej. `SES_FROM_EMAIL`): edita la **Variable** o **Secret** en GitHub y vuelve a desplegar; no hace falta reescribir un blob monolítico.
 
 #### ¿Cambia `APP_IMAGE` en cada build?
 
