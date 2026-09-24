@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
-import { Save, AlertCircle, CheckCircle2, Download, Loader2 } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle2, Download, Loader2, LockKeyhole } from 'lucide-react';
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -86,6 +86,13 @@ export default function CompanyInfo() {
   }, [autoExpandTextarea]);
 
   const { getLabel } = useModuleLabels(companyId);
+  const managementAccessQuery = trpc.teamAccess.getMyCompanyManagementAccess.useQuery(
+    { companyId: companyId || 0 },
+    { enabled: isProcessLeader && companyId !== null }
+  );
+  // El Jefe ve la información corporativa, pero sólo un Coordinador explícito
+  // puede editarla. Mientras se comprueba el permiso permanece en consulta.
+  const canEditCompanyInfo = !isProcessLeader || managementAccessQuery.data?.accessLevel === "coordinator";
 
   // Fetch company info from database
   const { data: companyInfo, isLoading, refetch } = trpc.companyInfo.get.useQuery(
@@ -128,6 +135,7 @@ export default function CompanyInfo() {
   // Se pasan los valores actuales como parámetros para evitar el problema de closure stale.
   // isEditingRef se activa al empezar a editar y se desactiva cuando el guardado confirma éxito.
   const autoSave = (currentProposito: string, currentMision: string, currentVision: string, currentAdminEmail?: string) => {
+    if (!canEditCompanyInfo) return;
     // Marcar que el usuario está editando para bloquear la sincronización del servidor
     isEditingRef.current = true;
 
@@ -163,7 +171,7 @@ export default function CompanyInfo() {
   };
 
   const handleSave = async () => {
-    if (!companyId) return;
+    if (!companyId || !canEditCompanyInfo) return;
 
     setIsSaving(true);
     await updateMutation.mutateAsync({
@@ -284,6 +292,19 @@ export default function CompanyInfo() {
           </div>
         </div>
 
+        {isProcessLeader && (
+          <div className={canEditCompanyInfo ? "flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950" : "flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"}>
+            <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              {managementAccessQuery.isLoading
+                ? "Verificando el permiso de edición corporativa…"
+                : canEditCompanyInfo
+                  ? "Tiene autorización de Coordinador de empresa para editar esta información corporativa."
+                  : "Modo de consulta: Propósito, Misión, Visión y alertas corporativas sólo pueden ser modificados por el Gerente General o por un Jefe autorizado como Coordinador de empresa."}
+            </p>
+          </div>
+        )}
+
         {isLoading ? (
           <Card>
             <CardContent className="pt-6">
@@ -302,12 +323,15 @@ export default function CompanyInfo() {
                   ref={propositoRef}
                   placeholder={`Describe el ${labels.proposito.toLowerCase()} fundamental de tu empresa...`}
                   value={proposito}
+                  readOnly={!canEditCompanyInfo}
                   onChange={(e) => {
+                    if (!canEditCompanyInfo) return;
                     const newValue = e.target.value;
                     setProposito(newValue);
                     autoSave(newValue, mision, vision);
                   }}
-                  className="resize-none overflow-hidden"
+                  aria-readonly={!canEditCompanyInfo}
+                  className={`resize-none overflow-hidden ${!canEditCompanyInfo ? "cursor-not-allowed bg-slate-50 text-slate-600" : ""}`}
                 />
               </CardContent>
             </Card>
@@ -322,12 +346,15 @@ export default function CompanyInfo() {
                   ref={misionRef}
                   placeholder={`Describe la ${labels.mision.toLowerCase()} de tu empresa...`}
                   value={mision}
+                  readOnly={!canEditCompanyInfo}
                   onChange={(e) => {
+                    if (!canEditCompanyInfo) return;
                     const newValue = e.target.value;
                     setMision(newValue);
                     autoSave(proposito, newValue, vision);
                   }}
-                  className="resize-none overflow-hidden"
+                  aria-readonly={!canEditCompanyInfo}
+                  className={`resize-none overflow-hidden ${!canEditCompanyInfo ? "cursor-not-allowed bg-slate-50 text-slate-600" : ""}`}
                 />
               </CardContent>
             </Card>
@@ -342,12 +369,15 @@ export default function CompanyInfo() {
                   ref={visionRef}
                   placeholder={`Describe la ${labels.vision.toLowerCase()} futura de tu empresa...`}
                   value={vision}
+                  readOnly={!canEditCompanyInfo}
                   onChange={(e) => {
+                    if (!canEditCompanyInfo) return;
                     const newValue = e.target.value;
                     setVision(newValue);
                     autoSave(proposito, mision, newValue);
                   }}
-                  className="resize-none overflow-hidden"
+                  aria-readonly={!canEditCompanyInfo}
+                  className={`resize-none overflow-hidden ${!canEditCompanyInfo ? "cursor-not-allowed bg-slate-50 text-slate-600" : ""}`}
                 />
               </CardContent>
             </Card>
@@ -432,13 +462,15 @@ export default function CompanyInfo() {
                   <input
                     type="email"
                     value={adminAlertEmail}
+                    disabled={!canEditCompanyInfo}
                     onChange={(e) => {
+                      if (!canEditCompanyInfo) return;
                       const val = e.target.value;
                       setAdminAlertEmail(val);
                       autoSave(proposito, mision, vision, val);
                     }}
                     placeholder="gerente@empresa.com"
-                    className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    className={`flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 ${!canEditCompanyInfo ? "cursor-not-allowed bg-slate-100 text-slate-600" : ""}`}
                   />
                 </div>
               </CardContent>
@@ -465,11 +497,11 @@ export default function CompanyInfo() {
               </div>
               <Button
                 onClick={handleSave}
-                disabled={updateMutation.isPending || isSaving}
+                disabled={updateMutation.isPending || isSaving || !canEditCompanyInfo}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 <Save size={20} />
-                Guardar Ahora
+                {canEditCompanyInfo ? "Guardar Ahora" : "Solo consulta"}
               </Button>
             </div>
           </div>

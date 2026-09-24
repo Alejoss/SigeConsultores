@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
 import { OperationalFindingsPanel } from "@/components/OperationalFindingsPanel";
+import { CompanyReadOnlyNotice, useCompanyManagementPermission } from "@/hooks/useCompanyManagementPermission";
 
 type InspectionRow = {
   id: number;
@@ -31,10 +32,12 @@ function FileModal({
   inspectionId,
   companyId,
   onClose,
+  canManage,
 }: {
   inspectionId: number;
   companyId: number;
   onClose: () => void;
+  canManage: boolean;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -88,18 +91,18 @@ function FileModal({
                 <a href={f.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm truncate max-w-[200px]">
                   {f.fileName}
                 </a>
-                <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteMutation.mutate({ id: f.id, companyId })}>
+                {canManage && <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteMutation.mutate({ id: f.id, companyId })}>
                   <Trash2 size={14} />
-                </Button>
+                </Button>}
               </li>
             ))}
           </ul>
         )}
         <div className="flex gap-2 justify-between">
-          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+          {canManage && <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
             {isUploading ? <Loader2 size={14} className="animate-spin mr-1" /> : <Upload size={14} className="mr-1" />}
             Subir archivo
-          </Button>
+          </Button>}
           <Button variant="outline" onClick={onClose}>Cerrar</Button>
         </div>
       </div>
@@ -121,6 +124,7 @@ export default function InspectionControl() {
     }
     return getCompanyIdFromLocationOrStorage();
   });
+  const { canManageCompany } = useCompanyManagementPermission(companyId);
 
   const [rows, setRows] = useState<InspectionRow[]>([]);
   const [openFileModal, setOpenFileModal] = useState<number | null>(null);
@@ -151,13 +155,14 @@ export default function InspectionControl() {
 
   const handleChange = useCallback(
     (id: number, field: keyof InspectionRow, value: string | number) => {
+      if (!canManageCompany) return;
       setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
       if (saveTimers.current[id]) clearTimeout(saveTimers.current[id]);
       saveTimers.current[id] = setTimeout(() => {
         updateMutation.mutate({ id, companyId: companyId!, [field]: value } as Parameters<typeof updateMutation.mutate>[0]);
       }, 600);
     },
-    [companyId, updateMutation]
+    [canManageCompany, companyId, updateMutation]
   );
 
   if (!companyId) {
@@ -178,6 +183,8 @@ export default function InspectionControl() {
           </Button>
           <h1 className="text-xl font-bold text-slate-800">Control de Inspecciones</h1>
         </div>
+
+        {!canManageCompany && <CompanyReadOnlyNotice />}
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-slate-500"><Loader2 className="animate-spin" size={18} /> Cargando...</div>
@@ -204,6 +211,7 @@ export default function InspectionControl() {
                       <td className="p-2">
                         <Input
                           value={row.managementSystem}
+                          readOnly={!canManageCompany}
                           onChange={(e) => handleChange(row.id, "managementSystem", e.target.value)}
                           placeholder="Sistema..."
                           className="border-blue-200 focus:border-blue-400 text-sm"
@@ -212,6 +220,7 @@ export default function InspectionControl() {
                       <td className="p-2">
                         <Input
                           value={row.inspectionDate}
+                          readOnly={!canManageCompany}
                           onChange={(e) => handleChange(row.id, "inspectionDate", e.target.value)}
                           placeholder="dd-mm-aaaa"
                           className="border-blue-200 focus:border-blue-400 text-sm w-32"
@@ -220,6 +229,7 @@ export default function InspectionControl() {
                       <td className="p-2">
                         <Input
                           value={row.area}
+                          readOnly={!canManageCompany}
                           onChange={(e) => handleChange(row.id, "area", e.target.value)}
                           placeholder="Área..."
                           className="border-blue-200 focus:border-blue-400 text-sm"
@@ -247,6 +257,7 @@ export default function InspectionControl() {
                             variant="outline"
                             className="text-xs border-blue-300 text-blue-700 hover:bg-blue-50"
                             onClick={() => setOpenFileModal(row.id)}
+                            disabled={!canManageCompany}
                           >
                             <Upload size={12} className="mr-1" /> Subir archivo
                           </Button>
@@ -260,7 +271,7 @@ export default function InspectionControl() {
                           </Button>
                         </div>
                       </td>
-                      <td className="p-2">
+                      {canManageCompany && <td className="p-2">
                         <Button
                           size="sm"
                           variant="ghost"
@@ -272,7 +283,7 @@ export default function InspectionControl() {
                         >
                           <Trash2 size={14} />
                         </Button>
-                      </td>
+                      </td>}
                     </tr>
                     <tr className="border-t border-blue-50 bg-slate-50/50">
                       <td colSpan={8} className="px-2 pb-3 pt-1">
@@ -282,6 +293,7 @@ export default function InspectionControl() {
                           sourceId={row.id}
                           title="Gestionar hallazgos"
                           onSummaryChanged={refetch}
+                          canManage={canManageCompany}
                         />
                       </td>
                     </tr>
@@ -290,7 +302,7 @@ export default function InspectionControl() {
                 </tbody>
               </table>
 
-              <div className="mt-4">
+              {canManageCompany && <div className="mt-4">
                 <Button
                   variant="outline"
                   className="border-dashed border-blue-300 text-blue-600 hover:bg-blue-50"
@@ -300,7 +312,7 @@ export default function InspectionControl() {
                   {createMutation.isPending ? <Loader2 size={16} className="animate-spin mr-2" /> : <Plus size={16} className="mr-2" />}
                   + Agregar nueva Inspección
                 </Button>
-              </div>
+              </div>}
             </CardContent>
           </Card>
         )}
@@ -310,6 +322,7 @@ export default function InspectionControl() {
             inspectionId={openFileModal}
             companyId={companyId!}
             onClose={() => setOpenFileModal(null)}
+            canManage={canManageCompany}
           />
         )}
       </div>

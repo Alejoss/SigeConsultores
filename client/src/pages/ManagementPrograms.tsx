@@ -22,6 +22,7 @@ import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
 import { ProcessLinkDialog } from "@/components/ProcessLinkDialog";
 import { SourceEvidenceButton } from "@/components/SourceEvidenceButton";
+import { CompanyReadOnlyNotice, useCompanyManagementPermission } from "@/hooks/useCompanyManagementPermission";
 import * as XLSX from "xlsx";
 
 const MANAGEMENT_SYSTEMS = [
@@ -373,12 +374,14 @@ function DocumentationModal({
   isLoading,
   onClose,
   onDelete,
+  canDelete,
 }: {
   title: string;
   files: { id: number; fileName: string; fileUrl: string }[];
   isLoading: boolean;
   onClose: () => void;
   onDelete: (id: number) => void;
+  canDelete: boolean;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -413,7 +416,7 @@ function DocumentationModal({
                   >
                     {file.fileName}
                   </a>
-                  <Button
+                  {canDelete && <Button
                     size="sm"
                     variant="ghost"
                     className="shrink-0 text-red-500 hover:bg-red-50 hover:text-red-700"
@@ -421,7 +424,7 @@ function DocumentationModal({
                     title="Eliminar documento"
                   >
                     <Trash2 size={15} />
-                  </Button>
+                  </Button>}
                 </li>
               ))}
             </ul>
@@ -488,10 +491,12 @@ function ProgramActionsPanel({
   programId,
   companyId,
   onChanged,
+  canManage,
 }: {
   programId: number;
   companyId: number;
   onChanged: () => void;
+  canManage: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState({
@@ -625,6 +630,7 @@ function ProgramActionsPanel({
       </button>
       {open && (
         <div className="mt-3 space-y-3 border-t border-violet-200 pt-3">
+          <fieldset disabled={!canManage} className="min-w-0 disabled:opacity-70">
           <input
             ref={importInputRef}
             type="file"
@@ -809,6 +815,7 @@ function ProgramActionsPanel({
               Agregar
             </Button>
           </div>
+          </fieldset>
         </div>
       )}
       {linkAction && (
@@ -870,6 +877,7 @@ export default function ManagementPrograms() {
     if (processLeaderSession?.companyId) return processLeaderSession.companyId;
     return getCompanyIdFromLocationOrStorage();
   }, [isManagerLogin, managerCompanyId, processLeaderSession]);
+  const { canManageCompany } = useCompanyManagementPermission(companyId);
 
   const planningInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const documentationInputRefs = useRef<
@@ -1129,6 +1137,8 @@ export default function ManagementPrograms() {
           </div>
         </div>
 
+        {!canManageCompany && <CompanyReadOnlyNotice />}
+
         {isLoading ? (
           <div className="flex justify-center p-8">
             <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
@@ -1159,6 +1169,7 @@ export default function ManagementPrograms() {
                         </label>
                         <Input
                           defaultValue={program.programName}
+                          readOnly={!canManageCompany}
                           onBlur={event =>
                             handleUpdate(
                               program.id,
@@ -1175,6 +1186,7 @@ export default function ManagementPrograms() {
                         </label>
                         <select
                           defaultValue={program.managementSystem}
+                          disabled={!canManageCompany}
                           onChange={event =>
                             handleUpdate(
                               program.id,
@@ -1249,7 +1261,7 @@ export default function ManagementPrograms() {
                         onClick={() =>
                           documentationInputRefs.current[program.id]?.click()
                         }
-                        disabled={uploadingDocumentationProgramId !== null}
+                        disabled={!canManageCompany || uploadingDocumentationProgramId !== null}
                       >
                         {uploadingDocumentationProgramId === program.id ? (
                           <Loader2 size={14} className="mr-1 animate-spin" />
@@ -1292,7 +1304,7 @@ export default function ManagementPrograms() {
                         onClick={() =>
                           planningInputRefs.current[program.id]?.click()
                         }
-                        disabled={uploadPlanMutation.isPending}
+                        disabled={!canManageCompany || uploadPlanMutation.isPending}
                       >
                         {uploadPlanMutation.isPending ? (
                           <Loader2 size={14} className="mr-1 animate-spin" />
@@ -1312,9 +1324,10 @@ export default function ManagementPrograms() {
                       programId={program.id}
                       companyId={companyId!}
                       onChanged={refetch}
+                      canManage={canManageCompany}
                     />
 
-                    <div className="mt-3 flex justify-end">
+                    {canManageCompany && <div className="mt-3 flex justify-end">
                       <Button
                         size="sm"
                         variant="ghost"
@@ -1323,7 +1336,7 @@ export default function ManagementPrograms() {
                       >
                         <Trash2 size={14} className="mr-1" /> Eliminar
                       </Button>
-                    </div>
+                    </div>}
                   </CardContent>
                 </Card>
               );
@@ -1335,7 +1348,7 @@ export default function ManagementPrograms() {
           <Button
             onClick={handleAddProgram}
             className="flex w-full items-center justify-center gap-2 bg-blue-500 text-white hover:bg-blue-600"
-            disabled={createMutation.isPending}
+            disabled={!canManageCompany || createMutation.isPending}
           >
             {createMutation.isPending ? (
               <Loader2 size={16} className="animate-spin" />
@@ -1361,6 +1374,7 @@ export default function ManagementPrograms() {
             onDelete={id =>
               deleteDocumentationMutation.mutate({ id, companyId: companyId! })
             }
+            canDelete={canManageCompany}
           />
         )}
       </div>

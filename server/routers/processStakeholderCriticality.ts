@@ -5,11 +5,13 @@ import { stakeholderCriticalities, processStakeholderMatrixFiles } from "../../d
 import { eq, and } from "drizzle-orm";
 import { storagePut, storageGet } from "../storage";
 import { randomUUID } from "crypto";
+import { assertProcessAccessById, assertProcessStakeholderAccess } from "../_core/companyPermissions";
 
 export const processStakeholderCriticalityRouter = router({
   getByProcessId: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return [];
 
@@ -33,7 +35,9 @@ export const processStakeholderCriticalityRouter = router({
       fechaFin: z.string().optional(),
       realizado: z.enum(["SI", "NO"]).optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      if (input.id) await assertProcessStakeholderAccess(ctx, input.id);
+      else await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -102,7 +106,8 @@ export const processStakeholderCriticalityRouter = router({
 
   delete: companyProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessStakeholderAccess(ctx, input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -119,7 +124,8 @@ export const processStakeholderCriticalityRouter = router({
       fileData: z.array(z.number()),
       mimeType: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -143,7 +149,8 @@ export const processStakeholderCriticalityRouter = router({
 
   getExcelMatrix: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return null;
 

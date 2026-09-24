@@ -4,11 +4,13 @@ import { getDb } from "../db";
 import { processTacticalObjectives } from "../../drizzle/schema";
 import { desc, eq } from "drizzle-orm";
 import { updateProcessTacticalObjective } from "../db";
+import { assertProcessAccessById, assertProcessTacticalObjectiveAccess } from "../_core/companyPermissions";
 
 export const processTacticalObjectivesRouter = router({
   list: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return [];
 
@@ -55,7 +57,8 @@ export const processTacticalObjectivesRouter = router({
       planningData: z.string().optional(),
       completed: z.enum(["SI", "NO"]).optional().default("NO"),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -124,7 +127,8 @@ export const processTacticalObjectivesRouter = router({
       planningData: z.string().optional(),
       completed: z.enum(["SI", "NO"]).optional().default("NO"),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessTacticalObjectiveAccess(ctx, input.objectiveId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -169,7 +173,8 @@ export const processTacticalObjectivesRouter = router({
 
   delete: companyProcedure
     .input(z.object({ objectiveId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessTacticalObjectiveAccess(ctx, input.objectiveId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -195,7 +200,8 @@ export const processTacticalObjectivesRouter = router({
       checklistValues: z.array(z.boolean()).optional(),
       puntualSumValues: z.array(z.number()).optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessTacticalObjectiveAccess(ctx, input.objectiveId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -278,7 +284,8 @@ export const processTacticalObjectivesRouter = router({
 
   loadPlanningData: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return [];
 

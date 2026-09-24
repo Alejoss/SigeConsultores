@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, companyProcedure } from "../_core/trpc";
+import { router, companyReadProcedure, companyProcedure, companyManagementProcedure  } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { and, asc, eq } from "drizzle-orm";
@@ -12,6 +12,7 @@ import {
 } from "../../drizzle/schema";
 import { storageDelete, storageGet, storagePut } from "../storage";
 import { randomUUID } from "crypto";
+import { assertCompanyManagementAccess } from "../_core/companyPermissions";
 
 const PROGRAM_FILE_MIME_TYPES = [
   "application/pdf",
@@ -41,7 +42,7 @@ function assertValidProgramFile(mimeType: string, bytes: number) {
   }
 }
 
-function requireProgramManagementAccess(
+async function requireProgramManagementAccess(
   ctx: {
     manager: { companyId: number } | null;
     processLeader: unknown;
@@ -49,13 +50,7 @@ function requireProgramManagementAccess(
   },
   companyId: number
 ) {
-  if (ctx.user?.role === "admin") return;
-  if (ctx.manager?.companyId === companyId) return;
-  throw new TRPCError({
-    code: "FORBIDDEN",
-    message:
-      "Solo el Gerente de la empresa o el Administrador pueden administrar acciones de Programas.",
-  });
+  await assertCompanyManagementAccess(ctx as never, companyId);
 }
 
 function normalizeProgramActionKey(value: string) {
@@ -175,7 +170,7 @@ export async function refreshProgramMetrics(
 
 export const managementProgramsRouter = router({
   /** Listar todos los programas de una empresa */
-  list: companyProcedure
+  list: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -207,7 +202,7 @@ export const managementProgramsRouter = router({
     }),
 
   /** Crear un nuevo programa */
-  create: companyProcedure
+  create: companyManagementProcedure
     .input(
       z.object({
         companyId: z.number(),
@@ -237,7 +232,7 @@ export const managementProgramsRouter = router({
     }),
 
   /** Actualizar campos de un programa mediante autosave */
-  update: companyProcedure
+  update: companyManagementProcedure
     .input(
       z.object({
         id: z.number(),
@@ -267,7 +262,7 @@ export const managementProgramsRouter = router({
     }),
 
   /** Eliminar un programa y todos sus archivos asociados */
-  delete: companyProcedure
+  delete: companyManagementProcedure
     .input(z.object({ id: z.number(), companyId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -371,7 +366,7 @@ export const managementProgramsRouter = router({
     }),
 
   /** Listar acciones estructuradas de un Programa. */
-  listActions: companyProcedure
+  listActions: companyReadProcedure
     .input(
       z.object({
         programId: z.number().int().positive(),
@@ -379,7 +374,7 @@ export const managementProgramsRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      requireProgramManagementAccess(ctx, input.companyId);
+      await requireProgramManagementAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db)
         throw new TRPCError({
@@ -414,7 +409,7 @@ export const managementProgramsRouter = router({
     }),
 
   /** Crear una acción detallada del Programa. */
-  createAction: companyProcedure
+  createAction: companyManagementProcedure
     .input(
       z.object({
         programId: z.number().int().positive(),
@@ -427,7 +422,7 @@ export const managementProgramsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      requireProgramManagementAccess(ctx, input.companyId);
+      await requireProgramManagementAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db)
         throw new TRPCError({
@@ -479,7 +474,7 @@ export const managementProgramsRouter = router({
     }),
 
   /** Editar o cerrar una acción no vinculada a procesos. */
-  updateAction: companyProcedure
+  updateAction: companyManagementProcedure
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -494,7 +489,7 @@ export const managementProgramsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      requireProgramManagementAccess(ctx, input.companyId);
+      await requireProgramManagementAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db)
         throw new TRPCError({
@@ -560,7 +555,7 @@ export const managementProgramsRouter = router({
     }),
 
   /** Eliminar una acción sólo si no tiene procesos vinculados. */
-  deleteAction: companyProcedure
+  deleteAction: companyManagementProcedure
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -569,7 +564,7 @@ export const managementProgramsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      requireProgramManagementAccess(ctx, input.companyId);
+      await requireProgramManagementAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db)
         throw new TRPCError({
@@ -608,7 +603,7 @@ export const managementProgramsRouter = router({
     }),
 
   /** Importar o actualizar acciones de una planificación Excel sin borrar las existentes. */
-  importActions: companyProcedure
+  importActions: companyManagementProcedure
     .input(
       z.object({
         programId: z.number().int().positive(),
@@ -617,7 +612,7 @@ export const managementProgramsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      requireProgramManagementAccess(ctx, input.companyId);
+      await requireProgramManagementAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db)
         throw new TRPCError({
@@ -738,7 +733,7 @@ export const managementProgramsRouter = router({
     }),
 
   /** Reemplazar el archivo único de planificación de un programa */
-  uploadPlan: companyProcedure
+  uploadPlan: companyManagementProcedure
     .input(
       z.object({
         id: z.number(),
@@ -794,7 +789,7 @@ export const managementProgramsRouter = router({
     }),
 
   /** Obtener una URL vigente para la planificación */
-  getPlanUrl: companyProcedure
+  getPlanUrl: companyReadProcedure
     .input(z.object({ id: z.number(), companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -822,7 +817,7 @@ export const managementProgramsRouter = router({
     }),
 
   /** Subir uno de los múltiples documentos de respaldo de un programa */
-  uploadDocumentation: companyProcedure
+  uploadDocumentation: companyManagementProcedure
     .input(
       z.object({
         programId: z.number(),
@@ -870,7 +865,7 @@ export const managementProgramsRouter = router({
     }),
 
   /** Listar documentación con URLs vigentes */
-  listDocumentation: companyProcedure
+  listDocumentation: companyReadProcedure
     .input(z.object({ programId: z.number(), companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -898,7 +893,7 @@ export const managementProgramsRouter = router({
     }),
 
   /** Eliminar un documento específico de respaldo */
-  deleteDocumentation: companyProcedure
+  deleteDocumentation: companyManagementProcedure
     .input(z.object({ id: z.number(), companyId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();

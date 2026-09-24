@@ -9,7 +9,7 @@ import {
   processParticipants,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { companyProcedure, router } from "../_core/trpc";
+import { companyPersonnelManagementProcedure, companyProcedure, companyReadProcedure, router } from "../_core/trpc";
 
 const employeeInput = z.object({
   companyId: z.number(),
@@ -302,7 +302,7 @@ const getEmployeePerformance = async (
 };
 
 export const payrollRouter = router({
-  list: companyProcedure
+  list: companyReadProcedure
     .input(
       z.object({
         companyId: z.number(),
@@ -350,7 +350,7 @@ export const payrollRouter = router({
       }));
     }),
 
-  create: companyProcedure.input(employeeInput).mutation(async ({ input }) => {
+  create: companyPersonnelManagementProcedure.input(employeeInput).mutation(async ({ input }) => {
     const db = await getDb();
     if (!db) throw new Error("No DB");
     const identityCard = normalizeIdentityCard(input.identityCard);
@@ -404,7 +404,7 @@ export const payrollRouter = router({
     return { success: true, id: Number(result[0].insertId), reactivated: false };
   }),
 
-  update: companyProcedure
+  update: companyPersonnelManagementProcedure
     .input(employeeInput.extend({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -443,7 +443,7 @@ export const payrollRouter = router({
       return { success: true };
     }),
 
-  passToInactive: companyProcedure
+  passToInactive: companyPersonnelManagementProcedure
     .input(
       z.object({
         id: z.number(),
@@ -481,7 +481,7 @@ export const payrollRouter = router({
       return { success: true };
     }),
 
-  updateInactiveTermination: companyProcedure
+  updateInactiveTermination: companyPersonnelManagementProcedure
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -514,7 +514,7 @@ export const payrollRouter = router({
       return { success: true };
     }),
 
-  reactivateInactive: companyProcedure
+  reactivateInactive: companyPersonnelManagementProcedure
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -557,7 +557,7 @@ export const payrollRouter = router({
       return { success: true };
     }),
 
-  deleteInactive: companyProcedure
+  deleteInactive: companyPersonnelManagementProcedure
     .input(z.object({ id: z.number().int().positive(), companyId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -581,7 +581,7 @@ export const payrollRouter = router({
       return { success: true };
     }),
 
-  deleteActive: companyProcedure
+  deleteActive: companyPersonnelManagementProcedure
     .input(z.object({ id: z.number(), companyId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -599,7 +599,7 @@ export const payrollRouter = router({
       return { success: true };
     }),
 
-  clearActive: companyProcedure
+  clearActive: companyPersonnelManagementProcedure
     .input(z.object({ companyId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -616,7 +616,7 @@ export const payrollRouter = router({
       return { success: true };
     }),
 
-  importBulk: companyProcedure
+  importBulk: companyPersonnelManagementProcedure
     .input(
       z.object({
         companyId: z.number(),
@@ -666,7 +666,7 @@ export const payrollRouter = router({
       return { success: true, inserted, updated, skippedInactive };
     }),
 
-  previewExternalSync: companyProcedure
+  previewExternalSync: companyPersonnelManagementProcedure
     .input(externalSyncInput)
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -691,7 +691,7 @@ export const payrollRouter = router({
       };
     }),
 
-  applyExternalSync: companyProcedure
+  applyExternalSync: companyPersonnelManagementProcedure
     .input(externalSyncInput)
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -747,7 +747,7 @@ export const payrollRouter = router({
       return { success: true, summary: preview.summary };
     }),
 
-  analytics: companyProcedure
+  analytics: companyReadProcedure
     .input(
       z.object({
         companyId: z.number(),

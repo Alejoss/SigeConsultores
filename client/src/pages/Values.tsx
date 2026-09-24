@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocation, useSearch } from "wouter";
-import { Plus, Trash2, AlertCircle, Edit2, Download, Loader2 } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, Edit2, Download, Loader2, LockKeyhole } from 'lucide-react';
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -37,6 +37,11 @@ export default function Values() {
     return getCompanyIdFromLocationOrStorage();
   });
   const [companyName] = useState(() => processLeaderSession?.companyName || localStorage.getItem("selectedCompanyName") || "Empresa");
+  const managementAccessQuery = trpc.teamAccess.getMyCompanyManagementAccess.useQuery(
+    { companyId: companyId || 0 },
+    { enabled: isProcessLeader && companyId !== null }
+  );
+  const canEditValues = !isProcessLeader || managementAccessQuery.data?.accessLevel === "coordinator";
   
   // Update companyId when process leader session changes
   useEffect(() => {
@@ -117,6 +122,7 @@ export default function Values() {
   });
 
   const handleAddValue = async () => {
+    if (!canEditValues) return;
     if (!formData.value.trim()) {
       toast.error("Por favor ingresa un nombre para el valor");
       return;
@@ -150,6 +156,7 @@ export default function Values() {
   };
 
   const handleEditValue = (value: any) => {
+    if (!canEditValues) return;
     setFormData({ 
       value: value.value,
       description: value.description || "",
@@ -159,6 +166,7 @@ export default function Values() {
   };
 
   const handleDeleteValue = async (valueId: number) => {
+    if (!canEditValues) return;
     if (confirm("¿Estás seguro de que deseas eliminar este valor?")) {
       await deleteMutation.mutateAsync({ valueId });
     }
@@ -231,8 +239,21 @@ export default function Values() {
           </div>
         </div>
 
+        {isProcessLeader && (
+          <div className={canEditValues ? "flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950" : "flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"}>
+            <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              {managementAccessQuery.isLoading
+                ? "Verificando el permiso de edición corporativa…"
+                : canEditValues
+                  ? "Tiene autorización de Coordinador de empresa para editar los Valores corporativos."
+                  : "Modo de consulta: los Valores corporativos sólo pueden ser modificados por el Gerente General o por un Jefe autorizado como Coordinador de empresa."}
+            </p>
+          </div>
+        )}
+
         {/* Form */}
-        {showForm && (
+        {showForm && canEditValues && (
           <Card className="border-2 border-blue-300 bg-blue-50">
             <CardHeader>
               <CardTitle className="text-lg">
@@ -283,12 +304,12 @@ export default function Values() {
         {/* Add Button */}
         {!showForm && (
           <Button
-            onClick={() => setShowForm(true)}
-            disabled={values.length >= MAX_VALUES}
+            onClick={() => canEditValues && setShowForm(true)}
+            disabled={values.length >= MAX_VALUES || !canEditValues}
             className="w-full bg-blue-600 hover:bg-blue-700"
           >
             <Plus size={20} />
-            Agregar Nuevo Valor
+            {canEditValues ? "Agregar Nuevo Valor" : "Valores en consulta"}
           </Button>
         )}
 
@@ -334,7 +355,7 @@ export default function Values() {
                           variant="outline"
                           onClick={() => handleEditValue(value)}
                           className="flex-1"
-                          disabled={deleteMutation.isPending || createMutation.isPending}
+                          disabled={deleteMutation.isPending || createMutation.isPending || !canEditValues}
                         >
                           <Edit2 size={16} />
                           Editar
@@ -344,7 +365,7 @@ export default function Values() {
                           variant="ghost"
                           onClick={() => handleDeleteValue(value.id)}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          disabled={deleteMutation.isPending}
+                          disabled={deleteMutation.isPending || !canEditValues}
                         >
                           <Trash2 size={16} />
                         </Button>

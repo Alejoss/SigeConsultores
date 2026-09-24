@@ -4,10 +4,11 @@ import { companyCompliances, linkedCommitments } from "../../drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { storagePut } from "../storage";
-import { companyProcedure, router } from "../_core/trpc";
+import { companyManagementProcedure, companyProcedure, companyReadProcedure, router } from "../_core/trpc";
+import { assertCompanyManagementAccess } from "../_core/companyPermissions";
 
 export const companyCompliancesRouter = router({
-  list: companyProcedure
+  list: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -18,7 +19,7 @@ export const companyCompliancesRouter = router({
         .where(eq(companyCompliances.companyId, input.companyId));
     }),
 
-  create: companyProcedure
+  create: companyManagementProcedure
     .input(
       z.object({
         companyId: z.number(),
@@ -65,6 +66,9 @@ export const companyCompliancesRouter = router({
   update: companyProcedure
     .input(
       z.object({
+        // Las versiones anteriores identificaban el registro por id; la empresa
+        // se resuelve de forma segura desde la fila si el cliente aún no la envía.
+        companyId: z.number().int().positive().optional(),
         id: z.number(),
         requirement: z.string().min(1).optional(),
         description: z.string().optional(),
@@ -88,10 +92,10 @@ export const companyCompliancesRouter = router({
         validUntil: z.string().nullable().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("No DB");
-      const { id, validFrom, validUntil, ...rest } = input;
+      const { id, companyId: _companyId, validFrom, validUntil, ...rest } = input;
       const [current] = await db
         .select({ companyId: companyCompliances.companyId })
         .from(companyCompliances)
@@ -99,6 +103,10 @@ export const companyCompliancesRouter = router({
         .limit(1);
       if (!current)
         throw new Error("No se encontró el Cumplimiento seleccionado.");
+      if (input.companyId !== undefined && current.companyId !== input.companyId) {
+        throw new Error("El Cumplimiento no pertenece a la empresa seleccionada.");
+      }
+      await assertCompanyManagementAccess(ctx, current.companyId);
       const changesTracking =
         input.completed !== undefined ||
         validFrom !== undefined ||
@@ -137,7 +145,7 @@ export const companyCompliancesRouter = router({
       return { success: true };
     }),
 
-  uploadEvidencePdf: companyProcedure
+  uploadEvidencePdf: companyManagementProcedure
     .input(
       z.object({
         companyId: z.number(),
@@ -196,8 +204,8 @@ export const companyCompliancesRouter = router({
     }),
 
   delete: companyProcedure
-    .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .input(z.object({ id: z.number(), companyId: z.number().int().positive().optional() }))
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("No DB");
       const [compliance] = await db
@@ -207,6 +215,10 @@ export const companyCompliancesRouter = router({
         .limit(1);
       if (!compliance)
         throw new Error("No se encontró el Cumplimiento seleccionado.");
+      if (input.companyId !== undefined && compliance.companyId !== input.companyId) {
+        throw new Error("El Cumplimiento no pertenece a la empresa seleccionada.");
+      }
+      await assertCompanyManagementAccess(ctx, compliance.companyId);
       const links = await db
         .select({ id: linkedCommitments.id })
         .from(linkedCommitments)

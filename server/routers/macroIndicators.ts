@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { companyProcedure, router } from "../_core/trpc";
+import { assertProcessAccessById } from "../_core/companyPermissions";
 import { getDb } from "../db";
 import { calculateActivityProgress } from "../lib/processActivities";
 import {
@@ -214,7 +215,8 @@ export const macroIndicatorsRouter = router({
   // Get detailed indicators for a specific process (5 indicators)
   getProcessIndicators: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       if (input.processId <= 0) {
         return null;
       }

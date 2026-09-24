@@ -21,11 +21,22 @@ import {
   getAllProcessOwners,
   deleteProcessOwner,
   createOrUpdateManagerCredentials,
+  getDb,
 } from "../db";
 import bcrypt from "bcryptjs";
+import { processes } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 function generateToken(): string {
   return randomBytes(32).toString("hex");
+}
+
+function requireCompanyAccessManager(
+  ctx: { user?: { role?: string } | null; manager?: { companyId: number } | null },
+  companyId: number
+) {
+  if (ctx.user?.role === "admin" || ctx.manager?.companyId === companyId) return;
+  throw new Error("Solo el Gerente de esta empresa o el Administrador pueden gestionar accesos.");
 }
 
 export const hierarchicalAccessRouter = router({
@@ -52,7 +63,7 @@ export const hierarchicalAccessRouter = router({
     /**
      * Get a specific company manager
      */
-    get: companyProcedure
+    get: adminProcedure
       .input(
         z.object({
           companyId: z.number(),
@@ -66,7 +77,7 @@ export const hierarchicalAccessRouter = router({
     /**
      * Get all managers for a company
      */
-    listByCompany: companyProcedure
+    listByCompany: adminProcedure
       .input(
         z.object({
           companyId: z.number(),
@@ -117,7 +128,13 @@ export const hierarchicalAccessRouter = router({
           accessCode: z.string().length(12).optional(), // 12-character robust code - optional, Process Owner will create it
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        requireCompanyAccessManager(ctx, input.companyId);
+        const db = await getDb();
+        const [process] = db
+          ? await db.select({ companyId: processes.companyId }).from(processes).where(eq(processes.id, input.processId)).limit(1)
+          : [];
+        if (!process || process.companyId !== input.companyId) throw new Error("El proceso no pertenece a la empresa.");
         const invitationToken = generateToken();
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 7); // Expires in 7 days
@@ -146,14 +163,15 @@ export const hierarchicalAccessRouter = router({
      */
     listByCompany: companyProcedure
       .input(z.object({ companyId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        requireCompanyAccessManager(ctx, input.companyId);
         return getProcessOwnerInvitationsByCompany(input.companyId);
       }),
 
     /**
      * Get all invitations for a process
      */
-    listByProcess: companyProcedure
+    listByProcess: adminProcedure
       .input(z.object({ processId: z.number() }))
       .query(async ({ input }) => {
         return getProcessOwnerInvitationsByProcess(input.processId);
@@ -197,7 +215,10 @@ export const hierarchicalAccessRouter = router({
      */
     delete: companyProcedure
       .input(z.object({ token: z.string() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const invitation = await getProcessOwnerInvitation(input.token);
+        if (!invitation?.companyId) throw new Error("Invitación no encontrada.");
+        requireCompanyAccessManager(ctx, invitation.companyId);
         await deleteProcessOwnerInvitation(input.token);
         return { success: true };
       }),
@@ -212,7 +233,7 @@ export const hierarchicalAccessRouter = router({
      * Create a new process owner
      * Called after accepting an invitation
      */
-    create: companyProcedure
+    create: adminProcedure
       .input(
         z.object({
           companyId: z.number(),
@@ -290,7 +311,7 @@ export const hierarchicalAccessRouter = router({
     /**
      * Delete a process owner
      */
-    delete: companyProcedure
+    delete: adminProcedure
       .input(
         z.object({
           processId: z.number(),

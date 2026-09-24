@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { companyProcedure, router } from "../_core/trpc";
+import { assertProcessAccessById } from "../_core/companyPermissions";
 import { getDb } from "../db";
 import { processFODA, processCompliances, criticalityMatrix, processTacticalObjectives } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -52,7 +53,8 @@ function calcTasksAverage(tasks: any[]): number | null {
 export const consolidatedIndicatorsRouter = router({
   getConsolidatedIndicators: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return [];
 

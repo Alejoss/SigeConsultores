@@ -3,11 +3,16 @@ import { protectedProcedure, router, companyProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { processResources, processParticipants } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import {
+  assertProcessCharacterizationAccess,
+  assertProcessResourceAccess,
+} from "../_core/companyPermissions";
 
 export const processResourcesRouter = router({
   list: companyProcedure
     .input(z.object({ processCharacterizationId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessCharacterizationAccess(ctx, input.processCharacterizationId);
       const db = await getDb();
       if (!db) return [];
 
@@ -20,7 +25,8 @@ export const processResourcesRouter = router({
   // Get resources grouped by participant
   listByParticipant: companyProcedure
     .input(z.object({ processCharacterizationId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessCharacterizationAccess(ctx, input.processCharacterizationId);
       const db = await getDb();
       if (!db) return [];
 
@@ -51,7 +57,8 @@ export const processResourcesRouter = router({
       description: z.string().optional(),
       orderIndex: z.number(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessCharacterizationAccess(ctx, input.processCharacterizationId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -102,7 +109,8 @@ export const processResourcesRouter = router({
       resourceType: z.string().optional(),
       description: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessResourceAccess(ctx, input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -135,7 +143,8 @@ export const processResourcesRouter = router({
 
   delete: companyProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessResourceAccess(ctx, input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

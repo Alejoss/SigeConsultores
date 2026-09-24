@@ -101,6 +101,38 @@ export type AccountRole = typeof accountRoles.$inferSelect;
 export type InsertAccountRole = typeof accountRoles.$inferInsert;
 
 /**
+ * Reversible company-wide editing authorization for an existing process leader.
+ * The process-leader assignment remains the source of the leader's own process;
+ * this table never grants access to other processes or people-management rights.
+ */
+export const companyManagementAccess = mysqlTable(
+  "companyManagementAccess",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    accountId: int("accountId").notNull(),
+    accessLevel: mysqlEnum("accessLevel", ["standard", "coordinator"])
+      .default("standard")
+      .notNull(),
+    grantedByAccountId: int("grantedByAccountId"),
+    grantedAt: timestamp("grantedAt"),
+    revokedAt: timestamp("revokedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    companyAccountAccess: unique("company_management_access_scope").on(
+      table.companyId,
+      table.accountId
+    ),
+  })
+);
+
+export type CompanyManagementAccess = typeof companyManagementAccess.$inferSelect;
+export type InsertCompanyManagementAccess =
+  typeof companyManagementAccess.$inferInsert;
+
+/**
  * One session row per login — always tied to `accounts.id`.
  */
 export const authSessions = mysqlTable("auth_sessions", {
@@ -1307,6 +1339,8 @@ export const accessAuditLog = mysqlTable("accessAuditLog", {
     "login_attempt",
     "login_success",
     "login_failed",
+    "company_management_access_granted",
+    "company_management_access_revoked",
   ]).notNull(),
   companyId: int("companyId"),
   accountId: int("accountId"),

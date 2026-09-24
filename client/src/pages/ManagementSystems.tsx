@@ -19,6 +19,7 @@ import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
 import { getAxisBackPath } from "@/lib/sessionScope";
+import { CompanyReadOnlyNotice, useCompanyManagementPermission } from "@/hooks/useCompanyManagementPermission";
 
 type ManagementSystemRow = {
   id: number;
@@ -33,11 +34,13 @@ function FileModal({
   files,
   onClose,
   onDelete,
+  canDelete,
 }: {
   title: string;
   files: { id: number; fileName: string; fileUrl: string }[];
   onClose: () => void;
   onDelete: (id: number) => void;
+  canDelete: boolean;
 }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -60,14 +63,14 @@ function FileModal({
                 >
                   {f.fileName}
                 </a>
-                <Button
+                {canDelete && <Button
                   size="sm"
                   variant="ghost"
                   className="text-red-500 hover:text-red-700"
                   onClick={() => onDelete(f.id)}
                 >
                   <Trash2 size={14} />
-                </Button>
+                </Button>}
               </li>
             ))}
           </ul>
@@ -117,6 +120,7 @@ export default function ManagementSystems() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveTimers = useRef<Record<number, NodeJS.Timeout>>({});
+  const { canManageCompany } = useCompanyManagementPermission(companyId);
 
   const { data, isLoading, refetch } =
     trpc.auditsInspections.listManagementSystems.useQuery(
@@ -196,6 +200,7 @@ export default function ManagementSystems() {
 
   const handleFieldChange = useCallback(
     (id: number, field: "systemName" | "certification", value: string) => {
+      if (!canManageCompany) return;
       setRows(prev =>
         prev.map(r => (r.id === id ? { ...r, [field]: value } : r))
       );
@@ -204,15 +209,17 @@ export default function ManagementSystems() {
         updateMutation.mutate({ id, companyId: companyId!, [field]: value });
       }, 600);
     },
-    [companyId, updateMutation]
+    [canManageCompany, companyId, updateMutation]
   );
 
   const handleAdd = () => {
+    if (!canManageCompany) return;
     if (!companyId) return;
     createMutation.mutate({ companyId });
   };
 
   const handleDelete = (id: number) => {
+    if (!canManageCompany) return;
     if (!confirm("¿Eliminar este sistema de gestión y todos sus archivos?"))
       return;
     deleteMutation.mutate({ id, companyId: companyId! });
@@ -222,6 +229,7 @@ export default function ManagementSystems() {
     systemId: number,
     fileType: "certification" | "checklist"
   ) => {
+    if (!canManageCompany) return;
     setModal({ systemId, fileType, mode: "upload" });
     setTimeout(() => fileInputRef.current?.click(), 100);
   };
@@ -234,6 +242,7 @@ export default function ManagementSystems() {
   };
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canManageCompany) return;
     const file = e.target.files?.[0];
     if (!file || !modal || !companyId) return;
     const validTypes = [
@@ -333,6 +342,7 @@ export default function ManagementSystems() {
           </div>
         ) : (
           <div className="space-y-4">
+            {!canManageCompany && <CompanyReadOnlyNotice />}
             {rows.map(row => (
               <Card
                 key={row.id}
@@ -354,6 +364,7 @@ export default function ManagementSystems() {
                           )
                         }
                         placeholder="Nombre del sistema..."
+                        readOnly={!canManageCompany}
                         className="border-teal-200 focus:border-teal-400"
                       />
                     </div>
@@ -371,6 +382,7 @@ export default function ManagementSystems() {
                           )
                         }
                         placeholder="Nombre de la certificación..."
+                        readOnly={!canManageCompany}
                         className="border-teal-200 focus:border-teal-400"
                       />
                     </div>
@@ -413,12 +425,12 @@ export default function ManagementSystems() {
                       }
                     >
                       <ClipboardCheck size={13} className="mr-1" />
-                      Trabajar sobre checklist
+                      {canManageCompany ? "Trabajar sobre checklist" : "Ver checklist"}
                     </Button>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <Button
+                    {canManageCompany && <Button
                       variant="outline"
                       size="sm"
                       className="border-teal-300 text-teal-700 hover:bg-teal-50 text-xs"
@@ -427,7 +439,7 @@ export default function ManagementSystems() {
                     >
                       <Upload size={13} className="mr-1" /> Subir archivo de
                       certificación
-                    </Button>
+                    </Button>}
                     <Button
                       variant="outline"
                       size="sm"
@@ -437,7 +449,7 @@ export default function ManagementSystems() {
                       <Eye size={13} className="mr-1" /> Ver archivo de
                       certificación
                     </Button>
-                    <Button
+                    {canManageCompany && <Button
                       variant="outline"
                       size="sm"
                       className="border-teal-300 text-teal-700 hover:bg-teal-50 text-xs"
@@ -446,7 +458,7 @@ export default function ManagementSystems() {
                     >
                       <Upload size={13} className="mr-1" /> Subir checklist de
                       certificación
-                    </Button>
+                    </Button>}
                     <Button
                       variant="outline"
                       size="sm"
@@ -458,7 +470,7 @@ export default function ManagementSystems() {
                     </Button>
                   </div>
 
-                  <div className="flex justify-end mt-3">
+                  {canManageCompany && <div className="flex justify-end mt-3">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -467,12 +479,12 @@ export default function ManagementSystems() {
                     >
                       <Trash2 size={14} className="mr-1" /> Eliminar
                     </Button>
-                  </div>
+                  </div>}
                 </CardContent>
               </Card>
             ))}
 
-            <Button
+            {canManageCompany && <Button
               variant="outline"
               className="w-full border-dashed border-teal-300 text-teal-600 hover:bg-teal-50"
               onClick={handleAdd}
@@ -484,7 +496,7 @@ export default function ManagementSystems() {
                 <Plus size={16} className="mr-2" />
               )}
               + Agregar nuevo Sistema de Gestión
-            </Button>
+            </Button>}
           </div>
         )}
 
@@ -510,6 +522,7 @@ export default function ManagementSystems() {
             onDelete={id =>
               deleteFileMutation.mutate({ id, companyId: companyId! })
             }
+            canDelete={canManageCompany}
           />
         )}
       </div>

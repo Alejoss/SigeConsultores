@@ -1,11 +1,12 @@
 import { z } from "zod";
-import { companyProcedure, router } from "../_core/trpc";
+import { companyManagementProcedure, companyReadProcedure, companyProcedure, router } from "../_core/trpc";
+import { assertCompanyRecordManagementAccess } from "../_core/companyPermissions";
 import { getDb } from "../db";
 import { strategicObjectives } from "../../drizzle/schema";
 import { eq, asc } from "drizzle-orm";
 
 export const strategicObjectivesRouter = router({
-  create: companyProcedure
+  create: companyManagementProcedure
     .input(z.object({
       companyId: z.number(),
       name: z.string(),
@@ -36,7 +37,7 @@ export const strategicObjectivesRouter = router({
       return { success: true };
     }),
 
-  list: companyProcedure
+  list: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -67,7 +68,8 @@ export const strategicObjectivesRouter = router({
       responsible: z.string().optional(),
       deadline: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertCompanyRecordManagementAccess(ctx, "strategicObjective", input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -90,7 +92,8 @@ export const strategicObjectivesRouter = router({
 
   delete: companyProcedure
     .input(z.object({ objectiveId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertCompanyRecordManagementAccess(ctx, "strategicObjective", input.objectiveId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

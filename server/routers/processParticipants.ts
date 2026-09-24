@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { companyProcedure, router } from "../_core/trpc";
+import {
+  assertProcessCharacterizationAccess,
+  assertProcessParticipantAccess,
+} from "../_core/companyPermissions";
 import { getDb } from "../db";
 import {
   participantWorkerAssignments,
@@ -57,7 +61,8 @@ const companyInput = z.object({ companyId: z.number().int().positive() });
 export const processParticipantsRouter = router({
   list: companyProcedure
     .input(companyInput.extend({ processCharacterizationId: z.number().int().positive() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessCharacterizationAccess(ctx, input.processCharacterizationId);
       const db = await getDb();
       if (!db) return [];
       const [characterization] = await db.select({
@@ -88,7 +93,8 @@ export const processParticipantsRouter = router({
 
   payrollAreaOptions: companyProcedure
     .input(companyInput.extend({ processCharacterizationId: z.number().int().positive() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessCharacterizationAccess(ctx, input.processCharacterizationId);
       const db = await getDb();
       if (!db) return { payrollArea: null, suggestedPayrollArea: null, areas: [] as string[] };
 
@@ -140,7 +146,8 @@ export const processParticipantsRouter = router({
       processCharacterizationId: z.number().int().positive(),
       payrollArea: z.string().trim().min(1).max(255),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessCharacterizationAccess(ctx, input.processCharacterizationId);
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [characterization] = await db.select({
@@ -202,7 +209,8 @@ export const processParticipantsRouter = router({
       authority: z.string().optional(),
       orderIndex: z.number(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessCharacterizationAccess(ctx, input.processCharacterizationId);
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
 
@@ -226,7 +234,8 @@ export const processParticipantsRouter = router({
       responsibility: z.string().optional(),
       authority: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessParticipantAccess(ctx, input.id);
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
 
@@ -244,7 +253,8 @@ export const processParticipantsRouter = router({
 
   delete: companyProcedure
     .input(companyInput.extend({ id: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessParticipantAccess(ctx, input.id);
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [participant] = await db.select({ id: processParticipants.id })
@@ -293,7 +303,8 @@ export const processParticipantsRouter = router({
       processCharacterizationId: z.number().int().positive(),
       year: z.number().int().min(2020).max(2100),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessCharacterizationAccess(ctx, input.processCharacterizationId);
       const db = await getDb();
       if (!db) return {
         participants: [],
@@ -522,7 +533,8 @@ export const processParticipantsRouter = router({
 
   assignWorker: companyProcedure
     .input(companyInput.extend({ processParticipantId: z.number().int().positive(), payrollEmployeeId: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessParticipantAccess(ctx, input.processParticipantId);
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [participant] = await db.select({
@@ -580,7 +592,7 @@ export const processParticipantsRouter = router({
 
   unassignWorker: companyProcedure
     .input(companyInput.extend({ assignmentId: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [assignment] = await db.select({
@@ -592,6 +604,7 @@ export const processParticipantsRouter = router({
         .innerJoin(payrollEmployees, eq(participantWorkerAssignments.payrollEmployeeId, payrollEmployees.id))
         .where(and(eq(participantWorkerAssignments.id, input.assignmentId), eq(payrollEmployees.companyId, input.companyId)));
       if (!assignment) throw new Error("No se encontró la asignación del trabajador");
+      await assertProcessParticipantAccess(ctx, assignment.processParticipantId);
       if (assignment.currentProcessParticipantId === assignment.processParticipantId) {
         await db.update(payrollEmployees)
           .set({ currentProcessParticipantId: null, updatedAt: new Date() })
@@ -608,14 +621,15 @@ export const processParticipantsRouter = router({
       name: z.string().trim().min(2).max(255),
       monthlyTarget: z.number().positive(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
-      const [assignment] = await db.select({ id: participantWorkerAssignments.id })
+      const [assignment] = await db.select({ id: participantWorkerAssignments.id, processParticipantId: participantWorkerAssignments.processParticipantId })
         .from(participantWorkerAssignments)
         .innerJoin(payrollEmployees, eq(participantWorkerAssignments.payrollEmployeeId, payrollEmployees.id))
         .where(and(eq(participantWorkerAssignments.id, input.assignmentId), eq(payrollEmployees.companyId, input.companyId)));
       if (!assignment) throw new Error("No se encontró la asignación del trabajador");
+      await assertProcessParticipantAccess(ctx, assignment.processParticipantId);
       const result = await db.insert(participantWorkerKpis).values({
         participantWorkerAssignmentId: input.assignmentId,
         year: input.year,
@@ -631,15 +645,16 @@ export const processParticipantsRouter = router({
       name: z.string().trim().min(2).max(255),
       monthlyTarget: z.number().positive(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
-      const [kpi] = await db.select({ id: participantWorkerKpis.id })
+      const [kpi] = await db.select({ id: participantWorkerKpis.id, processParticipantId: participantWorkerAssignments.processParticipantId })
         .from(participantWorkerKpis)
         .innerJoin(participantWorkerAssignments, eq(participantWorkerKpis.participantWorkerAssignmentId, participantWorkerAssignments.id))
         .innerJoin(payrollEmployees, eq(participantWorkerAssignments.payrollEmployeeId, payrollEmployees.id))
         .where(and(eq(participantWorkerKpis.id, input.kpiId), eq(payrollEmployees.companyId, input.companyId)));
       if (!kpi) throw new Error("No se encontró el KPI seleccionado");
+      await assertProcessParticipantAccess(ctx, kpi.processParticipantId);
       await db.update(participantWorkerKpis).set({
         name: input.name,
         monthlyTarget: String(input.monthlyTarget),
@@ -650,15 +665,16 @@ export const processParticipantsRouter = router({
 
   deleteKpi: companyProcedure
     .input(companyInput.extend({ kpiId: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
-      const [kpi] = await db.select({ id: participantWorkerKpis.id })
+      const [kpi] = await db.select({ id: participantWorkerKpis.id, processParticipantId: participantWorkerAssignments.processParticipantId })
         .from(participantWorkerKpis)
         .innerJoin(participantWorkerAssignments, eq(participantWorkerKpis.participantWorkerAssignmentId, participantWorkerAssignments.id))
         .innerJoin(payrollEmployees, eq(participantWorkerAssignments.payrollEmployeeId, payrollEmployees.id))
         .where(and(eq(participantWorkerKpis.id, input.kpiId), eq(payrollEmployees.companyId, input.companyId)));
       if (!kpi) throw new Error("No se encontró el KPI seleccionado");
+      await assertProcessParticipantAccess(ctx, kpi.processParticipantId);
       await db.delete(participantWorkerKpiValues).where(eq(participantWorkerKpiValues.participantWorkerKpiId, input.kpiId));
       await db.delete(participantWorkerKpis).where(eq(participantWorkerKpis.id, input.kpiId));
       return { success: true };
@@ -670,15 +686,16 @@ export const processParticipantsRouter = router({
       month: z.number().int().min(1).max(12),
       actualValue: z.number().nonnegative().nullable(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
-      const [kpi] = await db.select({ id: participantWorkerKpis.id })
+      const [kpi] = await db.select({ id: participantWorkerKpis.id, processParticipantId: participantWorkerAssignments.processParticipantId })
         .from(participantWorkerKpis)
         .innerJoin(participantWorkerAssignments, eq(participantWorkerKpis.participantWorkerAssignmentId, participantWorkerAssignments.id))
         .innerJoin(payrollEmployees, eq(participantWorkerAssignments.payrollEmployeeId, payrollEmployees.id))
         .where(and(eq(participantWorkerKpis.id, input.kpiId), eq(payrollEmployees.companyId, input.companyId)));
       if (!kpi) throw new Error("No se encontró el KPI seleccionado");
+      await assertProcessParticipantAccess(ctx, kpi.processParticipantId);
       const existing = await db.select().from(participantWorkerKpiValues).where(and(
         eq(participantWorkerKpiValues.participantWorkerKpiId, input.kpiId),
         eq(participantWorkerKpiValues.month, input.month),

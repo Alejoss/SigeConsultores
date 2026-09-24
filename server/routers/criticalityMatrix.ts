@@ -1,5 +1,6 @@
 import z from "zod";
 import { protectedProcedure, router, companyProcedure } from "../_core/trpc";
+import { assertProcessAccessById, assertProcessCriticalityAccess } from "../_core/companyPermissions";
 import { getDb } from "../db";
 import { criticalityMatrix, stakeholders } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
@@ -8,7 +9,8 @@ import { sql } from "drizzle-orm";
 export const criticalityMatrixRouter = router({
   getByProcessId: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return [];
 
@@ -20,7 +22,8 @@ export const criticalityMatrixRouter = router({
 
   getWithStakeholders: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return [];
 
@@ -70,7 +73,9 @@ export const criticalityMatrixRouter = router({
       actionSource: z.string().optional(),
       surveyId: z.number().optional().nullable(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      if (input.id) await assertProcessCriticalityAccess(ctx, input.id);
+      else await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -186,7 +191,8 @@ export const criticalityMatrixRouter = router({
 
   delete: companyProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessCriticalityAccess(ctx, input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -205,7 +211,8 @@ export const criticalityMatrixRouter = router({
       isInternal: z.boolean().optional(),
       orderIndex: z.number().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

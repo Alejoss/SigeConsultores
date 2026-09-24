@@ -13,6 +13,7 @@ import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
 import { getAxisBackPathForRole } from "@/lib/sessionScope";
 import { exportStrategicObjectivesToPDF } from "@/lib/exportStrategicObjectivesToPDF";
+import { CompanyReadOnlyNotice, useCompanyManagementPermission } from "@/hooks/useCompanyManagementPermission";
 
 const MAX_OBJECTIVES = 20;
 
@@ -39,6 +40,7 @@ export default function StrategicObjectives() {
     return getCompanyIdFromLocationOrStorage();
   });
   const [companyName] = useState(() => processLeaderSession?.companyName || localStorage.getItem("selectedCompanyName") || "Empresa");
+  const { canManageCompany } = useCompanyManagementPermission(companyId);
   
   // Update companyId when process leader session changes
   useEffect(() => {
@@ -142,6 +144,7 @@ export default function StrategicObjectives() {
   });
 
   const handleAddObjective = async () => {
+    if (!canManageCompany) return;
     if (!formData.name.trim()) {
       toast.error("Por favor ingresa un nombre para el objetivo");
       return;
@@ -179,6 +182,7 @@ export default function StrategicObjectives() {
   };
 
   const handleEditObjective = (objective: any) => {
+    if (!canManageCompany) return;
     setFormData({
       name: objective.name,
       description: objective.description || "",
@@ -191,6 +195,7 @@ export default function StrategicObjectives() {
   };
 
   const handleDeleteObjective = async (objectiveId: number) => {
+    if (!canManageCompany) return;
     if (confirm("¿Estás seguro de que deseas eliminar este objetivo?")) {
       await deleteMutation.mutateAsync({ objectiveId });
     }
@@ -263,8 +268,10 @@ export default function StrategicObjectives() {
           </div>
         </div>
 
+        {!canManageCompany && <CompanyReadOnlyNotice />}
+
         {/* Form */}
-        {showForm && (
+        {canManageCompany && showForm && (
           <Card className="border-2 border-blue-300 bg-blue-50">
             <CardHeader>
               <CardTitle className="text-lg">
@@ -339,7 +346,7 @@ export default function StrategicObjectives() {
         )}
 
         {/* Add Button */}
-        {!showForm && (
+        {canManageCompany && !showForm && (
           <Button
             onClick={() => setShowForm(true)}
             disabled={objectives.length >= MAX_OBJECTIVES}
@@ -406,7 +413,7 @@ export default function StrategicObjectives() {
                           </div>
                         )}
                       </div>
-                      <div className="flex gap-2">
+                      {canManageCompany && <div className="flex gap-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -426,7 +433,7 @@ export default function StrategicObjectives() {
                         >
                           <Trash2 size={16} />
                         </Button>
-                      </div>
+                      </div>}
                     </CardContent>
                   </Card>
                 ))}

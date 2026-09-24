@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router, companyProcedure } from "../_core/trpc";
+import { assertProcessAccessById } from "../_core/companyPermissions";
 import { getDb } from "../db";
 import { subprocessMaps } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -11,7 +12,8 @@ export const subprocessNeedsRouter = router({
    */
   getNeedsFromSubprocess: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return { needs: [] };
 
@@ -54,7 +56,8 @@ export const subprocessNeedsRouter = router({
    */
   getNeedsWithSources: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return { needsWithSources: [] };
 

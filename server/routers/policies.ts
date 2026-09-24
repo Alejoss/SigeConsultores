@@ -1,11 +1,12 @@
 import { z } from "zod";
-import { protectedProcedure, router, companyProcedure } from "../_core/trpc";
+import { protectedProcedure, router, companyManagementProcedure, companyReadProcedure, companyProcedure } from "../_core/trpc";
+import { assertCompanyRecordManagementAccess, assertCompanyRecordReadAccess } from "../_core/companyPermissions";
 import { getDb } from "../db";
 import { policies, policyObjectives } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export const policiesRouter = router({
-  get: companyProcedure
+  get: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -17,7 +18,7 @@ export const policiesRouter = router({
       return result.length > 0 ? result[0] : null;
     }),
 
-  upsert: companyProcedure
+  upsert: companyManagementProcedure
     .input(z.object({
       companyId: z.number(),
       policyText: z.string(),
@@ -61,7 +62,8 @@ export const policiesRouter = router({
   // Policy Objectives
   listObjectives: companyProcedure
     .input(z.object({ policyId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertCompanyRecordReadAccess(ctx, "policy", input.policyId);
       const db = await getDb();
       if (!db) return [];
 
@@ -77,7 +79,8 @@ export const policiesRouter = router({
       objective: z.string(),
       orderIndex: z.number(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertCompanyRecordManagementAccess(ctx, "policy", input.policyId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -92,7 +95,8 @@ export const policiesRouter = router({
 
   deleteObjective: companyProcedure
     .input(z.object({ objectiveId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertCompanyRecordManagementAccess(ctx, "policyObjective", input.objectiveId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

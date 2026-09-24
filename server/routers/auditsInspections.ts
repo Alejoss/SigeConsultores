@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, companyProcedure } from "../_core/trpc";
+import { router, companyReadProcedure, companyProcedure, companyManagementProcedure  } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { eq, and, asc, inArray } from "drizzle-orm";
@@ -24,7 +24,7 @@ export const auditsInspectionsRouter = router({
   // ── Management Systems ──────────────────────────────────────────────────────
 
   /** Listar todos los sistemas de gestión de una empresa */
-  listManagementSystems: companyProcedure
+  listManagementSystems: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -37,7 +37,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Crear un nuevo sistema de gestión */
-  createManagementSystem: companyProcedure
+  createManagementSystem: companyManagementProcedure
     .input(z.object({
       companyId: z.number(),
       systemName: z.string().default(""),
@@ -65,7 +65,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Actualizar un sistema de gestión (autosave) */
-  updateManagementSystem: companyProcedure
+  updateManagementSystem: companyManagementProcedure
     .input(z.object({
       id: z.number(),
       companyId: z.number(),
@@ -89,7 +89,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Eliminar un sistema de gestión */
-  deleteManagementSystem: companyProcedure
+  deleteManagementSystem: companyManagementProcedure
     .input(z.object({ id: z.number(), companyId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -111,7 +111,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Subir archivo (certificación o checklist) a un sistema de gestión */
-  uploadManagementSystemFile: companyProcedure
+  uploadManagementSystemFile: companyManagementProcedure
     .input(z.object({
       managementSystemId: z.number(),
       companyId: z.number(),
@@ -146,7 +146,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Listar archivos de un sistema de gestión con URLs frescas */
-  listManagementSystemFiles: companyProcedure
+  listManagementSystemFiles: companyReadProcedure
     .input(z.object({
       managementSystemId: z.number(),
       companyId: z.number(),
@@ -172,7 +172,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Eliminar archivo de sistema de gestión */
-  deleteManagementSystemFile: companyProcedure
+  deleteManagementSystemFile: companyManagementProcedure
     .input(z.object({ id: z.number(), companyId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -187,7 +187,7 @@ export const auditsInspectionsRouter = router({
   // ── Audits ──────────────────────────────────────────────────────────────────
 
   /** Listar auditorías de una empresa */
-  listAudits: companyProcedure
+  listAudits: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -216,7 +216,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Crear nueva auditoría */
-  createAudit: companyProcedure
+  createAudit: companyManagementProcedure
     .input(z.object({ companyId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -249,7 +249,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Actualizar auditoría (autosave) */
-  updateAudit: companyProcedure
+  updateAudit: companyManagementProcedure
     .input(z.object({
       id: z.number(),
       companyId: z.number(),
@@ -273,7 +273,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Eliminar auditoría */
-  deleteAudit: companyProcedure
+  deleteAudit: companyManagementProcedure
     .input(z.object({ id: z.number(), companyId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -320,7 +320,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Subir archivo de hallazgos de una auditoría */
-  uploadAuditFile: companyProcedure
+  uploadAuditFile: companyManagementProcedure
     .input(z.object({
       auditId: z.number(),
       companyId: z.number(),
@@ -353,7 +353,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Listar archivos de hallazgos de una auditoría */
-  listAuditFiles: companyProcedure
+  listAuditFiles: companyReadProcedure
     .input(z.object({ auditId: z.number(), companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -371,7 +371,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Eliminar archivo de hallazgos de auditoría */
-  deleteAuditFile: companyProcedure
+  deleteAuditFile: companyManagementProcedure
     .input(z.object({ id: z.number(), companyId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -386,7 +386,7 @@ export const auditsInspectionsRouter = router({
   // ── Inspections ─────────────────────────────────────────────────────────────
 
   /** Listar inspecciones de una empresa */
-  listInspections: companyProcedure
+  listInspections: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -411,7 +411,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Crear nueva inspección */
-  createInspection: companyProcedure
+  createInspection: companyManagementProcedure
     .input(z.object({ companyId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -438,7 +438,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Actualizar inspección (autosave) */
-  updateInspection: companyProcedure
+  updateInspection: companyManagementProcedure
     .input(z.object({
       id: z.number(),
       companyId: z.number(),
@@ -462,7 +462,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Eliminar inspección */
-  deleteInspection: companyProcedure
+  deleteInspection: companyManagementProcedure
     .input(z.object({ id: z.number(), companyId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -509,7 +509,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Subir archivo de hallazgos de una inspección */
-  uploadInspectionFile: companyProcedure
+  uploadInspectionFile: companyManagementProcedure
     .input(z.object({
       inspectionId: z.number(),
       companyId: z.number(),
@@ -542,7 +542,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Listar archivos de hallazgos de una inspección */
-  listInspectionFiles: companyProcedure
+  listInspectionFiles: companyReadProcedure
     .input(z.object({ inspectionId: z.number(), companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -560,7 +560,7 @@ export const auditsInspectionsRouter = router({
     }),
 
   /** Eliminar archivo de hallazgos de inspección */
-  deleteInspectionFile: companyProcedure
+  deleteInspectionFile: companyManagementProcedure
     .input(z.object({ id: z.number(), companyId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();

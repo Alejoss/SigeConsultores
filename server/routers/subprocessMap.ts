@@ -3,11 +3,13 @@ import { protectedProcedure, router, companyProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { subprocessMaps } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { assertProcessAccessById } from "../_core/companyPermissions";
 
 export const subprocessMapRouter = router({
   get: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return null;
 
@@ -32,7 +34,8 @@ export const subprocessMapRouter = router({
       subprocesos: z.string(),
       salida: z.string(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

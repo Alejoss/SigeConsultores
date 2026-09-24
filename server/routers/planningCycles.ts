@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { companyProcedure, router } from "../_core/trpc";
+import { companyReadProcedure, companyProcedure, router } from "../_core/trpc";
+import { assertProcessAccessById } from "../_core/companyPermissions";
 import { getDb } from "../db";
 import { getConsolidatedScheduleActivities } from "../lib/consolidatedScheduleActivities";
 import {
@@ -185,8 +186,17 @@ async function getOrCreateActivation(companyId: number, targetYear: number, acco
   return created[0];
 }
 
+function assertCompanyCycleManagement(
+  ctx: { user: { role?: string } | null; manager: { companyId: number } | null },
+  companyId: number
+) {
+  if (ctx.user?.role === "admin") return;
+  if (ctx.manager?.companyId === companyId) return;
+  throw new Error("Solo el Gerente General de la empresa o el Administrador puede gestionar el ciclo empresarial");
+}
+
 export const planningCyclesRouter = router({
-  activeYear: companyProcedure
+  activeYear: companyReadProcedure
     .input(companyInput)
     .query(async ({ input }) => {
       const db = await getDb();
@@ -206,7 +216,8 @@ export const planningCyclesRouter = router({
 
   overview: companyProcedure
     .input(companyInput.extend({ processId: z.number().int().positive(), targetYear: z.number().int().min(2020).max(2100) }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [activation] = await db.select().from(planningCycleActivations)
@@ -248,6 +259,7 @@ export const planningCyclesRouter = router({
   prepareDraft: companyProcedure
     .input(companyInput.extend({ processId: z.number().int().positive(), targetYear: z.number().int().min(2020).max(2100) }))
     .mutation(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
       const sourceYear = input.targetYear - 1;
@@ -328,6 +340,7 @@ export const planningCyclesRouter = router({
       if (!cycle || cycle.companyId !== input.companyId || !["in_review", "ready"].includes(cycle.status)) {
         throw new Error("El borrador no está disponible para cambios");
       }
+      await assertProcessAccessById(ctx, cycle.processId);
       await db.update(planningCycleDecisions).set({
         decision: input.decision as CycleDecision,
         decisionNote: input.note?.trim() || null,
@@ -344,6 +357,7 @@ export const planningCyclesRouter = router({
       if (!db) throw new Error("Base de datos no disponible");
       const [cycle] = await db.select().from(planningCycles).where(eq(planningCycles.id, input.cycleId)).limit(1);
       if (!cycle || cycle.companyId !== input.companyId) throw new Error("Ciclo no encontrado");
+      await assertProcessAccessById(ctx, cycle.processId);
       const decisions = await db.select().from(planningCycleDecisions)
         .where(eq(planningCycleDecisions.targetCycleId, input.cycleId));
       if (!decisions.length || decisions.some((decision) => decision.decision === "pending")) {
@@ -368,17 +382,17 @@ export const planningCyclesRouter = router({
       note: z.string().max(2000).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.manager || ctx.manager.companyId !== input.companyId) {
-        throw new Error("Solo el Gerente General de la empresa puede revisar un ciclo");
-      }
+      assertCompanyCycleManagement(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [cycle] = await db.select().from(planningCycles).where(eq(planningCycles.id, input.cycleId)).limit(1);
       if (!cycle || cycle.companyId !== input.companyId || cycle.status !== "ready") {
         throw new Error("El proceso no está disponible para revisión gerencial");
       }
-      const [managerAccount] = await db.select({ id: accounts.id }).from(accounts)
-        .where(eq(accounts.email, ctx.manager.managerEmail)).limit(1);
+      const [managerAccount] = ctx.manager
+        ? await db.select({ id: accounts.id }).from(accounts)
+          .where(eq(accounts.email, ctx.manager.managerEmail)).limit(1)
+        : [];
       await db.update(planningCycles).set({
         status: input.decision === "returned" ? "in_review" : "ready",
         managerApprovalStatus: input.decision,
@@ -391,7 +405,8 @@ export const planningCyclesRouter = router({
 
   managerOverview: companyProcedure
     .input(companyInput.extend({ targetYear: z.number().int().min(2020).max(2100) }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      assertCompanyCycleManagement(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [activation] = await db.select().from(planningCycleActivations).where(and(
@@ -435,9 +450,7 @@ export const planningCyclesRouter = router({
   setDeadline: companyProcedure
     .input(companyInput.extend({ targetYear: z.number().int().min(2020).max(2100), deadline: z.string().nullable().optional() }))
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.manager || ctx.manager.companyId !== input.companyId) {
-        throw new Error("Solo el Gerente General de la empresa puede definir la fecha límite");
-      }
+      assertCompanyCycleManagement(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
       const activation = await getOrCreateActivation(input.companyId, input.targetYear, ctx.user?.id);
@@ -451,9 +464,7 @@ export const planningCyclesRouter = router({
   activateCompanyCycle: companyProcedure
     .input(companyInput.extend({ targetYear: z.number().int().min(2020).max(2100) }))
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.manager || ctx.manager.companyId !== input.companyId) {
-        throw new Error("Solo el Gerente General de la empresa puede activar el ciclo empresarial");
-      }
+      assertCompanyCycleManagement(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [activation] = await db.select().from(planningCycleActivations).where(and(

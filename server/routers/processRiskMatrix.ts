@@ -3,11 +3,13 @@ import { protectedProcedure, router, companyProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { processRiskMatrices } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { assertProcessAccessById, assertProcessRiskAccess } from "../_core/companyPermissions";
 
 export const processRiskMatrixRouter = router({
   list: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return [];
 
@@ -26,7 +28,8 @@ export const processRiskMatrixRouter = router({
       riskLevel: z.number().optional(),
       mitigation: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -51,7 +54,8 @@ export const processRiskMatrixRouter = router({
       riskLevel: z.number().optional(),
       mitigation: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessRiskAccess(ctx, input.riskId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -71,7 +75,8 @@ export const processRiskMatrixRouter = router({
 
   delete: companyProcedure
     .input(z.object({ riskId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessRiskAccess(ctx, input.riskId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

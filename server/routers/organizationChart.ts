@@ -1,6 +1,17 @@
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import { companyProcedure, router } from "../_core/trpc";
+import { eq } from "drizzle-orm";
+import {
+  organizationChart,
+  organizationChartFiles,
+  organizationChartNodes,
+} from "../../drizzle/schema";
+import { getDb } from "../db";
+import {
+  assertCompanyPersonnelManagementAccess,
+  assertCompanyReadAccess,
+} from "../_core/companyPermissions";
 import { storagePut, storageGet, storageDelete } from "../storage";
 import {
   createOrganizationChart,
@@ -47,6 +58,44 @@ const CreateNodeInput = z.object({
   order: z.number(),
 });
 
+async function getChartCompanyId(chartId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Base de datos no disponible");
+  const [chart] = await db
+    .select({ companyId: organizationChart.companyId })
+    .from(organizationChart)
+    .where(eq(organizationChart.id, chartId))
+    .limit(1);
+  if (!chart) throw new Error("No se encontró el organigrama seleccionado.");
+  return chart.companyId;
+}
+
+async function getNodeCompanyId(nodeId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Base de datos no disponible");
+  const [node] = await db
+    .select({ companyId: organizationChart.companyId })
+    .from(organizationChartNodes)
+    .innerJoin(organizationChart, eq(organizationChartNodes.chartId, organizationChart.id))
+    .where(eq(organizationChartNodes.id, nodeId))
+    .limit(1);
+  if (!node) throw new Error("No se encontró el nodo seleccionado.");
+  return node.companyId;
+}
+
+async function getFileCompanyId(fileId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Base de datos no disponible");
+  const [file] = await db
+    .select({ companyId: organizationChart.companyId })
+    .from(organizationChartFiles)
+    .innerJoin(organizationChart, eq(organizationChartFiles.chartId, organizationChart.id))
+    .where(eq(organizationChartFiles.id, fileId))
+    .limit(1);
+  if (!file) throw new Error("No se encontró el archivo seleccionado.");
+  return file.companyId;
+}
+
 export const organizationChartRouter = router({
   /**
    * Create a new organization chart for a company
@@ -54,6 +103,7 @@ export const organizationChartRouter = router({
   createChart: companyProcedure
     .input(CreateChartInput)
     .mutation(async ({ input, ctx }) => {
+      assertCompanyPersonnelManagementAccess(ctx, input.companyId);
       try {
         const chart = await createOrganizationChart(input.companyId, input.name, input.description);
         return {
@@ -71,7 +121,8 @@ export const organizationChartRouter = router({
    */
   getChart: companyProcedure
     .input(z.object({ companyId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      assertCompanyReadAccess(ctx, input.companyId);
       try {
         return await getCompanyOrganizationChart(input.companyId);
       } catch (error) {
@@ -86,6 +137,7 @@ export const organizationChartRouter = router({
   createNode: companyProcedure
     .input(CreateNodeInput)
     .mutation(async ({ input, ctx }) => {
+      assertCompanyPersonnelManagementAccess(ctx, await getChartCompanyId(input.chartId));
       try {
         const node = await createOrganizationChartNode(input.chartId, {
           nodeId: input.nodeId,
@@ -117,6 +169,7 @@ export const organizationChartRouter = router({
   updateNode: companyProcedure
     .input(UpdateNodeInput)
     .mutation(async ({ input, ctx }) => {
+      assertCompanyPersonnelManagementAccess(ctx, await getNodeCompanyId(input.nodeId));
       try {
         await updateOrganizationChartNode(input.nodeId, {
           position: input.position,
@@ -141,6 +194,7 @@ export const organizationChartRouter = router({
   deleteNode: companyProcedure
     .input(z.object({ nodeId: z.number() }))
     .mutation(async ({ input, ctx }) => {
+      assertCompanyPersonnelManagementAccess(ctx, await getNodeCompanyId(input.nodeId));
       try {
         await deleteOrganizationChartNode(input.nodeId);
         return { success: true };
@@ -155,7 +209,8 @@ export const organizationChartRouter = router({
    */
   getNodes: companyProcedure
     .input(z.object({ chartId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      assertCompanyReadAccess(ctx, await getChartCompanyId(input.chartId));
       try {
         return await getOrganizationChartNodes(input.chartId);
       } catch (error) {
@@ -174,6 +229,7 @@ export const organizationChartRouter = router({
       fileData: z.array(z.number()),
     }))
     .mutation(async ({ input, ctx }) => {
+      assertCompanyPersonnelManagementAccess(ctx, await getChartCompanyId(input.chartId));
       const userId = ctx.user?.id ?? ctx.processLeader?.processLeaderId ?? 0;
       const userName =
         ctx.user?.name ??
@@ -229,7 +285,8 @@ export const organizationChartRouter = router({
    */
   deletePDF: companyProcedure
     .input(z.object({ fileId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      assertCompanyPersonnelManagementAccess(ctx, await getFileCompanyId(input.fileId));
       console.log("[OrganizationChart] deletePDF fileId:", input.fileId);
       try {
         const file = await deleteOrganizationChartFile(input.fileId);
@@ -251,7 +308,8 @@ export const organizationChartRouter = router({
    */
   getFiles: companyProcedure
     .input(z.object({ chartId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      assertCompanyReadAccess(ctx, await getChartCompanyId(input.chartId));
       try {
         const files = await getOrganizationChartFiles(input.chartId);
 
