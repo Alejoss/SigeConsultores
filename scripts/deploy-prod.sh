@@ -66,6 +66,24 @@ if [ "$MYSQL_READY" -ne 1 ]; then
 fi
 echo "MySQL is ready."
 
+# Ensure the application schema exists before mysqldump (ping alone is not enough).
+echo "Waiting for database schema to be available..."
+SCHEMA_READY=0
+for _ in $(seq 1 30); do
+  if "${COMPOSE[@]}" exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "USE \`$MYSQL_DATABASE\`"' >/dev/null 2>&1; then
+    SCHEMA_READY=1
+    break
+  fi
+  sleep 2
+done
+if [ "$SCHEMA_READY" -ne 1 ]; then
+  echo "Configured MYSQL_DATABASE schema is not available inside MySQL; listing schemas:" >&2
+  "${COMPOSE[@]}" exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SHOW DATABASES;"' >&2 || true
+  echo "Deployment aborted." >&2
+  exit 1
+fi
+echo "Database schema is available."
+
 # Respaldo transaccional obligatorio antes de cambiar la versión de la aplicación.
 # Se conserva en el servidor de producción y se valida antes de continuar.
 BACKUP_DIR="${ROOT}/backups"
