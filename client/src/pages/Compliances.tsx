@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { ChevronUp, ExternalLink, FileText, Link2, Upload } from "lucide-react";
 import { ProcessLinkDialog } from "@/components/ProcessLinkDialog";
 import { SourceEvidenceButton } from "@/components/SourceEvidenceButton";
+import { CompanyReadOnlyNotice, useCompanyManagementPermission } from "@/hooks/useCompanyManagementPermission";
 
 const MONTHS = [
   "Ene",
@@ -205,6 +206,7 @@ export default function Compliances() {
     : storedCompanyId
       ? parseInt(storedCompanyId)
       : 0;
+  const { canManageCompany } = useCompanyManagementPermission(companyId);
 
   // Siempre incluir companyId en la URL de retorno para mantener el contexto
   const effectiveCompanyId = queryCompanyId || storedCompanyId;
@@ -281,6 +283,7 @@ export default function Compliances() {
   }, [compliances]);
 
   const uploadEvidencePdf = async (complianceId: number, file: File) => {
+    if (!canManageCompany) return;
     if (
       file.type !== "application/pdf" ||
       !file.name.toLowerCase().endsWith(".pdf")
@@ -328,6 +331,7 @@ export default function Compliances() {
   };
 
   const handleAddCompliance = async () => {
+    if (!canManageCompany) return;
     if (!formData.requirement || !formData.obligationType) {
       toast.error("Por favor completa los campos requeridos");
       return;
@@ -373,6 +377,7 @@ export default function Compliances() {
 
   const buildComplianceUpdate = (id: number) => ({
     id,
+    companyId,
     requirement: formData.requirement,
     description: formData.description || undefined,
     obligationType: formData.obligationType as any,
@@ -394,6 +399,7 @@ export default function Compliances() {
   });
 
   const handleUpdateCompliance = async (id: number) => {
+    if (!canManageCompany) return;
     if (!formData.requirement || !formData.obligationType) return;
     try {
       await updateMutation.mutateAsync(buildComplianceUpdate(id));
@@ -404,6 +410,7 @@ export default function Compliances() {
   };
 
   const handleSaveEdit = async () => {
+    if (!canManageCompany) return;
     if (!editingId || !formData.requirement || !formData.obligationType) {
       toast.error("Por favor completa los campos requeridos");
       return;
@@ -424,10 +431,11 @@ export default function Compliances() {
   };
 
   const handleDeleteCompliance = async (id: number) => {
+    if (!canManageCompany) return;
     if (!confirm("¿Estás seguro de que deseas eliminar esta obligación?"))
       return;
     try {
-      await deleteMutation.mutateAsync({ id });
+      await deleteMutation.mutateAsync({ id, companyId });
       toast.success("Obligación eliminada exitosamente");
       await utils.companyCompliances.list.invalidate({ companyId });
     } catch {
@@ -436,6 +444,7 @@ export default function Compliances() {
   };
 
   const handleEditCompliance = (compliance: Compliance) => {
+    if (!canManageCompany) return;
     setFormData({
       requirement: compliance.requirement,
       description: compliance.description || "",
@@ -507,6 +516,8 @@ export default function Compliances() {
             </Card>
           </div>
         </div>
+
+        {!canManageCompany && <CompanyReadOnlyNotice />}
 
         {/* OBLIGACIONES REGISTRADAS */}
         <div className="space-y-4 mb-8">
@@ -795,7 +806,7 @@ export default function Compliances() {
                               deben atender este cumplimiento.
                             </p>
                           </div>
-                          <Button
+                          {canManageCompany && <Button
                             type="button"
                             variant="outline"
                             size="sm"
@@ -804,7 +815,7 @@ export default function Compliances() {
                           >
                             <Link2 className="mr-1 h-4 w-4" />
                             Vincular a procesos
-                          </Button>
+                          </Button>}
                         </div>
 
                         {/* % Cumplimiento */}
@@ -910,7 +921,7 @@ export default function Compliances() {
                           </div>
                         )}
 
-                        <div className="flex gap-2 pt-4">
+                        {canManageCompany && <div className="flex gap-2 pt-4">
                           <Button
                             variant="outline"
                             size="sm"
@@ -927,7 +938,7 @@ export default function Compliances() {
                           >
                             Eliminar
                           </Button>
-                        </div>
+                        </div>}
                       </div>
                     </CardContent>
                   )}
@@ -951,7 +962,7 @@ export default function Compliances() {
         )}
 
         {/* FORMULARIO NUEVA / EDITAR OBLIGACIÓN */}
-        <Card className="mb-8 bg-white">
+        {canManageCompany && <Card className="mb-8 bg-white">
           <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50 border-b">
             <CardTitle>
               {editingId ? "Editar Obligación" : "Nueva Obligación"}
@@ -1318,7 +1329,7 @@ export default function Compliances() {
               )}
             </div>
           </CardContent>
-        </Card>
+        </Card>}
       </div>
     </div>
   );

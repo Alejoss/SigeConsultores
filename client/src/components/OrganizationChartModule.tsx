@@ -10,9 +10,10 @@ import { Loader2 } from "lucide-react";
 
 interface OrganizationChartModuleProps {
   companyId: number;
+  canManage?: boolean;
 }
 
-export default function OrganizationChartModule({ companyId }: OrganizationChartModuleProps) {
+export default function OrganizationChartModule({ companyId, canManage = true }: OrganizationChartModuleProps) {
   const [activeTab, setActiveTab] = useState<"upload" | "view">("view");
 
   // Get organization chart data
@@ -33,6 +34,7 @@ export default function OrganizationChartModule({ companyId }: OrganizationChart
   });
 
   const handleCreateChart = async () => {
+    if (!canManage) return;
     try {
       await createChartMutation.mutateAsync({
         companyId,
@@ -77,7 +79,7 @@ export default function OrganizationChartModule({ companyId }: OrganizationChart
           </ul>
           <Button 
             onClick={handleCreateChart} 
-            disabled={createChartMutation.isPending}
+            disabled={!canManage || createChartMutation.isPending}
             className="w-full bg-blue-600 hover:bg-blue-700"
           >
             {createChartMutation.isPending ? (
@@ -105,21 +107,21 @@ export default function OrganizationChartModule({ companyId }: OrganizationChart
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className={`grid w-full ${canManage ? "grid-cols-2" : "grid-cols-1"}`}>
               <TabsTrigger value="view">Ver Organigrama</TabsTrigger>
-              <TabsTrigger value="upload">Subir PDF</TabsTrigger>
+              {canManage && <TabsTrigger value="upload">Subir PDF</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="view" className="space-y-4">
-              <OrganizationChartViewer chartId={chartData.id} />
+              <OrganizationChartViewer chartId={chartData.id} canManage={canManage} />
             </TabsContent>
 
-            <TabsContent value="upload" className="space-y-4">
+            {canManage && <TabsContent value="upload" className="space-y-4">
               <OrganizationChartUpload 
                 chartId={chartData.id}
                 onUploadSuccess={() => refetch()}
               />
-            </TabsContent>
+            </TabsContent>}
 
           </Tabs>
         </CardContent>

@@ -3,11 +3,13 @@ import { protectedProcedure, router, companyProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { processFODA } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { assertProcessAccessById } from "../_core/companyPermissions";
 
 export const processFODARouter = router({
   get: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return null;
 
@@ -25,7 +27,8 @@ export const processFODARouter = router({
       weaknesses: z.string().optional(),
       threats: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -61,6 +64,7 @@ export const processFODARouter = router({
       matrixData: z.string(),
     }))
     .mutation(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

@@ -20,6 +20,7 @@ import { synchronizeOperationalFindingSummary } from "../lib/operationalFindings
 import { storageDelete, storageGet } from "../storage";
 import type { TrpcContext } from "../_core/context";
 import { companyProcedure, router } from "../_core/trpc";
+import { assertCompanyManagementAccess } from "../_core/companyPermissions";
 
 const sourceTypeSchema = z.enum([
   "checklist_action",
@@ -59,13 +60,8 @@ function assertCompanyAccess(ctx: TrpcContext, companyId: number) {
   forbidden("No tiene acceso a la empresa solicitada.");
 }
 
-function assertSourceManagementAccess(ctx: TrpcContext, companyId: number) {
-  assertCompanyAccess(ctx, companyId);
-  if (ctx.user?.role === "admin" || ctx.manager?.companyId === companyId)
-    return;
-  forbidden(
-    "Solo el Gerente de la empresa o el Administrador pueden vincular compromisos."
-  );
+async function assertSourceManagementAccess(ctx: TrpcContext, companyId: number) {
+  await assertCompanyManagementAccess(ctx, companyId);
 }
 
 function assertCommitmentAccess(
@@ -680,7 +676,7 @@ export const linkedCommitmentsRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      assertSourceManagementAccess(ctx, input.companyId);
+      await assertSourceManagementAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db)
         throw new TRPCError({
@@ -726,7 +722,7 @@ export const linkedCommitmentsRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      assertSourceManagementAccess(ctx, input.companyId);
+      await assertSourceManagementAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db)
         throw new TRPCError({
@@ -809,7 +805,7 @@ export const linkedCommitmentsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      assertSourceManagementAccess(ctx, input.companyId);
+      await assertSourceManagementAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db)
         throw new TRPCError({
@@ -1024,7 +1020,7 @@ export const linkedCommitmentsRouter = router({
         });
       assertCommitmentAccess(ctx, commitment.companyId, commitment.processId);
       if (commitment.sourceType !== "own")
-        assertSourceManagementAccess(ctx, commitment.companyId);
+        await assertSourceManagementAccess(ctx, commitment.companyId);
 
       const evidences = await db
         .select()

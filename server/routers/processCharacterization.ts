@@ -3,11 +3,13 @@ import { protectedProcedure, router, companyProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { processCharacterizations } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { assertProcessAccessById } from "../_core/companyPermissions";
 
 export const processCharacterizationRouter = router({
   getByProcessId: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return null;
       const result = await db.select().from(processCharacterizations)
@@ -26,7 +28,8 @@ export const processCharacterizationRouter = router({
       scope: z.string().optional(),
       resources: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

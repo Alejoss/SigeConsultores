@@ -1,5 +1,6 @@
 import z from "zod";
 import { companyProcedure, router } from "../_core/trpc";
+import { assertProcessAccessById, assertProcessStakeholderSurveyAccess } from "../_core/companyPermissions";
 import { getDb } from "../db";
 import { stakeholderSurveys } from "../../drizzle/schema";
 import { eq, asc } from "drizzle-orm";
@@ -10,7 +11,8 @@ export const stakeholderSurveysRouter = router({
   // Listar todas las encuestas de un proceso
   list: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return [];
       return db
@@ -38,7 +40,8 @@ export const stakeholderSurveysRouter = router({
       linkedActionIds: z.string().optional(),
       orderIndex: z.number().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -85,7 +88,8 @@ export const stakeholderSurveysRouter = router({
       mainFindings: z.string().optional(),
       linkedActionIds: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessStakeholderSurveyAccess(ctx, input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -110,7 +114,8 @@ export const stakeholderSurveysRouter = router({
   // Eliminar encuesta
   delete: companyProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessStakeholderSurveyAccess(ctx, input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       await db.delete(stakeholderSurveys).where(eq(stakeholderSurveys.id, input.id));

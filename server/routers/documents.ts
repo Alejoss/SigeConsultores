@@ -1,4 +1,5 @@
-import { router, companyProcedure } from "../_core/trpc";
+import { router, companyManagementProcedure, companyProcedure, companyReadProcedure } from "../_core/trpc";
+import { assertCompanyRecordManagementAccess } from "../_core/companyPermissions";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { getDocumentsByCompanyAndType, createCompanyDocument, deleteDocument, getDocumentById } from "../db";
@@ -7,7 +8,7 @@ import { randomUUID } from "crypto";
 
 export const documentsRouter = router({
   // Get documents by company and type
-  getByCompanyAndType: companyProcedure
+  getByCompanyAndType: companyReadProcedure
     .input(z.object({
       companyId: z.number(),
       documentType: z.string(),
@@ -36,7 +37,7 @@ export const documentsRouter = router({
     }),
 
   // Upload policy document
-  uploadPolicyDocument: companyProcedure
+  uploadPolicyDocument: companyManagementProcedure
     .input(z.object({
       companyId: z.number(),
       fileName: z.string(),
@@ -99,7 +100,8 @@ export const documentsRouter = router({
     .input(z.object({
       id: z.number(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertCompanyRecordManagementAccess(ctx, "document", input.id);
       try {
         const doc = await getDocumentById(input.id);
         if (doc?.fileKey) {

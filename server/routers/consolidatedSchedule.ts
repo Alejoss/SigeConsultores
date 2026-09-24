@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { criticalityMatrix } from "../../drizzle/schema";
 import { companyProcedure, router } from "../_core/trpc";
+import { assertProcessAccessById } from "../_core/companyPermissions";
 import {
   getConsolidatedScheduleActivities,
   type ConsolidatedScheduleActivity,
@@ -13,7 +14,8 @@ export type ScheduleActivity = ConsolidatedScheduleActivity;
 export const consolidatedScheduleRouter = router({
   debugCriticality: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return { error: "No DB" };
 
@@ -38,5 +40,8 @@ export const consolidatedScheduleRouter = router({
 
   getConsolidatedSchedule: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => getConsolidatedScheduleActivities(input.processId)),
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
+      return getConsolidatedScheduleActivities(input.processId);
+    }),
 });

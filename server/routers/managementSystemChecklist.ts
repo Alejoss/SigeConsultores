@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { companyProcedure, router } from "../_core/trpc";
+import { companyReadProcedure, companyProcedure, companyManagementProcedure, router  } from "../_core/trpc";
 import { getDb } from "../db";
 import {
   linkedCommitments,
@@ -145,7 +145,7 @@ const checklistItemInput = z.object({
 });
 
 export const managementSystemChecklistRouter = router({
-  getChecklist: companyProcedure
+  getChecklist: companyReadProcedure
     .input(z.object({ managementSystemId: z.number(), companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -235,7 +235,7 @@ export const managementSystemChecklistRouter = router({
       return { system, items: decoratedItems, summary };
     }),
 
-  getChecklistSummaries: companyProcedure
+  getChecklistSummaries: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -302,7 +302,7 @@ export const managementSystemChecklistRouter = router({
       });
     }),
 
-  createChecklistItem: companyProcedure
+  createChecklistItem: companyManagementProcedure
     .input(
       z
         .object({ managementSystemId: z.number(), companyId: z.number() })
@@ -366,7 +366,7 @@ export const managementSystemChecklistRouter = router({
       return { id: itemId };
     }),
 
-  updateChecklistItem: companyProcedure
+  updateChecklistItem: companyManagementProcedure
     .input(
       z
         .object({
@@ -470,7 +470,7 @@ export const managementSystemChecklistRouter = router({
       return { success: true };
     }),
 
-  deleteChecklistItem: companyProcedure
+  deleteChecklistItem: companyManagementProcedure
     .input(
       z.object({
         id: z.number(),
@@ -559,7 +559,7 @@ export const managementSystemChecklistRouter = router({
       return { success: true };
     }),
 
-  createChecklistAction: companyProcedure
+  createChecklistAction: companyManagementProcedure
     .input(
       z.object({
         checklistItemId: z.number(),
@@ -614,7 +614,7 @@ export const managementSystemChecklistRouter = router({
       return { id: Number(result[0].insertId) };
     }),
 
-  updateChecklistAction: companyProcedure
+  updateChecklistAction: companyManagementProcedure
     .input(
       z.object({
         id: z.number(),
@@ -710,7 +710,7 @@ export const managementSystemChecklistRouter = router({
       return { success: true };
     }),
 
-  deleteChecklistAction: companyProcedure
+  deleteChecklistAction: companyManagementProcedure
     .input(
       z.object({
         id: z.number(),
@@ -778,7 +778,7 @@ export const managementSystemChecklistRouter = router({
       return { success: true };
     }),
 
-  importChecklist: companyProcedure
+  importChecklist: companyManagementProcedure
     .input(
       z.object({
         managementSystemId: z.number(),

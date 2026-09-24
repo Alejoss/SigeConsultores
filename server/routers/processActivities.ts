@@ -4,6 +4,7 @@ import { z } from "zod";
 import { processCompliances, processes } from "../../drizzle/schema";
 import type { TrpcContext } from "../_core/context";
 import { companyProcedure, router } from "../_core/trpc";
+import { assertProcessAccess as assertAuthorizedProcessAccess } from "../_core/companyPermissions";
 import { getDb } from "../db";
 import {
   asActivityView,
@@ -53,15 +54,7 @@ async function getProcessOrThrow(db: Database, processId: number) {
 }
 
 function assertProcessAccess(ctx: TrpcContext, process: { id: number; companyId: number }) {
-  if (ctx.user?.role === "admin") return;
-  if (ctx.manager?.companyId === process.companyId) return;
-  if (
-    ctx.processLeader?.companyId === process.companyId &&
-    ctx.processLeader.processId === process.id
-  ) {
-    return;
-  }
-  forbidden("No tiene acceso a las actividades de este proceso.");
+  assertAuthorizedProcessAccess(ctx, process);
 }
 
 function optionalDate(value: string | null | undefined): Date | null {

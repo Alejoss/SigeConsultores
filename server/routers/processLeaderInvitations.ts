@@ -24,6 +24,18 @@ import { getRoleIdBySlug } from "../accountAuth";
 
 const PROCESS_LEADER_SETUP_PATH = "/setup-process-leader-password";
 
+function requireCompanyAccessManager(
+  ctx: { user?: { role?: string } | null; manager?: { companyId: number } | null },
+  companyId: number
+) {
+  if (ctx.user?.role === "admin") return;
+  if (ctx.manager?.companyId === companyId) return;
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message: "Solo el Gerente de esta empresa o el Administrador pueden gestionar accesos de Jefes de Proceso.",
+  });
+}
+
 function getFrontendUrlFromRequest(req: { protocol?: string; get?: (h: string) => string | undefined }): string {
   try {
     const protocol = req.protocol || "https";
@@ -106,11 +118,12 @@ export const processLeaderInvitationsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      requireCompanyAccessManager(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
       const proc = await db.select().from(processes).where(eq(processes.id, input.processId)).limit(1);
-      if (!proc.length) throw new Error("Process not found");
+      if (!proc.length || proc[0].companyId !== input.companyId) throw new Error("Process not found for this company");
 
       const comp = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
       if (!comp.length) throw new Error("Company not found");
@@ -353,16 +366,9 @@ export const processLeaderInvitationsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      requireCompanyAccessManager(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-
-      const mgr = ctx.manager;
-      if (!mgr) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Solo gerentes de empresa pueden desactivar jefes de proceso" });
-      }
-      if (mgr.companyId !== input.companyId) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Empresa no autorizada" });
-      }
 
       const arRows = await db
         .select({ ar: accountRoles, proc: processes })
@@ -376,7 +382,7 @@ export const processLeaderInvitationsRouter = router({
       }
 
       const { ar, proc } = arRows[0];
-      if (proc.companyId !== mgr.companyId) {
+      if (proc.companyId !== input.companyId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Proceso no pertenece a su empresa" });
       }
 
@@ -402,13 +408,14 @@ export const processLeaderInvitationsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      requireCompanyAccessManager(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
       const company = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
       const process = await db.select().from(processes).where(eq(processes.id, input.processId)).limit(1);
       if (!company.length) throw new Error("Company not found");
-      if (!process.length) throw new Error("Process not found");
+      if (!process.length || process[0].companyId !== input.companyId) throw new Error("Process not found for this company");
 
       const plRoleId = await getRoleIdBySlug(db, "process_leader");
       if (plRoleId == null) throw new Error("process_leader role missing");

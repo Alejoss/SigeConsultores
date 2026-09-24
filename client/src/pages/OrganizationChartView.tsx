@@ -5,10 +5,12 @@ import DashboardLayout from "@/components/DashboardLayout";
 import OrganizationChartModule from "@/components/OrganizationChartModule";
 import { Button } from "@/components/ui/button";
 import { getCompanyIdFromSession } from "@/lib/sessionScope";
+import { CompanyReadOnlyNotice, useCompanyManagementPermission } from "@/hooks/useCompanyManagementPermission";
 
 export default function OrganizationChartView() {
   const [, setLocation] = useLocation();
   const companyId = useMemo(() => getCompanyIdFromSession() || 0, []);
+  const { canManageCompany } = useCompanyManagementPermission(companyId);
 
   return (
     <DashboardLayout>
@@ -20,7 +22,8 @@ export default function OrganizationChartView() {
           </div>
           <Button variant="outline" onClick={() => setLocation(`/organization-chart?companyId=${companyId}`)} className="gap-2"><ArrowLeft className="h-4 w-4" />Volver</Button>
         </div>
-        {companyId ? <OrganizationChartModule companyId={companyId} /> : <p className="py-12 text-center text-slate-600">Selecciona una empresa para ver el organigrama.</p>}
+        {!canManageCompany && <CompanyReadOnlyNotice />}
+        {companyId ? <OrganizationChartModule companyId={companyId} canManage={canManageCompany} /> : <p className="py-12 text-center text-slate-600">Selecciona una empresa para ver el organigrama.</p>}
       </div>
     </DashboardLayout>
   );

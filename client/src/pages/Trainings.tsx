@@ -9,6 +9,10 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { ChevronUp, ChevronDown, Download, Upload, FileText, Trash2, X, Paperclip, BarChart2 } from "lucide-react";
 import * as XLSX from "xlsx";
+import {
+  CompanyReadOnlyNotice,
+  useCompanyManagementPermission,
+} from "@/hooks/useCompanyManagementPermission";
 
 interface ImportRow {
   name: string;
@@ -321,9 +325,10 @@ function GanttPanel({ trainings, onClose }: { trainings: Training[]; onClose: ()
 }
 
 // ─── Componente: Respaldos de una capacitación ───────────────────────────────
-function TrainingBackupsPanel({ trainingId, companyId, onClose }: {
+function TrainingBackupsPanel({ trainingId, companyId, canManageCompany, onClose }: {
   trainingId: number;
   companyId: number;
+  canManageCompany: boolean;
   onClose: () => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -421,19 +426,22 @@ function TrainingBackupsPanel({ trainingId, companyId, onClose }: {
                   <span className="text-gray-400 flex-shrink-0">{formatSize(backup.fileSizeBytes)}</span>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-red-500 hover:text-red-700 flex-shrink-0"
-                onClick={() => handleDelete(backup.id)}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              {canManageCompany && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-500 hover:text-red-700 flex-shrink-0"
+                  onClick={() => handleDelete(backup.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           ))}
         </div>
       )}
 
+      {canManageCompany && (
       <div>
         <input
           ref={fileInputRef}
@@ -454,12 +462,16 @@ function TrainingBackupsPanel({ trainingId, companyId, onClose }: {
         </Button>
         <p className="text-xs text-gray-400 mt-1">PDF, Word, Excel, PowerPoint, imágenes, ZIP</p>
       </div>
+      )}
     </div>
   );
 }
 
 // ─── Componente: Cronograma Anual (archivo) ───────────────────────────────────
-function TrainingScheduleButton({ companyId }: { companyId: number }) {
+function TrainingScheduleButton({ companyId, canManageCompany }: {
+  companyId: number;
+  canManageCompany: boolean;
+}) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const utils = trpc.useUtils();
@@ -527,32 +539,38 @@ function TrainingScheduleButton({ companyId }: { companyId: number }) {
           >
             {(schedule as any).fileName}
           </a>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-5 w-5 p-0 text-red-400 hover:text-red-600"
-            onClick={handleDelete}
-          >
-            <X className="w-3 h-3" />
-          </Button>
+          {canManageCompany && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 w-5 p-0 text-red-400 hover:text-red-600"
+              onClick={handleDelete}
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          )}
         </div>
       ) : null}
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        onChange={handleUpload}
-        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-      />
-      <Button
-        variant="outline"
-        onClick={() => fileInputRef.current?.click()}
-        disabled={uploading}
-        className="flex items-center gap-2"
-      >
-        <Upload className="w-4 h-4" />
-        {uploading ? "Subiendo..." : schedule ? "Actualizar Cronograma" : "Subir Cronograma Anual"}
-      </Button>
+      {canManageCompany && (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleUpload}
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+          />
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            {uploading ? "Subiendo..." : schedule ? "Actualizar Cronograma" : "Subir Cronograma Anual"}
+          </Button>
+        </>
+      )}
     </div>
   );
 }
@@ -569,6 +587,7 @@ export default function Trainings() {
         return stored ? parseInt(stored) : 0;
       })()
     : 0;
+  const { canManageCompany, isChecking } = useCompanyManagementPermission(companyId);
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [backupsPanelId, setBackupsPanelId] = useState<number | null>(null);
@@ -941,6 +960,8 @@ export default function Trainings() {
           </Button>
         </div>
 
+        {!isChecking && !canManageCompany && <CompanyReadOnlyNotice />}
+
         {/* KPIs */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           <Card className="bg-white border-l-4 border-l-purple-500">
@@ -978,35 +999,42 @@ export default function Trainings() {
                 Cronograma de Gantt
               </Button>
               {/* Botón Cronograma Anual */}
-              <TrainingScheduleButton companyId={companyId} />
+              <TrainingScheduleButton
+                companyId={companyId}
+                canManageCompany={canManageCompany}
+              />
               {/* Botón Descargar Plantilla */}
               <Button onClick={downloadTemplate} variant="outline" className="flex gap-2 border-emerald-400 text-emerald-700 hover:bg-emerald-50">
                 <FileText className="w-4 h-4" />
                 Descargar Plantilla
               </Button>
               {/* Botón Importar desde Excel */}
-              <Button
-                onClick={() => importFileRef.current?.click()}
-                variant="outline"
-                className="flex gap-2 border-blue-400 text-blue-700 hover:bg-blue-50"
-              >
-                <Upload className="w-4 h-4" />
-                Importar desde Excel
-              </Button>
-              <input
-                ref={importFileRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={handleImportFile}
-              />
+              {canManageCompany && (
+                <>
+                  <Button
+                    onClick={() => importFileRef.current?.click()}
+                    variant="outline"
+                    className="flex gap-2 border-blue-400 text-blue-700 hover:bg-blue-50"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Importar desde Excel
+                  </Button>
+                  <input
+                    ref={importFileRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={handleImportFile}
+                  />
+                </>
+              )}
               {/* Botón Exportar Excel */}
               <Button onClick={exportToExcel} variant="outline" className="flex gap-2">
                 <Download className="w-4 h-4" />
                 Exportar a Excel
               </Button>
               {/* Botón Eliminar todas */}
-              {trainings.length > 0 && (
+              {canManageCompany && trainings.length > 0 && (
                 <Button
                   variant="destructive"
                   className="flex gap-2"
@@ -1194,9 +1222,11 @@ export default function Trainings() {
 
                       {/* Botones de acción */}
                       <div className="flex gap-2 mt-4 flex-wrap">
-                        <Button variant="outline" size="sm" onClick={() => handleEditTraining(training)}>
-                          Editar
-                        </Button>
+                        {canManageCompany && (
+                          <Button variant="outline" size="sm" onClick={() => handleEditTraining(training)}>
+                            Editar
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -1209,9 +1239,11 @@ export default function Trainings() {
                           <Paperclip className="w-4 h-4" />
                           Respaldos
                         </Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDeleteTraining(training.id)}>
-                          Eliminar
-                        </Button>
+                        {canManageCompany && (
+                          <Button variant="destructive" size="sm" onClick={() => handleDeleteTraining(training.id)}>
+                            Eliminar
+                          </Button>
+                        )}
                       </div>
 
                       {/* Panel de respaldos */}
@@ -1219,6 +1251,7 @@ export default function Trainings() {
                         <TrainingBackupsPanel
                           trainingId={training.id}
                           companyId={companyId}
+                          canManageCompany={canManageCompany}
                           onClose={() => setBackupsPanelId(null)}
                         />
                       )}
@@ -1233,6 +1266,7 @@ export default function Trainings() {
         </div>
 
         {/* Formulario de nueva capacitación (solo visible cuando NO se está editando inline) */}
+        {canManageCompany && (
         <Card className="bg-white">
           <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50 border-b">
             <CardTitle>Nueva Capacitación</CardTitle>
@@ -1358,6 +1392,7 @@ export default function Trainings() {
             </div>
           </CardContent>
         </Card>
+        )}
       </div>
 
       {/* Modal de Vista Previa de Importación */}

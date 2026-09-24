@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { companyProcedure, router } from "../_core/trpc";
+import { assertProcessAccessById } from "../_core/companyPermissions";
 import { getDb } from "../db";
 import { processFODA } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -34,7 +35,8 @@ interface MatrizFODARow {
 export const matrixFODAPDFRouter = router({
   generatePDF: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -73,7 +75,8 @@ export const matrixFODAPDFRouter = router({
   // Get matrix data for export
   getMatrixData: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return null;
 

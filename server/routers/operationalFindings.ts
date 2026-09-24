@@ -10,7 +10,8 @@ import {
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import type { TrpcContext } from "../_core/context";
-import { companyProcedure, router } from "../_core/trpc";
+import { companyReadProcedure, companyProcedure, router } from "../_core/trpc";
+import { assertCompanyManagementAccess, assertCompanyReadAccess } from "../_core/companyPermissions";
 import {
   ensureOperationalFindingBaseline,
   findingClassifications,
@@ -28,12 +29,12 @@ const isoDateSchema = z.union([
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
-function assertManagementAccess(ctx: TrpcContext, companyId: number) {
-  if (ctx.user?.role === "admin" || ctx.manager?.companyId === companyId) return;
-  throw new TRPCError({
-    code: "FORBIDDEN",
-    message: "Solo el Gerente de la empresa o el Administrador pueden gestionar hallazgos.",
-  });
+async function assertManagementAccess(ctx: TrpcContext, companyId: number) {
+  await assertCompanyManagementAccess(ctx, companyId);
+}
+
+function assertReadAccess(ctx: TrpcContext, companyId: number) {
+  assertCompanyReadAccess(ctx, companyId);
 }
 
 function asDate(value?: string) {
@@ -135,10 +136,10 @@ async function synchronizeLinkedMetadata(
 }
 
 export const operationalFindingsRouter = router({
-  list: companyProcedure
+  list: companyReadProcedure
     .input(z.object({ companyId: z.number().int().positive(), sourceType: sourceTypeSchema, sourceId: z.number().int().positive() }))
     .query(async ({ input, ctx }) => {
-      assertManagementAccess(ctx, input.companyId);
+      assertReadAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de datos no disponible." });
       await assertSource(db, input.companyId, input.sourceType, input.sourceId);
@@ -165,7 +166,7 @@ export const operationalFindingsRouter = router({
       targetDate: isoDateSchema.optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      assertManagementAccess(ctx, input.companyId);
+      await assertManagementAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de datos no disponible." });
       await assertSource(db, input.companyId, input.sourceType, input.sourceId);
@@ -207,7 +208,7 @@ export const operationalFindingsRouter = router({
       completed: z.boolean().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      assertManagementAccess(ctx, input.companyId);
+      await assertManagementAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de datos no disponible." });
       const current = await findFinding(db, input.companyId, input.id);
@@ -239,7 +240,7 @@ export const operationalFindingsRouter = router({
   delete: companyProcedure
     .input(z.object({ id: z.number().int().positive(), companyId: z.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {
-      assertManagementAccess(ctx, input.companyId);
+      await assertManagementAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de datos no disponible." });
       const finding = await findFinding(db, input.companyId, input.id);

@@ -8,22 +8,31 @@ import { useLocation } from "wouter";
 import { Plus, Trash2, AlertCircle, Edit2, Download } from 'lucide-react';
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { useAuth } from "@/_core/hooks/useAuth";
 import { exportPolicyObjectivesToPDF } from "@/lib/exportPolicyObjectivesToPDF";
+import { getCompanyIdFromSession } from "@/lib/sessionScope";
+import {
+  CompanyReadOnlyNotice,
+  useCompanyManagementPermission,
+} from "@/hooks/useCompanyManagementPermission";
 
 export default function PolicyObjectives() {
-  const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const [policyId] = useState<number | null>(() => {
-    const stored = localStorage.getItem("selectedPolicyId");
-    return stored ? parseInt(stored) : null;
-  });
+  const [companyId] = useState<number | null>(() => getCompanyIdFromSession());
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     objective: "",
     description: "",
   });
+
+  // La empresa tiene una única Política activa. Siempre se resuelve su ID real
+  // desde la empresa actual, en lugar de reutilizar un ID guardado de otra sesión.
+  const { data: policy, isLoading: isPolicyLoading } = trpc.policies.get.useQuery(
+    { companyId: companyId || 0 },
+    { enabled: companyId !== null }
+  );
+  const policyId = policy?.id ?? null;
+  const { canManageCompany, isChecking } = useCompanyManagementPermission(companyId);
 
   // Fetch objectives from database
   const { data: objectives = [], isLoading, refetch } = trpc.policyObjectives.list.useQuery(
@@ -114,14 +123,14 @@ export default function PolicyObjectives() {
     setFormData({ objective: "", description: "" });
   };
 
-  if (!policyId) {
+  if (!companyId || (!isPolicyLoading && !policyId)) {
     return (
       <DashboardLayout>
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3 text-slate-600">
               <AlertCircle size={20} />
-              <p>Por favor, selecciona una política primero desde el módulo de Política</p>
+              <p>Primero registra o guarda la Política de la empresa antes de definir sus objetivos.</p>
             </div>
             <Button
               className="w-full mt-4"
@@ -129,6 +138,18 @@ export default function PolicyObjectives() {
             >
               Ir a Política
             </Button>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
+  }
+
+  if (isPolicyLoading) {
+    return (
+      <DashboardLayout>
+        <Card>
+          <CardContent className="pt-6 text-center text-slate-600">
+            Cargando Política…
           </CardContent>
         </Card>
       </DashboardLayout>
@@ -169,8 +190,10 @@ export default function PolicyObjectives() {
           </div>
         </div>
 
+        {!isChecking && !canManageCompany && <CompanyReadOnlyNotice />}
+
         {/* Form */}
-        {showForm && (
+        {canManageCompany && showForm && (
           <Card className="border-2 border-blue-300 bg-blue-50">
             <CardHeader>
               <CardTitle className="text-lg">
@@ -219,7 +242,7 @@ export default function PolicyObjectives() {
         )}
 
         {/* Add Button */}
-        {!showForm && (
+        {canManageCompany && !showForm && (
           <Button
             onClick={() => setShowForm(true)}
             className="w-full bg-blue-600 hover:bg-blue-700"
@@ -269,29 +292,31 @@ export default function PolicyObjectives() {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEditObjective(objective)}
-                          className="flex-1"
-                          disabled={deleteMutation.isPending || createMutation.isPending || updateMutation.isPending}
-                        >
-                          <Edit2 size={16} />
-                          Editar
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeleteObjective(objective.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 size={16} />
-                        </Button>
-                      </div>
-                    </CardContent>
+                    {canManageCompany && (
+                      <CardContent>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEditObjective(objective)}
+                            className="flex-1"
+                            disabled={deleteMutation.isPending || createMutation.isPending || updateMutation.isPending}
+                          >
+                            <Edit2 size={16} />
+                            Editar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteObjective(objective.id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    )}
                   </Card>
                 ))}
               </div>

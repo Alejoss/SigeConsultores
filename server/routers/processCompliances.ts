@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { companyProcedure, router } from "../_core/trpc";
+import { assertProcessAccessById, assertProcessComplianceAccess } from "../_core/companyPermissions";
 import { getDb } from "../db";
 import { processCompliances } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -7,7 +8,8 @@ import { eq } from "drizzle-orm";
 export const processCompliancesRouter = router({
   list: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return [];
 
@@ -31,7 +33,8 @@ export const processCompliancesRouter = router({
       completedMonths: z.string().optional(),
       observations: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -66,7 +69,8 @@ export const processCompliancesRouter = router({
       completedMonths: z.string().optional(),
       observations: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessComplianceAccess(ctx, input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -91,7 +95,8 @@ export const processCompliancesRouter = router({
 
   delete: companyProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessComplianceAccess(ctx, input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

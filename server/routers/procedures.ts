@@ -4,6 +4,11 @@ import { getDb } from "../db";
 import { procedures, procedureRecords } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { storagePut, storageGet, storageDelete } from "../storage";
+import {
+  assertProcessAccessById,
+  assertProcessProcedureAccess,
+  assertProcessProcedureRecordAccess,
+} from "../_core/companyPermissions";
 
 export const proceduresRouter = router({
   /**
@@ -27,7 +32,8 @@ export const proceduresRouter = router({
         flowchartFileSizeBytes: z.number().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -74,7 +80,8 @@ export const proceduresRouter = router({
    */
   getByProcess: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -91,7 +98,8 @@ export const proceduresRouter = router({
    */
   getById: companyProcedure
     .input(z.object({ procedureId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessProcedureAccess(ctx, input.procedureId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -146,7 +154,8 @@ export const proceduresRouter = router({
         flowchartFileSizeBytes: z.number().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessProcedureAccess(ctx, input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -168,7 +177,8 @@ export const proceduresRouter = router({
    */
   delete: companyProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessProcedureAccess(ctx, input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -213,7 +223,8 @@ export const proceduresRouter = router({
         fileSizeBytes: z.number().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessProcedureAccess(ctx, input.procedureId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -247,7 +258,8 @@ export const proceduresRouter = router({
         fileSizeBytes: z.number().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessProcedureRecordAccess(ctx, input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -269,7 +281,8 @@ export const proceduresRouter = router({
    */
   deleteRecord: companyProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessProcedureRecordAccess(ctx, input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

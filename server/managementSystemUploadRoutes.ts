@@ -6,6 +6,8 @@ import { getDb } from "./db";
 import { managementSystemFiles, managementSystems } from "../drizzle/schema";
 import { storagePut } from "./storage";
 import { resolveAuthFromRequest } from "./_core/resolveRequestAuth";
+import { assertCompanyManagementAccess } from "./_core/companyPermissions";
+import type { TrpcContext } from "./_core/context";
 
 const MAX_MANAGEMENT_SYSTEM_FILE_BYTES = 50 * 1024 * 1024;
 const MANAGEMENT_SYSTEM_FILE_MIME_TYPES = new Set([
@@ -28,16 +30,6 @@ function safeFileName(fileName: string): string {
   return fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
-function mayAccessCompany(
-  auth: Awaited<ReturnType<typeof resolveAuthFromRequest>>,
-  companyId: number,
-): boolean {
-  // El Administrador de plataforma puede trabajar con la empresa que seleccionó.
-  if (auth.user) return true;
-  const roleCompanyId = auth.manager?.companyId ?? auth.processLeader?.companyId;
-  return roleCompanyId === companyId;
-}
-
 export function registerManagementSystemUploadRoutes(app: Express) {
   app.post(
     "/api/upload/management-system-file",
@@ -58,7 +50,9 @@ export function registerManagementSystemUploadRoutes(app: Express) {
         if (!companyId || !managementSystemId || !fileType) {
           return res.status(400).json({ ok: false, error: "Datos de carga inválidos" });
         }
-        if (!mayAccessCompany(auth, companyId)) {
+        try {
+          await assertCompanyManagementAccess(auth as TrpcContext, companyId);
+        } catch {
           return res.status(403).json({ ok: false, error: "No tiene acceso a esta empresa" });
         }
         if (!req.file) {

@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { companyProcedure, router } from "../_core/trpc";
+import { companyManagementProcedure, companyReadProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { companyInfo } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export const companyInfoRouter = router({
-  upsert: companyProcedure
+  upsert: companyManagementProcedure
     .input(z.object({
       companyId: z.number(),
       proposito: z.string().optional(),
@@ -46,7 +46,7 @@ export const companyInfoRouter = router({
       return { success: true };
     }),
 
-  get: companyProcedure
+  get: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();

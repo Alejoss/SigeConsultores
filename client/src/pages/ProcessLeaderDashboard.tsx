@@ -59,6 +59,10 @@ export default function ProcessLeaderDashboard() {
     { processId: processLeaderSession?.processId || 0 },
     { enabled: !!processLeaderSession?.processId },
   );
+  const managementAccessQuery = trpc.teamAccess.getMyCompanyManagementAccess.useQuery(
+    { companyId: processLeaderSession?.companyId || 0 },
+    { enabled: !!processLeaderSession?.companyId },
+  );
 
   useEffect(() => {
     if (contextLoading) return;
@@ -227,7 +231,10 @@ export default function ProcessLeaderDashboard() {
         {/* Note Section */}
         <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-blue-800">
-            <strong>Nota:</strong> Tienes acceso a todos los módulos ISGE 360 de la empresa, pero solo puedes editar tu proceso asignado. Si necesitas acceder a otros procesos, contacta con el Gerente General.
+            <strong>{managementAccessQuery.data?.accessLevel === "coordinator" ? "Coordinador de empresa:" : "Acceso de consulta:"}</strong>{" "}
+            {managementAccessQuery.data?.accessLevel === "coordinator"
+              ? "puedes gestionar los módulos corporativos de esta empresa y tu proceso asignado. Esta autorización no permite abrir, modificar ni consultar procesos de otros Jefes, ni administrar accesos de personas."
+              : "puedes consultar los módulos ISGE 360 de tu empresa y gestionar completamente tu proceso asignado. Para editar módulos corporativos, solicita al Gerente General la autorización de Coordinador. No puedes abrir procesos de otros Jefes."}
           </p>
         </div>
       </main>

@@ -1,7 +1,14 @@
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { accounts, accountRoles, processes, roles } from "../../drizzle/schema";
+import {
+  accessAuditLog,
+  accounts,
+  accountRoles,
+  companyManagementAccess,
+  processes,
+  roles,
+} from "../../drizzle/schema";
 import { getRoleIdBySlug } from "../accountAuth";
 import { getDb } from "../db";
 import { companyProcedure, router } from "../_core/trpc";
@@ -21,6 +28,29 @@ function requireProcessLeader(ctx: { processLeader: { processId: number } | null
 }
 
 export const teamAccessRouter = router({
+  getMyCompanyManagementAccess: companyProcedure
+    .input(companyInput)
+    .query(async ({ input, ctx }) => {
+      if (ctx.user?.role === "admin") return { accessLevel: "admin" as const };
+      if (ctx.manager?.companyId === input.companyId) return { accessLevel: "manager" as const };
+      if (!ctx.processLeader || ctx.processLeader.companyId !== input.companyId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "No tiene acceso a esta empresa." });
+      }
+      const db = await getDb();
+      if (!db) throw new Error("Base de datos no disponible");
+      const [access] = await db
+        .select({ accessLevel: companyManagementAccess.accessLevel })
+        .from(companyManagementAccess)
+        .where(
+          and(
+            eq(companyManagementAccess.companyId, input.companyId),
+            eq(companyManagementAccess.accountId, ctx.processLeader.processLeaderId)
+          )
+        )
+        .limit(1);
+      return { accessLevel: access?.accessLevel === "coordinator" ? "coordinator" as const : "standard" as const };
+    }),
+
   listProcessLeaders: companyProcedure
     .input(companyInput)
     .query(async ({ input, ctx }) => {
@@ -38,15 +68,115 @@ export const teamAccessRouter = router({
         leaderName: accounts.name,
         email: accounts.email,
         status: accountRoles.status,
+        accessLevel: companyManagementAccess.accessLevel,
+        grantedAt: companyManagementAccess.grantedAt,
       })
         .from(accountRoles)
         .innerJoin(accounts, eq(accountRoles.accountId, accounts.id))
         .innerJoin(processes, eq(accountRoles.processId, processes.id))
+        .leftJoin(
+          companyManagementAccess,
+          and(
+            eq(companyManagementAccess.companyId, input.companyId),
+            eq(companyManagementAccess.accountId, accountRoles.accountId)
+          )
+        )
         .where(and(
           eq(accountRoles.companyId, input.companyId),
           eq(accountRoles.roleId, roleId),
         ))
         .orderBy(asc(processes.name));
+    }),
+
+  /**
+   * Autoriza o revoca la edición de módulos corporativos para un Jefe ya
+   * asignado. No concede acceso a otros procesos ni gestión de personas.
+   */
+  setCompanyManagementAccess: companyProcedure
+    .input(
+      companyInput.extend({
+        accountId: z.number().int().positive(),
+        accessLevel: z.enum(["standard", "coordinator"]),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      requireManagerCompany(ctx, input.companyId);
+      const db = await getDb();
+      if (!db) throw new Error("Base de datos no disponible");
+      const processLeaderRoleId = await getRoleIdBySlug(db, "process_leader");
+      if (processLeaderRoleId == null) {
+        throw new Error("No se encontró el rol de Jefe de Proceso");
+      }
+
+      const [leader] = await db
+        .select({ accountId: accountRoles.accountId })
+        .from(accountRoles)
+        .where(
+          and(
+            eq(accountRoles.accountId, input.accountId),
+            eq(accountRoles.companyId, input.companyId),
+            eq(accountRoles.roleId, processLeaderRoleId),
+            eq(accountRoles.status, "active")
+          )
+        )
+        .limit(1);
+      if (!leader) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "El Jefe de Proceso activo no pertenece a esta empresa.",
+        });
+      }
+
+      const [managerAccount] = await db
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(eq(accounts.email, ctx.manager!.managerEmail))
+        .limit(1);
+      const now = new Date();
+      const [existing] = await db
+        .select({ id: companyManagementAccess.id })
+        .from(companyManagementAccess)
+        .where(
+          and(
+            eq(companyManagementAccess.companyId, input.companyId),
+            eq(companyManagementAccess.accountId, input.accountId)
+          )
+        )
+        .limit(1);
+
+      const accessData = {
+        accessLevel: input.accessLevel,
+        grantedByAccountId: managerAccount?.id ?? null,
+        grantedAt: input.accessLevel === "coordinator" ? now : null,
+        revokedAt: input.accessLevel === "standard" ? now : null,
+      } as const;
+      if (existing) {
+        await db
+          .update(companyManagementAccess)
+          .set({ ...accessData, updatedAt: now })
+          .where(eq(companyManagementAccess.id, existing.id));
+      } else {
+        await db.insert(companyManagementAccess).values({
+          companyId: input.companyId,
+          accountId: input.accountId,
+          ...accessData,
+        });
+      }
+
+      await db.insert(accessAuditLog).values({
+        eventType:
+          input.accessLevel === "coordinator"
+            ? "company_management_access_granted"
+            : "company_management_access_revoked",
+        companyId: input.companyId,
+        accountId: input.accountId,
+        description:
+          input.accessLevel === "coordinator"
+            ? "Jefe autorizado como Coordinador de empresa sin acceso a otros procesos ni gestión de personas."
+            : "Autorización de Coordinador de empresa revocada; conserva la gestión de su propio proceso.",
+      });
+
+      return { success: true, accessLevel: input.accessLevel };
     }),
 
   suspendProcessLeader: companyProcedure

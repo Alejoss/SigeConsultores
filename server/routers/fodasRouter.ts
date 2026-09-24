@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { protectedProcedure, router, companyProcedure, adminProcedure } from "../_core/trpc";
+import { protectedProcedure, router, companyManagementProcedure, companyReadProcedure, companyProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { companyFODAs, companyFODASelections, processFODA, processes } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { assertCompanyManagementAccess } from "../_core/companyPermissions";
 
 // Helper to get companyId from context
 function getCompanyId(ctx: any): number {
@@ -19,6 +20,7 @@ function getCompanyId(ctx: any): number {
 function getUserId(ctx: any): number {
   if (ctx.user?.id) return ctx.user.id;
   if (ctx.manager?.companyId) return 0; // Manager doesn't have user ID
+  if (ctx.processLeader?.processLeaderId) return ctx.processLeader.processLeaderId;
   throw new TRPCError({ code: "UNAUTHORIZED", message: "No user context found" });
 }
 
@@ -32,7 +34,7 @@ export const fodasRouter = router({
    * Get all process FODAs consolidated by type
    * Shows all processes with their FODA elements (empty if not defined)
    */
-  listProcessFODAs: companyProcedure
+  listProcessFODAs: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
@@ -84,7 +86,7 @@ export const fodasRouter = router({
    * Get company FODA consolidated
    * Returns all selected and edited FODA elements for the company
    */
-  getCompanyFODA: companyProcedure
+  getCompanyFODA: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
@@ -107,7 +109,7 @@ export const fodasRouter = router({
    * Get selections for a specific process and company
    * Shows which FODA elements from a process have been selected
    */
-  getSelections: companyProcedure
+  getSelections: companyReadProcedure
     .input(z.object({ companyId: z.number(), processId: z.number() }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
@@ -128,7 +130,7 @@ export const fodasRouter = router({
    * Select/deselect a FODA element from a process
    * When selected, creates or updates a companyFODA entry
    */
-  toggleSelection: companyProcedure
+  toggleSelection: companyManagementProcedure
     .input(z.object({
       companyId: z.number(),
       processId: z.number(),
@@ -223,13 +225,7 @@ export const fodasRouter = router({
       const companyId = input.companyId;
       const userId = getUserId(ctx);
 
-      // Check if user is admin
-      if (!isAdmin(ctx)) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Solo gerentes pueden editar el FODA de la empresa",
-        });
-      }
+      await assertCompanyManagementAccess(ctx, companyId);
 
       await db.update(companyFODAs)
         .set({
@@ -264,13 +260,7 @@ export const fodasRouter = router({
       const companyId = input.companyId;
       const userId = getUserId(ctx);
 
-      // Check if user is admin
-      if (!isAdmin(ctx)) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Solo gerentes pueden agregar elementos al FODA de la empresa",
-        });
-      }
+      await assertCompanyManagementAccess(ctx, companyId);
 
       await db.insert(companyFODAs).values({
         companyId: companyId,
@@ -305,13 +295,7 @@ export const fodasRouter = router({
 
       const companyId = input.companyId;
 
-      // Check if user is admin
-      if (!isAdmin(ctx)) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Solo gerentes pueden eliminar elementos del FODA de la empresa",
-        });
-      }
+      await assertCompanyManagementAccess(ctx, companyId);
 
       // Get the element to check if it belongs to this company
       const element = await db.select().from(companyFODAs)

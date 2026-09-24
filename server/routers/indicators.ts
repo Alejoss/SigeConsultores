@@ -1,11 +1,13 @@
 import { z } from "zod";
 import { companyProcedure, router } from "../_core/trpc";
+import { assertProcessAccessById } from "../_core/companyPermissions";
 import { getProcessIndicatorsList } from "../db";
 
 export const indicatorsRouter = router({
   getConsolidatedIndicators: companyProcedure
     .input(z.object({ processId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
       if (input.processId <= 0) {
         return [];
       }

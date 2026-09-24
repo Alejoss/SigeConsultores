@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocation, useSearch } from "wouter";
-import { Download, Save, AlertCircle, Target, Loader2 } from 'lucide-react';
+import { Download, Save, AlertCircle, Target, Loader2, LockKeyhole } from 'lucide-react';
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -78,6 +78,11 @@ export default function Policy() {
     return getCompanyIdFromLocationOrStorage();
   });
   const [companyName] = useState(() => processLeaderSession?.companyName || localStorage.getItem("selectedCompanyName") || "Empresa");
+  const managementAccessQuery = trpc.teamAccess.getMyCompanyManagementAccess.useQuery(
+    { companyId: companyId || 0 },
+    { enabled: isProcessLeader && companyId !== null }
+  );
+  const canEditPolicy = !isProcessLeader || managementAccessQuery.data?.accessLevel === "coordinator";
   
   // Update companyId when process leader session changes
   useEffect(() => {
@@ -146,6 +151,7 @@ export default function Policy() {
 
   // Guardado automático con debounce
   const autoSave = () => {
+    if (!canEditPolicy) return;
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current);
     }
@@ -162,7 +168,7 @@ export default function Policy() {
   };
 
   const handleSavePolicy = async () => {
-    if (!companyId) return;
+    if (!companyId || !canEditPolicy) return;
 
     await updateMutation.mutateAsync({
       companyId,
@@ -243,6 +249,19 @@ export default function Policy() {
           </div>
         </div>
 
+        {isProcessLeader && (
+          <div className={canEditPolicy ? "flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950" : "flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"}>
+            <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              {managementAccessQuery.isLoading
+                ? "Verificando el permiso de edición corporativa…"
+                : canEditPolicy
+                  ? "Tiene autorización de Coordinador de empresa para editar la Política corporativa."
+                  : "Modo de consulta: la Política corporativa sólo puede ser modificada por el Gerente General o por un Jefe autorizado como Coordinador de empresa."}
+            </p>
+          </div>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Política SIGE</CardTitle>
@@ -258,11 +277,14 @@ export default function Policy() {
                 <Textarea
                   placeholder="Escribe la política de tu Sistema Integrado de Gestión..."
                   value={currentPolicy}
+                  readOnly={!canEditPolicy}
                   onChange={(e) => {
+                    if (!canEditPolicy) return;
                     setPolicy(e.target.value);
                     autoSave();
                   }}
-                  className="min-h-[400px] font-sans text-sm"
+                  aria-readonly={!canEditPolicy}
+                  className={`min-h-[400px] font-sans text-sm ${!canEditPolicy ? "cursor-not-allowed bg-slate-50 text-slate-600" : ""}`}
                 />
 
                 {isSaving && (
@@ -289,17 +311,22 @@ export default function Policy() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <Button
                     onClick={handleSavePolicy}
-                    disabled={!currentPolicy.trim() || updateMutation.isPending}
+                    disabled={!currentPolicy.trim() || updateMutation.isPending || !canEditPolicy}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     <Save size={20} />
-                    Guardar Política
+                    {canEditPolicy ? "Guardar Política" : "Solo consulta"}
                   </Button>
                   <Button
                     onClick={() => {
-                      localStorage.setItem("selectedPolicyId", companyId.toString());
+                      if (!policyData?.id) {
+                        toast.error("Primero guarda la Política antes de registrar sus objetivos.");
+                        return;
+                      }
+                      localStorage.setItem("selectedPolicyId", policyData.id.toString());
                       setLocation("/policy-objectives");
                     }}
+                    disabled={!policyData?.id}
                     className="bg-cyan-500 hover:bg-cyan-600 text-white"
                   >
                     <Target size={20} />
@@ -325,6 +352,7 @@ export default function Policy() {
                   <Button
                     onClick={handleLoadTemplate}
                     variant="secondary"
+                    disabled={!canEditPolicy}
                     className="w-full"
                   >
                     Cargar Plantilla en Editor

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { companyProcedure, router } from "../_core/trpc";
+import { companyManagementProcedure, companyReadProcedure, companyProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { companyTrends, processes, processTacticalObjectives, criticalityMatrix, strategicObjectives, stakeholders, processFODA } from "../../drizzle/schema";
 import { eq, asc } from "drizzle-orm";
@@ -47,7 +47,7 @@ export const strategicTrendsRouter = router({
    * ordenados por año y mes. Si no hay datos históricos guardados,
    * calcula el snapshot actual del mes en curso.
    */
-  getTrends: companyProcedure
+  getTrends: companyReadProcedure
     .input(z.object({
       companyId: z.number(),
       years: z.array(z.number()).optional(), // filtro opcional por años
@@ -99,7 +99,7 @@ export const strategicTrendsRouter = router({
    * Guarda o actualiza un snapshot mensual para una empresa.
    * Útil para registrar manualmente el estado al cierre de cada mes.
    */
-  upsertTrend: companyProcedure
+  upsertTrend: companyManagementProcedure
     .input(z.object({
       companyId: z.number(),
       year: z.number(),
@@ -147,7 +147,7 @@ export const strategicTrendsRouter = router({
    * Calcula y guarda el snapshot del mes actual con el porcentaje de cada OE.
    * Si el mes ya existe, se actualiza sin crear un registro duplicado.
    */
-  snapshotCurrentMonth: companyProcedure
+  snapshotCurrentMonth: companyManagementProcedure
     .input(z.object({ companyId: z.number() }))
     .mutation(async ({ input }) => {
       const snapshot = await saveCompanyStrategicSnapshot(input.companyId);
@@ -164,7 +164,7 @@ export const strategicTrendsRouter = router({
    * Devuelve el desglose de cada OTE individual con su % de avance actual.
    * Agrupa por proceso y por objetivo estratégico.
    */
-  getOteBreakdown: companyProcedure
+  getOteBreakdown: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -239,7 +239,7 @@ export const strategicTrendsRouter = router({
    * Devuelve el detalle de un OTE individual: sus resultKeys con porcentajeAlcanzado y meta,
    * para construir la mini gráfica de tendencia por resultado clave.
    */
-  getOteDetail: companyProcedure
+  getOteDetail: companyReadProcedure
     .input(z.object({ objectiveId: z.number(), companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -323,7 +323,7 @@ export const strategicTrendsRouter = router({
    * Devuelve el avance de OTE agrupado por Objetivo Estratégico.
    * Para cada OE: % total de cumplimiento y desglose por proceso/área.
    */
-  getStrategicObjectivesBreakdown: companyProcedure
+  getStrategicObjectivesBreakdown: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -429,7 +429,7 @@ export const strategicTrendsRouter = router({
   /**
    * Devuelve el resumen de OTG por proceso/área para Tendencias Estratégicas.
    */
-  getOtgByArea: companyProcedure
+  getOtgByArea: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -514,7 +514,7 @@ export const strategicTrendsRouter = router({
   /**
    * Devuelve el resumen de Partes Interesadas por proceso/área.
    */
-  getStakeholdersByArea: companyProcedure
+  getStakeholdersByArea: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -570,4 +570,3 @@ export const strategicTrendsRouter = router({
       return result;
     }),
 });
-

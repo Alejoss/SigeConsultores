@@ -1,11 +1,12 @@
 import { z } from "zod";
-import { companyProcedure, router } from "../_core/trpc";
+import { companyManagementProcedure, companyReadProcedure, companyProcedure, router } from "../_core/trpc";
+import { assertCompanyRecordManagementAccess } from "../_core/companyPermissions";
 import { getDb } from "../db";
 import { companyValues } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export const valuesRouter = router({
-  create: companyProcedure
+  create: companyManagementProcedure
     .input(z.object({
       companyId: z.number(),
       name: z.string().min(1),
@@ -32,7 +33,7 @@ export const valuesRouter = router({
       return { success: true };
     }),
 
-  list: companyProcedure
+  list: companyReadProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -66,7 +67,8 @@ export const valuesRouter = router({
       name: z.string().min(1),
       description: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertCompanyRecordManagementAccess(ctx, "companyValue", input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -81,7 +83,8 @@ export const valuesRouter = router({
 
   delete: companyProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertCompanyRecordManagementAccess(ctx, "companyValue", input.id);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

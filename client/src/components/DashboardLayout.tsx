@@ -31,10 +31,6 @@ import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { clearAllAuthRoleClientContext } from "@/lib/authRoleContext";
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/manager-dashboard" },
-];
-
 const adminOnlyMenuItems = [
   { icon: Users, label: "Empresa", path: "/company" },
 ];
@@ -131,6 +127,7 @@ function DashboardLayoutContent({
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const { isManagerLogin, managerCompanyId, managerCompanyName } = useManagerAuth();
+  const { session: processLeaderSession, logout: processLeaderLogout } = useProcessLeaderAuth();
   console.log('[DashboardLayout] User role:', user?.role, 'User:', user);
   console.log('[DashboardLayout] isManagerLogin:', isManagerLogin, 'managerCompanyName:', managerCompanyName);
   
@@ -138,7 +135,10 @@ function DashboardLayoutContent({
     // Siempre se elimina el contexto auxiliar de todos los roles. La cookie se
     // revoca por la ruta correspondiente al tipo de sesión activo.
     clearAllAuthRoleClientContext();
-    if (isManagerLogin) {
+    if (processLeaderSession) {
+      processLeaderLogout();
+      window.location.href = "/login";
+    } else if (isManagerLogin) {
       void fetch("/api/auth/session/logout", { method: "POST", credentials: "include" });
       window.location.href = "/login";
     } else {
@@ -150,7 +150,12 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(item => item.path === location);
+  const homeMenuItem = processLeaderSession
+    ? { icon: LayoutDashboard, label: "Mi proceso", path: `/process-leader-dashboard?processId=${processLeaderSession.processId}` }
+    : { icon: LayoutDashboard, label: "Dashboard", path: "/manager-dashboard" };
+  const activeMenuItem = location === homeMenuItem.path || (processLeaderSession !== null && location === "/process-leader-dashboard")
+    ? homeMenuItem
+    : undefined;
   const isMobile = useIsMobile();
 
   // Get manager company name
@@ -256,8 +261,8 @@ function DashboardLayoutContent({
 
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
-              {menuItems.map(item => {
-                const isActive = location === item.path;
+              {[homeMenuItem].map(item => {
+                const isActive = location === item.path || (processLeaderSession !== null && location === "/process-leader-dashboard");
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
@@ -329,15 +334,15 @@ function DashboardLayoutContent({
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <Avatar className="h-9 w-9 border shrink-0">
                     <AvatarFallback className="text-xs font-medium">
-                      {(isManagerLogin ? managerCompanyName : user?.name)?.charAt(0).toUpperCase()}
+                      {(processLeaderSession ? processLeaderSession.leaderName : isManagerLogin ? managerCompanyName : user?.name)?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
                     <p className="text-sm font-medium truncate leading-none">
-                      {isManagerLogin ? managerCompanyName : user?.name || "-"}
+                      {processLeaderSession ? processLeaderSession.leaderName : isManagerLogin ? managerCompanyName : user?.name || "-"}
                     </p>
                     <p className="text-xs text-muted-foreground truncate mt-1.5">
-                      {isManagerLogin ? "Gerente" : user?.email || "-"}
+                      {processLeaderSession ? "Jefe de Proceso" : isManagerLogin ? "Gerente" : user?.email || "-"}
                     </p>
                   </div>
                 </button>

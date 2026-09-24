@@ -6,6 +6,7 @@ export const integrationTestFiles = [
   "server/__tests__/consolidatedIndicators.test.ts",
   "server/__tests__/linkedCommitments.integration.test.ts",
   "server/__tests__/meetings.integration.test.ts",
+  "server/__tests__/companyManagementAccess.integration.test.ts",
   "server/__tests__/processActivities.integration.test.ts",
   "server/__tests__/operationalFindings.integration.test.ts",
   "server/__tests__/payrollRehire.integration.test.ts",

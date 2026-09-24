@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure, router } from "../_core/trpc";
+import { publicProcedure, companyProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { companies, accounts, accountRoles } from "../../drizzle/schema";
@@ -23,6 +23,22 @@ async function getManagerAccountForCompany(db: NonNullable<Awaited<ReturnType<ty
     )
     .limit(1);
   return row[0]?.account ?? null;
+}
+
+function assertCompanyProfileReadAccess(
+  ctx: { user?: { role?: string } | null; manager?: { companyId: number } | null; processLeader?: { companyId: number } | null },
+  companyId: number
+) {
+  if (ctx.user?.role === "admin" || ctx.manager?.companyId === companyId || ctx.processLeader?.companyId === companyId) return;
+  throw new TRPCError({ code: "FORBIDDEN", message: "No tiene acceso a la empresa solicitada." });
+}
+
+function assertManagerProfileAccess(
+  ctx: { user?: { role?: string } | null; manager?: { companyId: number } | null },
+  companyId: number
+) {
+  if (ctx.user?.role === "admin" || ctx.manager?.companyId === companyId) return;
+  throw new TRPCError({ code: "FORBIDDEN", message: "Solo el Gerente de la empresa o el Administrador pueden editar este perfil." });
 }
 
 export const managerAuthRouter = router({
@@ -89,9 +105,10 @@ export const managerAuthRouter = router({
       };
     }),
 
-  getCompanyInfo: publicProcedure
+  getCompanyInfo: companyProcedure
     .input(z.object({ companyId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      assertCompanyProfileReadAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -114,14 +131,15 @@ export const managerAuthRouter = router({
     return db.select().from(companies);
   }),
 
-  updateManagerEmail: publicProcedure
+  updateManagerEmail: companyProcedure
     .input(
       z.object({
         companyId: z.number(),
         newEmail: z.string().email(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      assertManagerProfileAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -138,7 +156,7 @@ export const managerAuthRouter = router({
       return { success: true, message: "Email actualizado correctamente" };
     }),
 
-  updateManagerPassword: publicProcedure
+  updateManagerPassword: companyProcedure
     .input(
       z.object({
         companyId: z.number(),
@@ -146,7 +164,8 @@ export const managerAuthRouter = router({
         newPassword: z.string().min(12),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      assertManagerProfileAccess(ctx, input.companyId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

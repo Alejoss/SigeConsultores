@@ -12,6 +12,8 @@ import {
   protectedProcedure,
   adminProcedure,
   companyProcedure,
+  companyManagementProcedure,
+  companyReadProcedure,
 } from "./_core/trpc";
 import { getDb } from "./db";
 import {
@@ -130,6 +132,11 @@ import { stakeholderSurveysRouter } from "./routers/stakeholderSurveys";
 import { strategicTrendsRouter } from "./routers/strategicTrends";
 import { planningCyclesRouter } from "./routers/planningCycles";
 import { teamAccessRouter } from "./routers/teamAccess";
+import {
+  assertCompanyTrainingManagementAccess,
+  assertCompanyTrainingReadAccess,
+  assertTrainingBackupManagementAccess,
+} from "./_core/companyPermissions";
 
 // Module Customization Router
 const moduleCustomizationRouter = router({
@@ -974,7 +981,7 @@ export const appRouter = router({
 
   // Company Trainings (Capacitaciones a nivel empresa)
   companyTrainings: router({
-    create: companyProcedure
+    create: companyManagementProcedure
       .input(
         z.object({
           companyId: z.number(),
@@ -1015,7 +1022,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    list: companyProcedure
+    list: companyReadProcedure
       .input(z.object({ companyId: z.number() }))
       .query(async ({ input }) => {
         const db = await getDb();
@@ -1028,7 +1035,8 @@ export const appRouter = router({
 
     delete: companyProcedure
       .input(z.object({ trainingId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await assertCompanyTrainingManagementAccess(ctx, input.trainingId);
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         await db
@@ -1055,7 +1063,8 @@ export const appRouter = router({
           completed: z.enum(["SI", "NO"]).optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await assertCompanyTrainingManagementAccess(ctx, input.trainingId);
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         const { trainingId, ...fields } = input;
@@ -1101,7 +1110,7 @@ export const appRouter = router({
       }),
 
     // Borrar todas las capacitaciones de una empresa (para reimportación limpia)
-    clearByCompany: companyProcedure
+    clearByCompany: companyManagementProcedure
       .input(z.object({ companyId: z.number() }))
       .mutation(async ({ input }) => {
         const db = await getDb();
@@ -1113,7 +1122,7 @@ export const appRouter = router({
       }),
 
     // Importación masiva desde Excel (filas ya parseadas en el cliente)
-    importBulk: companyProcedure
+    importBulk: companyManagementProcedure
       .input(
         z.object({
           companyId: z.number(),
@@ -1271,7 +1280,7 @@ export const appRouter = router({
 
   // Training Schedules (Cronograma Anual de Capacitación)
   trainingSchedules: router({
-    upsert: companyProcedure
+    upsert: companyManagementProcedure
       .input(
         z.object({
           companyId: z.number(),
@@ -1299,7 +1308,7 @@ export const appRouter = router({
         });
         return { success: true };
       }),
-    get: companyProcedure
+    get: companyReadProcedure
       .input(z.object({ companyId: z.number() }))
       .query(async ({ input }) => {
         const db = await getDb();
@@ -1311,7 +1320,7 @@ export const appRouter = router({
           .limit(1);
         return rows[0] || null;
       }),
-    delete: companyProcedure
+    delete: companyManagementProcedure
       .input(z.object({ companyId: z.number() }))
       .mutation(async ({ input }) => {
         const db = await getDb();
@@ -1325,7 +1334,7 @@ export const appRouter = router({
 
   // Training Backups (Respaldos por capacitación)
   trainingBackups: router({
-    add: companyProcedure
+    add: companyManagementProcedure
       .input(
         z.object({
           trainingId: z.number(),
@@ -1336,7 +1345,14 @@ export const appRouter = router({
           fileSizeBytes: z.number().optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const trainingCompanyId = await assertCompanyTrainingManagementAccess(ctx, input.trainingId);
+        if (trainingCompanyId !== input.companyId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "La capacitación no pertenece a la empresa indicada.",
+          });
+        }
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         await db.insert(trainingBackups).values({
@@ -1351,7 +1367,8 @@ export const appRouter = router({
       }),
     list: companyProcedure
       .input(z.object({ trainingId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        await assertCompanyTrainingReadAccess(ctx, input.trainingId);
         const db = await getDb();
         if (!db) return [];
         return db
@@ -1361,7 +1378,8 @@ export const appRouter = router({
       }),
     delete: companyProcedure
       .input(z.object({ backupId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await assertTrainingBackupManagementAccess(ctx, input.backupId);
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         await db

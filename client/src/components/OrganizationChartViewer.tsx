@@ -6,10 +6,12 @@ import { Download, FileText, Trash2, Loader2 } from "lucide-react";
 
 interface OrganizationChartViewerProps {
   chartId: number;
+  canManage?: boolean;
 }
 
 export default function OrganizationChartViewer({
   chartId,
+  canManage = true,
 }: OrganizationChartViewerProps) {
   const { data: files = [], isLoading, refetch } = trpc.organizationChart.getFiles.useQuery({
     chartId,
@@ -28,6 +30,7 @@ export default function OrganizationChartViewer({
   const activeFile = files[0];
 
   const handleDelete = () => {
+    if (!canManage) return;
     if (!activeFile) return;
     if (confirm("¿Estás seguro de que deseas eliminar el organigrama actual?")) {
       deleteMutation.mutate({ fileId: activeFile.id });
@@ -50,7 +53,9 @@ export default function OrganizationChartViewer({
           <div className="flex flex-col items-center gap-3 py-8 text-gray-500">
             <FileText className="w-12 h-12 text-gray-300" />
             <p className="text-center">
-              No hay un organigrama subido aún. Ve a la pestaña <strong>Subir PDF</strong> para cargar uno.
+              {canManage
+                ? <>No hay un organigrama subido aún. Ve a la pestaña <strong>Subir PDF</strong> para cargar uno.</>
+                : "No hay un organigrama publicado para esta empresa."}
             </p>
           </div>
         </CardContent>
@@ -73,7 +78,7 @@ export default function OrganizationChartViewer({
               Descargar
             </Button>
           </a>
-          <Button
+          {canManage && <Button
             variant="outline"
             size="sm"
             className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -82,7 +87,7 @@ export default function OrganizationChartViewer({
           >
             <Trash2 className="w-4 h-4" />
             {deleteMutation.isPending ? "Eliminando..." : "Eliminar"}
-          </Button>
+          </Button>}
         </div>
       </div>
 

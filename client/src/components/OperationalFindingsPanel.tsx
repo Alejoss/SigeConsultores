@@ -44,11 +44,13 @@ function FindingCard({
   sourceType,
   value,
   onChanged,
+  canManage = true,
 }: {
   companyId: number;
   sourceType: SourceType;
   value: Finding;
   onChanged: () => void;
+  canManage?: boolean;
 }) {
   const [draft, setDraft] = useState(() => ({
     classification: value.classification,
@@ -124,6 +126,7 @@ function FindingCard({
           </span>
         )}
       </div>
+      <fieldset disabled={!canManage} className="min-w-0 disabled:opacity-70">
       <div className="grid gap-3 lg:grid-cols-2">
         {!isInspection && (
           <label className="grid gap-1 text-sm font-medium text-slate-700">
@@ -199,6 +202,7 @@ function FindingCard({
           onLinked={onChanged}
         />
       )}
+      </fieldset>
     </article>
   );
 }
@@ -209,12 +213,14 @@ export function OperationalFindingsPanel({
   sourceId,
   title = "Gestionar hallazgos",
   onSummaryChanged,
+  canManage = true,
 }: {
   companyId: number;
   sourceType: SourceType;
   sourceId: number;
   title?: string;
   onSummaryChanged: () => void;
+  canManage?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showNew, setShowNew] = useState(false);
@@ -264,9 +270,9 @@ export function OperationalFindingsPanel({
           ) : entries.length === 0 ? (
             <p className="rounded-lg border border-dashed border-blue-200 bg-white px-3 py-4 text-sm text-slate-500">Aún no hay hallazgos operativos. Los conteos históricos de la cabecera se conservarán cuando agregue el primero.</p>
           ) : (
-            entries.map(finding => <FindingCard key={finding.id} companyId={companyId} sourceType={sourceType} value={finding} onChanged={() => { refetch(); onSummaryChanged(); }} />)
+            entries.map(finding => <FindingCard key={finding.id} companyId={companyId} sourceType={sourceType} value={finding} canManage={canManage} onChanged={() => { refetch(); onSummaryChanged(); }} />)
           )}
-          {showNew ? (
+          {canManage && (showNew ? (
             <div className="rounded-xl border border-dashed border-blue-300 bg-white p-4">
               <p className="mb-3 text-sm font-semibold text-slate-800">Nuevo hallazgo</p>
               <div className="grid gap-3 lg:grid-cols-2">
@@ -301,7 +307,7 @@ export function OperationalFindingsPanel({
             <Button variant="outline" className="border-dashed border-blue-300 text-blue-700 hover:bg-blue-100" onClick={() => setShowNew(true)}>
               <Plus className="mr-1 h-4 w-4" /> Agregar hallazgo operativo
             </Button>
-          )}
+          ))}
         </div>
       )}
     </div>

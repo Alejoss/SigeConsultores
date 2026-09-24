@@ -56,6 +56,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { getCompanyIdFromSession } from "@/lib/sessionScope";
+import { CompanyReadOnlyNotice, useCompanyManagementPermission } from "@/hooks/useCompanyManagementPermission";
 import {
   exportPayrollExcel,
   exportPayrollPdf,
@@ -343,6 +344,7 @@ const isInactiveStatus = (value: string) =>
 export default function Payroll() {
   const [, setLocation] = useLocation();
   const companyId = useMemo(() => getCompanyIdFromSession() || 0, []);
+  const { canManageCompany } = useCompanyManagementPermission(companyId);
   const performanceYear = useMemo(() => new Date().getFullYear(), []);
   const utils = trpc.useUtils();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -999,7 +1001,7 @@ export default function Payroll() {
             <Button
               variant="destructive"
               onClick={clearEmployees}
-              disabled={clearMutation.isPending || employees.length === 0}
+              disabled={!canManageCompany || clearMutation.isPending || employees.length === 0}
               className="gap-2"
             >
               <Trash2 className="h-4 w-4" />
@@ -1016,7 +1018,7 @@ export default function Payroll() {
             <Button
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isImporting}
+              disabled={!canManageCompany || isImporting}
               className="gap-2 border-blue-300 text-blue-700"
             >
               <FileUp className="h-4 w-4" />
@@ -1121,6 +1123,8 @@ export default function Payroll() {
           </Card>
         </div>
 
+        {!canManageCompany && <CompanyReadOnlyNotice />}
+
         <Card>
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 space-y-0">
             <div>
@@ -1171,6 +1175,7 @@ export default function Payroll() {
               </Button>
               <Button
                 onClick={() => setShowCreate(true)}
+                disabled={!canManageCompany}
                 className="gap-2 bg-emerald-600 hover:bg-emerald-700"
               >
                 <Plus className="h-4 w-4" />
@@ -1179,6 +1184,7 @@ export default function Payroll() {
             </div>
           </CardHeader>
           <CardContent>
+            <fieldset disabled={!canManageCompany} className="min-w-0 disabled:opacity-70">
             {isLoading ? (
               <div className="flex items-center justify-center gap-2 py-12 text-slate-600">
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -1352,6 +1358,7 @@ export default function Payroll() {
               </div>
               )
             )}
+            </fieldset>
           </CardContent>
         </Card>
       </div>

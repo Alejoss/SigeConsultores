@@ -6,6 +6,8 @@ import { getDb } from "./db";
 import { managementProgramFiles, managementPrograms } from "../drizzle/schema";
 import { storagePut } from "./storage";
 import { resolveAuthFromRequest } from "./_core/resolveRequestAuth";
+import { assertCompanyManagementAccess } from "./_core/companyPermissions";
+import type { TrpcContext } from "./_core/context";
 
 const MAX_PROGRAM_FILE_BYTES = 50 * 1024 * 1024;
 const PROGRAM_FILE_MIME_TYPES = new Set([
@@ -45,6 +47,11 @@ export function registerManagementProgramUploadRoutes(app: Express) {
         const programId = getPositiveId(req.body.programId);
         if (!companyId || !programId) {
           return res.status(400).json({ ok: false, error: "Empresa o programa inválido" });
+        }
+        try {
+          await assertCompanyManagementAccess(auth as TrpcContext, companyId);
+        } catch {
+          return res.status(403).json({ ok: false, error: "No tiene permisos para modificar este módulo" });
         }
         if (!req.file) {
           return res.status(400).json({ ok: false, error: "No se recibió ningún documento" });

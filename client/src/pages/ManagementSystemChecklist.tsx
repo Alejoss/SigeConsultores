@@ -29,6 +29,7 @@ import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
 import { SourceEvidenceButton } from "@/components/SourceEvidenceButton";
+import { CompanyReadOnlyNotice, useCompanyManagementPermission } from "@/hooks/useCompanyManagementPermission";
 
 type VerificationMode = "vigencia" | "planificacion" | "ambas";
 type ChecklistItem = {
@@ -602,6 +603,7 @@ export default function ManagementSystemChecklist() {
     const stored = localStorage.getItem("selectedCompanyId");
     return stored ? Number(stored) : getCompanyIdFromLocationOrStorage();
   }, [isManagerLogin, managerCompanyId, processLeaderSession, query]);
+  const { canManageCompany } = useCompanyManagementPermission(companyId);
 
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [openChecklistSections, setOpenChecklistSections] = useState<
@@ -758,6 +760,7 @@ export default function ManagementSystemChecklist() {
   );
 
   const buildImportPreview = () => {
+    if (!canManageCompany) return;
     const standardNameColumn = importMapping.standardName;
     if (standardNameColumn === undefined) {
       toast.error(
@@ -826,6 +829,7 @@ export default function ManagementSystemChecklist() {
   };
 
   const onImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    if (!canManageCompany) return;
     const file = event.target.files?.[0];
     if (!file) return;
     try {
@@ -949,6 +953,7 @@ export default function ManagementSystemChecklist() {
               size="sm"
               className="border-blue-300 text-blue-700"
               onClick={() => fileInputRef.current?.click()}
+              disabled={!canManageCompany}
             >
               <Upload size={15} className="mr-1" />
               Importar desde Excel
@@ -957,12 +962,15 @@ export default function ManagementSystemChecklist() {
               size="sm"
               className="bg-teal-700 hover:bg-teal-800"
               onClick={() => setShowNewItem(true)}
+              disabled={!canManageCompany}
             >
               <Plus size={15} className="mr-1" />
               Agregar estándar
             </Button>
           </div>
         </div>
+
+        {!canManageCompany && <CompanyReadOnlyNotice />}
 
         <section className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-5">
           <Card className="border-teal-200 bg-teal-50">
