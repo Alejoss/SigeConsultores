@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useLocation } from "wouter";
 import {
   ArrowLeft,
@@ -535,6 +536,22 @@ function ProgramActionsPanel({
   });
   const actions = actionsQuery.data || [];
 
+  const fitActionText = (textarea: HTMLTextAreaElement | null) => {
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.max(textarea.scrollHeight, 44)}px`;
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => {
+      document
+        .querySelectorAll<HTMLTextAreaElement>(`textarea[data-program-action="${programId}"]`)
+        .forEach(fitActionText);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [actions, open, programId]);
+
   const downloadActionsTemplate = () => {
     const sheet = XLSX.utils.aoa_to_sheet([
       [
@@ -673,11 +690,14 @@ function ProgramActionsPanel({
             actions.map(action => (
               <div
                 key={action.id}
-                className="grid gap-2 rounded-md border border-violet-100 bg-white p-3 md:grid-cols-[minmax(0,1fr)_170px_145px_90px_110px_100px_34px]"
+                className="grid items-start gap-2 rounded-md border border-violet-100 bg-white p-3 md:grid-cols-[minmax(260px,2.4fr)_minmax(135px,0.9fr)_145px_90px_110px_100px_34px]"
               >
-                <Input
+                <Textarea
+                  data-program-action={programId}
                   defaultValue={action.action}
                   placeholder="Acción"
+                  rows={1}
+                  onInput={event => fitActionText(event.currentTarget)}
                   onBlur={event =>
                     update.mutate({
                       id: action.id,
@@ -686,6 +706,7 @@ function ProgramActionsPanel({
                       action: event.target.value,
                     })
                   }
+                  className="min-h-11 resize-none overflow-hidden py-2 text-sm leading-relaxed"
                 />
                 <Input
                   defaultValue={action.responsible || ""}
@@ -770,8 +791,8 @@ function ProgramActionsPanel({
               conservan hasta que agregue la primera.
             </p>
           )}
-          <div className="grid gap-2 rounded-md border border-dashed border-violet-300 bg-white/70 p-3 md:grid-cols-[minmax(0,1fr)_170px_145px_auto]">
-            <Input
+          <div className="grid items-start gap-2 rounded-md border border-dashed border-violet-300 bg-white/70 p-3 md:grid-cols-[minmax(260px,2.4fr)_170px_145px_auto]">
+            <Textarea
               value={draft.action}
               onChange={event =>
                 setDraft(current => ({
@@ -780,6 +801,9 @@ function ProgramActionsPanel({
                 }))
               }
               placeholder="Nueva acción *"
+              rows={1}
+              onInput={event => fitActionText(event.currentTarget)}
+              className="min-h-11 resize-none overflow-hidden py-2 text-sm leading-relaxed"
             />
             <Input
               value={draft.responsible}

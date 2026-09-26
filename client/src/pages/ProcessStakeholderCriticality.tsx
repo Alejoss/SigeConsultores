@@ -43,14 +43,10 @@ function InfoTooltip({ title, children }: { title: string; children: React.React
 // Función para auto-expandir textareas
 const autoExpandTextarea = (textarea: HTMLTextAreaElement | null) => {
   if (!textarea) return;
-  // Resetear altura para calcular scrollHeight correctamente
+  // Resetear altura para calcular scrollHeight correctamente.
   textarea.style.height = 'auto';
-  // Usar scrollHeight con padding, mínimo 64px
-  const scrollHeight = textarea.scrollHeight;
-  const paddingTop = parseInt(window.getComputedStyle(textarea).paddingTop) || 0;
-  const paddingBottom = parseInt(window.getComputedStyle(textarea).paddingBottom) || 0;
-  const totalHeight = Math.max(scrollHeight + paddingTop + paddingBottom, 64);
-  textarea.style.height = totalHeight + 'px';
+  // scrollHeight ya incluye el contenido y el padding del campo.
+  textarea.style.height = `${Math.max(textarea.scrollHeight, 64)}px`;
 };
 
 const generateUniqueId = (): string => {
@@ -1251,17 +1247,17 @@ export default function ProcessStakeholderCriticality() {
           <>
           <div className="mb-8 overflow-x-auto">
             <h3 className="text-lg font-bold text-blue-900 mb-4">MEJORA CONTINUA ENTRE PARTES INTERESADAS</h3>
-            <table className="w-full border-collapse text-xs">
+            <table className="w-full min-w-[1120px] table-fixed border-collapse text-xs">
               <thead>
                 <tr className="bg-green-500 text-white">
-                  <th className="border border-slate-300 p-2 text-left">ASOCIADO</th>
-                  <th className="border border-slate-300 p-2 text-left">NECESIDADES Y EXPECTATIVAS</th>
-                  <th className="border border-slate-300 p-2 text-left">ACCIÓN A TOMAR</th>
-                  <th className="border border-slate-300 p-2 text-left">FUENTE</th>
-                  <th className="border border-slate-300 p-2 text-left">OBSERVACIONES</th>
-                  <th className="border border-slate-300 p-2 text-left">FECHA INICIO</th>
-                  <th className="border border-slate-300 p-2 text-left">FECHA FIN</th>
-                  <th className="border border-slate-300 p-2 text-left">REALIZADO</th>
+                  <th className="w-[11%] border border-slate-300 p-2 text-left">ASOCIADO</th>
+                  <th className="w-[22%] border border-slate-300 p-2 text-left">NECESIDADES Y EXPECTATIVAS</th>
+                  <th className="w-[25%] border border-slate-300 p-2 text-left">ACCIÓN A TOMAR</th>
+                  <th className="w-[15%] border border-slate-300 p-2 text-left">FUENTE</th>
+                  <th className="w-[12%] border border-slate-300 p-2 text-left">OBSERVACIONES</th>
+                  <th className="w-[6%] border border-slate-300 p-2 text-left">FECHA INICIO</th>
+                  <th className="w-[6%] border border-slate-300 p-2 text-left">FECHA FIN</th>
+                  <th className="w-[3%] border border-slate-300 p-2 text-left">REALIZADO</th>
                 </tr>
               </thead>
               <tbody>
@@ -1289,11 +1285,20 @@ export default function ProcessStakeholderCriticality() {
                       )}
                     </td>
                     <td className="border border-slate-300 p-2">
-                      <Textarea
+                      <textarea
+                        ref={(element) => {
+                          if (element) setTimeout(() => autoExpandTextarea(element), 0);
+                        }}
                         value={stakeholder.actionToTake}
-                        onChange={(e) => updateStakeholder(stakeholder.id, "actionToTake", e.target.value)}
+                        onChange={(e) => {
+                          updateStakeholder(stakeholder.id, "actionToTake", e.target.value);
+                          autoExpandTextarea(e.target);
+                        }}
+                        onInput={(e) => autoExpandTextarea(e.currentTarget)}
                         placeholder="Acción"
-                        className="text-xs min-h-12 resize-none"
+                        aria-label={`Acción a tomar para ${stakeholder.name}`}
+                        className="w-full resize-none overflow-hidden rounded border border-slate-200 p-2 font-sans text-xs leading-relaxed"
+                        style={{ minHeight: '64px' }}
                       />
                     </td>
                     <td className="border border-slate-300 p-2">
