@@ -4,6 +4,7 @@ import { getDb } from "../db";
 import { companyTrends, processes, processTacticalObjectives, criticalityMatrix, strategicObjectives, stakeholders, processFODA } from "../../drizzle/schema";
 import { eq, asc } from "drizzle-orm";
 import { calculateCompanyStrategicSnapshot, saveCompanyStrategicSnapshot } from "../lib/strategicSnapshots";
+import { calculateOtgProgress } from "../lib/otgProgress";
 
 const MONTH_NAMES = [
   "Ene", "Feb", "Mar", "Abr", "May", "Jun",
@@ -475,24 +476,10 @@ export const strategicTrendsRouter = router({
                 comunicados = matrixRows.filter((r: any) => r.comunicado === "SI").length;
 
                 let totalPct = 0;
-                let countWithActions = 0;
                 for (const row of matrixRows) {
-                  const acciones: any[] = Array.isArray(row.acciones) ? row.acciones : [];
-                  if (acciones.length === 0) continue;
-                  const totalPond = acciones.reduce((s: number, a: any) => s + (a.ponderacion || 0), 0);
-                  let pct = 0;
-                  if (totalPond > 0) {
-                    pct = acciones.reduce((s: number, a: any) => {
-                      const alc = parseFloat(a.alcanzado) || 0;
-                      return s + alc * (a.ponderacion / totalPond);
-                    }, 0);
-                  } else {
-                    pct = acciones.reduce((s: number, a: any) => s + (parseFloat(a.alcanzado) || 0), 0) / acciones.length;
-                  }
-                  totalPct += Math.min(100, Math.max(0, pct));
-                  countWithActions++;
+                  totalPct += calculateOtgProgress(row);
                 }
-                percent = countWithActions > 0 ? Math.round(totalPct / countWithActions) : 0;
+                percent = Math.round(totalPct / matrixRows.length);
               }
             } catch { /* skip */ }
           }
