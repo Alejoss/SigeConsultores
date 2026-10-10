@@ -8,10 +8,12 @@ import {
   meetingAgreements,
   meetingFiles,
   processMeetings,
+  processes,
 } from "../drizzle/schema";
 import { getDb } from "./db";
 import { storagePut } from "./storage";
 import { resolveAuthFromRequest } from "./_core/resolveRequestAuth";
+import { extractMeetingReportPreview } from "./lib/meetingReportExtraction";
 
 const MAX_MEETING_FILE_BYTES = 50 * 1024 * 1024;
 const MEETING_FILE_MIME_TYPES = new Set([
@@ -23,6 +25,11 @@ const MEETING_FILE_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+]);
+const MEETING_REPORT_MIME_TYPES = new Set([
+  "text/plain",
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 
 const upload = multer({
@@ -63,6 +70,72 @@ function uploadError(res: Response, error: unknown, label: string) {
 }
 
 export function registerMeetingUploadRoutes(app: Express) {
+  app.post(
+    "/api/import/meeting-report-preview",
+    upload.single("file"),
+    async (req: Request, res: Response) => {
+      try {
+        const auth = await resolveAuthFromRequest(req);
+        if (!auth.user && !auth.manager && !auth.processLeader) {
+          return res.status(401).json({ ok: false, error: "No autenticado" });
+        }
+        const companyId = positiveId(req.body.companyId);
+        const processId = positiveId(req.body.processId);
+        if (!companyId || !processId) {
+          return res.status(400).json({ ok: false, error: "Datos de importación inválidos" });
+        }
+        if (!hasCompanyAccess(auth, companyId)) {
+          return res.status(403).json({ ok: false, error: "No tiene acceso a esta empresa" });
+        }
+        if (!canManageProcess(auth, processId)) {
+          return res.status(403).json({ ok: false, error: "Solo puede importar actas para reuniones de su proceso" });
+        }
+        if (!req.file) {
+          return res.status(400).json({ ok: false, error: "No se recibió ningún archivo" });
+        }
+        if (!MEETING_REPORT_MIME_TYPES.has(req.file.mimetype)) {
+          return res.status(400).json({
+            ok: false,
+            error: "Para importar use un reporte PDF, Word (.docx) o texto (.txt)",
+          });
+        }
+        const db = await getDb();
+        if (!db) {
+          return res.status(503).json({ ok: false, error: "Base de datos no disponible" });
+        }
+        const [process] = await db
+          .select({ id: processes.id })
+          .from(processes)
+          .where(and(eq(processes.id, processId), eq(processes.companyId, companyId)))
+          .limit(1);
+        if (!process) {
+          return res.status(400).json({
+            ok: false,
+            error: "El proceso seleccionado no pertenece a esta empresa",
+          });
+        }
+        const preview = await extractMeetingReportPreview(req.file);
+        if (!preview.reportText.trim()) {
+          return res.status(400).json({
+            ok: false,
+            error: "No fue posible obtener texto del reporte. Puede pegar el contenido manualmente.",
+          });
+        }
+        return res.status(200).json({
+          ok: true,
+          reportText: preview.reportText,
+          templateDraft: preview.templateDraft,
+        });
+      } catch (error) {
+        console.error("[meeting-report-preview] Error:", error);
+        return res.status(400).json({
+          ok: false,
+          error: "No fue posible leer el reporte. Puede pegar el contenido manualmente.",
+        });
+      }
+    }
+  );
+
   app.post(
     "/api/upload/meeting-file",
     upload.single("file"),

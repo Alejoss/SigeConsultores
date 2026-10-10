@@ -1956,12 +1956,20 @@ export const processMeetings = mysqlTable("processMeetings", {
   companyId: int("companyId").notNull(),
   processId: int("processId").notNull(),
   meetingTypeId: int("meetingTypeId").notNull(),
+  /** Registro manual o acta importada desde un asistente externo. */
+  origin: mysqlEnum("origin", ["manual", "assistant_import"])
+    .default("manual")
+    .notNull(),
+  /** Nombre breve de la reunión; el objetivo sigue describiendo su propósito. */
+  title: varchar("title", { length: 500 }),
   meetingDate: date("meetingDate").notNull(),
   objective: text("objective").notNull(),
   participants: text("participants"),
   locationOrMedium: varchar("locationOrMedium", { length: 255 }),
   notes: text("notes"),
   minutesText: text("minutesText"),
+  /** Copia original importada por el usuario; se conserva aunque se prepare otra acta. */
+  assistantReportText: longtext("assistantReportText"),
   status: mysqlEnum("status", ["active", "annulled"])
     .default("active")
     .notNull(),

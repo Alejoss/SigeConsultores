@@ -112,3 +112,5 @@ pnpm-debug.log*
 !drizzle/0084_program_action_baselines.sql
 !drizzle/0085_payroll_rehire_and_soft_delete.sql
 !drizzle/0088_company_management_access.sql
+!drizzle/0089_meeting_assistant_import.sql
+!drizzle/0090_process_meeting_titles.sql
