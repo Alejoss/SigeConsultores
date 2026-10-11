@@ -6,8 +6,10 @@ import {
   CheckCircle2,
   ChevronDown,
   ClipboardCopy,
+  FileText,
   FileDown,
   FilePlus2,
+  FileUp,
   Link2,
   Loader2,
   Mail,
@@ -23,6 +25,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import {
+  deriveMeetingDraftFromAssistantReport,
+  deriveTaskDraftsFromActionItems,
+  type ImportedMeetingTaskDraft,
+} from "@/lib/meetingAssistantImport";
 import { toast } from "sonner";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
@@ -34,6 +41,13 @@ type ResponsibleType =
 type AgreementStatus = "pending" | "completed" | "cancelled";
 type CommunicationStatus = "not_requested" | "pending" | "sent" | "failed";
 type ProcessOption = { id: number; name: string; processType: string };
+type ImportedAgreementDraft = ImportedMeetingTaskDraft & {
+  key: string;
+  approved: boolean;
+  responsibleType: ResponsibleType;
+  responsibleEmail: string;
+  targetProcessId: string;
+};
 type LinkedCommitmentSummary = {
   id: number;
   processId: number;
@@ -60,12 +74,15 @@ type MeetingAgreement = {
 type Meeting = {
   id: number;
   meetingTypeId: number;
+  origin: "manual" | "assistant_import";
+  title: string | null;
   meetingDate: string | Date;
   objective: string;
   participants: string | null;
   locationOrMedium: string | null;
   notes: string | null;
   minutesText: string | null;
+  assistantReportText: string | null;
   status: "active" | "annulled";
   annulmentReason: string | null;
   agreementCount: number;
@@ -100,6 +117,10 @@ function dateInput(value: string | Date | null | undefined) {
   return typeof value === "string"
     ? value.slice(0, 10)
     : value.toISOString().slice(0, 10);
+}
+
+function hasValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 function responsibleLabel(agreement: MeetingAgreement) {
@@ -866,6 +887,7 @@ function MeetingDetail({
 }) {
   const [draft, setDraft] = useState({
     meetingDate: dateInput(meeting.meetingDate),
+    title: meeting.title || "",
     objective: meeting.objective,
     participants: meeting.participants || "",
     locationOrMedium: meeting.locationOrMedium || "",
@@ -934,7 +956,37 @@ function MeetingDetail({
           <strong>Reunión anulada.</strong> {meeting.annulmentReason || "Sin motivo registrado."} El historial se conserva, pero no se incluye en los indicadores activos.
         </div>
       )}
+      {meeting.origin === "assistant_import" && (
+        <div className="mb-4 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-950">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p>
+              <strong>Acta importada desde asistente de reuniones.</strong> Revise los datos y confirme cada acuerdo antes de vincularlo a un proceso o responsable.
+            </p>
+            {meeting.assistantReportText && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-violet-300 bg-white text-violet-900"
+                onClick={() => copyText(meeting.assistantReportText || "", "Reporte original copiado al portapapeles")}
+              >
+                <ClipboardCopy className="mr-1 h-4 w-4" />
+                Copiar reporte original
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
       <div className="grid gap-3 md:grid-cols-2">
+        <div className="md:col-span-2">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">Nombre de la reunión</label>
+          <Input
+            disabled={isAnnulled}
+            value={draft.title}
+            onChange={event => setDraft(current => ({ ...current, title: event.target.value }))}
+            onBlur={() => save({})}
+            placeholder="Nombre breve para identificar la reunión"
+          />
+        </div>
         <div>
           <label className="mb-1 block text-xs font-semibold text-slate-600">Fecha *</label>
           <Input
@@ -1117,21 +1169,435 @@ function MeetingDetail({
   );
 }
 
-function NewMeetingForm({
+type NewMeetingMode = "choose" | "manual" | "assistant_import" | "template_import";
+type ImportSource = "assistant" | "template";
+
+function AssistantMeetingImportForm({
   companyId,
   processId,
   meetingTypeId,
+  processes,
+  source,
+  onBack,
   onClose,
   onRefresh,
 }: {
   companyId: number;
   processId: number;
   meetingTypeId: number;
+  processes: ProcessOption[];
+  source: ImportSource;
+  onBack: () => void;
   onClose: () => void;
   onRefresh: () => void;
 }) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const today = new Date().toISOString().slice(0, 10);
+  const [reportText, setReportText] = useState("");
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [readingFile, setReadingFile] = useState(false);
+  const [title, setTitle] = useState("");
+  const [actionItemsText, setActionItemsText] = useState("");
+  const [tasksEdited, setTasksEdited] = useState(false);
+  const [draft, setDraft] = useState({
+    meetingDate: today,
+    objective: "",
+    participants: "",
+    locationOrMedium: "",
+    notes: "",
+  });
+  const [tasks, setTasks] = useState<ImportedAgreementDraft[]>([]);
+  const create = trpc.meetings.importAssistantMeeting.useMutation({
+    onSuccess: async result => {
+      let attachmentWarning = "";
+      if (reportFile) {
+        try {
+          const formData = new FormData();
+          formData.append("file", reportFile);
+          formData.append("companyId", String(companyId));
+          formData.append("meetingId", String(result.id));
+          const response = await fetch("/api/upload/meeting-file", {
+            method: "POST",
+            body: formData,
+            credentials: "include",
+          });
+          const payload = await response.json().catch(() => null);
+          if (!response.ok || !payload?.ok) attachmentWarning = " El texto fue importado, pero no se pudo adjuntar el archivo original.";
+        } catch {
+          attachmentWarning = " El texto fue importado, pero no se pudo adjuntar el archivo original.";
+        }
+      }
+      onClose();
+      onRefresh();
+      toast.success(
+        result.agreementIds.length
+          ? `Reunión importada con ${result.agreementIds.length} acuerdo(s) aprobado(s).${attachmentWarning}`
+          : `Reunión importada sin acuerdos aprobados.${attachmentWarning}`
+      );
+    },
+    onError: error => {
+      if (/Unexpected token.*(?:<|doctype)|not valid JSON/i.test(error.message)) {
+        toast.error("La plataforma temporal no recibió una respuesta válida del servidor. Actualice la página y compruebe primero si la reunión aparece en la lista antes de volver a confirmarla.");
+        return;
+      }
+      if (/Invalid email address|responsibleEmail|invalid_format/i.test(error.message)) {
+        toast.error("Revise los correos de las tareas: escriba un correo completo, por ejemplo nombre@empresa.com, o deje el campo vacío. Para «Dueño de este proceso» no se necesita correo.");
+        return;
+      }
+      toast.error(error.message);
+    },
+  });
+
+  const toReviewTasks = (items: ImportedMeetingTaskDraft[], targetNames: string[] = []) =>
+    items.map((item, index) => {
+      const matchedProcess = targetNames[index]
+        ? processes.find(process => process.name.trim().toLocaleLowerCase() === targetNames[index].trim().toLocaleLowerCase())
+        : undefined;
+      return {
+        ...item,
+        key: `${Date.now()}-${index}-${item.description.slice(0, 30)}`,
+        approved: true,
+        responsibleType: matchedProcess ? "other_process" as ResponsibleType : "same_process_employee" as ResponsibleType,
+        responsibleEmail: "",
+        targetProcessId: matchedProcess ? String(matchedProcess.id) : "",
+      };
+    });
+
+  const applyReportText = (value: string) => {
+    setReportText(value);
+    const derived = deriveMeetingDraftFromAssistantReport(value, today);
+    setDraft(current => ({
+      meetingDate: derived.meetingDate || current.meetingDate,
+      objective: derived.objective || current.objective,
+      participants: derived.participants || current.participants,
+      locationOrMedium: derived.locationOrMedium || current.locationOrMedium,
+      notes: derived.notes || current.notes,
+    }));
+    if (!title && derived.title) setTitle(derived.title);
+    if (source === "assistant" && !tasksEdited && derived.agreements.length) {
+      setTasks(toReviewTasks(derived.agreements));
+    }
+  };
+
+  const applyActionItems = (value: string, force = false) => {
+    setActionItemsText(value);
+    if (!tasksEdited || force) setTasks(toReviewTasks(deriveTaskDraftsFromActionItems(value)));
+  };
+
+  const applyTemplateDraft = (templateDraft: any) => {
+    if (!templateDraft) return;
+    setTitle(templateDraft.title || "");
+    setDraft(current => ({
+      meetingDate: templateDraft.meetingDate || current.meetingDate,
+      objective: templateDraft.objective || current.objective,
+      participants: templateDraft.participants || current.participants,
+      locationOrMedium: templateDraft.locationOrMedium || current.locationOrMedium,
+      notes: templateDraft.notes || current.notes,
+    }));
+    const templateTasks = (templateDraft.agreements || []) as Array<ImportedMeetingTaskDraft & { targetProcessName?: string }>;
+    setTasks(toReviewTasks(templateTasks, templateTasks.map(item => item.targetProcessName || "")));
+    setActionItemsText(templateTasks.map(item => item.description).join("\n"));
+    setTasksEdited(false);
+  };
+
+  const readReportFile = async (file: File) => {
+    setReadingFile(true);
+    const notice = toast.loading(source === "template" ? "Leyendo la plantilla ISGE..." : "Leyendo el reporte de reunión...");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("companyId", String(companyId));
+      formData.append("processId", String(processId));
+      const response = await fetch("/api/import/meeting-report-preview", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok || typeof payload.reportText !== "string") throw new Error(payload?.error || "No fue posible leer el reporte.");
+      if (source === "template" && !payload.templateDraft) {
+        throw new Error("El archivo no corresponde a la plantilla oficial ISGE. Descargue la plantilla, complétela sin cambiar sus encabezados y vuelva a cargarla.");
+      }
+      setReportFile(file);
+      applyReportText(payload.reportText);
+      if (payload.templateDraft) applyTemplateDraft(payload.templateDraft);
+      toast.success("Información leída. Revise y apruebe los acuerdos antes de crear la reunión.", { id: notice });
+    } catch (error) {
+      setReportFile(null);
+      toast.error(error instanceof Error ? error.message : "No fue posible leer el reporte.", { id: notice });
+    } finally {
+      setReadingFile(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  const updateTask = (key: string, patch: Partial<ImportedAgreementDraft>) => {
+    setTasksEdited(true);
+    setTasks(current => current.map(task => task.key === key ? { ...task, ...patch } : task));
+  };
+  const approvedTasks = tasks.filter(task => task.approved && task.description.trim());
+
+  const submit = () => {
+    if (!reportText.trim() || !draft.meetingDate || !draft.objective.trim()) return;
+    const invalidOtherProcess = approvedTasks.some(task => task.responsibleType === "other_process" && !task.targetProcessId);
+    if (invalidOtherProcess) {
+      toast.error("Seleccione el proceso responsable o deje la tarea sin vincular antes de aprobarla.");
+      return;
+    }
+    const invalidEmailIndex = approvedTasks.findIndex(task =>
+      task.responsibleType !== "same_process_owner" &&
+      task.responsibleEmail.trim() &&
+      !hasValidEmail(task.responsibleEmail)
+    );
+    if (invalidEmailIndex >= 0) {
+      toast.error(`La tarea ${invalidEmailIndex + 1} tiene un correo incompleto. Corríjalo o deje el campo vacío.`);
+      return;
+    }
+    create.mutate({
+      companyId,
+      processId,
+      meetingTypeId,
+      title: title.trim(),
+      ...draft,
+      assistantReportText: reportText,
+      agreements: approvedTasks.map(task => ({
+        description: task.description,
+        responsibleType: task.responsibleType,
+        responsibleName: task.responsibleName,
+        responsibleEmail: task.responsibleType === "same_process_owner" ? "" : task.responsibleEmail.trim(),
+        targetProcessId: task.responsibleType === "other_process" ? Number(task.targetProcessId) : null,
+        dueDate: task.dueDate,
+        notes: task.notes,
+      })),
+    });
+  };
+
+  const isTemplate = source === "template";
+  return (
+    <div className="mb-3 rounded-lg border border-violet-200 bg-violet-50 p-4">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h4 className="font-semibold text-violet-950">
+            {isTemplate ? "Importar acta con plantilla ISGE" : "Importar desde asistente de reuniones"}
+          </h4>
+          <p className="mt-1 max-w-3xl text-xs text-violet-900">
+            {isTemplate
+              ? "Suba una única plantilla Word con el resumen y los acuerdos. ISGE organiza los campos y permite aprobar, editar o rechazar cada tarea antes de crear responsabilidades."
+              : "Pegue el resumen y la lista Action Items de Read AI, Teams, Zoom, Fireflies u otro asistente. ISGE no recibe credenciales externas ni crea responsabilidades sin revisión."}
+          </p>
+        </div>
+        <Button size="sm" variant="ghost" onClick={onBack}>Cambiar opción</Button>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        className="hidden"
+        accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+        onChange={event => {
+          const file = event.target.files?.[0];
+          if (file) void readReportFile(file);
+        }}
+      />
+      <div className="mb-4 rounded-lg border border-violet-200 bg-white p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-slate-800">{isTemplate ? "Plantilla única de acta" : "Reporte original (opcional)"}</p>
+            <p className="text-xs text-slate-500">
+              {isTemplate
+                ? "Descargue la plantilla Word, complétela y súbala. Contiene datos, resumen y acuerdos en un solo archivo."
+                : "Puede conservar un PDF, Word (.docx) o texto (.txt) como respaldo. Si no tiene archivo, pegue el resumen y las tareas abajo."}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {isTemplate && (
+              <Button asChild size="sm" variant="outline">
+                <a href="/plantillas/acta-reunion-isge.docx" download>
+                  <FileDown className="mr-1 h-4 w-4" />Descargar plantilla ISGE
+                </a>
+              </Button>
+            )}
+            <Button size="sm" variant="outline" disabled={readingFile} onClick={() => inputRef.current?.click()}>
+              {readingFile ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileUp className="mr-1 h-4 w-4" />}
+              {readingFile ? "Leyendo..." : isTemplate ? "Subir plantilla llena" : "Cargar reporte"}
+            </Button>
+          </div>
+        </div>
+        {reportFile && <p className="mt-2 text-xs font-medium text-violet-800">Archivo preparado: {reportFile.name}</p>}
+      </div>
+
+      <div className="space-y-3">
+        {!isTemplate && (
+          <>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-700">Resumen o reporte de la reunión *</label>
+              <Textarea
+                className="min-h-36 bg-white"
+                value={reportText}
+                onChange={event => applyReportText(event.target.value)}
+                placeholder="Pegue aquí el Summary o reporte generado por el asistente."
+              />
+            </div>
+            <div>
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <label className="block text-xs font-semibold text-slate-700">Tareas propuestas por el asistente</label>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => applyActionItems(actionItemsText, true)}>
+                  <RefreshCw className="mr-1 h-3.5 w-3.5" />Volver a leer tareas
+                </Button>
+              </div>
+              <Textarea
+                className="min-h-28 bg-white"
+                value={actionItemsText}
+                onChange={event => applyActionItems(event.target.value)}
+                placeholder="Pegue la lista Action Items o Tareas de Read AI, una por línea."
+              />
+              <p className="mt-1 text-xs text-slate-500">El resumen sirve de contexto. Las tareas se revisan por separado y no se infieren automáticamente desde el resumen.</p>
+            </div>
+          </>
+        )}
+        {isTemplate && (
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-700">Contenido original de la plantilla *</label>
+            <Textarea className="min-h-28 bg-white" value={reportText} onChange={event => applyReportText(event.target.value)} placeholder="Al subir la plantilla llena, ISGE conserva aquí su contenido como respaldo." />
+          </div>
+        )}
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-xs font-semibold text-slate-700">Nombre de la reunión</label>
+            <Input value={title} onChange={event => setTitle(event.target.value)} placeholder="Ej.: Revisión de indicadores de septiembre" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-700">Fecha *</label>
+            <Input type="date" value={draft.meetingDate} onChange={event => setDraft(current => ({ ...current, meetingDate: event.target.value }))} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-700">Lugar o medio</label>
+            <Input value={draft.locationOrMedium} onChange={event => setDraft(current => ({ ...current, locationOrMedium: event.target.value }))} placeholder="Presencial, Zoom, Teams, Meet..." />
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-xs font-semibold text-slate-700">Objetivo o tema *</label>
+            <Textarea value={draft.objective} onChange={event => setDraft(current => ({ ...current, objective: event.target.value }))} placeholder="Revise o indique el objetivo de la reunión" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-700">Participantes</label>
+            <Textarea value={draft.participants} onChange={event => setDraft(current => ({ ...current, participants: event.target.value }))} placeholder="Nombres o lista de participantes" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-700">Resumen, desarrollo o decisiones</label>
+            <Textarea value={draft.notes} onChange={event => setDraft(current => ({ ...current, notes: event.target.value }))} placeholder="Síntesis, observaciones o contexto" />
+          </div>
+        </div>
+
+        <section className="rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h5 className="font-semibold text-amber-950">Tareas propuestas para revisión</h5>
+              <p className="text-xs text-amber-900">Aprobar crea el acuerdo al confirmar la reunión. Rechazar lo excluye sin perder el reporte original.</p>
+            </div>
+            {tasks.some(task => !task.approved) && (
+              <Button size="sm" variant="outline" onClick={() => setTasks(current => current.map(task => ({ ...task, approved: true })))}>
+                <CheckCircle2 className="mr-1 h-4 w-4" />Aprobar todas
+              </Button>
+            )}
+          </div>
+          <div className="mt-3 space-y-3">
+            {tasks.length ? tasks.map((task, index) => (
+              <div key={task.key} className={`rounded-md border p-3 ${task.approved ? "border-amber-300 bg-white" : "border-slate-200 bg-slate-100 opacity-70"}`}>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${task.approved ? "bg-amber-100 text-amber-900" : "bg-slate-200 text-slate-700"}`}>
+                    {task.approved ? "Pendiente de aprobación final" : "Rechazada"}
+                  </span>
+                  <Button size="sm" variant={task.approved ? "outline" : "default"} onClick={() => updateTask(task.key, { approved: !task.approved })}>
+                    {task.approved ? <><XCircle className="mr-1 h-4 w-4" />Rechazar</> : <><CheckCircle2 className="mr-1 h-4 w-4" />Aprobar</>}
+                  </Button>
+                </div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">Acción propuesta {index + 1}</label>
+                    <Textarea value={task.description} onChange={event => updateTask(task.key, { description: event.target.value })} className="min-h-16 bg-white" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">Tipo de responsable</label>
+                    <select value={task.responsibleType} onChange={event => {
+                      const responsibleType = event.target.value as ResponsibleType;
+                      updateTask(task.key, {
+                        responsibleType,
+                        targetProcessId: "",
+                        ...(responsibleType === "same_process_owner" ? { responsibleEmail: "" } : {}),
+                      });
+                    }} className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm">
+                      {RESPONSIBLE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">Fecha límite</label>
+                    <Input type="date" value={task.dueDate} onChange={event => updateTask(task.key, { dueDate: event.target.value })} />
+                  </div>
+                  {task.responsibleType === "other_process" && (
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-xs font-semibold text-slate-600">Proceso responsable</label>
+                      <select value={task.targetProcessId} onChange={event => updateTask(task.key, { targetProcessId: event.target.value })} className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm">
+                        <option value="">Seleccione un proceso</option>
+                        {processes.map(process => <option key={process.id} value={process.id}>{process.name}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">Nombre del responsable</label>
+                    <Input value={task.responsibleName} onChange={event => updateTask(task.key, { responsibleName: event.target.value })} placeholder="Puede definirlo después" />
+                  </div>
+                  {task.responsibleType !== "same_process_owner" && (
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-slate-600">
+                        {task.responsibleType === "other_process"
+                          ? "Correo, si se delega a un empleado sin acceso"
+                          : "Correo del empleado, si no tiene acceso"}
+                      </label>
+                      <Input type="email" value={task.responsibleEmail} onChange={event => updateTask(task.key, { responsibleEmail: event.target.value })} placeholder="Opcional; no se envía correo ahora" />
+                    </div>
+                  )}
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">Observaciones</label>
+                    <Textarea value={task.notes} onChange={event => updateTask(task.key, { notes: event.target.value })} placeholder="Opcional" />
+                  </div>
+                </div>
+              </div>
+            )) : (
+              <p className="rounded-md border border-dashed border-amber-300 px-3 py-4 text-center text-sm text-amber-900">Aún no hay tareas propuestas. Puede continuar sin acuerdos o agregar tareas con la reunión manual después de crearla.</p>
+            )}
+          </div>
+        </section>
+      </div>
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <Button variant="outline" onClick={onClose}>Cancelar</Button>
+        <Button disabled={!reportText.trim() || !draft.meetingDate || !draft.objective.trim() || create.isPending} onClick={submit}>
+          {create.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Confirmar reunión y {approvedTasks.length} acuerdo(s) aprobado(s)
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function NewMeetingForm({
+  companyId,
+  processId,
+  meetingTypeId,
+  processes,
+  onClose,
+  onRefresh,
+}: {
+  companyId: number;
+  processId: number;
+  meetingTypeId: number;
+  processes: ProcessOption[];
+  onClose: () => void;
+  onRefresh: () => void;
+}) {
+  const [mode, setMode] = useState<NewMeetingMode>("choose");
   const [draft, setDraft] = useState({
     meetingDate: new Date().toISOString().slice(0, 10),
+    title: "",
     objective: "",
     participants: "",
     locationOrMedium: "",
@@ -1145,13 +1611,68 @@ function NewMeetingForm({
     },
     onError: error => toast.error(error.message),
   });
+  if (mode === "assistant_import" || mode === "template_import") {
+    return (
+      <AssistantMeetingImportForm
+        companyId={companyId}
+        processId={processId}
+        meetingTypeId={meetingTypeId}
+        processes={processes}
+        source={mode === "template_import" ? "template" : "assistant"}
+        onBack={() => setMode("choose")}
+        onClose={onClose}
+        onRefresh={onRefresh}
+      />
+    );
+  }
+  if (mode === "choose") {
+    return (
+      <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div>
+            <h4 className="font-semibold text-blue-950">Nueva reunión</h4>
+            <p className="mt-1 text-xs text-blue-900">Elija cómo desea registrar esta reunión dentro del tipo seleccionado.</p>
+          </div>
+          <Button size="sm" variant="ghost" onClick={onClose}>Cancelar</Button>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <button type="button" onClick={() => setMode("manual")} className="rounded-lg border border-blue-200 bg-white p-4 text-left transition hover:border-blue-500 hover:bg-blue-50">
+            <FileText className="mb-2 h-6 w-6 text-blue-700" />
+            <span className="block font-semibold text-slate-800">Registrar manualmente</span>
+            <span className="mt-1 block text-xs text-slate-500">Complete fecha, participantes, notas y acuerdos directamente en ISGE.</span>
+          </button>
+          <button type="button" onClick={() => setMode("assistant_import")} className="rounded-lg border border-violet-200 bg-white p-4 text-left transition hover:border-violet-500 hover:bg-violet-50">
+            <FileUp className="mb-2 h-6 w-6 text-violet-700" />
+            <span className="block font-semibold text-slate-800">Importar desde asistente</span>
+            <span className="mt-1 block text-xs text-slate-500">Pegue el resumen y las tareas de Read AI u otro asistente; luego apruebe cada tarea.</span>
+          </button>
+          <button type="button" onClick={() => setMode("template_import")} className="rounded-lg border border-emerald-200 bg-white p-4 text-left transition hover:border-emerald-500 hover:bg-emerald-50">
+            <FileDown className="mb-2 h-6 w-6 text-emerald-700" />
+            <span className="block font-semibold text-slate-800">Importar con plantilla ISGE</span>
+            <span className="mt-1 block text-xs text-slate-500">Descargue una plantilla Word única, llénela y suba datos, resumen y acuerdos juntos.</span>
+          </button>
+          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-left opacity-75">
+            <Link2 className="mb-2 h-6 w-6 text-slate-500" />
+            <span className="block font-semibold text-slate-700">Conectar mi asistente</span>
+            <span className="mt-1 block text-xs text-slate-500">Próximamente: importación automática desde una cuenta externa autorizada.</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
       <div className="mb-3 flex items-center justify-between">
         <h4 className="font-semibold text-blue-950">Nueva reunión</h4>
-        <Button size="sm" variant="ghost" onClick={onClose}>Cancelar</Button>
+        <Button size="sm" variant="ghost" onClick={() => setMode("choose")}>Cambiar opción</Button>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
+        <Input
+          className="md:col-span-2"
+          value={draft.title}
+          onChange={event => setDraft(current => ({ ...current, title: event.target.value }))}
+          placeholder="Nombre de la reunión (opcional)"
+        />
         <Input
           type="date"
           value={draft.meetingDate}
@@ -1305,6 +1826,7 @@ function MeetingTypeCard({
                   companyId={companyId}
                   processId={processId}
                   meetingTypeId={meetingType.id}
+                  processes={processes}
                   onClose={() => setShowNewMeeting(false)}
                   onRefresh={onRefresh}
                 />
@@ -1322,9 +1844,13 @@ function MeetingTypeCard({
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-900">{dateInput(meeting.meetingDate)}</span>
+                          {meeting.origin === "assistant_import" && (
+                            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-900">Importada</span>
+                          )}
                           {meeting.status === "annulled" && <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800">Anulada</span>}
                         </div>
-                        <p className="mt-1 truncate font-semibold text-slate-800">{meeting.objective}</p>
+                        <p className="mt-1 truncate font-semibold text-slate-800">{meeting.title?.trim() || meeting.objective}</p>
+                        {meeting.title?.trim() && <p className="mt-0.5 truncate text-xs text-slate-500">{meeting.objective}</p>}
                       </div>
                       <div className="flex shrink-0 items-center gap-4">
                         <div className="text-center text-xs text-slate-500">
@@ -1429,7 +1955,7 @@ export default function ProcessMeetings() {
             <div>
               <h1 className="text-2xl font-bold text-slate-800">Reuniones</h1>
               <p className="mt-1 max-w-2xl text-sm text-slate-500">
-                Registre reuniones manuales del proceso, acuerdos, actas y responsabilidades. Los acuerdos vinculados usan el Cronograma consolidado existente; no se crea una agenda paralela.
+                Registre o importe reuniones del proceso, sus actas, acuerdos y responsabilidades. Los acuerdos vinculados usan el Cronograma consolidado existente; no se crea una agenda paralela.
               </p>
             </div>
           </div>

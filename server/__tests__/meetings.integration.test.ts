@@ -128,7 +128,7 @@ afterAll(async () => {
   }
 });
 
-describe("Reuniones manuales: integración local", () => {
+describe("Reuniones e importación de actas: integración local", () => {
   it("crea un tipo y una reunión con acta persistida", async () => {
     const manager = adminMeetingsCaller();
     const type = await manager.createType({
@@ -283,6 +283,157 @@ describe("Reuniones manuales: integración local", () => {
         targetProcessId: foreignProcessId,
       })
     ).rejects.toThrow("no pertenece a esta empresa");
+  });
+
+  it("importa solo acuerdos aprobados y vincula los que ya tienen proceso responsable", async () => {
+    const manager = adminMeetingsCaller();
+    const reportText = [
+      "ACTA GENERADA POR ASISTENTE",
+      "Fecha: 2026-09-19",
+      "Objetivo: Revisar avance de indicadores del proceso",
+      "Participantes: Jefe temporal, Analista temporal",
+      "Acuerdos y pendientes",
+      "- Actualizar indicador de prueba",
+      "- Preparar evidencia de la reunión",
+    ].join("\n");
+    const imported = await manager.importAssistantMeeting({
+      companyId,
+      processId: sourceProcessId,
+      meetingTypeId: typeId,
+      meetingDate: "2026-09-19",
+      title: "Revisión de indicadores importada",
+      objective: "Revisar avance de indicadores del proceso",
+      participants: "Jefe temporal, Analista temporal",
+      assistantReportText: reportText,
+      agreements: [
+        {
+          description: "Actualizar indicador de prueba",
+          responsibleType: "same_process_employee",
+          responsibleName: "Analista temporal",
+        },
+        {
+          description: "Preparar evidencia de la reunión",
+          responsibleType: "other_process",
+          responsibleName: "Jefe destino de prueba",
+          targetProcessId,
+          dueDate: "2026-09-25",
+          notes: "Aprobado desde la vista previa",
+        },
+        {
+          description: "Actualizar indicador de prueba",
+          responsibleType: "same_process_employee",
+        },
+      ],
+    });
+    expect(imported.agreementIds).toHaveLength(2);
+
+    const [saved] = await db
+      .select()
+      .from(processMeetings)
+      .where(eq(processMeetings.id, imported.id));
+    expect(saved.origin).toBe("assistant_import");
+    expect(saved.title).toBe("Revisión de indicadores importada");
+    expect(saved.minutesText).toBe(reportText);
+    expect(saved.assistantReportText).toBe(reportText);
+
+    const importedAgreements = await db
+      .select()
+      .from(meetingAgreements)
+      .where(eq(meetingAgreements.meetingId, imported.id));
+    expect(importedAgreements).toHaveLength(2);
+    expect(importedAgreements).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        description: "Actualizar indicador de prueba",
+        responsibleType: "same_process_employee",
+        targetProcessId: null,
+      }),
+      expect.objectContaining({
+        description: "Preparar evidencia de la reunión",
+        responsibleType: "other_process",
+        targetProcessId,
+      }),
+    ]));
+    const importedLinks = await db
+      .select()
+      .from(linkedCommitments)
+      .where(and(eq(linkedCommitments.sourceType, "meeting_agreement"), eq(linkedCommitments.sourceSubId, imported.id)));
+    expect(importedLinks).toHaveLength(1);
+    expect(importedLinks[0].processId).toBe(targetProcessId);
+
+    const listing = await manager.list({ companyId, processId: sourceProcessId, includeAnnulled: true });
+    const listed = listing.flatMap(type => type.meetings).find(meeting => meeting.id === imported.id);
+    expect(listed?.origin).toBe("assistant_import");
+    expect(listed?.agreementCount).toBe(2);
+  });
+
+  it("crea todos los acuerdos aprobados de una importación numerosa", async () => {
+    const manager = adminMeetingsCaller();
+    const agreements = Array.from({ length: 8 }, (_, index) => ({
+      description: `Acuerdo importado de prueba ${index + 1}`,
+      responsibleType: "same_process_employee" as const,
+      responsibleName: `Responsable temporal ${index + 1}`,
+      dueDate: `2026-10-${String(index + 10).padStart(2, "0")}`,
+    }));
+    const imported = await manager.importAssistantMeeting({
+      companyId,
+      processId: sourceProcessId,
+      meetingTypeId: typeId,
+      meetingDate: "2026-10-09",
+      title: "Importación temporal de ocho acuerdos",
+      objective: "Comprobar creación íntegra de tareas importadas",
+      assistantReportText: "Acta temporal para comprobar ocho acuerdos importados.",
+      agreements,
+    });
+
+    expect(imported.agreementIds).toHaveLength(8);
+    const savedAgreements = await db
+      .select()
+      .from(meetingAgreements)
+      .where(eq(meetingAgreements.meetingId, imported.id));
+    expect(savedAgreements).toHaveLength(8);
+    expect(savedAgreements.map(agreement => agreement.description)).toEqual(
+      agreements.map(agreement => agreement.description)
+    );
+  });
+
+  it("descarta un correo no aplicable cuando la tarea corresponde al dueño del proceso", async () => {
+    const manager = adminMeetingsCaller();
+    const imported = await manager.importAssistantMeeting({
+      companyId,
+      processId: sourceProcessId,
+      meetingTypeId: typeId,
+      meetingDate: "2026-10-10",
+      objective: "Comprobar la asignación al dueño del proceso",
+      assistantReportText: "Acta temporal para comprobar la asignación al dueño.",
+      agreements: [
+        {
+          description: "Acuerdo para el dueño del proceso",
+          responsibleType: "same_process_owner",
+          responsibleName: "Dueño temporal",
+          responsibleEmail: "texto-que-no-es-un-correo",
+        },
+      ],
+    });
+
+    const [savedAgreement] = await db
+      .select()
+      .from(meetingAgreements)
+      .where(eq(meetingAgreements.id, imported.agreementIds[0]));
+    expect(savedAgreement.responsibleType).toBe("same_process_owner");
+    expect(savedAgreement.responsibleEmail).toBeNull();
+  });
+
+  it("impide que un Jefe importe un acta en otro proceso", async () => {
+    await expect(
+      leaderMeetingsCaller(sourceProcessId).importAssistantMeeting({
+        companyId,
+        processId: targetProcessId,
+        meetingTypeId: typeId,
+        meetingDate: "2026-09-19",
+        objective: "Intento de importación no autorizada",
+        assistantReportText: "Acta temporal de prueba",
+      })
+    ).rejects.toThrow("solo puede gestionar las reuniones de su proceso");
   });
 
   it("solo elimina reuniones vacías y anula las que ya tienen historial", async () => {

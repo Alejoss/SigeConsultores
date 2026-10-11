@@ -2,7 +2,6 @@
 
 **Fecha:** 14 de septiembre de 2026
 **Estado:** Diseño funcional acordado para implementación local posterior a la reorganización de Caracterización.
-**Fuera de alcance por ahora:** Integración con Read AI, grabación, transcripción automática, importación de acuerdos por IA y envío automático de correos.
 
 ## Propósito
 
@@ -26,7 +25,7 @@ Las reuniones generales de la empresa se administrarán desde el proceso **Estra
 | 2 | Reuniones concretas | Al abrir un tipo, se presentan reuniones específicas en una fila por reunión. |
 | 3 | Detalle de reunión | Al desplegar una fila se muestran acuerdos, acta, archivos, edición, anulación y exportación. |
 
-En la fila principal de una reunión se verá siempre: **fecha**, **objetivo** y **porcentaje de cumplimiento**. Los demás controles quedarán agrupados y desplegables para evitar contaminación visual.
+En la fila principal de una reunión se verá siempre: **fecha**, **nombre de la reunión** si fue registrado (o el objetivo como alternativa) y **porcentaje de cumplimiento**. Los demás controles quedarán agrupados y desplegables para evitar contaminación visual.
 
 ## Datos de una reunión
 
@@ -34,6 +33,7 @@ Cada reunión tendrá los siguientes datos:
 
 | Campo o acción | Regla |
 |---|---|
+| Nombre de la reunión | Opcional; permite identificar y ordenar fácilmente reuniones del mismo tipo. |
 | Fecha | Obligatoria. |
 | Objetivo | Obligatorio. |
 | Participantes | Opcional; texto libre. |
@@ -42,7 +42,7 @@ Cada reunión tendrá los siguientes datos:
 | Porcentaje de cumplimiento | Acuerdos cumplidos ÷ acuerdos activos. Si no hay acuerdos activos, se mostrará «Sin acuerdos registrados». |
 | Preparar acta | Genera un texto ordenado, revisable y copiable. No envía correos automáticamente. |
 | Archivos | Permite subir y consultar uno o varios archivos de respaldo. |
-| Editar | Permite modificar fecha, objetivo, participantes, lugar y otras notas. |
+| Editar | Permite modificar nombre, fecha, objetivo, participantes, lugar y otras notas. |
 | Exportar / Descargar | Permitirá al usuario guardar en su computadora el acta y los archivos vinculados. |
 
 ## Acuerdos o pendientes
@@ -64,9 +64,9 @@ Cada acuerdo tendrá una fila propia con autosave y un selector obligatorio llam
 
 | Caso | Selección del usuario | Resultado esperado |
 |---|---|---|
-| **A. Empleado del mismo proceso, sin acceso a la plataforma** | Se marca «Empleado de este proceso» y se registra el nombre y correo del trabajador. | El empleado recibe por correo el acta de la reunión y sus compromisos. El acuerdo permanece visible dentro de la reunión para que el dueño del proceso controle su cumplimiento. No se crea un acceso a la plataforma ni un compromiso en otro proceso. |
+| **A. Empleado del mismo proceso, sin acceso a la plataforma** | Se marca «Empleado de este proceso» y se registra el nombre y correo del trabajador. | El empleado recibe por correo el acta de la reunión y sus compromisos sólo tras una acción explícita de envío. El acuerdo permanece visible dentro de la reunión para que el dueño del proceso controle su cumplimiento. No se crea un acceso a la plataforma ni un compromiso en otro proceso. |
 | **B. Dueño del proceso donde se realiza la reunión** | Se marca «Dueño de este proceso». | El acuerdo se **autovincula** al mismo proceso: aparece en Compromisos vinculados y pasa a su Cronograma consolidado. El dueño del proceso puede actualizar cumplimiento y evidencia desde allí; todo se refleja en la reunión de origen. |
-| **C. Dueño de otro proceso o empleado de otro proceso sin acceso** | Se marca «Otro proceso», se elige el proceso responsable y se registra el nombre de la persona responsable cuando corresponda. | El acuerdo se vincula al proceso seleccionado. El dueño de ese proceso lo encuentra en Compromisos vinculados y Cronograma consolidado, lo actualiza con evidencia y su avance se refleja en la reunión de origen. Si el trabajo se delega a uno de sus empleados sin acceso, el acta y compromiso se envían al correo informado sin otorgar acceso a la plataforma. |
+| **C. Dueño de otro proceso o empleado de otro proceso sin acceso** | Se marca «Otro proceso», se elige el proceso responsable y se registra el nombre de la persona responsable cuando corresponda. | El acuerdo se vincula al proceso seleccionado. El dueño de ese proceso lo encuentra en Compromisos vinculados y Cronograma consolidado, lo actualiza con evidencia y su avance se refleja en la reunión de origen. Si el trabajo se delega a uno de sus empleados sin acceso, el acta y compromiso se envían al correo informado sólo mediante una acción explícita, sin otorgar acceso. |
 
 El correo automático se implementará sólo mediante el servicio de correo empresarial ya configurado y comprobado. Mientras el servicio no esté operativo, la plataforma debe mostrar que el correo está pendiente o permitir **copiar el acta** para enviarla manualmente; nunca debe simular un envío que no se realizó.
 
@@ -76,7 +76,7 @@ Cuando un acuerdo está vinculado, el cumplimiento y las evidencias se actualiza
 
 La acción **Preparar acta** construirá un texto con:
 
-1. Tipo de reunión.
+1. Tipo y nombre de reunión, si se registró.
 2. Fecha y objetivo.
 3. Participantes, si fueron registrados.
 4. Acuerdos agrupados por responsable.
@@ -114,9 +114,38 @@ Reordenar los accesos existentes, sin migrar ni cambiar datos:
 
 Crear los modelos, pantallas y vínculos necesarios para tipos de reunión, reuniones, acuerdos, actas, archivos, porcentaje, agenda, anulación y exportación.
 
-### Etapa futura opcional: IA
+### Etapa 3: Importación preparada por el usuario
 
-Se conservará una arquitectura extensible para que, más adelante y sólo si se decide, una integración externa pueda proponer una transcripción o acuerdos. La creación de compromisos desde IA deberá requerir siempre revisión y aceptación humana.
+La importación se integra **dentro de un tipo de reunión existente**: se crea o abre el tipo, se elige **Nueva reunión** y luego la modalidad. No se pierde la clasificación inicial por tipos.
+
+| Modalidad | Cuándo usarla | Insumo necesario | Resultado |
+|---|---|---|---|
+| **Registrar manualmente** | La reunión se administra directamente en ISGE. | Datos y acuerdos ingresados en pantalla. | Reunión y acuerdos manuales. |
+| **Importar desde asistente** | El usuario ya tiene una herramienta como Read AI, Teams, Zoom, Fireflies u otra. | Dos bloques: **Resumen o reporte** y **Tareas / Action Items**. Un archivo de respaldo es opcional. | ISGE completa datos detectables y abre una lista editable de tareas propuestas. |
+| **Importar con plantilla ISGE** | No se usa un asistente, o se prefiere un formato uniforme. | Una única plantilla Word oficial, que contiene nombre, datos, resumen y tabla de acuerdos. | ISGE lee cada celda de la plantilla y abre la misma lista editable de tareas propuestas. |
+| **Conectar mi asistente** | Integración directa futura. | No disponible aún. | Sólo marcador informativo: no pide credenciales ni realiza conexiones. |
+
+#### Regla crítica de aprobación
+
+Ninguna tarea importada se vuelve un acuerdo ni se vincula a un proceso en el momento de leer un texto o subir una plantilla. ISGE muestra una **vista previa** por tarea, donde el usuario puede:
+
+1. Editar la acción.
+2. Elegir o corregir el tipo de responsable.
+3. Seleccionar un proceso cuando corresponde.
+4. Registrar nombre, correo, fecha límite y observaciones.
+5. **Aprobar** o **rechazar** cada tarea.
+
+Sólo las tareas que permanezcan aprobadas cuando se presiona **Confirmar reunión** se guardan como acuerdos oficiales. Si se selecciona dueño del mismo proceso u otro proceso, se crea el compromiso vinculado y aparece en el Cronograma consolidado durante esa misma confirmación. Rechazar una tarea no borra el reporte original.
+
+#### Lectura sin IA externa
+
+La importación no conecta ISGE con Read AI ni envía contenido a un modelo de IA externo. Para un texto libre, el sistema realiza una lectura local limitada de etiquetas conocidas —fecha, objetivo, participantes, lugar, resumen y secciones de acuerdos—. El resumen no se convierte por sí solo en tareas: se usa como contexto. Las tareas se toman de una sección explícita **Acuerdos**, **Compromisos**, **Tareas**, **Action Items** u otra lista de actividades que el usuario aporte.
+
+La **plantilla Word oficial** elimina la ambigüedad de un Word libre: sus campos y columnas ya declaran qué representa cada dato. Es la opción recomendada cuando no se cuenta con un asistente de reuniones. La plantilla se publica como `client/public/plantillas/acta-reunion-isge.docx`; el script `scripts/generate-isge-meeting-template.py` permite regenerarla sin cambiar el formato funcional.
+
+### Etapa futura opcional: IA o integración directa
+
+Más adelante y sólo mediante una decisión explícita, una integración externa podría proponer transcripción o tareas. Debe requerir consentimiento, manejar las credenciales por usuario o empresa y conservar siempre la revisión y aceptación humana antes de crear compromisos.
 
 ## Reglas de experiencia de usuario
 
@@ -124,63 +153,34 @@ Todos los cambios de formularios y acuerdos se guardarán automáticamente. Los 
 
 No se iniciará el despliegue de estas nuevas mejoras hasta completar validación local y recibir autorización explícita.
 
-## Registro de avance de la primera mejora
+## Registro de avance
 
-**14 de septiembre de 2026 — validación local inicial.** Se implementó únicamente la reorganización visual de Caracterización. Datos generales permanece como acceso principal y la navegación se agrupa en cinco bloques plegables: Proceso y subprocesos, Objetivos tácticos de gestión, Alineación estratégica, Gestión operativa y Seguimiento y control. La comprobación visual local en Producción: Yambo confirmó que los grupos y sus módulos se presentan correctamente. Esta mejora no modificó la base de datos, rutas ya existentes, permisos ni datos de procesos. El acceso Reuniones aparece como marcador informativo y no registra datos; su implementación funcional permanece fuera de esta primera mejora.
+### 14–17 de septiembre de 2026 — Reorganización y reuniones manuales
 
-**Verificación de navegación.** Se comprobó localmente que el grupo «Objetivos tácticos de gestión» se expande correctamente y que su acceso FODA conserva la ruta existente con el contexto del proceso y empresa (`processId` y `companyId`). No se realizaron guardados ni cambios de datos durante la prueba.
+Se completó la reorganización visual de Caracterización y, posteriormente, el módulo manual de Reuniones. La interfaz quedó disponible en **Caracterización de Procesos → Gestión operativa → Reuniones**. Los tipos se archivan sin ocultar histórico; las reuniones soportan acuerdos locales, vínculos al mismo proceso u otro proceso, actas, archivos, porcentajes, anulación y exportación.
 
-**Verificación de Gestión operativa.** Se comprobó localmente que Cumplimientos, Compromisos vinculados y el marcador de Reuniones quedan agrupados bajo «Gestión operativa». Al seleccionar Reuniones se presenta únicamente una nota informativa de alcance futuro; no se crea ninguna reunión, no se escribe en la base de datos y no se altera información de Yambo.
+Los accesos validan empresa y proceso. Un Jefe administra sus reuniones y puede autovincular acuerdos internos, pero no asignar responsabilidades a otro proceso. Administrador y Gerente sí pueden vincular dentro de la empresa. Las rutas de archivos validan sesión, empresa y propiedad del proceso. No existen envíos de correo automáticos: **Enviar acta y compromiso** requiere acción explícita y sólo se marca como enviado si Amazon SES acepta la solicitud.
 
-**Verificación de Seguimiento y control.** Se comprobó localmente que Seguimiento y control despliega Cronograma consolidado, Indicadores y Ciclos de planificación. El acceso Cronograma consolidado conserva tanto su ruta como el contexto de Producción: Yambo y presentó las siete actividades ya existentes sin modificación alguna. La reorganización es exclusivamente visual.
+### 30 de septiembre de 2026 — Importación local inicial
 
-## Validación técnica de la primera mejora
+Se incorporó **Importar desde asistente** como opción de Nueva reunión. Permitía pegar o cargar PDF, Word `.docx` o texto `.txt`; el servidor obtenía sólo texto para prellenar el formulario, y el archivo cargado podía adjuntarse como respaldo. Las reuniones conservan el origen `assistant_import` y una copia del reporte original, agregados de forma aditiva por `0089_meeting_assistant_import.sql`.
 
-**14–15 de septiembre de 2026.** La reorganización visual fue validada localmente con los siguientes resultados:
+### 7 de octubre de 2026 — Importación estructurada y vista previa editable
 
-| Validación | Resultado |
-|---|---|
-| Tipado (`pnpm check`) | Aprobado sin errores. |
-| Compilación de producción (`pnpm build`) | Aprobada. |
-| Suite general (`pnpm test --run`) | Aprobada: 55 archivos y 543 pruebas. |
-| Revisión de cambios (`git diff --check`) | Sin errores de espacios ni formato. |
-| Navegación visual local | Aprobada en Producción: Yambo; se verificaron Datos generales, los cinco grupos plegables, FODA, Gestión operativa, Reuniones informativas y Cronograma consolidado. |
+Se completó localmente el flujo acordado para evitar transcripciones manuales duplicadas:
 
-La lista de archivos locales de esta primera mejora se limita a la pantalla `client/src/pages/ProcessCharacterization.tsx` y a este documento de diseño y registro. No se modificó el esquema de base de datos, routers, permisos, procesos, caracterizaciones, cronogramas ni datos de usuarios. No se realizó despliegue.
+- **Resumen + tareas separadas:** un usuario de Read AI puede pegar el Summary como contexto y copiar la lista **Action Items** como tareas. Un reporte original puede adjuntarse, pero no es obligatorio para crear la reunión.
+- **Plantilla ISGE única:** se añadió una plantilla Word descargable con nombre de reunión, fecha, hora, lugar, objetivo, participantes, resumen y una tabla de acuerdos. Un Word libre no se clasifica como plantilla; para ese caso se usa el flujo de asistente y el usuario revisa la propuesta.
+- **Revisión individual:** las tareas quedan visibles antes de guardar, pueden editarse, aprobarse o rechazarse, y permiten elegir responsable, proceso, fecha y observaciones. No hay vínculos ni correos automáticos al leer el contenido.
+- **Confirmación atómica:** sólo los acuerdos aprobados se crean junto a la reunión. Los seleccionados para dueño del mismo proceso u otro proceso se vinculan inmediatamente de forma transaccional a Compromisos vinculados y al Cronograma consolidado.
+- **Nombre de reunión:** la migración exclusivamente aditiva `0090_process_meeting_titles.sql` incorpora un título opcional. Las reuniones históricas siguen funcionando y muestran el objetivo cuando no hay título.
 
-## Ajustes visuales solicitados y verificados
+La validación focalizada aprobó el tipado, las pruebas de lectura local, reconocimiento de tareas, extracción de plantilla, creación de acuerdos aprobados, restricción de procesos y vínculos al Cronograma. La plantilla Word fue generada, verificada estructuralmente y convertida a PDF de una página para comprobar su presentación. No se realizó commit, pull request, despliegue, conexión a Read AI, envío de correo ni modificación de producción.
 
-**15 de septiembre de 2026.** Se aplicaron y comprobaron localmente los siguientes ajustes a la primera mejora:
+> **Estado actual:** el cambio está listo para la validación integral y revisión local del usuario. Permanecerá local y no se desplegará sin una autorización explícita posterior.
 
-| Solicitud | Resultado local |
-|---|---|
-| Recuadros con celeste más visible y sobrio | Aplicado: los cinco grupos usan fondo celeste y borde celeste, en consonancia con las celdas informativas de Datos generales. |
-| Grupos cerrados al abrir | Aplicado: Proceso y subprocesos y los demás grupos inician cerrados. |
-| Dibujo gráfico junto a cada grupo | Aplicado: cada grupo cuenta con un icono lineal sobrio y coherente con la estética de Gestión Empresarial. |
-| Nombre del tercer grupo | Aplicado: «Alineación estratégica» fue sustituido por «Objetivos tácticos estratégicos». El acceso interior se nombra «Gestionar objetivos estratégicos» para evitar una repetición visual innecesaria. |
+### 8 de octubre de 2026 — Corrección de importaciones copiadas desde Word
 
-Se comprobó que «Objetivos tácticos estratégicos» se abre correctamente y conserva su acceso interno. La modificación continúa siendo exclusivamente visual y no altera información persistida.
+La lectura local se amplió para reconocer listas de tareas copiadas desde Word, incluidas tablas con columnas separadas de **acción**, **responsable** y **fecha límite**, así como tareas numeradas con sus datos en líneas consecutivas. También se evita que encabezados como «Objetivos principales», «Tareas y acciones» o «Acciones identificadas» se conviertan accidentalmente en un nombre, objetivo o acuerdo.
 
-**Validación técnica de los ajustes del 15 de septiembre de 2026.** Tras aplicar color, iconos, estado cerrado inicial y el nuevo nombre del grupo, `pnpm check` aprobó sin errores, `pnpm build` aprobó y `pnpm test --run` aprobó con 55 archivos y 543 pruebas. No se realizó ninguna operación de escritura sobre datos de negocio ni despliegue a producción.
-
-## Registro de avance de la segunda mejora: Reuniones manuales
-
-**17 de septiembre de 2026 — implementación local completa, pendiente de revisión funcional del usuario.** Se implementó exclusivamente en el entorno local el módulo manual **Reuniones**. No se creó un despliegue, commit, pull request ni se ejecutó ninguna operación sobre producción. La migración aditiva `0086_manual_process_meetings.sql` se aplicó sólo a la base local aislada y creó las cinco tablas nuevas para tipos, reuniones, acuerdos, archivos y evidencias. También amplió el enum de `linkedCommitments` con `meeting_agreement`, sin eliminar ni transformar registros previos. Una verificación posterior confirmó las cinco tablas, el enum esperado y cero registros de negocio en las tablas nuevas.
-
-La interfaz quedó disponible en **Caracterización de Procesos → Gestión operativa → Reuniones**. La vista presenta tipos de reunión plegables, reuniones compactas con fecha, objetivo y porcentaje de cumplimiento, y detalles desplegables. Los tipos pueden archivarse para dejar de recibir reuniones nuevas sin ocultar el histórico. La reunión conserva fecha, objetivo, participantes, lugar o medio, notas, acta editable y archivos. Los campos ordinarios se guardan automáticamente al salir de cada control; los cambios de responsable, la vinculación, la anulación, la eliminación, el envío de correo y el borrado de archivos piden confirmación explícita.
-
-Los acuerdos implementan los tres flujos definidos. Un empleado del proceso sin acceso mantiene su acuerdo local y puede recibir el acta únicamente mediante una acción explícita de envío. El dueño del proceso genera un compromiso autovinculado para su mismo proceso. Un acuerdo asignado a otro proceso crea exactamente un compromiso vinculado en el proceso elegido. No se creó una agenda paralela: el Cronograma consolidado continúa leyendo `linkedCommitments`, por lo que los acuerdos autovinculados o externos aparecen allí de forma automática. Cuando el responsable marca cumplido un compromiso desde **Compromisos vinculados**, el estado se sincroniza de vuelta al acuerdo de la reunión. La interfaz ahora identifica dichos registros como **Reunión · Acuerdo**.
-
-La seguridad conserva las reglas existentes. Todo acceso valida empresa y proceso. Un Jefe puede administrar reuniones de su proceso y autovincular acuerdos internos, pero no puede asignar responsabilidades a otro proceso ni consultar las reuniones o compromisos de un proceso diferente. Administrador y Gerente pueden realizar la vinculación externa dentro de su empresa. Se rechazan procesos de otra empresa. La reasignación de un acuerdo con avance o evidencias vinculadas se bloquea para no destruir historial.
-
-Los archivos usan almacenamiento de objetos y rutas multipart separadas de las evidencias de Compromisos vinculados. Se aceptan PDF, imágenes, Word y Excel, con un máximo de 50 MB por archivo. Cada carga valida sesión, empresa y propiedad del proceso. Los archivos y evidencias de reuniones anuladas se conservan y no se pueden modificar ni eliminar. Una reunión sólo puede borrarse si está totalmente vacía; cuando ya contiene datos debe anularse. La anulación deja visible el registro histórico y no borra acuerdos ni compromisos vinculados.
-
-La comunicación implementada es verificable. No existen envíos automáticos ni pruebas de correo. La acción **Enviar acta y compromiso** llama a `sendEmailStrict` y sólo registra el estado `sent` cuando Amazon SES acepta el mensaje. Si falta correo o SES no confirma el envío, queda `failed` y la interfaz indica que se copie el acta para realizar el envío manual. La revisión automática no ejecutó esta acción ni envió correos.
-
-## Validación local de Reuniones
-
-**17 de septiembre de 2026.** Se añadió una prueba de integración aislada que crea y limpia empresa y procesos temporales. Verifica creación de tipo, reunión y acta; acuerdo local; autovinculación; vínculo a otro proceso; ausencia de vínculos duplicados; presencia en Cronograma consolidado; retorno de cumplimiento; prohibición de asignación externa por Jefe; aislamiento entre empresas; eliminación de reunión vacía; anulación con conservación histórica; y bloqueo de consulta de otro proceso. La prueba específica aprobó **8 de 8** escenarios. La suite de integración completa aprobó **31 archivos y 137 pruebas**. También aprobaron el tipado, la compilación de producción y la suite general. La comprobación final de la base local confirmó **0** tipos, reuniones, acuerdos, archivos, evidencias o empresas de prueba remanentes.
-
-La ruta local respondió correctamente y mostró la pantalla de autenticación de ISGE 360. La sesión de navegador disponible no tenía inicio de sesión, por lo que la inspección visual de la interfaz protegida queda pendiente de la revisión local autenticada del usuario. No se ingresaron credenciales, no se crearon datos reales y no se realizaron envíos de correo en esa comprobación.
-
-> **Estado actual:** Reuniones está lista para revisión local autenticada. Permanecerá sin commit, sin pull request y sin despliegue hasta recibir una autorización explícita posterior del usuario.
+Una lista de ocho filas debe mostrarse como ocho propuestas independientes antes de confirmar. La confirmación crea en una única operación todos los acuerdos que sigan aprobados. Si la plataforma temporal pierde la conexión con su servidor y no puede devolver una respuesta válida, muestra una instrucción clara para actualizar la página y comprobar primero si la reunión ya fue creada, en lugar de exponer el mensaje técnico de JSON.

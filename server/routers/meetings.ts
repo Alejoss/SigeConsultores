@@ -29,6 +29,31 @@ const responsibleTypeSchema = z.enum([
   "other_process",
 ]);
 const localAgreementStatusSchema = z.enum(["pending", "completed"]);
+const importedAgreementSchema = z
+  .object({
+    description: z.string().trim().min(1).max(MAX_TEXT_LENGTH),
+    responsibleType: responsibleTypeSchema.default("same_process_employee"),
+    responsibleName: z.string().trim().max(255).optional(),
+    // Un correo sólo aplica si la tarea se delega a un empleado sin acceso.
+    // Se admite texto heredado para el dueño del proceso y se descarta antes de guardar.
+    responsibleEmail: z.string().trim().max(320).optional().or(z.literal("")),
+    targetProcessId: z.number().int().positive().optional().nullable(),
+    dueDate: isoDateSchema.optional(),
+    notes: z.string().trim().max(MAX_TEXT_LENGTH).optional(),
+  })
+  .superRefine((agreement, context) => {
+    if (
+      agreement.responsibleType !== "same_process_owner" &&
+      agreement.responsibleEmail &&
+      !z.string().email().safeParse(agreement.responsibleEmail).success
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["responsibleEmail"],
+        message: "El correo del responsable debe tener formato nombre@empresa.com o quedar vacío.",
+      });
+    }
+  });
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type AgreementResponsibleType = z.infer<typeof responsibleTypeSchema>;
@@ -354,6 +379,7 @@ async function buildMinutes(
     "ACTA DE REUNIÓN",
     "",
     `Tipo de reunión: ${meetingType?.name || "Sin tipo"}`,
+    ...(meeting.title?.trim() ? [`Nombre de la reunión: ${meeting.title.trim()}`] : []),
     `Fecha: ${dateValue(meeting.meetingDate) || "No registrada"}`,
     `Objetivo: ${meeting.objective}`,
   ];
@@ -684,6 +710,7 @@ export const meetingsRouter = router({
         processId: z.number().int().positive(),
         meetingTypeId: z.number().int().positive(),
         meetingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        title: z.string().trim().max(500).optional(),
         objective: z.string().trim().min(1).max(MAX_TEXT_LENGTH),
         participants: z.string().trim().max(MAX_TEXT_LENGTH).optional(),
         locationOrMedium: z.string().trim().max(255).optional(),
@@ -706,6 +733,7 @@ export const meetingsRouter = router({
         processId: input.processId,
         meetingTypeId: input.meetingTypeId,
         meetingDate: inputDate(input.meetingDate)!,
+        title: input.title || null,
         objective: input.objective,
         participants: input.participants || null,
         locationOrMedium: input.locationOrMedium || null,
@@ -714,12 +742,113 @@ export const meetingsRouter = router({
       return { id: Number(result[0].insertId) };
     }),
 
+  importAssistantMeeting: companyProcedure
+    .input(
+      z.object({
+        companyId: z.number().int().positive(),
+        processId: z.number().int().positive(),
+        meetingTypeId: z.number().int().positive(),
+        meetingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        title: z.string().trim().max(500).optional(),
+        objective: z.string().trim().min(1).max(MAX_TEXT_LENGTH),
+        participants: z.string().trim().max(MAX_TEXT_LENGTH).optional(),
+        locationOrMedium: z.string().trim().max(255).optional(),
+        notes: z.string().trim().max(MAX_TEXT_LENGTH).optional(),
+        assistantReportText: z.string().trim().min(1).max(MAX_TEXT_LENGTH),
+        agreements: z.array(importedAgreementSchema).max(50).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      assertProcessAccess(ctx, input.companyId, input.processId);
+      const db = await getDb();
+      if (!db) unavailable();
+      const meetingType = await getTypeOrThrow(db, input.companyId, input.meetingTypeId);
+      if (meetingType.processId !== input.processId || meetingType.isArchived) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "El tipo de reunión no está disponible para este proceso.",
+        });
+      }
+
+      const approvedAgreements = Array.from(
+        new Map(
+          (input.agreements || []).map(agreement => [
+            `${agreement.description.trim().toLocaleLowerCase()}|${agreement.dueDate || ""}`,
+            agreement,
+          ])
+        ).values()
+      );
+      const assignments = await Promise.all(
+        approvedAgreements.map(async agreement => ({
+          ...agreement,
+          targetProcessId: await validateAssignment(db, ctx, {
+            companyId: input.companyId,
+            sourceProcessId: input.processId,
+            responsibleType: agreement.responsibleType,
+            targetProcessId: agreement.targetProcessId,
+          }),
+        }))
+      );
+      const result = await db.transaction(async tx => {
+        const insertedMeeting = await tx.insert(processMeetings).values({
+          companyId: input.companyId,
+          processId: input.processId,
+          meetingTypeId: input.meetingTypeId,
+          origin: "assistant_import",
+          title: input.title || null,
+          meetingDate: inputDate(input.meetingDate)!,
+          objective: input.objective,
+          participants: input.participants || null,
+          locationOrMedium: input.locationOrMedium || null,
+          notes: input.notes || null,
+          // El acta importada es editable desde el primer momento; se conserva
+          // también en assistantReportText si luego se prepara un acta estándar.
+          minutesText: input.assistantReportText,
+          assistantReportText: input.assistantReportText,
+        });
+        const meetingId = Number((insertedMeeting as any)[0]?.insertId || (insertedMeeting as any).insertId);
+        const agreementIds: number[] = [];
+        for (const agreementDraft of assignments) {
+          const insertedAgreement = await tx.insert(meetingAgreements).values({
+            companyId: input.companyId,
+            processId: input.processId,
+            meetingId,
+            description: agreementDraft.description,
+            responsibleType: agreementDraft.responsibleType,
+            responsibleName: agreementDraft.responsibleName || null,
+            responsibleEmail:
+              agreementDraft.responsibleType === "same_process_owner"
+                ? null
+                : agreementDraft.responsibleEmail || null,
+            targetProcessId: agreementDraft.targetProcessId,
+            dueDate: inputDate(agreementDraft.dueDate),
+            notes: agreementDraft.notes || null,
+          });
+          const agreementId = Number((insertedAgreement as any)[0]?.insertId || (insertedAgreement as any).insertId);
+          agreementIds.push(agreementId);
+          const [createdAgreement] = await tx
+            .select()
+            .from(meetingAgreements)
+            .where(eq(meetingAgreements.id, agreementId));
+          if (createdAgreement?.targetProcessId) {
+            // La transacción de Drizzle ofrece las mismas operaciones de lectura
+            // y escritura requeridas por este helper; se conserva así la
+            // atomicidad entre acuerdo y compromiso vinculado.
+            await ensureAgreementLink(tx as unknown as Db, createdAgreement);
+          }
+        }
+        return { id: meetingId, agreementIds };
+      });
+      return result;
+    }),
+
   updateMeeting: companyProcedure
     .input(
       z.object({
         id: z.number().int().positive(),
         companyId: z.number().int().positive(),
         meetingDate: isoDateSchema.optional(),
+        title: z.string().trim().max(500).optional(),
         objective: z.string().trim().min(1).max(MAX_TEXT_LENGTH).optional(),
         participants: z.string().trim().max(MAX_TEXT_LENGTH).optional(),
         locationOrMedium: z.string().trim().max(255).optional(),
@@ -744,6 +873,7 @@ export const meetingsRouter = router({
           ...(input.meetingDate !== undefined && {
             meetingDate: inputDate(input.meetingDate)!,
           }),
+          ...(input.title !== undefined && { title: input.title || null }),
           ...(input.objective !== undefined && { objective: input.objective }),
           ...(input.participants !== undefined && {
             participants: input.participants || null,
