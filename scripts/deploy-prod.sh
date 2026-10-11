@@ -46,6 +46,15 @@ COMPOSE=(docker compose --env-file "$ENV_FILE" -f docker-compose.prod.yml)
 
 echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 
+# La cache e imágenes Docker que no utiliza ningún contenedor pueden crecer entre
+# despliegues. Se eliminan antes del pull, sin tocar volúmenes ni contenedores
+# activos: la base de datos y la aplicación vigente permanecen intactas.
+echo "Reclaiming unused Docker cache before pulling the new image..."
+docker system df || true
+docker system prune --all --force
+docker system df || true
+df -h "$ROOT" /var/lib/docker || true
+
 "${COMPOSE[@]}" pull app
 "${COMPOSE[@]}" up -d mysql
 
