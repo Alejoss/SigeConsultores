@@ -65,8 +65,8 @@ export default function ProcessTacticalObjectives() {
             </CardHeader>
             <CardContent className="pt-6">
               <p className="text-gray-700 mb-4">
-                Define los objetivos tácticos confrontando subprocesos con objetivos estratégicos. 
-                Especifica el enunciado, explicación y responsable de cada objetivo.
+                Define los objetivos tácticos estratégicos confrontando los Objetivos de la Política
+                con los Objetivos Estratégicos. Especifica el enunciado, explicación y responsable de cada objetivo.
               </p>
               <Button 
                 onClick={handleDefinition}
@@ -87,7 +87,7 @@ export default function ProcessTacticalObjectives() {
             </CardHeader>
             <CardContent className="pt-6">
               <p className="text-gray-700 mb-4">
-                Planifica la implementación de los objetivos tácticos. Define categorías, metas, 
+                Planifica la implementación de los objetivos tácticos estratégicos: metas,
                 responsables y resultados clave con seguimiento de fechas y cumplimiento.
               </p>
               <Button 

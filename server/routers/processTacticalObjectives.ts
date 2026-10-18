@@ -1,10 +1,54 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router, companyProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { processTacticalObjectives } from "../../drizzle/schema";
-import { desc, eq } from "drizzle-orm";
+import { policies, policyObjectives, processTacticalObjectives } from "../../drizzle/schema";
+import { and, desc, eq, or } from "drizzle-orm";
 import { updateProcessTacticalObjective } from "../db";
 import { assertProcessAccessById, assertProcessTacticalObjectiveAccess } from "../_core/companyPermissions";
+
+/**
+ * Resuelve el Objetivo de la Política seleccionado y comprueba que pertenezca a
+ * la misma empresa del proceso. Incluye registros históricos guardados con el
+ * companyId en policyId, igual que la pantalla corporativa de Política.
+ */
+async function resolvePolicyObjectiveForCompany(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  companyId: number,
+  policyObjectiveId: number
+) {
+  const [companyPolicy] = await db
+    .select({ id: policies.id })
+    .from(policies)
+    .where(eq(policies.companyId, companyId))
+    .limit(1);
+
+  const companyOwnership = companyPolicy
+    ? or(
+        eq(policyObjectives.policyId, companyPolicy.id),
+        eq(policyObjectives.policyId, companyId)
+      )
+    : eq(policyObjectives.policyId, companyId);
+
+  const [objective] = await db
+    .select({
+      id: policyObjectives.id,
+      objective: policyObjectives.objective,
+      description: policyObjectives.description,
+    })
+    .from(policyObjectives)
+    .where(and(eq(policyObjectives.id, policyObjectiveId), companyOwnership))
+    .limit(1);
+
+  if (!objective) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "El Objetivo de la Política seleccionado no pertenece a la empresa de este proceso.",
+    });
+  }
+
+  return objective;
+}
 
 export const processTacticalObjectivesRouter = router({
   list: companyProcedure
@@ -48,6 +92,7 @@ export const processTacticalObjectivesRouter = router({
       responsible: z.string().optional(),
       deadline: z.date().optional(),
       subprocess: z.string().optional(),
+      policyObjectiveId: z.number().int().positive().nullable().optional(),
       strategicObjective: z.string().optional(),
       strategicObjectiveDescription: z.string().optional(),
       ponderacion: z.number().optional(),
@@ -58,9 +103,13 @@ export const processTacticalObjectivesRouter = router({
       completed: z.enum(["SI", "NO"]).optional().default("NO"),
     }))
     .mutation(async ({ input, ctx }) => {
-      await assertProcessAccessById(ctx, input.processId);
+      const process = await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      const selectedPolicyObjective = input.policyObjectiveId
+        ? await resolvePolicyObjectiveForCompany(db, process.companyId, input.policyObjectiveId)
+        : null;
 
       const completedValue = input.completed || "NO";
       try {
@@ -83,6 +132,9 @@ export const processTacticalObjectivesRouter = router({
           responsible: input.responsible || null,
           deadline: input.deadline || null,
           subprocess: input.subprocess || null,
+          policyObjectiveId: selectedPolicyObjective?.id ?? null,
+          policyObjective: selectedPolicyObjective?.objective ?? null,
+          policyObjectiveDescription: selectedPolicyObjective?.description ?? null,
           strategicObjective: input.strategicObjective || null,
           strategicObjectiveDescription: input.strategicObjectiveDescription || null,
           planningData: JSON.stringify(planningDataObj),
@@ -118,6 +170,7 @@ export const processTacticalObjectivesRouter = router({
       responsible: z.string().optional(),
       deadline: z.date().optional(),
       subprocess: z.string().optional(),
+      policyObjectiveId: z.number().int().positive().nullable().optional(),
       strategicObjective: z.string().optional(),
       strategicObjectiveDescription: z.string().optional(),
       ponderacion: z.number().optional(),
@@ -128,7 +181,7 @@ export const processTacticalObjectivesRouter = router({
       completed: z.enum(["SI", "NO"]).optional().default("NO"),
     }))
     .mutation(async ({ input, ctx }) => {
-      await assertProcessTacticalObjectiveAccess(ctx, input.objectiveId);
+      const process = await assertProcessTacticalObjectiveAccess(ctx, input.objectiveId);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -143,6 +196,12 @@ export const processTacticalObjectivesRouter = router({
         ? JSON.parse(existing[0].planningData)
         : {};
 
+      const selectedPolicyObjective = input.policyObjectiveId === undefined
+        ? undefined
+        : input.policyObjectiveId
+          ? await resolvePolicyObjectiveForCompany(db, process.companyId, input.policyObjectiveId)
+          : null;
+
       // Merge logic: preserve existing planning data, only update provided fields
       const planningDataObj = {
         ...existingPlanningData,
@@ -156,10 +215,18 @@ export const processTacticalObjectivesRouter = router({
         .set({
           name: input.name,
           description: input.description || null,
-          target: input.target || null,
+          target: input.target === undefined ? existing[0].target : input.target || null,
           responsible: input.responsible || null,
           deadline: input.deadline || null,
-          subprocess: input.subprocess || null,
+          // Los OTE históricos conservan el subproceso con el que fueron creados.
+          subprocess: input.subprocess === undefined ? existing[0].subprocess : input.subprocess || null,
+          ...(selectedPolicyObjective === undefined
+            ? {}
+            : {
+                policyObjectiveId: selectedPolicyObjective?.id ?? null,
+                policyObjective: selectedPolicyObjective?.objective ?? null,
+                policyObjectiveDescription: selectedPolicyObjective?.description ?? null,
+              }),
           strategicObjective: input.strategicObjective || null,
           strategicObjectiveDescription: input.strategicObjectiveDescription || null,
           planningData: JSON.stringify(planningDataObj),
@@ -359,6 +426,8 @@ export const processTacticalObjectivesRouter = router({
             objectiveEnunciation: obj.name || '',
             objectiveExplanation: obj.description || '',
             objectiveResponsible: obj.responsible || '',
+            policyObjective: obj.policyObjective || '',
+            strategicObjective: obj.strategicObjective || '',
             category: planningData.category || '',
             goal: planningData.goal ? String(planningData.goal) : '',
             resultKeys,
@@ -384,6 +453,8 @@ export const processTacticalObjectivesRouter = router({
             objectiveEnunciation: obj.name || '',
             objectiveExplanation: obj.description || '',
             objectiveResponsible: obj.responsible || '',
+            policyObjective: obj.policyObjective || '',
+            strategicObjective: obj.strategicObjective || '',
             category: '',
             goal: '',
             resultKeys: [],

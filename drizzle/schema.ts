@@ -714,6 +714,10 @@ export const processTacticalObjectives = mysqlTable(
     responsible: varchar("responsible", { length: 255 }),
     deadline: date("deadline"),
     subprocess: varchar("subprocess", { length: 255 }),
+    /** Objetivo de la Política que origina el OTE. Es aditivo: subprocess conserva el histórico. */
+    policyObjectiveId: int("policyObjectiveId"),
+    policyObjective: text("policyObjective"),
+    policyObjectiveDescription: text("policyObjectiveDescription"),
     strategicObjective: varchar("strategicObjective", { length: 255 }),
     strategicObjectiveDescription: text("strategicObjectiveDescription"),
     planningData: longtext("planningData"),

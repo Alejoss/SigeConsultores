@@ -33,7 +33,8 @@ interface TacticalPlanning {
   objectiveEnunciation: string;
   objectiveExplanation: string;
   objectiveResponsible: string;
-  category: string;
+  policyObjective?: string;
+  strategicObjective?: string;
   goal: string | number;
   resultKeys: ResultKey[];
   expanded: boolean;
@@ -53,7 +54,8 @@ interface IndicadorGeneral {
 
 interface LegacyTacticalObjective {
   id?: number | string;
-  subprocess: string;
+  policyObjective?: string;
+  subprocess?: string;
   strategicObjective: string;
   enunciation: string;
   explanation: string;
@@ -171,13 +173,22 @@ export const exportTacticalObjectivesToPDF = (data: ExportData[], processName: s
 
       // Additional fields for planning data
       if (isPlanningData) {
-        if (planning.category) {
+        if (planning.policyObjective) {
           doc.setTextColor(80, 80, 80);
           (doc.setFont as any)(undefined, 'bold');
-          yPosition = addTextWithLineBreaks('Categoría:', margin + 5, yPosition, maxWidth - 5, 9);
+          yPosition = addTextWithLineBreaks('Objetivo de la Política:', margin + 5, yPosition, maxWidth - 5, 9);
           (doc.setFont as any)(undefined, 'normal');
           doc.setTextColor(100, 100, 100);
-          yPosition = addTextWithLineBreaks(planning.category, margin + 10, yPosition, maxWidth - 10, 9);
+          yPosition = addTextWithLineBreaks(planning.policyObjective, margin + 10, yPosition, maxWidth - 10, 9);
+        }
+
+        if (planning.strategicObjective) {
+          doc.setTextColor(80, 80, 80);
+          (doc.setFont as any)(undefined, 'bold');
+          yPosition = addTextWithLineBreaks('Objetivo Estratégico:', margin + 5, yPosition, maxWidth - 5, 9);
+          (doc.setFont as any)(undefined, 'normal');
+          doc.setTextColor(100, 100, 100);
+          yPosition = addTextWithLineBreaks(planning.strategicObjective, margin + 10, yPosition, maxWidth - 10, 9);
         }
 
         if (planning.goal) {
@@ -237,7 +248,29 @@ export const exportTacticalObjectivesToPDF = (data: ExportData[], processName: s
 
         yPosition += 5;
 
-        // Operational Objectives
+      } else {
+        if (legacy.policyObjective) {
+          (doc.setFont as any)(undefined, 'bold');
+          yPosition = addTextWithLineBreaks('Objetivo de la Política:', margin + 5, yPosition, maxWidth - 5, 9);
+          (doc.setFont as any)(undefined, 'normal');
+          yPosition = addTextWithLineBreaks(legacy.policyObjective, margin + 10, yPosition, maxWidth - 10, 9);
+        } else if (legacy.subprocess) {
+          (doc.setFont as any)(undefined, 'bold');
+          yPosition = addTextWithLineBreaks('Subproceso histórico:', margin + 5, yPosition, maxWidth - 5, 9);
+          (doc.setFont as any)(undefined, 'normal');
+          yPosition = addTextWithLineBreaks(legacy.subprocess, margin + 10, yPosition, maxWidth - 10, 9);
+        }
+        if (legacy.strategicObjective) {
+          (doc.setFont as any)(undefined, 'bold');
+          yPosition = addTextWithLineBreaks('Objetivo Estratégico:', margin + 5, yPosition, maxWidth - 5, 9);
+          (doc.setFont as any)(undefined, 'normal');
+          yPosition = addTextWithLineBreaks(legacy.strategicObjective, margin + 10, yPosition, maxWidth - 10, 9);
+        }
+
+      }
+
+      // Operational Objectives
+      if (isPlanningData) {
         if (planning.resultKeys && planning.resultKeys.length > 0) {
           doc.setFontSize(11);
           doc.setTextColor(30, 58, 138);

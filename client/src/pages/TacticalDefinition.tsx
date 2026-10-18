@@ -14,7 +14,9 @@ import { getCompanyIdFromSession, getProcessIdFromSession } from "@/lib/sessionS
 interface TacticalObjectiveDefinition {
   id: string;
   dbId?: number;
-  subprocess: string;
+  policyObjectiveId?: number | null;
+  policyObjective: string;
+  policyObjectiveDescription: string;
   strategicObjective: string;
   strategicObjectiveDescription: string;
   enunciation: string;
@@ -29,18 +31,11 @@ interface TacticalObjectiveDefinition {
   isDirty?: boolean;
 }
 
-interface SubprocessData {
-  id: number;
-  acciones: string;
-  subproceso: string;
-}
-
 export default function TacticalDefinition() {
   const [, setLocation] = useLocation();
   const [processId, setProcessId] = useState<number | null>(null);
   const [companyId, setCompanyId] = useState<number | null>(null);
   const [objectives, setObjectives] = useState<TacticalObjectiveDefinition[]>([]);
-  const [subprocesses, setSubprocesses] = useState<string[]>([]);
   const [strategicObjectives, setStrategicObjectives] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string>("");
@@ -52,16 +47,21 @@ export default function TacticalDefinition() {
   // Get utils for query invalidation (like SubprocessMap does)
   const utils = trpc.useUtils();
 
-  // Fetch subprocess map
-  const { data: subprocessMapData } = trpc.subprocessMap.get.useQuery(
-    { processId: processId || 0 },
-    { enabled: processId !== null }
-  );
-
   // Fetch strategic objectives
   const { data: strategicObjectivesData } = trpc.strategicObjectives.list.useQuery(
     { companyId: companyId || 0 },
     { enabled: companyId !== null }
+  );
+
+  // Objetivos corporativos que se confrontan con los Objetivos Estratégicos.
+  const { data: policyData } = trpc.policies.get.useQuery(
+    { companyId: companyId || 0 },
+    { enabled: companyId !== null }
+  );
+  const policyId = policyData?.id ?? null;
+  const { data: policyObjectivesData = [] } = trpc.policyObjectives.list.useQuery(
+    { policyId: policyId || 0 },
+    { enabled: policyId !== null }
   );
 
   // Fetch tactical objectives
@@ -111,21 +111,6 @@ export default function TacticalDefinition() {
     if (cid) setCompanyId(cid);
   }, []);
 
-  // Process subprocess map data
-  useEffect(() => {
-    if (subprocessMapData?.subprocesos) {
-      try {
-        const parsed = JSON.parse(subprocessMapData.subprocesos);
-        const subprocessList = parsed
-          .map((row: SubprocessData) => row.subproceso)
-          .filter((s: string) => s && s.trim());
-        setSubprocesses(subprocessList);
-      } catch (e) {
-        console.error("Error loading subprocesses:", e);
-      }
-    }
-  }, [subprocessMapData]);
-
   // Process strategic objectives data
   useEffect(() => {
     if (strategicObjectivesData) {
@@ -141,7 +126,9 @@ export default function TacticalDefinition() {
         const converted = tacticalObjectivesData.map((obj: any) => ({
           id: `db_${obj.id}`,
           dbId: obj.id,
-          subprocess: obj.subprocess || '',
+          policyObjectiveId: obj.policyObjectiveId ?? undefined,
+          policyObjective: obj.policyObjective || '',
+          policyObjectiveDescription: obj.policyObjectiveDescription || '',
           strategicObjective: obj.strategicObjective || '',
           strategicObjectiveDescription: obj.strategicObjectiveDescription || '',
           enunciation: obj.name || '',
@@ -159,23 +146,6 @@ export default function TacticalDefinition() {
       }
     }
   }, [tacticalObjectivesData]);
-
-  // Validate that a row is not completely empty
-  const isRowEmpty = (obj: TacticalObjectiveDefinition): boolean => {
-    return !obj.enunciation?.trim() && !obj.explanation?.trim() && !obj.subprocess?.trim();
-  };
-
-  // Validate data before saving
-  const validateData = (): boolean => {
-    const dirtyObjectives = objectives.filter(obj => obj.isDirty);
-    for (const obj of dirtyObjectives) {
-      if (isRowEmpty(obj)) {
-        toast.error("No se puede guardar: hay objetivos vacíos. Completa o elimina los objetivos vacíos.");
-        return false;
-      }
-    }
-    return true;
-  };
 
   // Mantener objectivesRef sincronizado con el estado objectives
   // Esto permite que autoSave siempre use los valores más recientes sin stale closure
@@ -199,10 +169,10 @@ export default function TacticalDefinition() {
   const buildSavePayload = (obj: TacticalObjectiveDefinition) => ({
     name: obj.enunciation || 'Sin enunciado',
     description: obj.explanation || undefined,
-    target: obj.subprocess || undefined,
+    target: undefined,
     responsible: obj.responsible || undefined,
     deadline: undefined,
-    subprocess: obj.subprocess || undefined,
+    policyObjectiveId: obj.policyObjectiveId,
     strategicObjective: obj.strategicObjective || undefined,
     strategicObjectiveDescription: obj.strategicObjectiveDescription || undefined,
     ponderacion: obj.ponderacion || 0,
@@ -274,18 +244,13 @@ export default function TacticalDefinition() {
     }
   };
 
-  // Manual save function - WITH validation
-  const handleManualSave = () => {
-    if (!validateData()) return;
-    if (!processId) return;
-    handleSaveInternal();
-  };
-
   const addObjective = () => {
     const newId = Math.max(...objectives.map(o => parseInt(o.id.replace('new_', '')) || 0), 0) + 1;
     const newObjective: TacticalObjectiveDefinition = {
       id: `new_${newId}`,
-      subprocess: '',
+      policyObjectiveId: undefined,
+      policyObjective: '',
+      policyObjectiveDescription: '',
       strategicObjective: '',
       strategicObjectiveDescription: '',
       enunciation: '',
@@ -327,6 +292,24 @@ export default function TacticalDefinition() {
     autoSave();
   };
 
+  const selectPolicyObjective = (id: string, value: string) => {
+    const selected = policyObjectivesData.find(objective => objective.id === Number(value));
+    setObjectives(prevObjs =>
+      prevObjs.map(obj =>
+        obj.id === id
+          ? {
+              ...obj,
+              policyObjectiveId: selected?.id ?? null,
+              policyObjective: selected?.objective ?? '',
+              policyObjectiveDescription: selected?.description ?? '',
+              isDirty: true,
+            }
+          : obj
+      )
+    );
+    autoSave();
+  };
+
   const handleExport = () => {
     if (objectives.length === 0) {
       toast.error("No hay objetivos para exportar");
@@ -358,24 +341,6 @@ export default function TacticalDefinition() {
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               VOLVER
-            </Button>
-            <Button 
-              onClick={handleManualSave}
-              variant="default"
-              size="sm"
-              disabled={saving}
-            >
-              {saving ? (
-                <>
-                  <Loader className="w-4 h-4 mr-2 animate-spin" />
-                  Guardando...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Guardar Ahora
-                </>
-              )}
             </Button>
             <Button onClick={handleExport} variant="default" size="sm">
               <Download className="w-4 h-4 mr-2" />
@@ -455,22 +420,28 @@ export default function TacticalDefinition() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Subprocess */}
+                  {/* Policy Objective */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Subproceso *
+                      Objetivo de la Política *
                     </label>
                     <select
-                      value={obj.subprocess}
-                      onChange={(e) => updateObjective(obj.id, 'subprocess', e.target.value)}
+                      value={obj.policyObjectiveId ?? ''}
+                      onChange={(e) => selectPolicyObjective(obj.id, e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">Selecciona un subproceso...</option>
-                      {subprocesses.map((sp) => (
-                        <option key={sp} value={sp}>{sp}</option>
+                      <option value="">Selecciona un Objetivo de la Política...</option>
+                      {policyObjectivesData.map((policyObjective) => (
+                        <option key={policyObjective.id} value={policyObjective.id}>{policyObjective.objective}</option>
                       ))}
                     </select>
                   </div>
+
+                  {obj.policyObjectiveDescription && (
+                    <div className="p-3 bg-sky-50 border border-sky-200 rounded-md">
+                      <p className="text-sm text-sky-900">{obj.policyObjectiveDescription}</p>
+                    </div>
+                  )}
 
                   {/* Strategic Objective */}
                   <div>
@@ -510,7 +481,7 @@ export default function TacticalDefinition() {
                     <Textarea
                       value={obj.enunciation}
                       onChange={(e) => updateObjective(obj.id, 'enunciation', e.target.value)}
-                      placeholder="Define brevemente el objetivo táctico confrontando el subproceso y objetivo estratégico seleccionados..."
+                      placeholder="Define brevemente el OTE confrontando el Objetivo de la Política y el Objetivo Estratégico seleccionados..."
                       className="w-full"
                       rows={3}
                     />
