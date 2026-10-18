@@ -114,3 +114,4 @@ pnpm-debug.log*
 !drizzle/0088_company_management_access.sql
 !drizzle/0089_meeting_assistant_import.sql
 !drizzle/0090_process_meeting_titles.sql
+!drizzle/0091_process_tactical_policy_objectives.sql

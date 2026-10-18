@@ -55,7 +55,8 @@ interface TacticalPlanning {
   objectiveEnunciation: string;
   objectiveExplanation: string;
   objectiveResponsible: string;
-  category: string;
+  policyObjective?: string;
+  strategicObjective?: string;
   goal: string | number;
   resultKeys: ResultKey[];
   expanded: boolean;
@@ -70,7 +71,6 @@ interface TacticalPlanning {
   checklistValues?: boolean[];
 }
 
-const CATEGORIES = ['Finanzas', 'Cliente', 'Procesos Internos', 'Aprendizaje', 'Crecimiento'];
 const MONTHS = ['Ene','Feb','Mar','Abr','Mayo','Jun','Jul','Agos','Sep','Oct','Nov','Dic'];
 
 /**
@@ -225,7 +225,6 @@ export default function TacticalPlanning() {
   const [processId, setProcessId] = useState<number | null>(null);
   const [plannings, setPlannings] = useState<TacticalPlanning[]>([]);
   const [saving, setSaving] = useState(false);
-  const [manualSaving, setManualSaving] = useState(false);
   const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const savingRef = useRef(false);
@@ -287,7 +286,8 @@ export default function TacticalPlanning() {
           objectiveEnunciation: obj.name || '',
           objectiveExplanation: obj.description || '',
           objectiveResponsible: obj.responsible || '',
-          category: '',
+          policyObjective: obj.policyObjective || '',
+          strategicObjective: obj.strategicObjective || '',
           goal: '',
           resultKeys: [],
           expanded: false,
@@ -340,7 +340,6 @@ export default function TacticalPlanning() {
         const savePromises = planningsToSave.map(planning =>
           savePlanningMutation.mutateAsync({
             objectiveId: planning.objectiveId,
-            category: planning.category,
             goal: typeof planning.goal === 'string' ? planning.goal : String(planning.goal || ''),
             resultKeys: planning.resultKeys,
             ponderacion: planning.ponderacion || 0,
@@ -602,7 +601,6 @@ export default function TacticalPlanning() {
         await Promise.allSettled(planningsToSave.map(planning =>
           savePlanningMutation.mutateAsync({
             objectiveId: planning.objectiveId,
-            category: planning.category,
             goal: typeof planning.goal === 'string' ? planning.goal : String(planning.goal || ''),
             resultKeys: planning.resultKeys,
             ponderacion: planning.ponderacion || 0,
@@ -622,43 +620,6 @@ export default function TacticalPlanning() {
       }
     }
     setLocation('/process-tactical-objectives');
-  };
-
-  const handleSaveNow = async () => {
-    if (savingRef.current) return;
-    savingRef.current = true;
-    setManualSaving(true);
-    const savePromise = (async () => {
-      // Recalcular avanceMeta antes de guardar para asegurar que sea correcto
-      const planningsToSave = plannings.map(p => {
-        const metrics = calcOTMetrics(p);
-        return { ...p, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado };
-      });
-      localStorage.setItem(`tactical_planning_${processId}`, JSON.stringify(planningsToSave));
-      const savePromises = planningsToSave.map(planning =>
-        savePlanningMutation.mutateAsync({
-          objectiveId: planning.objectiveId,
-          category: planning.category,
-          goal: typeof planning.goal === 'string' ? planning.goal : String(planning.goal || ''),
-          resultKeys: planning.resultKeys,
-          ponderacion: planning.ponderacion || 0,
-          puntoPartida: planning.puntoPartida || 0,
-          metaLlegada: planning.metaLlegada || 0,
-          unidadMedida: planning.unidadMedida || '',
-          avanceMeta: planning.avanceMeta || 0,
-          trackingType: (planning.trackingType || 'puntual') as any,
-          monthlyValues: Array(12).fill(0).map((_, i) => Number((planning.monthlyValues || [])[i] || 0)),
-          checklistValues: Array(12).fill(false).map((_, i) => Boolean((planning.checklistValues || [])[i] || false)),
-        }).catch(error => ({ success: false, error }))
-      );
-      const results = await Promise.allSettled(savePromises);
-      const failures = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && (r.value as any)?.success === false));
-      setLastSaveTime(new Date().toLocaleTimeString());
-      if (failures.length === 0) return '✓ Guardado exitosamente';
-      throw new Error(`⚠ Se guardaron ${plannings.length - failures.length} de ${plannings.length} objetivos`);
-    })();
-    toast.promise(savePromise, { loading: 'Guardando planificación...', success: (msg) => msg as string, error: (err) => (err as any).message || '✗ Error al guardar' });
-    try { await savePromise; } catch (error) { console.error('Error:', error); } finally { setManualSaving(false); savingRef.current = false; }
   };
 
   // ─── Render helpers ─────────────────────────────────────────────────────────
@@ -963,9 +924,6 @@ export default function TacticalPlanning() {
                 <Download size={20} /> Exportar a PDF
               </Button>
             )}
-            <Button onClick={handleSaveNow} className="bg-green-600 hover:bg-green-700" disabled={manualSaving}>
-              {manualSaving ? 'Guardando...' : 'Guardar Ahora'}
-            </Button>
             <Button onClick={handleBack} variant="outline" className="flex items-center gap-2">
               <ArrowLeft size={20} /> VOLVER
             </Button>
@@ -1033,13 +991,23 @@ export default function TacticalPlanning() {
 
               {planning.expanded && (
                 <CardContent className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Categoría</label>
-                    <select value={planning.category} onChange={(e) => updatePlanning(planning.id, 'category', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                      <option value="">Seleccionar categoría</option>
-                      {CATEGORIES.map((cat, idx) => <option key={`cat_${idx}`} value={cat}>{cat}</option>)}
-                    </select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Objetivo de la Política</label>
+                      <Input
+                        value={planning.policyObjective || 'Sin objetivo de Política (registro histórico)'}
+                        disabled
+                        className="border-gray-300 bg-gray-100 text-gray-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Objetivo Estratégico</label>
+                      <Input
+                        value={planning.strategicObjective || 'Sin objetivo estratégico'}
+                        disabled
+                        className="border-gray-300 bg-gray-100 text-gray-700"
+                      />
+                    </div>
                   </div>
 
                   <div>
