@@ -37,4 +37,5 @@ export const integrationTestFiles = [
   "server/__tests__/procedures.test.ts",
   "server/__tests__/tacticalObjectivesFixed.test.ts",
   "server/__tests__/strategicTrendsOtg.integration.test.ts",
+  "server/__tests__/tacticalPolicyObjective.integration.test.ts",
 ] as const;
