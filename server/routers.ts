@@ -133,6 +133,7 @@ import { strategicTrendsRouter } from "./routers/strategicTrends";
 import { onlineCoursesRouter } from "./routers/onlineCourses";
 import { planningCyclesRouter } from "./routers/planningCycles";
 import { teamAccessRouter } from "./routers/teamAccess";
+import { changeManagementRouter } from "./routers/changeManagement";
 import {
   assertCompanyTrainingManagementAccess,
   assertCompanyTrainingReadAccess,
@@ -449,6 +450,7 @@ export const appRouter = router({
 
   // Reversible team access and process-leader profile
   teamAccess: teamAccessRouter,
+  changeManagement: changeManagementRouter,
 
   // Admin Operations
   adminOperations: adminOperationsRouter,

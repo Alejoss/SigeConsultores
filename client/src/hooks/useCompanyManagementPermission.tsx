@@ -1,4 +1,6 @@
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { trpc } from "@/lib/trpc";
 
 /**
@@ -10,6 +12,8 @@ import { trpc } from "@/lib/trpc";
 export function useCompanyManagementPermission(companyId: number | null | undefined) {
   const { session: processLeaderSession, isLoading: processLeaderLoading } =
     useProcessLeaderAuth();
+  const { user, loading: userLoading } = useAuth();
+  const { isManagerLogin, isLoading: managerLoading } = useManagerAuth();
   const isProcessLeader = processLeaderSession !== null;
   const accessQuery = trpc.teamAccess.getMyCompanyManagementAccess.useQuery(
     { companyId: companyId || 0 },
@@ -17,10 +21,15 @@ export function useCompanyManagementPermission(companyId: number | null | undefi
   );
 
   const isChecking =
-    processLeaderLoading || (isProcessLeader && accessQuery.isLoading);
+    processLeaderLoading ||
+    userLoading ||
+    managerLoading ||
+    (isProcessLeader && accessQuery.isLoading);
   const canManageCompany =
-    !isProcessLeader ||
-    (!isChecking && accessQuery.data?.accessLevel === "coordinator");
+    !isChecking &&
+    (user?.role === "admin" ||
+      isManagerLogin ||
+      (isProcessLeader && accessQuery.data?.accessLevel === "coordinator"));
 
   return {
     isProcessLeader,
