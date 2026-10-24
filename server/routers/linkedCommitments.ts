@@ -2,6 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import {
+  changeManagementActions,
+  changeManagementRecords,
   companyCompliances,
   linkedCommitmentEvidence,
   linkedCommitments,
@@ -30,6 +32,7 @@ const sourceTypeSchema = z.enum([
   "audit_finding",
   "inspection_finding",
   "meeting_agreement",
+  "change_action",
   "own",
 ]);
 const commitmentStatusSchema = z.enum(["pending", "completed"]);
@@ -312,6 +315,49 @@ async function resolveSource(
     };
   }
 
+  if (sourceType === "change_action") {
+    const [action] = await db
+      .select()
+      .from(changeManagementActions)
+      .where(
+        and(
+          eq(changeManagementActions.id, sourceId),
+          eq(changeManagementActions.companyId, companyId)
+        )
+      )
+      .limit(1);
+    if (!action)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "La acción de Gestión de Cambios no existe en esta empresa.",
+      });
+    const [change] = await db
+      .select({ id: changeManagementRecords.id, title: changeManagementRecords.title })
+      .from(changeManagementRecords)
+      .where(
+        and(
+          eq(changeManagementRecords.id, action.changeId),
+          eq(changeManagementRecords.companyId, companyId)
+        )
+      )
+      .limit(1);
+    if (!change)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "El expediente de Gestión de Cambios de origen no existe.",
+      });
+    return {
+      sourceType,
+      sourceId: action.id,
+      sourceSubId: change.id,
+      kind: "action",
+      title: action.action.slice(0, 500),
+      description: `Gestión de cambios: ${change.title}`,
+      dueDate: dateValue(action.plannedDate),
+      referenceResponsible: action.responsibleName,
+    };
+  }
+
   const [compliance] = await db
     .select()
     .from(companyCompliances)
@@ -481,6 +527,28 @@ async function synchronizeSource(
         })
         .where(eq(meetingAgreements.id, agreement.id));
     }
+    return {
+      completed,
+      total: links.length,
+      fulfilled: links.filter(link => link.status === "completed").length,
+    };
+  }
+
+  if (sourceType === "change_action") {
+    await db
+      .update(changeManagementActions)
+      .set({
+        status: completed ? "completed" : "pending",
+        completedAt: completed ? new Date() : null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(changeManagementActions.id, sourceId),
+          eq(changeManagementActions.companyId, companyId),
+          eq(changeManagementActions.changeId, sourceSubId)
+        )
+      );
     return {
       completed,
       total: links.length,
@@ -671,6 +739,7 @@ export const linkedCommitmentsRouter = router({
           "audit_finding",
           "inspection_finding",
           "meeting_agreement",
+          "change_action",
         ]),
         sourceId: z.number().int().positive(),
       })
@@ -717,6 +786,7 @@ export const linkedCommitmentsRouter = router({
           "audit_finding",
           "inspection_finding",
           "meeting_agreement",
+          "change_action",
         ]),
         sourceId: z.number().int().positive(),
       })
@@ -799,6 +869,7 @@ export const linkedCommitmentsRouter = router({
           "audit_finding",
           "inspection_finding",
           "meeting_agreement",
+          "change_action",
         ]),
         sourceId: z.number().int().positive(),
         processIds: z.array(z.number().int().positive()).min(1).max(100),
@@ -954,6 +1025,36 @@ export const linkedCommitmentsRouter = router({
           });
         }
       }
+      if (
+        commitment.sourceType === "change_action" &&
+        commitment.sourceId &&
+        requestedStatus === "completed"
+      ) {
+        const [action] = await db
+          .select({ evidenceExpected: changeManagementActions.evidenceExpected })
+          .from(changeManagementActions)
+          .where(
+            and(
+              eq(changeManagementActions.id, commitment.sourceId),
+              eq(changeManagementActions.companyId, commitment.companyId)
+            )
+          )
+          .limit(1);
+        if (action?.evidenceExpected?.trim()) {
+          const evidence = await db
+            .select({ id: linkedCommitmentEvidence.id })
+            .from(linkedCommitmentEvidence)
+            .where(eq(linkedCommitmentEvidence.linkedCommitmentId, commitment.id))
+            .limit(1);
+          if (!evidence[0]) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "Esta acción requiere evidencia. Adjunte el archivo antes de marcarla como cumplida.",
+            });
+          }
+        }
+      }
       await db
         .update(linkedCommitments)
         .set({
@@ -1019,6 +1120,13 @@ export const linkedCommitmentsRouter = router({
           message: "Compromiso no encontrado.",
         });
       assertCommitmentAccess(ctx, commitment.companyId, commitment.processId);
+      if (commitment.sourceType === "change_action") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Las acciones de Gestión de Cambios conservan su vínculo para mantener la trazabilidad. Actualice la planificación desde el expediente de cambio.",
+        });
+      }
       if (commitment.sourceType !== "own")
         await assertSourceManagementAccess(ctx, commitment.companyId);
 

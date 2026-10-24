@@ -100,6 +100,7 @@ import { isOnlineCourseHost } from "./pages/online-courses/coursePaths";
 import ManagementPrograms from "./pages/ManagementPrograms";
 import AuditControl from "./pages/AuditControl";
 import InspectionControl from "./pages/InspectionControl";
+import ChangeManagement from "./pages/ChangeManagement";
 
 // Redirige la raíz: invitación gerente, jefe de proceso, gerente ya logueado, o /login
 function RootRedirect() {
@@ -201,6 +202,7 @@ function Router() {
       <Route path={"/consolidated-schedule"} component={ConsolidatedSchedule} />
       <Route path={"/company"} component={Company} />
       <Route path={"/strategic-objectives"} component={StrategicObjectives} />
+      <Route path={"/change-management"} component={ChangeManagement} />
       <Route
         path={"/process-stakeholder-criticality"}
         component={ProcessStakeholderCriticality}

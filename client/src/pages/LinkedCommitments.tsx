@@ -33,6 +33,7 @@ type SourceType =
   | "audit_finding"
   | "inspection_finding"
   | "meeting_agreement"
+  | "change_action"
   | "own";
 type LinkedCommitment = {
   id: number;
@@ -60,6 +61,7 @@ const SOURCE_LABEL: Record<SourceType, string> = {
   audit_finding: "Auditoría · Hallazgo",
   inspection_finding: "Inspección · Hallazgo",
   meeting_agreement: "Reunión · Acuerdo",
+  change_action: "Gestión de cambios · Acción",
   own: "Planificación propia",
 };
 

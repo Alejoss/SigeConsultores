@@ -65,6 +65,14 @@ export const DASHBOARD_MODULES: DashboardModuleDefinition[] = [
     icon: "🎪",
     group: "estrategia",
   },
+  {
+    moduleName: "changeManagement",
+    path: "/change-management",
+    defaultTitle: "Gestión de cambios",
+    description: "Planifica, ejecuta, verifica y cierra los cambios de la empresa",
+    icon: "🔁",
+    group: "estrategia",
+  },
   // ── GESTIÓN EMPRESARIAL ─────────────────────────────────────────────────────
   {
     moduleName: "processMap",

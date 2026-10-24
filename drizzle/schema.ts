@@ -1864,6 +1864,233 @@ export type InsertManagementSystemChecklistAction =
   typeof managementSystemChecklistActions.$inferInsert;
 
 /**
+ * Gestión de Cambios — expediente corporativo, aditivo e independiente de los
+ * registros operativos actuales. Conserva tanto el plan vivo como el cierre
+ * aprobado por Gerencia.
+ */
+export const changeManagementRecords = mysqlTable("changeManagementRecords", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  reason: text("reason"),
+  objective: text("objective"),
+  expectedResult: text("expectedResult"),
+  origin: mysqlEnum("origin", [
+    "strategy",
+    "audit",
+    "risk_opportunity",
+    "legal_requirement",
+    "client",
+    "technology",
+    "internal_improvement",
+    "other",
+  ]).notNull().default("internal_improvement"),
+  originDetail: text("originDetail"),
+  impactLevel: mysqlEnum("impactLevel", ["low", "medium", "high"])
+    .notNull()
+    .default("medium"),
+  status: mysqlEnum("status", [
+    "draft",
+    "under_evaluation",
+    "approved",
+    "in_execution",
+    "implemented_pending_verification",
+    "closed",
+    "cancelled",
+  ]).notNull().default("draft"),
+  responsibleAccountId: int("responsibleAccountId"),
+  // El seguimiento se asigna preferentemente a un proceso; el nombre queda
+  // disponible para responsables externos o cargos sin acceso a ISGE.
+  responsibleProcessId: int("responsibleProcessId"),
+  responsibleName: varchar("responsibleName", { length: 255 }),
+  responsibleEmail: varchar("responsibleEmail", { length: 320 }),
+  proposedByAccountId: int("proposedByAccountId"),
+  proposedByName: varchar("proposedByName", { length: 255 }),
+  plannedStartDate: date("plannedStartDate"),
+  targetCompletionDate: date("targetCompletionDate"),
+  decisionNotes: text("decisionNotes"),
+  approvedAt: timestamp("approvedAt"),
+  approvedByName: varchar("approvedByName", { length: 255 }),
+  verificationResult: mysqlEnum("verificationResult", [
+    "pending",
+    "effective",
+    "partially_effective",
+    "not_effective",
+  ]).notNull().default("pending"),
+  verificationNotes: text("verificationNotes"),
+  verificationDate: date("verificationDate"),
+  closureRequestedAt: timestamp("closureRequestedAt"),
+  closedAt: timestamp("closedAt"),
+  closedByName: varchar("closedByName", { length: 255 }),
+  cancellationReason: text("cancellationReason"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ChangeManagementRecord = typeof changeManagementRecords.$inferSelect;
+export type InsertChangeManagementRecord =
+  typeof changeManagementRecords.$inferInsert;
+
+/** Referencias vivas y una instantánea histórica del alcance evaluado. */
+export const changeManagementScopeLinks = mysqlTable("changeManagementScopeLinks", {
+    id: int("id").autoincrement().primaryKey(),
+    changeId: int("changeId").notNull(),
+    companyId: int("companyId").notNull(),
+    linkType: mysqlEnum("linkType", [
+      "strategic_objective",
+      "process",
+      "subprocess",
+      "stakeholder",
+      "risk_opportunity",
+      "indicator",
+      "custom_measure",
+    ]).notNull(),
+    referenceId: int("referenceId"),
+    processId: int("processId"),
+    titleSnapshot: text("titleSnapshot").notNull(),
+    descriptionSnapshot: text("descriptionSnapshot"),
+    snapshotJson: longtext("snapshotJson"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  }
+);
+export type ChangeManagementScopeLink =
+  typeof changeManagementScopeLinks.$inferSelect;
+export type InsertChangeManagementScopeLink =
+  typeof changeManagementScopeLinks.$inferInsert;
+
+/** Categorías de impacto analizadas para cada expediente de cambio. */
+export const changeManagementImpacts = mysqlTable("changeManagementImpacts", {
+  id: int("id").autoincrement().primaryKey(),
+  changeId: int("changeId").notNull(),
+  category: mysqlEnum("category", [
+    "quality",
+    "environment",
+    "occupational_health_safety",
+    "legal_compliance",
+    "resources_infrastructure",
+    "technology",
+    "competence_training",
+    "information_documentation",
+    "risks_opportunities",
+    "management_systems",
+    "basc_control_security",
+    "other",
+  ]).notNull(),
+  impactLevel: mysqlEnum("impactLevel", ["low", "medium", "high"])
+    .notNull()
+    .default("medium"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ChangeManagementImpact = typeof changeManagementImpacts.$inferSelect;
+export type InsertChangeManagementImpact =
+  typeof changeManagementImpacts.$inferInsert;
+
+/** Acciones del plan; las asignadas a un proceso se reflejan en Compromisos. */
+export const changeManagementActions = mysqlTable("changeManagementActions", {
+  id: int("id").autoincrement().primaryKey(),
+  changeId: int("changeId").notNull(),
+  companyId: int("companyId").notNull(),
+  action: text("action").notNull(),
+  responsibleProcessId: int("responsibleProcessId"),
+  responsibleName: varchar("responsibleName", { length: 255 }),
+  responsibleEmail: varchar("responsibleEmail", { length: 320 }),
+  resourceRequired: text("resourceRequired"),
+  plannedDate: date("plannedDate"),
+  trainingRequired: text("trainingRequired"),
+  documentToUpdate: text("documentToUpdate"),
+  evidenceExpected: text("evidenceExpected"),
+  status: mysqlEnum("status", [
+    "pending",
+    "in_progress",
+    "completed",
+    "cancelled",
+  ]).notNull().default("pending"),
+  progressNotes: text("progressNotes"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ChangeManagementAction = typeof changeManagementActions.$inferSelect;
+export type InsertChangeManagementAction =
+  typeof changeManagementActions.$inferInsert;
+
+/** Indicadores de resultado o medidas propias con línea base, meta y resultado. */
+export const changeManagementIndicators = mysqlTable(
+  "changeManagementIndicators",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    changeId: int("changeId").notNull(),
+    companyId: int("companyId").notNull(),
+    processId: int("processId"),
+    indicatorId: int("indicatorId"),
+    name: varchar("name", { length: 255 }).notNull(),
+    unit: varchar("unit", { length: 100 }),
+    baselineValue: varchar("baselineValue", { length: 100 }),
+    targetValue: varchar("targetValue", { length: 100 }),
+    achievedValue: varchar("achievedValue", { length: 100 }),
+    measurementDate: date("measurementDate"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  }
+);
+export type ChangeManagementIndicator =
+  typeof changeManagementIndicators.$inferSelect;
+export type InsertChangeManagementIndicator =
+  typeof changeManagementIndicators.$inferInsert;
+
+/** Bitácora inalterable de decisiones, avances y cierres del cambio. */
+export const changeManagementEvents = mysqlTable("changeManagementEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  changeId: int("changeId").notNull(),
+  companyId: int("companyId").notNull(),
+  eventType: mysqlEnum("eventType", [
+    "created",
+    "updated",
+    "status",
+    "scope",
+    "impact",
+    "action",
+    "indicator",
+    "closure",
+  ]).notNull(),
+  detail: text("detail").notNull(),
+  actorAccountId: int("actorAccountId"),
+  actorName: varchar("actorName", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ChangeManagementEvent = typeof changeManagementEvents.$inferSelect;
+export type InsertChangeManagementEvent =
+  typeof changeManagementEvents.$inferInsert;
+
+/** Sugerencias de Jefes que Gerencia puede convertir en un expediente formal. */
+export const changeManagementSuggestions = mysqlTable(
+  "changeManagementSuggestions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    processId: int("processId"),
+    suggestedByAccountId: int("suggestedByAccountId"),
+    suggestedByName: varchar("suggestedByName", { length: 255 }),
+    title: varchar("title", { length: 500 }).notNull(),
+    rationale: text("rationale").notNull(),
+    status: mysqlEnum("status", ["pending", "accepted", "dismissed"])
+      .notNull()
+      .default("pending"),
+    reviewNotes: text("reviewNotes"),
+    changeId: int("changeId"),
+    reviewedAt: timestamp("reviewedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  }
+);
+export type ChangeManagementSuggestion =
+  typeof changeManagementSuggestions.$inferSelect;
+export type InsertChangeManagementSuggestion =
+  typeof changeManagementSuggestions.$inferInsert;
+
+/**
  * Compromisos que una fuente empresarial asigna a uno o más procesos. Cada fila
  * corresponde a un proceso destino, lo que permite exigir el cierre de todos
  * antes de sincronizar el resultado al registro de origen.
@@ -1882,6 +2109,7 @@ export const linkedCommitments = mysqlTable(
       "audit_finding",
       "inspection_finding",
       "meeting_agreement",
+      "change_action",
       "own",
     ]).notNull(),
     // Las actividades propias no tienen fuente y mantienen ambos valores nulos.
