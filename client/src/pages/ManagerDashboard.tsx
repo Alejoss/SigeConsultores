@@ -10,6 +10,7 @@ import { MODULE_GROUPS } from "@shared/dashboardModules";
 import { ManagerCycleActivationPanel } from "@/components/ManagerCycleActivationPanel";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { clearAllAuthRoleClientContext } from "@/lib/authRoleContext";
+import { courseEntryHref } from "./online-courses/coursePaths";
 
 const AXIS_STYLES: Record<string, { card: string; btn: string; icon_bg: string }> = {
   estrategia: { card: "bg-sky-50 border-sky-200 hover:border-sky-400 hover:shadow-sky-100", btn: "border-sky-300 text-sky-700 hover:bg-sky-100", icon_bg: "bg-sky-100" },
@@ -248,6 +249,9 @@ export default function ManagerDashboard() {
                 </Button>
                 <Button variant="outline" onClick={() => setLocation("/manager-team-access")}>
                   Accesos del equipo
+                </Button>
+                <Button variant="outline" asChild>
+                  <a href={courseEntryHref("/empresa")}>Capacitaciones On line</a>
                 </Button>
               </div>
             </CardContent>

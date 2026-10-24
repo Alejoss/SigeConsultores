@@ -130,6 +130,7 @@ import { processActivitiesRouter } from "./routers/processActivities";
 import { operationalFindingsRouter } from "./routers/operationalFindings";
 import { stakeholderSurveysRouter } from "./routers/stakeholderSurveys";
 import { strategicTrendsRouter } from "./routers/strategicTrends";
+import { onlineCoursesRouter } from "./routers/onlineCourses";
 import { planningCyclesRouter } from "./routers/planningCycles";
 import { teamAccessRouter } from "./routers/teamAccess";
 import {
@@ -978,6 +979,7 @@ export const appRouter = router({
   operationalFindings: operationalFindingsRouter,
   stakeholderSurveys: stakeholderSurveysRouter,
   strategicTrends: strategicTrendsRouter,
+  onlineCourses: onlineCoursesRouter,
 
   // Company Trainings (Capacitaciones a nivel empresa)
   companyTrainings: router({

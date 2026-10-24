@@ -10,6 +10,7 @@ import {
   decimal,
   date,
   unique,
+  primaryKey,
 } from "drizzle-orm/mysql-core";
 
 /**
@@ -2490,3 +2491,161 @@ export const trainingBackups = mysqlTable("trainingBackups", {
 });
 export type TrainingBackup = typeof trainingBackups.$inferSelect;
 export type InsertTrainingBackup = typeof trainingBackups.$inferInsert;
+
+/**
+ * Online courses (capacitaciones.isge360.com).
+ * Separate from the training schedule in `trainings` / `companyTrainings`.
+ * companyId is a plain reference to `companies.id` with no foreign key, so
+ * deleting a company in SIGE is not blocked by course rows.
+ */
+export const courseFields = mysqlTable("courseFields", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId"),
+  name: varchar("name", { length: 255 }).notNull(),
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CourseField = typeof courseFields.$inferSelect;
+
+export const courseModules = mysqlTable("courseModules", {
+  id: int("id").autoincrement().primaryKey(),
+  fieldId: int("fieldId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  sortOrder: int("sortOrder").notNull().default(0),
+});
+
+export type CourseModule = typeof courseModules.$inferSelect;
+
+export const courseLessons = mysqlTable("courseLessons", {
+  id: int("id").autoincrement().primaryKey(),
+  moduleId: int("moduleId").notNull(),
+  number: int("number").notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  contentJson: longtext("contentJson").notNull(),
+  questionsJson: longtext("questionsJson").notNull(),
+  sortOrder: int("sortOrder").notNull().default(0),
+});
+
+export type CourseLesson = typeof courseLessons.$inferSelect;
+
+export const courseCompanySettings = mysqlTable("courseCompanySettings", {
+  companyId: int("companyId").primaryKey(),
+  regCode: varchar("regCode", { length: 64 }).notNull().unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const courseModuleAccess = mysqlTable(
+  "courseModuleAccess",
+  {
+    companyId: int("companyId").notNull(),
+    moduleId: int("moduleId").notNull(),
+    open: boolean("open").notNull().default(false),
+    opensAt: timestamp("opensAt"),
+    closesAt: timestamp("closesAt"),
+  },
+  table => ({
+    pk: primaryKey({ columns: [table.companyId, table.moduleId] }),
+  })
+);
+
+export const courseWorkerOverrides = mysqlTable(
+  "courseWorkerOverrides",
+  {
+    workerId: int("workerId").notNull(),
+    moduleId: int("moduleId").notNull(),
+    value: mysqlEnum("value", ["abrir", "cerrar"]).notNull(),
+  },
+  table => ({
+    pk: primaryKey({ columns: [table.workerId, table.moduleId] }),
+  })
+);
+
+export const courseModuleVisits = mysqlTable(
+  "courseModuleVisits",
+  {
+    workerId: int("workerId").notNull(),
+    moduleId: int("moduleId").notNull(),
+    firstAccessAt: timestamp("firstAccessAt").notNull(),
+    lastAccessAt: timestamp("lastAccessAt").notNull(),
+  },
+  table => ({
+    pk: primaryKey({ columns: [table.workerId, table.moduleId] }),
+  })
+);
+
+export const courseWorkers = mysqlTable(
+  "courseWorkers",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    cedula: varchar("cedula", { length: 32 }).notNull(),
+    name: varchar("name", { length: 100 }).notNull(),
+    jobTitle: varchar("jobTitle", { length: 80 }).notNull().default(""),
+    workCenter: varchar("workCenter", { length: 80 }).notNull().default(""),
+    passwordSalt: varchar("passwordSalt", { length: 64 }).notNull(),
+    passwordHash: varchar("passwordHash", { length: 128 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    companyCedula: unique("course_workers_company_cedula").on(table.companyId, table.cedula),
+  })
+);
+
+export type CourseWorker = typeof courseWorkers.$inferSelect;
+
+export const courseSessions = mysqlTable("courseSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  tokenHash: varchar("tokenHash", { length: 64 }).notNull().unique(),
+  role: mysqlEnum("role", ["platform_admin", "company_admin", "worker"]).notNull(),
+  accountId: int("accountId"),
+  workerId: int("workerId"),
+  companyId: int("companyId"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const courseResults = mysqlTable(
+  "courseResults",
+  {
+    workerId: int("workerId").notNull(),
+    lessonId: int("lessonId").notNull(),
+    correctCount: int("correctCount").notNull(),
+    questionCount: int("questionCount").notNull(),
+    scoreTenths: int("scoreTenths").notNull(),
+    passed: boolean("passed").notNull(),
+    attempts: int("attempts").notNull().default(1),
+    takenAt: timestamp("takenAt").notNull(),
+    code: varchar("code", { length: 32 }),
+  },
+  table => ({
+    pk: primaryKey({ columns: [table.workerId, table.lessonId] }),
+    codeUnique: unique("course_results_code").on(table.code),
+  })
+);
+
+export const courseModuleCertificates = mysqlTable(
+  "courseModuleCertificates",
+  {
+    workerId: int("workerId").notNull(),
+    moduleId: int("moduleId").notNull(),
+    issuedAt: timestamp("issuedAt").notNull(),
+    code: varchar("code", { length: 32 }).notNull().unique(),
+  },
+  table => ({
+    pk: primaryKey({ columns: [table.workerId, table.moduleId] }),
+  })
+);
+
+export const courseFieldCertificates = mysqlTable(
+  "courseFieldCertificates",
+  {
+    workerId: int("workerId").notNull(),
+    fieldId: int("fieldId").notNull(),
+    issuedAt: timestamp("issuedAt").notNull(),
+    code: varchar("code", { length: 32 }).notNull().unique(),
+  },
+  table => ({
+    pk: primaryKey({ columns: [table.workerId, table.fieldId] }),
+  })
+);

@@ -58,6 +58,9 @@ export default defineWorkspace([
       name: "integration",
       include: [...integrationTestFiles],
       environment: "node",
+      // DATE columns are calendar dates. CI runs in UTC; a local UTC-5 clock
+      // shifts those values by a day on write and again on read.
+      env: { TZ: "UTC" },
       // Shared MySQL fixtures: avoid cross-file races on stakeholders/criticalityMatrix.
       fileParallelism: false,
       hookTimeout: 30_000,

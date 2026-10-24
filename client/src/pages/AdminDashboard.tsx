@@ -30,6 +30,7 @@ import CustomizeModulesPanel from "@/components/CustomizeModulesPanel";
 import CreateManagerInvitation from "@/components/CreateManagerInvitation";
 import RecoveryForm from "@/components/RecoveryForm";
 import { useLocation } from "wouter";
+import { courseEntryHref } from "./online-courses/coursePaths";
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
@@ -148,14 +149,19 @@ export default function AdminDashboard() {
               <p className="text-slate-600">Gestiona empresas, usuarios y accesos</p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => setLocation("/admin-storage")}
-            className="flex items-center gap-2"
-          >
-            <BarChart3 className="h-4 w-4" />
-            Almacenamiento
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <a href={courseEntryHref("/catalogo")}>Capacitaciones On line</a>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setLocation("/admin-storage")}
+              className="flex items-center gap-2"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Almacenamiento
+            </Button>
+          </div>
         </div>
 
         {/* Customize Modules Section */}

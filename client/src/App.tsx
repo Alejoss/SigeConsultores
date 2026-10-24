@@ -91,6 +91,12 @@ import ManagementSystems from "./pages/ManagementSystems";
 import ManagementSystemChecklist from "./pages/ManagementSystemChecklist";
 import LinkedCommitments from "./pages/LinkedCommitments";
 import ProcessMeetings from "./pages/ProcessMeetings";
+import PortalPage from "./pages/online-courses/PortalPage";
+import CatalogPanelPage from "./pages/online-courses/CatalogPanelPage";
+import CompanyPanelPage from "./pages/online-courses/CompanyPanelPage";
+import CourseViewerPage from "./pages/online-courses/CourseViewerPage";
+import CertificatePage from "./pages/online-courses/CertificatePage";
+import { isOnlineCourseHost } from "./pages/online-courses/coursePaths";
 import ManagementPrograms from "./pages/ManagementPrograms";
 import AuditControl from "./pages/AuditControl";
 import InspectionControl from "./pages/InspectionControl";
@@ -315,6 +321,11 @@ function Router() {
         path={"/audits-inspections/inspections"}
         component={InspectionControl}
       />
+      <Route path={"/cursos/catalogo"} component={CatalogPanelPage} />
+      <Route path={"/cursos/empresa"} component={CompanyPanelPage} />
+      <Route path={"/cursos/modulo/:moduleId"} component={CourseViewerPage} />
+      <Route path={"/cursos/certificado/:kind/:id"} component={CertificatePage} />
+      <Route path={"/cursos"} component={PortalPage} />
 
       <Route path={"/home"} component={Home} />
       <Route path={"/404"} component={NotFound} />
@@ -324,7 +335,32 @@ function Router() {
   );
 }
 
+function CourseHostRouter() {
+  return (
+    <Switch>
+      <Route path={"/catalogo"} component={CatalogPanelPage} />
+      <Route path={"/empresa"} component={CompanyPanelPage} />
+      <Route path={"/modulo/:moduleId"} component={CourseViewerPage} />
+      <Route path={"/certificado/:kind/:id"} component={CertificatePage} />
+      <Route path={"/"} component={PortalPage} />
+      <Route component={PortalPage} />
+    </Switch>
+  );
+}
+
 function App() {
+  if (isOnlineCourseHost()) {
+    return (
+      <ErrorBoundary>
+        <ThemeProvider defaultTheme="light">
+          <TooltipProvider>
+            <Toaster />
+            <CourseHostRouter />
+          </TooltipProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
+    );
+  }
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
