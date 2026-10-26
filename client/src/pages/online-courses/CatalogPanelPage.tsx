@@ -16,13 +16,10 @@ export default function CatalogPanelPage() {
   const createField = trpc.onlineCourses.createField.useMutation();
   const createModule = trpc.onlineCourses.createModule.useMutation();
   const createLesson = trpc.onlineCourses.createLesson.useMutation();
-  const assignCompany = trpc.onlineCourses.assignCompany.useMutation();
   const [fieldName, setFieldName] = useState("");
   const [moduleName, setModuleName] = useState("");
   const [fieldId, setFieldId] = useState<number | null>(null);
   const [moduleId, setModuleId] = useState<number | null>(null);
-  const [companyId, setCompanyId] = useState("");
-  const [regCode, setRegCode] = useState("");
   const [message, setMessage] = useState("");
 
   async function reload(text: string) {
@@ -52,32 +49,17 @@ export default function CatalogPanelPage() {
 
       <section className="mb-8 rounded-xl border bg-white p-4">
         <h2 className="mb-3 text-lg font-semibold">Empresas</h2>
-        <table className="mb-3 w-full text-left text-sm">
-          <thead><tr className="border-b"><th className="py-2">Empresa</th><th>Código</th><th>Trabajadores</th></tr></thead>
+        <table className="w-full text-left text-sm">
+          <thead><tr className="border-b"><th className="py-2">Empresa</th><th>Trabajadores</th></tr></thead>
           <tbody>
             {(overview.data?.companies || []).map(company => (
               <tr key={company.id} className="border-b">
                 <td className="py-2">{company.name}</td>
-                <td>{company.regCode || "—"}</td>
                 <td>{company.workers}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <div className="flex flex-wrap gap-2">
-          <select className="rounded-md border px-2 py-2 text-sm" value={companyId} onChange={event => setCompanyId(event.target.value)}>
-            <option value="">Elegir empresa de ISGE 360</option>
-            {(overview.data?.companies || []).map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
-          </select>
-          <input className="rounded-md border px-2 py-2 text-sm" placeholder="Código (opcional)" value={regCode} onChange={event => setRegCode(event.target.value)} />
-          <button className="rounded-md bg-emerald-700 px-3 py-2 text-sm text-white" onClick={async () => {
-            try {
-              const result = await assignCompany.mutateAsync({ companyId: Number(companyId), regCode: regCode || undefined });
-              setRegCode("");
-              await reload(`Empresa habilitada. Código: ${result.regCode}`);
-            } catch (error) { setMessage(errorText(error)); }
-          }}>Habilitar empresa</button>
-        </div>
       </section>
 
       <section>

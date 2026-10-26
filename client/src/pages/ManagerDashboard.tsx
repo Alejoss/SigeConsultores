@@ -11,6 +11,7 @@ import { ManagerCycleActivationPanel } from "@/components/ManagerCycleActivation
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { clearAllAuthRoleClientContext } from "@/lib/authRoleContext";
 import { courseEntryHref } from "./online-courses/coursePaths";
+import { CourseRegCodeManagerCard } from "@/components/CourseRegCodeCards";
 
 const AXIS_STYLES: Record<string, { card: string; btn: string; icon_bg: string }> = {
   estrategia: { card: "bg-sky-50 border-sky-200 hover:border-sky-400 hover:shadow-sky-100", btn: "border-sky-300 text-sky-700 hover:bg-sky-100", icon_bg: "bg-sky-100" },
@@ -256,6 +257,7 @@ export default function ManagerDashboard() {
               </div>
             </CardContent>
           </Card>
+          <CourseRegCodeManagerCard />
         </div>
 
         {/* Cycle approval queue — shown above company details */}
