@@ -49,12 +49,20 @@ export const adminProcedure = t.procedure.use(
   }),
 );
 
-// Procedure that accepts OAuth users, managers, or process leaders
+// Company data: platform admin, the company gerente, or a jefe de proceso.
+// A normal platform login (role "user") is rejected here.
 const requireUserOrManagerOrProcessLeader = t.middleware(async opts => {
   const { ctx, next } = opts;
 
   if (!ctx.user && !ctx.manager && !ctx.processLeader) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+  }
+
+  if (ctx.user && ctx.user.role !== "admin" && !ctx.manager && !ctx.processLeader) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "No tiene acceso a la información de la empresa.",
+    });
   }
 
   return next({
@@ -69,7 +77,8 @@ const requireUserOrManagerOrProcessLeader = t.middleware(async opts => {
 
 /**
  * Standard guard for SIGE business data (read/write).
- * Accepts: platform OAuth user, company manager, or process leader.
+ * Accepts: platform admin, company manager, or process leader.
+ * A normal platform login cannot read or change company data by changing the URL.
  * Use `protectedProcedure` only for OAuth-only platform flows.
  * Use `adminProcedure` for platform administration.
  */

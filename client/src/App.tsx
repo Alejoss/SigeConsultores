@@ -323,12 +323,6 @@ function Router() {
         path={"/audits-inspections/inspections"}
         component={InspectionControl}
       />
-      <Route path={"/cursos/catalogo"} component={CatalogPanelPage} />
-      <Route path={"/cursos/empresa"} component={CompanyPanelPage} />
-      <Route path={"/cursos/modulo/:moduleId"} component={CourseViewerPage} />
-      <Route path={"/cursos/certificado/:kind/:id"} component={CertificatePage} />
-      <Route path={"/cursos"} component={PortalPage} />
-
       <Route path={"/home"} component={Home} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}

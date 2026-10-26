@@ -8,12 +8,29 @@ vi.mock("../../db", () => ({
   getDb: vi.fn(),
 }));
 
+const adminCaller = () =>
+  recoveryRouter.createCaller({
+    user: { id: 1, role: "admin", openId: "admin", name: "Admin", email: "admin@example.test" },
+    manager: null,
+    processLeader: null,
+  } as any);
+
 describe("Recovery Router", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe("getCompanies", () => {
+    it("rejects a normal login", async () => {
+      const caller = recoveryRouter.createCaller({
+        user: { id: 2, role: "user", openId: "user", name: "Usuario", email: "user@example.test" },
+        manager: null,
+        processLeader: null,
+      } as any);
+
+      await expect(caller.getCompanies()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
+
     it("should return list of active companies", async () => {
       const mockDb = {
         select: vi.fn().mockReturnThis(),
@@ -27,7 +44,7 @@ describe("Recovery Router", () => {
 
       vi.mocked(getDb).mockResolvedValue(mockDb as any);
 
-      const caller = recoveryRouter.createCaller({} as any);
+      const caller = adminCaller();
       const result = await caller.getCompanies();
 
       expect(Array.isArray(result)).toBe(true);
@@ -39,7 +56,7 @@ describe("Recovery Router", () => {
     it("should return empty array if database is not available", async () => {
       vi.mocked(getDb).mockResolvedValue(null);
 
-      const caller = recoveryRouter.createCaller({} as any);
+      const caller = adminCaller();
       const result = await caller.getCompanies();
 
       expect(Array.isArray(result)).toBe(true);
@@ -55,7 +72,7 @@ describe("Recovery Router", () => {
 
       vi.mocked(getDb).mockResolvedValue(mockDb as any);
 
-      const caller = recoveryRouter.createCaller({} as any);
+      const caller = adminCaller();
       const result = await caller.getCompanies();
 
       expect(Array.isArray(result)).toBe(true);
@@ -77,7 +94,7 @@ describe("Recovery Router", () => {
 
       vi.mocked(getDb).mockResolvedValue(mockDb as any);
 
-      const caller = recoveryRouter.createCaller({} as any);
+      const caller = adminCaller();
       const result = await caller.getProcesses({ companyId: 1 });
 
       expect(Array.isArray(result)).toBe(true);
@@ -90,7 +107,7 @@ describe("Recovery Router", () => {
     it("should return empty array if database is not available", async () => {
       vi.mocked(getDb).mockResolvedValue(null);
 
-      const caller = recoveryRouter.createCaller({} as any);
+      const caller = adminCaller();
       const result = await caller.getProcesses({ companyId: 1 });
 
       expect(Array.isArray(result)).toBe(true);
@@ -106,7 +123,7 @@ describe("Recovery Router", () => {
 
       vi.mocked(getDb).mockResolvedValue(mockDb as any);
 
-      const caller = recoveryRouter.createCaller({} as any);
+      const caller = adminCaller();
       const result = await caller.getProcesses({ companyId: 1 });
 
       expect(Array.isArray(result)).toBe(true);

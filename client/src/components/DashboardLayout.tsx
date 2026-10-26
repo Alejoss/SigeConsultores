@@ -20,12 +20,11 @@ import {
 } from "@/components/ui/sidebar";
 import { APP_ICON, APP_LOGO, APP_TAGLINE, APP_TITLE, getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, Shield, Settings } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, Shield } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
-import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
@@ -126,7 +125,7 @@ function DashboardLayoutContent({
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
-  const { isManagerLogin, managerCompanyId, managerCompanyName } = useManagerAuth();
+  const { isManagerLogin, managerCompanyName } = useManagerAuth();
   const { session: processLeaderSession, logout: processLeaderLogout } = useProcessLeaderAuth();
   console.log('[DashboardLayout] User role:', user?.role, 'User:', user);
   console.log('[DashboardLayout] isManagerLogin:', isManagerLogin, 'managerCompanyName:', managerCompanyName);
@@ -152,29 +151,13 @@ function DashboardLayoutContent({
   const sidebarRef = useRef<HTMLDivElement>(null);
   const homeMenuItem = processLeaderSession
     ? { icon: LayoutDashboard, label: "Mi proceso", path: `/process-leader-dashboard?processId=${processLeaderSession.processId}` }
-    : { icon: LayoutDashboard, label: "Dashboard", path: "/manager-dashboard" };
+    : isManagerLogin
+      ? { icon: LayoutDashboard, label: "Dashboard", path: "/manager-dashboard" }
+      : { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" };
   const activeMenuItem = location === homeMenuItem.path || (processLeaderSession !== null && location === "/process-leader-dashboard")
     ? homeMenuItem
     : undefined;
   const isMobile = useIsMobile();
-
-  // Get manager company name
-  const managerCompanyQuery = trpc.adminOperations.getCompanyById.useQuery(
-    { companyId: managerCompanyId || 0 },
-    { enabled: isManagerLogin && !!managerCompanyId }
-  );
-
-  // Build manager menu items dynamically
-  const dynamicManagerMenuItems = isManagerLogin && managerCompanyQuery.data
-    ? [{ icon: Settings, label: `Administración ${managerCompanyQuery.data.name}`, path: "/manager-company-admin" }]
-    : [{ icon: Settings, label: "Administración", path: "/manager-company-admin" }];
-
-  // Check if user is a Process Owner
-  const userProcessOwnersQuery = trpc.hierarchicalAccess.processOwners.getByUser.useQuery(
-    { userId: user?.id || 0 },
-    { enabled: !!user?.id }
-  );
-  const isProcessOwner = userProcessOwnersQuery.data && userProcessOwnersQuery.data.length > 0;
 
   useEffect(() => {
     if (isCollapsed) {
@@ -283,29 +266,6 @@ function DashboardLayoutContent({
                 <>
                   <div className="my-2 border-t" />
                   {[...adminOnlyMenuItems, ...adminMenuItems].map(item => {
-                    const isActive = location === item.path;
-                    return (
-                      <SidebarMenuItem key={item.path}>
-                        <SidebarMenuButton
-                          isActive={isActive}
-                          onClick={() => setLocation(item.path)}
-                          tooltip={item.label}
-                          className={`h-10 transition-all font-normal`}
-                        >
-                          <item.icon
-                            className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
-                          />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </>
-              )}
-              {user?.role === "user" && !isProcessOwner && location !== "/process-map" && location !== "/process-characterization" && (
-                <>
-                  <div className="my-2 border-t" />
-                  {dynamicManagerMenuItems.map(item => {
                     const isActive = location === item.path;
                     return (
                       <SidebarMenuItem key={item.path}>

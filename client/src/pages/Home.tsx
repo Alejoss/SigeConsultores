@@ -11,12 +11,6 @@ export default function Home() {
   const processInvitationsMutation = trpc.auth.processAcceptedInvitations.useMutation();
   const processTokenMutation = trpc.auth.processInvitationByToken.useMutation();
 
-  // Fetch companies for auto-selection
-  const { data: companies } = trpc.adminOperations.getUserCompanies.useQuery(
-    { accountId: user?.id || 0 },
-    { enabled: !!user?.id && user?.role === 'user' }
-  );
-
   // Process accepted invitations when user logs in
   useEffect(() => {
     if (isAuthenticated && !loading && user) {
@@ -33,14 +27,6 @@ export default function Home() {
       }
     }
   }, [isAuthenticated, loading, user]);
-
-  // Auto-select company for Process Owners
-  useEffect(() => {
-    if (user?.role === 'user' && companies && companies.length === 1 && !localStorage.getItem('selectedCompanyId')) {
-      console.log('[Home] Auto-selecting company for Process Owner:', companies[0].id);
-      localStorage.setItem('selectedCompanyId', companies[0].id.toString());
-    }
-  }, [user?.role, companies]);
 
   // Redirigir al dashboard si el usuario está autenticado
   useEffect(() => {

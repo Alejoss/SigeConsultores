@@ -1,5 +1,5 @@
 import z from "zod";
-import { protectedProcedure, router, adminProcedure, publicProcedure } from "../_core/trpc";
+import { protectedProcedure, router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { recoveryAudit, companies as companies_table, processes as processes_table } from "../../drizzle/schema";
 import { eq, or } from "drizzle-orm";
@@ -168,7 +168,7 @@ export const recoveryRouter = router({
   /**
    * Get companies for dropdown selector
    */
-  getCompanies: publicProcedure.query(async ({ ctx }) => {
+  getCompanies: adminProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];
 
@@ -197,7 +197,7 @@ export const recoveryRouter = router({
   /**
    * Get processes for a company
    */
-  getProcesses: publicProcedure
+  getProcesses: adminProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();

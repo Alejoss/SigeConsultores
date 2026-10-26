@@ -23,13 +23,19 @@ export function getSessionProcessId(ctx: TrpcContext): number | null {
  * - Managers: only their company.
  * - Process leaders: only their company.
  * - Platform admin: any company.
- * - Other platform users: allowed (legacy; UI scopes company).
+ * - Normal platform login: never.
  */
 export function assertCompanyAccess(ctx: TrpcContext, companyId: number): void {
   if (!isAuthenticated(ctx)) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Please login (10001)" });
   }
   if (ctx.user?.role === "admin") return;
+  if (ctx.user && !ctx.manager && !ctx.processLeader) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "No tiene acceso a la información de la empresa.",
+    });
+  }
   const sessionCompanyId = getSessionCompanyId(ctx);
   if (sessionCompanyId != null && sessionCompanyId !== companyId) {
     throw new TRPCError({
@@ -47,6 +53,12 @@ export function assertProcessAccess(ctx: TrpcContext, processId: number): void {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Please login (10001)" });
   }
   if (ctx.user?.role === "admin") return;
+  if (ctx.user && !ctx.manager && !ctx.processLeader) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "No tiene acceso a la información de la empresa.",
+    });
+  }
   const leaderProcessId = getSessionProcessId(ctx);
   if (leaderProcessId != null && leaderProcessId !== processId) {
     throw new TRPCError({

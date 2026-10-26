@@ -74,11 +74,13 @@ describe("online courses lesson file", () => {
 });
 
 describe("online courses host", () => {
-  it("keeps the course site on its own host and the local app on /cursos", () => {
+  it("sends every management site to the course subdomain", () => {
     expect(isCourseHostname("capacitaciones.isge360.com")).toBe(true);
     expect(isCourseHostname("isge360.com")).toBe(false);
     expect(isCourseHostname("localhost")).toBe(false);
-    expect(courseEntryUrl("/empresa", { hostname: "localhost" })).toBe("/cursos/empresa");
+    expect(courseEntryUrl("/empresa", { hostname: "localhost" })).toBe(
+      "https://capacitaciones.isge360.com/empresa"
+    );
     expect(courseEntryUrl("/empresa", { hostname: "isge360.com" })).toBe(
       "https://capacitaciones.isge360.com/empresa"
     );
