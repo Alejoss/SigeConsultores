@@ -26,7 +26,7 @@ export default function Dashboard() {
 
   const { data: companies } = trpc.adminOperations.getUserCompanies.useQuery(
     { accountId: user?.id || 0 },
-    { enabled: !!user?.id && !isManagerLogin }
+    { enabled: user?.role === "admin" }
   );
 
   const companyIdNum = selectedCompanyId ? parseInt(selectedCompanyId) : 0;
@@ -35,23 +35,24 @@ export default function Dashboard() {
     { enabled: isManagerLogin && companyIdNum > 0 }
   );
 
+  const isUsualLogin = user?.role === "user";
   const storageQuery = trpc.adminOperations.getMyStorageUsage.useQuery(
     { companyId: companyIdNum },
-    { enabled: companyIdNum > 0, refetchOnWindowFocus: false }
+    { enabled: companyIdNum > 0 && !isUsualLogin, refetchOnWindowFocus: false }
   );
 
   useEffect(() => {
-    if (companyIdFromUrl) {
-      localStorage.setItem("selectedCompanyId", companyIdFromUrl);
-    }
-  }, [companyIdFromUrl]);
+    if (!companyIdFromUrl || user?.role === "user" || (!user && !isManagerLogin)) return;
+    localStorage.setItem("selectedCompanyId", companyIdFromUrl);
+  }, [companyIdFromUrl, user, isManagerLogin]);
 
   const selectedCompany = useMemo(() => {
+    if (user?.role === "user") return undefined;
     if (isManagerLogin) {
       return managerCompany;
     }
     return companies?.find((c) => c.id.toString() === selectedCompanyId);
-  }, [isManagerLogin, managerCompany, companies, selectedCompanyId]);
+  }, [user?.role, isManagerLogin, managerCompany, companies, selectedCompanyId]);
 
   useEffect(() => {
     if (companyIdFromUrl && location.includes("?")) {
@@ -59,11 +60,6 @@ export default function Dashboard() {
     }
   }, []);
 
-  useEffect(() => {
-    if (companies && companies.length === 1 && !selectedCompanyId && user?.role === "user") {
-      localStorage.setItem("selectedCompanyId", companies[0].id.toString());
-    }
-  }, [companies, selectedCompanyId, user?.role]);
 
   return (
     <DashboardLayout>
@@ -116,7 +112,7 @@ export default function Dashboard() {
         )}
 
         {/* Indicador de almacenamiento — discreto, solo cuando hay empresa seleccionada */}
-        {selectedCompany && companyIdNum > 0 && storageQuery.data && (
+        {selectedCompany && companyIdNum > 0 && !isUsualLogin && storageQuery.data && (
           <div className="flex items-center gap-3 bg-white border rounded-lg px-4 py-3 shadow-sm">
             <HardDrive
               className={`h-5 w-5 flex-shrink-0 ${
@@ -171,7 +167,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {selectedCompany && companyIdNum > 0 && (
+        {selectedCompany && companyIdNum > 0 && !isUsualLogin && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold">Módulos de ISGE 360</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

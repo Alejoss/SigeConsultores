@@ -28,6 +28,9 @@ export function registerFileUploadRoutes(app: Express) {
         if (!auth.user && !auth.manager && !auth.processLeader) {
           return res.status(401).json({ ok: false, error: "No autenticado" });
         }
+        if (auth.user && auth.user.role !== "admin" && !auth.manager && !auth.processLeader) {
+          return res.status(403).json({ ok: false, error: "No tiene acceso a la información de la empresa." });
+        }
 
         if (!req.file) {
           return res.status(400).json({ ok: false, error: "No se recibió ningún archivo" });
@@ -62,6 +65,9 @@ export function registerFileUploadRoutes(app: Express) {
       const auth = await resolveAuthFromRequest(req);
       if (!auth.user && !auth.manager && !auth.processLeader) {
         return res.status(401).send("No autenticado");
+      }
+      if (auth.user && auth.user.role !== "admin" && !auth.manager && !auth.processLeader) {
+        return res.status(403).send("No tiene acceso a la información de la empresa.");
       }
 
       const fileUrl = req.query.url as string;

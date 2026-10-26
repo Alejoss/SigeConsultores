@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure, companyProcedure, router } from "../_core/trpc";
+import { adminProcedure, publicProcedure, companyProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { companies, accounts, accountRoles } from "../../drizzle/schema";
@@ -125,7 +125,7 @@ export const managerAuthRouter = router({
       return company[0];
     }),
 
-  listCompanies: publicProcedure.query(async () => {
+  listCompanies: adminProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     return db.select().from(companies);

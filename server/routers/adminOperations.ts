@@ -19,7 +19,8 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { protectedProcedure, companyProcedure, publicProcedure, router } from "../_core/trpc";
+import { assertCompanyReadAccess } from "../_core/companyPermissions";
+import { protectedProcedure, companyProcedure, router } from "../_core/trpc";
 import { randomBytes } from "crypto";
 import { getDb } from "../db";
 import { getRoleIdBySlug } from "../accountAuth";
@@ -374,7 +375,7 @@ export const adminOperationsRouter = router({
       .orderBy(companies.name);
   }),
 
-  getUserCompanies: protectedProcedure.input(z.object({ accountId: z.number() })).query(async ({ input, ctx }) => {
+  getUserCompanies: protectedProcedure.input(z.object({ accountId: z.number() })).query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
@@ -397,11 +398,12 @@ export const adminOperationsRouter = router({
       })
       .from(companies)
       .innerJoin(userCompanyAccess, eq(companies.id, userCompanyAccess.companyId))
-      .where(eq(userCompanyAccess.accountId, input.accountId))
+      .where(eq(userCompanyAccess.accountId, ctx.user.id))
       .orderBy(companies.name);
   }),
 
-  getCompanyById: publicProcedure.input(z.object({ companyId: z.number() })).query(async ({ input }) => {
+  getCompanyById: companyProcedure.input(z.object({ companyId: z.number() })).query(async ({ input, ctx }) => {
+    assertCompanyReadAccess(ctx, input.companyId);
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 

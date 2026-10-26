@@ -266,9 +266,9 @@ export const appRouter = router({
         return { success: true, message: "Empresa actualizada exitosamente" };
       }),
 
-    delete: protectedProcedure
+    delete: adminProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
 
