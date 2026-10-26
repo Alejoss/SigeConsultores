@@ -230,6 +230,14 @@ describe("online courses flow", () => {
     await admin.caller().createLesson({ moduleId: closedModuleId, file: lessonFile("Cerrada") });
     expect((await regCodesCaller({ user: { id: adminAccountId, role: "admin" } }).set({ companyId, regCode })).regCode).toBe(regCode);
 
+    const adminView = await admin.caller().tree();
+    expect(adminView.fields.find(field => field.id === fieldId)?.modules.map(moduleRow => moduleRow.state)).toEqual(["disponible", "disponible"]);
+    const adminModule = await admin.caller().module({ moduleId: secondModuleId });
+    expect(adminModule.lessons[0]).toMatchObject({ id: secondLessonId, result: null });
+    expect(adminModule.lessons[0].questions[0]).not.toHaveProperty("correct");
+    expect(await admin.caller().evaluate({ lessonId: secondLessonId, answers: passing })).toMatchObject({ passed: true, preview: true });
+    expect((await admin.caller().search({ q: "Cómo se" })).results.map(result => result.lessonId)).toContain(secondLessonId);
+
     const manager = harness();
     expect((await manager.caller().login({ identificacion: managerEmail, password: staffPassword })).role).toBe("company_admin");
     await expect(
@@ -240,6 +248,17 @@ describe("online courses flow", () => {
     await expect(
       admin.caller().createLesson({ moduleId: privateModuleId, file: lessonFile("Tampoco") })
     ).rejects.toThrow(/catálogo/);
+    await expect(admin.caller().module({ moduleId: privateModuleId })).rejects.toThrow(/privado/);
+
+    await manager.caller().createLesson({ moduleId: privateModuleId, file: lessonFile("Solo nuestra") });
+    const managerPreview = await manager.caller().tree();
+    expect(managerPreview.fields.map(field => field.id)).toEqual(expect.arrayContaining([fieldId, privateFieldId]));
+    expect(await manager.caller().evaluate({ lessonId: firstLessonId, answers: passing })).toMatchObject({ passed: true, preview: true });
+
+    const asCompany = await admin.caller().companyOverview({ companyId });
+    expect(asCompany.fields.some(field => field.id === privateFieldId && field.own)).toBe(true);
+    expect((await admin.caller().exportCsv({ companyId })).csv).toContain("Cédula");
+    await expect(admin.caller().companyOverview()).rejects.toThrow();
 
     await manager.caller().setModuleAccess({ moduleId: firstModuleId, open: true });
     await manager.caller().setModuleAccess({ moduleId: secondModuleId, open: true });

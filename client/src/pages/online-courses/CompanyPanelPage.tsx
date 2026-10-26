@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { useMemo, useState } from "react";
 import { courseDateTimeLocalValue } from "@shared/onlineCourses";
 import { trpc } from "@/lib/trpc";
-import { coursePath, managementHomeHref } from "./coursePaths";
 import { LoginForm, Shell } from "./PortalPage";
 
 function errorText(error: unknown): string {
@@ -13,11 +11,23 @@ function toLocal(iso: string | null): string {
   return courseDateTimeLocalValue(iso);
 }
 
+/** Company picked by the general admin; `?empresa=<id>` comes from the catalog's company list. */
+function initialCompanyId(): number | undefined {
+  if (typeof window === "undefined") return undefined;
+  const id = Number(new URLSearchParams(window.location.search).get("empresa"));
+  return Number.isInteger(id) && id > 0 ? id : undefined;
+}
+
 export default function CompanyPanelPage() {
-  const [, setLocation] = useLocation();
   const whoami = trpc.onlineCourses.whoami.useQuery(undefined, { retry: false });
-  const overview = trpc.onlineCourses.companyOverview.useQuery(undefined, { enabled: whoami.data?.role === "company_admin" });
-  const logout = trpc.onlineCourses.logout.useMutation();
+  const isAdmin = whoami.data?.role === "platform_admin";
+  const [selectedId, setSelectedId] = useState<number | undefined>(initialCompanyId);
+  const catalog = trpc.onlineCourses.catalogOverview.useQuery(undefined, { enabled: isAdmin });
+  const companyId = isAdmin ? selectedId : undefined;
+  const overview = trpc.onlineCourses.companyOverview.useQuery(
+    companyId ? { companyId } : undefined,
+    { enabled: whoami.data?.role === "company_admin" || (isAdmin && Boolean(companyId)) }
+  );
   const setAccess = trpc.onlineCourses.setModuleAccess.useMutation();
   const setOverride = trpc.onlineCourses.setOverride.useMutation();
   const setCode = trpc.onlineCourses.setRegCode.useMutation();
@@ -45,24 +55,48 @@ export default function CompanyPanelPage() {
     await overview.refetch();
   }
 
-  useEffect(() => {
-    if (whoami.data?.role === "platform_admin") setLocation(coursePath("/catalogo"));
-    if (whoami.data?.role === "worker") setLocation(coursePath("/"));
-  }, [whoami.data?.role, setLocation]);
-
   if (whoami.isLoading) return <Shell><p>Cargando…</p></Shell>;
   if (!whoami.data) return <LoginForm onDone={() => whoami.refetch()} />;
-  if (whoami.data.role !== "company_admin") return <Shell><p>Abriendo tu panel…</p></Shell>;
+  if (whoami.data.role === "worker") {
+    return <Shell><p className="text-slate-600">Este panel es para el administrador de la empresa. Usa el menú de arriba para volver a tus capacitaciones.</p></Shell>;
+  }
+
+  const companyPicker = isAdmin && (
+    <label className="mb-6 flex flex-wrap items-center gap-2 text-sm">
+      <span className="font-medium">Empresa</span>
+      <select
+        className="rounded-md border px-3 py-2"
+        value={selectedId ?? ""}
+        onChange={event => {
+          const id = Number(event.target.value) || undefined;
+          setSelectedId(id);
+          setMessage("");
+          window.history.replaceState(null, "", id ? `?empresa=${id}` : window.location.pathname);
+        }}
+      >
+        <option value="">Elige una empresa…</option>
+        {(catalog.data?.companies || []).map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
+      </select>
+    </label>
+  );
+
+  if (isAdmin && !companyId) {
+    return (
+      <Shell>
+        <h1 className="mb-4 text-3xl font-semibold">Panel de empresa</h1>
+        {companyPicker}
+        <p className="text-slate-500">Elige la empresa que quieres administrar.</p>
+      </Shell>
+    );
+  }
 
   return (
     <Shell>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{data?.companyName || "Administración"}</p>
-          <h1 className="text-3xl font-semibold">Capacitaciones de mi empresa</h1>
-        </div>
-        <button className="rounded-md border px-3 py-2 text-sm" onClick={async () => { await logout.mutateAsync(); location.href = managementHomeHref(); }}>Salir</button>
+      <div className="mb-6">
+        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{data?.companyName || "Administración"}</p>
+        <h1 className="text-3xl font-semibold">{isAdmin ? "Panel de empresa" : "Capacitaciones de mi empresa"}</h1>
       </div>
+      {companyPicker}
       {message && <p className="mb-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</p>}
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <article className="rounded-xl border bg-white p-4"><b className="block text-2xl">{data?.workerCount || 0}</b><span className="text-sm text-slate-500">Trabajadores</span></article>
@@ -76,7 +110,7 @@ export default function CompanyPanelPage() {
           <code className="rounded bg-slate-100 px-2 py-1">{data?.regCode || "—"}</code>
           <input className="rounded-md border px-2 py-1" value={code} onChange={event => setCodeValue(event.target.value)} placeholder="nuevo código" />
           <button className="rounded-md bg-emerald-700 px-3 py-1 text-sm text-white" onClick={async () => {
-            try { await setCode.mutateAsync({ codigo: code }); setCodeValue(""); await reload("Código actualizado"); }
+            try { await setCode.mutateAsync({ companyId, codigo: code }); setCodeValue(""); await reload("Código actualizado"); }
             catch (error) { setMessage(errorText(error)); }
           }}>Cambiar código</button>
         </div>
@@ -91,7 +125,7 @@ export default function CompanyPanelPage() {
             <p className="text-slate-500">{moduleRow.lessonCount} capacitaciones</p>
             <label className="mt-2 flex items-center gap-2">
               <input type="checkbox" checked={moduleRow.open} onChange={async event => {
-                try { await setAccess.mutateAsync({ moduleId: moduleRow.id, open: event.target.checked, opensAt: moduleRow.opensAt, closesAt: moduleRow.closesAt }); await overview.refetch(); }
+                try { await setAccess.mutateAsync({ companyId, moduleId: moduleRow.id, open: event.target.checked, opensAt: moduleRow.opensAt, closesAt: moduleRow.closesAt }); await overview.refetch(); }
                 catch (error) { setMessage(errorText(error)); }
               }} />
               {moduleRow.open ? "Abierto" : "Cerrado"}
@@ -99,13 +133,13 @@ export default function CompanyPanelPage() {
             <div className="mt-2 flex flex-wrap gap-2">
               <input type="datetime-local" className="rounded border px-1" defaultValue={toLocal(moduleRow.opensAt)} onBlur={async event => {
                 try {
-                  await setAccess.mutateAsync({ moduleId: moduleRow.id, open: moduleRow.open, opensAt: event.target.value || null, closesAt: moduleRow.closesAt });
+                  await setAccess.mutateAsync({ companyId, moduleId: moduleRow.id, open: moduleRow.open, opensAt: event.target.value || null, closesAt: moduleRow.closesAt });
                   await overview.refetch();
                 } catch (error) { setMessage(errorText(error)); }
               }} />
               <input type="datetime-local" className="rounded border px-1" defaultValue={toLocal(moduleRow.closesAt)} onBlur={async event => {
                 try {
-                  await setAccess.mutateAsync({ moduleId: moduleRow.id, open: moduleRow.open, opensAt: moduleRow.opensAt, closesAt: event.target.value || null });
+                  await setAccess.mutateAsync({ companyId, moduleId: moduleRow.id, open: moduleRow.open, opensAt: moduleRow.opensAt, closesAt: event.target.value || null });
                   await overview.refetch();
                 } catch (error) { setMessage(errorText(error)); }
               }} />
@@ -117,7 +151,7 @@ export default function CompanyPanelPage() {
       <h2 className="mb-2 text-xl font-semibold">Seguimiento del personal</h2>
       <div className="mb-2 flex flex-wrap gap-2">
         <input className="rounded-md border px-3 py-2" placeholder="Buscar por nombre, cédula, cargo o centro" value={query} onChange={event => setQuery(event.target.value)} />
-        <CsvButton />
+        <CsvButton companyId={companyId} />
       </div>
       <div className="mb-8 overflow-x-auto rounded-xl border bg-white">
         <table className="min-w-full text-left text-sm">
@@ -136,7 +170,7 @@ export default function CompanyPanelPage() {
                   <button className="mt-1 text-xs underline" onClick={async () => {
                     const password = window.prompt("Nueva clave (mínimo 6 caracteres)");
                     if (!password) return;
-                    try { await resetPassword.mutateAsync({ workerId: worker.id, password }); setMessage("Clave actualizada"); }
+                    try { await resetPassword.mutateAsync({ companyId, workerId: worker.id, password }); setMessage("Clave actualizada"); }
                     catch (error) { setMessage(errorText(error)); }
                   }}>Restablecer clave</button>
                 </td>
@@ -147,7 +181,7 @@ export default function CompanyPanelPage() {
                       <div>{{ aprobado: "Aprobado", en_curso: "En curso", sin_iniciar: "Sin iniciar" }[cell?.status || "sin_iniciar"]}</div>
                       <select className="mt-1 rounded border text-xs" value={cell?.override || "auto"} onChange={async event => {
                         try {
-                          await setOverride.mutateAsync({ workerId: worker.id, moduleId: moduleRow.id, value: event.target.value as "abrir" | "cerrar" | "auto" });
+                          await setOverride.mutateAsync({ companyId, workerId: worker.id, moduleId: moduleRow.id, value: event.target.value as "abrir" | "cerrar" | "auto" });
                           await overview.refetch();
                         } catch (error) { setMessage(errorText(error)); }
                       }}>
@@ -181,7 +215,7 @@ export default function CompanyPanelPage() {
       <div className="flex gap-2">
         <input className="rounded-md border px-3 py-2" placeholder="Nombre del campo nuevo" value={fieldName} onChange={event => setFieldName(event.target.value)} />
         <button className="rounded-md bg-emerald-700 px-3 py-2 text-sm text-white" onClick={async () => {
-          try { await createField.mutateAsync({ name: fieldName }); setFieldName(""); await reload("Campo creado"); }
+          try { await createField.mutateAsync({ companyId, name: fieldName }); setFieldName(""); await reload("Campo creado"); }
           catch (error) { setMessage(errorText(error)); }
         }}>Agregar campo propio</button>
       </div>
@@ -191,7 +225,7 @@ export default function CompanyPanelPage() {
           <h3 className="mb-3 font-semibold">Nuevo módulo</h3>
           <input className="mb-3 w-full rounded border px-3 py-2" value={moduleName} onChange={event => setModuleName(event.target.value)} />
           <button className="mr-2 rounded bg-emerald-700 px-3 py-2 text-sm text-white" onClick={async () => {
-            try { await createModule.mutateAsync({ fieldId, name: moduleName }); setModuleName(""); setFieldId(null); await reload("Módulo creado"); }
+            try { await createModule.mutateAsync({ companyId, fieldId, name: moduleName }); setModuleName(""); setFieldId(null); await reload("Módulo creado"); }
             catch (error) { setMessage(errorText(error)); }
           }}>Crear</button>
           <button className="rounded border px-3 py-2 text-sm" onClick={() => setFieldId(null)}>Cancelar</button>
@@ -204,7 +238,7 @@ export default function CompanyPanelPage() {
             const file = event.target.files?.[0];
             if (!file || moduleId === null) return;
             try {
-              await createLesson.mutateAsync({ moduleId, file: JSON.parse(await file.text()) });
+              await createLesson.mutateAsync({ companyId, moduleId, file: JSON.parse(await file.text()) });
               setModuleId(null);
               await reload("Capacitación cargada");
             } catch (error) { setMessage(errorText(error)); }
@@ -216,11 +250,11 @@ export default function CompanyPanelPage() {
   );
 }
 
-function CsvButton() {
+function CsvButton({ companyId }: { companyId?: number }) {
   const utils = trpc.useUtils();
   return (
     <button className="rounded-md border px-3 py-2 text-sm" onClick={async () => {
-      const file = await utils.onlineCourses.exportCsv.fetch();
+      const file = await utils.onlineCourses.exportCsv.fetch(companyId ? { companyId } : undefined);
       const blob = new Blob([file.csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");

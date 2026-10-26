@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { coursePath } from "./coursePaths";
+import { CourseNav, Shell } from "./PortalPage";
 
 export default function CertificatePage() {
   const [location] = useLocation();
@@ -13,13 +14,14 @@ export default function CertificatePage() {
     { enabled: valid && Number.isInteger(id) && id > 0, retry: false }
   );
 
-  if (!valid) return <p className="p-8">Certificado no disponible.</p>;
-  if (certificate.isLoading) return <p className="p-8">Cargando…</p>;
-  if (certificate.error || !certificate.data) return <p className="p-8">{certificate.error?.message || "Certificado no disponible."} <a href={coursePath("/")}>Volver</a></p>;
+  if (!valid) return <Shell><p>Certificado no disponible.</p></Shell>;
+  if (certificate.isLoading) return <Shell><p>Cargando…</p></Shell>;
+  if (certificate.error || !certificate.data) return <Shell><p>{certificate.error?.message || "Certificado no disponible."}</p></Shell>;
   const data = certificate.data;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
+      <CourseNav />
       <div className="mb-4 flex gap-2 print:hidden">
         <button className="rounded-md bg-emerald-700 px-3 py-2 text-sm text-white" onClick={() => window.print()}>Imprimir o guardar en PDF</button>
         <a className="rounded-md border px-3 py-2 text-sm" href={coursePath("/")}>Volver al portal</a>

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "../_core/trpc";
 import {
+  actAsCompany,
   catalogOverview,
   certificateView,
   changeWorkerPassword,
@@ -31,6 +32,13 @@ async function actorFrom(ctx: { req: Parameters<typeof readCourseActor>[0] }): P
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Inicia sesión para continuar." });
   }
   return actor;
+}
+
+/** Company the general admin manages from the company panel. Ignored for every other role. */
+const companyIdInput = z.number().int().positive().optional();
+
+async function companyActorFrom(ctx: { req: Parameters<typeof readCourseActor>[0] }, companyId?: number): Promise<CourseActor> {
+  return actAsCompany(await actorFrom(ctx), companyId);
 }
 
 const lessonFile = z.unknown();
@@ -84,50 +92,56 @@ export const onlineCoursesRouter = router({
     .input(z.object({ kind: z.enum(["capacitacion", "modulo", "campo"]), id: z.number().int() }))
     .query(async ({ ctx, input }) => certificateView(await actorFrom(ctx), input.kind, input.id)),
 
-  companyOverview: publicProcedure.query(async ({ ctx }) => companyOverview(await actorFrom(ctx))),
+  companyOverview: publicProcedure
+    .input(z.object({ companyId: companyIdInput }).optional())
+    .query(async ({ ctx, input }) => companyOverview(await companyActorFrom(ctx, input?.companyId))),
 
   setModuleAccess: publicProcedure
     .input(
       z.object({
+        companyId: companyIdInput,
         moduleId: z.number().int(),
         open: z.boolean(),
         opensAt: z.string().nullable().optional(),
         closesAt: z.string().nullable().optional(),
       })
     )
-    .mutation(async ({ ctx, input }) => setModuleAccess(await actorFrom(ctx), input)),
+    .mutation(async ({ ctx, input: { companyId, ...input } }) => setModuleAccess(await companyActorFrom(ctx, companyId), input)),
 
   setOverride: publicProcedure
     .input(
       z.object({
+        companyId: companyIdInput,
         workerId: z.number().int(),
         moduleId: z.number().int(),
         value: z.enum(["abrir", "cerrar", "auto"]),
       })
     )
-    .mutation(async ({ ctx, input }) => setWorkerOverride(await actorFrom(ctx), input)),
+    .mutation(async ({ ctx, input: { companyId, ...input } }) => setWorkerOverride(await companyActorFrom(ctx, companyId), input)),
 
   setRegCode: publicProcedure
-    .input(z.object({ codigo: z.string() }))
-    .mutation(async ({ ctx, input }) => setCompanyRegCode(await actorFrom(ctx), input.codigo)),
+    .input(z.object({ companyId: companyIdInput, codigo: z.string() }))
+    .mutation(async ({ ctx, input }) => setCompanyRegCode(await companyActorFrom(ctx, input.companyId), input.codigo)),
 
   resetWorkerPassword: publicProcedure
-    .input(z.object({ workerId: z.number().int(), password: z.string() }))
-    .mutation(async ({ ctx, input }) => resetWorkerPassword(await actorFrom(ctx), input)),
+    .input(z.object({ companyId: companyIdInput, workerId: z.number().int(), password: z.string() }))
+    .mutation(async ({ ctx, input: { companyId, ...input } }) => resetWorkerPassword(await companyActorFrom(ctx, companyId), input)),
 
-  exportCsv: publicProcedure.query(async ({ ctx }) => exportCompanyCsv(await actorFrom(ctx))),
+  exportCsv: publicProcedure
+    .input(z.object({ companyId: companyIdInput }).optional())
+    .query(async ({ ctx, input }) => exportCompanyCsv(await companyActorFrom(ctx, input?.companyId))),
 
   createField: publicProcedure
-    .input(z.object({ name: z.string() }))
-    .mutation(async ({ ctx, input }) => createCourseField(await actorFrom(ctx), input.name)),
+    .input(z.object({ companyId: companyIdInput, name: z.string() }))
+    .mutation(async ({ ctx, input }) => createCourseField(await companyActorFrom(ctx, input.companyId), input.name)),
 
   createModule: publicProcedure
-    .input(z.object({ fieldId: z.number().int(), name: z.string() }))
-    .mutation(async ({ ctx, input }) => createCourseModule(await actorFrom(ctx), input)),
+    .input(z.object({ companyId: companyIdInput, fieldId: z.number().int(), name: z.string() }))
+    .mutation(async ({ ctx, input: { companyId, ...input } }) => createCourseModule(await companyActorFrom(ctx, companyId), input)),
 
   createLesson: publicProcedure
-    .input(z.object({ moduleId: z.number().int(), file: lessonFile }))
-    .mutation(async ({ ctx, input }) => createCourseLesson(await actorFrom(ctx), input)),
+    .input(z.object({ companyId: companyIdInput, moduleId: z.number().int(), file: lessonFile }))
+    .mutation(async ({ ctx, input: { companyId, ...input } }) => createCourseLesson(await companyActorFrom(ctx, companyId), input)),
 
   catalogOverview: publicProcedure.query(async ({ ctx }) => {
     const actor = await actorFrom(ctx);
