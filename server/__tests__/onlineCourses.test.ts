@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  courseContinueLocation,
+  courseContinuePath,
   courseDateTimeLocalToDate,
   courseDateTimeLocalValue,
   courseEntryUrl,
   gradeAnswers,
   isCourseHostname,
+  managementHomeUrl,
   toPublicQuestions,
   validateLessonFile,
   type LessonQuestion,
@@ -93,5 +96,17 @@ describe("online courses host", () => {
     expect(courseDateTimeLocalToDate("2026-10-23T18:00")?.toISOString()).toBe("2026-10-23T23:00:00.000Z");
     expect(courseDateTimeLocalValue("2026-10-23T23:00:00.000Z")).toBe("2026-10-23T18:00");
     expect(courseDateTimeLocalToDate("2026-10-23T23:00:00.000Z")?.toISOString()).toBe("2026-10-23T23:00:00.000Z");
+  });
+});
+
+describe("course session handoff", () => {
+  it("keeps the continue link on the course site and rejects other targets", () => {
+    expect(courseContinuePath("/catalogo")).toBe("/catalogo");
+    expect(courseContinuePath("/empresa")).toBe("/empresa");
+    expect(courseContinuePath("https://evil.example")).toBe("/catalogo");
+    expect(courseContinueLocation("isge360.com", "/catalogo")).toBe("https://capacitaciones.isge360.com/catalogo");
+    expect(courseContinueLocation("capacitaciones.isge360.com", "/empresa")).toBe("/empresa");
+    expect(managementHomeUrl("capacitaciones.isge360.com")).toBe("https://isge360.com/dashboard");
+    expect(managementHomeUrl("localhost")).toBe("/dashboard");
   });
 });

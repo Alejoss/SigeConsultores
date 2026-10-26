@@ -2,9 +2,10 @@ import { parse as parseCookieHeader } from "cookie";
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
-import { revokeAuthSessionByPlainToken } from "../authSessionRepository";
+import { courseContinueLocation, courseContinuePath } from "@shared/onlineCourses";
+import { findActiveAuthSessionByPlainToken, revokeAuthSessionByPlainToken } from "../authSessionRepository";
 import { getDb } from "../db";
-import { getSessionCookieOptions } from "./cookies";
+import { applySessionCookie, clearSessionCookie } from "./cookies";
 import { resolveAuthFromRequest } from "./resolveRequestAuth";
 import { completeUnifiedLoginSession, tryUnifiedLogin } from "./unifiedLogin";
 import {
@@ -50,13 +51,12 @@ export function registerAuthSessionRoutes(app: Express) {
 
       const { plainToken } = await completeUnifiedLoginSession(outcome);
 
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, plainToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      applySessionCookie(res, req, plainToken, ONE_YEAR_MS);
 
       if (processId != null) {
         const pl = await getProcessLeaderContextForProcess(db, outcome.accountId, processId);
         if (!pl) {
-          res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+          clearSessionCookie(res, req);
           await revokeAuthSessionByPlainToken(plainToken);
           return res.status(403).json({
             ok: false as const,
@@ -130,14 +130,25 @@ export function registerAuthSessionRoutes(app: Express) {
     if (plain) {
       await revokeAuthSessionByPlainToken(plain);
     }
-    const cookieOptions = getSessionCookieOptions(req);
-    res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+    clearSessionCookie(res, req);
     return res.json({ ok: true });
+  });
+
+  app.get("/api/auth/session/continue", async (req: Request, res: Response) => {
+    const path = courseContinuePath(req.query.to);
+    const plain = readSessionCookie(req);
+    if (plain) {
+      const row = await findActiveAuthSessionByPlainToken(plain);
+      if (row?.accountId) applySessionCookie(res, req, plain, ONE_YEAR_MS);
+    }
+    return res.redirect(302, courseContinueLocation(req.hostname, path));
   });
 
   app.get("/api/auth/session/me", async (req: Request, res: Response) => {
     try {
       const { user, manager, processLeader } = await resolveAuthFromRequest(req);
+      const plain = readSessionCookie(req);
+      if (plain && (user || manager || processLeader)) applySessionCookie(res, req, plain, ONE_YEAR_MS);
       if (user) {
         return res.json({
           authenticated: true as const,
