@@ -9,9 +9,9 @@ export function isOnlineCourseHost(): boolean {
   return isCourseHostname(window.location.hostname, [...DEFAULT_COURSE_HOSTS, ...extra]);
 }
 
-/** Prefix for course routes. Empty on the subdomain, `/cursos` inside ISGE 360. */
+/** Course pages live on the subdomain, so their links have no /cursos prefix. */
 export function courseBase(): string {
-  return isOnlineCourseHost() ? "" : "/cursos";
+  return "";
 }
 
 export function coursePath(path: string): string {

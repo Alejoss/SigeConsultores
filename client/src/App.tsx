@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProcessLeaderAuthProvider } from "./contexts/ProcessLeaderAuthContext";
 import { useEffect } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import CompanyInfo from "./pages/CompanyInfo";
@@ -165,7 +166,46 @@ function RootRedirect() {
   );
 }
 
+/** Account and invitation pages a normal login may open. Company screens are refused. */
+const PLATFORM_USER_PATHS = new Set([
+  "/",
+  "/login",
+  "/dashboard",
+  "/home",
+  "/access-denied",
+  "/request-access",
+  "/request-access-protected",
+  "/setup-password",
+  "/change-password",
+  "/forgot-password",
+  "/forgot-password-manager",
+  "/setup-process-leader-password",
+  "/setup-process-leader-pin",
+  "/reset-process-leader-pin",
+  "/process-leader-pin-recovery",
+  "/process-owner-invitation",
+  "/process-leader-invitation-link",
+  "/manager-confirmation",
+  "/manager-access-success",
+  "/process-leader-access-success",
+  "/404",
+]);
+
+function platformUserMayOpen(location: string) {
+  const path = location.split("?")[0].replace(/\/$/, "") || "/";
+  return PLATFORM_USER_PATHS.has(path);
+}
+
 function Router() {
+  const [location] = useLocation();
+  const { user, loading } = useAuth();
+  const usualLoginBlocked =
+    !loading && user?.role === "user" && !platformUserMayOpen(location);
+
+  if (usualLoginBlocked) {
+    return <AccessDenied />;
+  }
+
   return (
     <Switch>
       <Route path={"/"} component={RootRedirect} />
@@ -323,12 +363,6 @@ function Router() {
         path={"/audits-inspections/inspections"}
         component={InspectionControl}
       />
-      <Route path={"/cursos/catalogo"} component={CatalogPanelPage} />
-      <Route path={"/cursos/empresa"} component={CompanyPanelPage} />
-      <Route path={"/cursos/modulo/:moduleId"} component={CourseViewerPage} />
-      <Route path={"/cursos/certificado/:kind/:id"} component={CertificatePage} />
-      <Route path={"/cursos"} component={PortalPage} />
-
       <Route path={"/home"} component={Home} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}

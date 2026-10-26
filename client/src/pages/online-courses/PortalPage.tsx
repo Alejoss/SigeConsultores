@@ -97,6 +97,7 @@ function LoginForm({ onDone }: { onDone: () => void }) {
   const [mode, setMode] = useState<"in" | "reg">("in");
   const [identificacion, setIdentificacion] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [codigo, setCodigo] = useState("");
   const [showCode, setShowCode] = useState(false);
   const [nombre, setNombre] = useState("");
@@ -110,6 +111,10 @@ function LoginForm({ onDone }: { onDone: () => void }) {
     setError("");
     try {
       if (mode === "reg") {
+        if (password !== passwordConfirm) {
+          setError("Las claves no coinciden.");
+          return;
+        }
         await register.mutateAsync({ cedula: identificacion, nombre, password, codigo, cargo, centro });
       } else {
         await login.mutateAsync({ identificacion, password, codigo: codigo || undefined });
@@ -139,7 +144,7 @@ function LoginForm({ onDone }: { onDone: () => void }) {
         {(mode === "reg" || showCode) && (
           <label className="mb-3 block text-sm">
             Código de tu empresa
-            <input className="mt-1 w-full rounded-md border px-3 py-2" value={codigo} onChange={event => setCodigo(event.target.value)} placeholder="Te lo entrega Desarrollo Humano" />
+            <input className="mt-1 w-full rounded-md border px-3 py-2" value={codigo} onChange={event => setCodigo(event.target.value)} />
           </label>
         )}
         {mode === "in" && !showCode && (
@@ -152,10 +157,16 @@ function LoginForm({ onDone }: { onDone: () => void }) {
             <label className="mb-3 block text-sm">Centro de trabajo<input className="mt-1 w-full rounded-md border px-3 py-2" value={centro} onChange={event => setCentro(event.target.value)} /></label>
           </>
         )}
-        <label className="mb-4 block text-sm">
+        <label className={`block text-sm ${mode === "reg" ? "mb-3" : "mb-4"}`}>
           Clave
           <input type="password" className="mt-1 w-full rounded-md border px-3 py-2" value={password} onChange={event => setPassword(event.target.value)} onKeyDown={event => { if (event.key === "Enter") void submit(); }} />
         </label>
+        {mode === "reg" && (
+          <label className="mb-4 block text-sm">
+            Repite la clave
+            <input type="password" className="mt-1 w-full rounded-md border px-3 py-2" value={passwordConfirm} onChange={event => setPasswordConfirm(event.target.value)} onKeyDown={event => { if (event.key === "Enter") void submit(); }} />
+          </label>
+        )}
         <button className="rounded-md bg-emerald-700 px-4 py-2 text-sm text-white" onClick={() => void submit()}>{mode === "reg" ? "Crear cuenta" : "Ingresar"}</button>
         {error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       </div>

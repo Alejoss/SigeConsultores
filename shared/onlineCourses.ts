@@ -41,11 +41,7 @@ export function courseEntryUrl(
   const suffix = path.startsWith("/") ? path : `/${path}`;
   const configured = opts.publicUrl?.trim();
   if (configured) return `${configured.replace(/\/$/, "")}${suffix}`;
-  const host = (opts.hostname || "").split(":")[0].toLowerCase();
-  if (host === "isge360.com" || host === "www.isge360.com") {
-    return `${COURSE_PUBLIC_ORIGIN}${suffix}`;
-  }
-  return `/cursos${suffix}`;
+  return `${COURSE_PUBLIC_ORIGIN}${suffix}`;
 }
 
 export function gradeAnswers(questions: LessonQuestion[], answers: string[]) {
