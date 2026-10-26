@@ -2,7 +2,6 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "../_core/trpc";
 import {
-  assignCompany,
   catalogOverview,
   certificateView,
   changeWorkerPassword,
@@ -137,8 +136,4 @@ export const onlineCoursesRouter = router({
     }
     return catalogOverview();
   }),
-
-  assignCompany: publicProcedure
-    .input(z.object({ companyId: z.number().int(), regCode: z.string().optional() }))
-    .mutation(async ({ ctx, input }) => assignCompany(await actorFrom(ctx), input)),
 });

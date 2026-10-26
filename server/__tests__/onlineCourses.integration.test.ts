@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import bcrypt from "bcryptjs";
 import { eq, inArray } from "drizzle-orm";
 import { onlineCoursesRouter } from "../routers/onlineCourses";
+import { courseRegCodesRouter } from "../routers/courseRegCodes";
 import { getDb } from "../db";
 import { createAuthSession } from "../authSessionRepository";
 import { resetCourseLoginLimiter } from "../onlineCourses/service";
@@ -67,6 +68,16 @@ function harness() {
       } as never);
     },
   };
+}
+
+function regCodesCaller(ctx: { user?: { id: number; role: "admin" | "user" }; manager?: unknown; processLeader?: unknown }) {
+  return courseRegCodesRouter.createCaller({
+    user: ctx.user ? { openId: `t-${ctx.user.id}`, name: null, email: null, ...ctx.user } : null,
+    manager: ctx.manager ?? null,
+    processLeader: ctx.processLeader ?? null,
+    req: { headers: {} },
+    res: {},
+  } as never);
 }
 
 describe("online courses flow", () => {
@@ -184,6 +195,27 @@ describe("online courses flow", () => {
     expect(await managerCaller.whoami()).toMatchObject({ role: "company_admin", name: "Gerente Capacitaciones" });
   });
 
+  it("lets the manager and the general admin edit the registration code from ISGE 360", async () => {
+    const asAdmin = regCodesCaller({ user: { id: adminAccountId, role: "admin" } });
+    const generated = await asAdmin.set({ companyId });
+    expect(generated.regCode).toMatch(/^EMPRES-[0-9A-F]{4}$/);
+    expect((await asAdmin.list()).find(row => row.companyId === companyId)?.regCode).toBe(generated.regCode);
+
+    const asManager = regCodesCaller({ manager: { companyId, companyName: "x", managerEmail } });
+    expect((await asManager.mine()).regCode).toBe(generated.regCode);
+    const managerCode = `GER${String(stamp).slice(-6)}`;
+    expect((await asManager.setMine({ regCode: managerCode })).regCode).toBe(managerCode);
+    expect((await asManager.mine()).regCode).toBe(managerCode);
+    await expect(asManager.setMine({ regCode: "ab" })).rejects.toThrow(/4 caracteres/);
+    await expect(asManager.list()).rejects.toThrow();
+
+    const asLeader = regCodesCaller({
+      processLeader: { processLeaderId: 1, leaderName: "x", leaderEmail: "x@example.test", processId: 1, companyId, companyName: "x" },
+    });
+    await expect(asLeader.setMine({ regCode: "LIDER1" })).rejects.toThrow(/gerente/);
+    await expect(regCodesCaller({ user: { id: 9, role: "user" } }).mine()).rejects.toThrow();
+  });
+
   it("grades on the server, keeps companies apart, and issues cascade certificates", async () => {
     const admin = harness();
     const adminApi = admin.caller();
@@ -196,7 +228,7 @@ describe("online courses flow", () => {
     closedFieldId = (await admin.caller().createField({ name: `Cerrado ${stamp}` })).id;
     closedModuleId = (await admin.caller().createModule({ fieldId: closedFieldId, name: "Sin abrir" })).id;
     await admin.caller().createLesson({ moduleId: closedModuleId, file: lessonFile("Cerrada") });
-    expect((await admin.caller().assignCompany({ companyId, regCode })).regCode).toBe(regCode);
+    expect((await regCodesCaller({ user: { id: adminAccountId, role: "admin" } }).set({ companyId, regCode })).regCode).toBe(regCode);
 
     const manager = harness();
     expect((await manager.caller().login({ identificacion: managerEmail, password: staffPassword })).role).toBe("company_admin");

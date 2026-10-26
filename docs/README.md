@@ -23,6 +23,10 @@
 | [FILE_STORAGE.md](./FILE_STORAGE.md) | Subidas a S3, prefijos `uploads/`, URLs firmadas |
 | [TRANSACTIONAL_EMAIL.md](./TRANSACTIONAL_EMAIL.md) | Amazon SES: variables, IAM, sandbox vs producción |
 
+Módulos:
+
+- [capacitaciones-en-linea.md](./capacitaciones-en-linea.md) — subdominio de cursos, sesión compartida y código de inscripción por empresa
+
 Documentos de producto / estrategia (no operativos de despliegue):
 
 - [ARQUITECTURA_INTEGRIDAD_DATOS.md](./ARQUITECTURA_INTEGRIDAD_DATOS.md)

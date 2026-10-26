@@ -31,6 +31,7 @@ import CreateManagerInvitation from "@/components/CreateManagerInvitation";
 import RecoveryForm from "@/components/RecoveryForm";
 import { useLocation } from "wouter";
 import { courseEntryHref } from "./online-courses/coursePaths";
+import { CourseRegCodeAdminCard } from "@/components/CourseRegCodeCards";
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
@@ -171,6 +172,8 @@ export default function AdminDashboard() {
             isLoadingCompanies={companiesQuery.isLoading}
           />
         )}
+
+        <CourseRegCodeAdminCard />
 
         <Card className="border-sky-200 bg-sky-50/60">
           <CardHeader>

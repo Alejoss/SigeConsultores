@@ -1195,21 +1195,47 @@ export async function catalogOverview() {
   };
 }
 
-export async function assignCompany(actor: CourseActor, input: { companyId: number; regCode?: string }) {
-  if (actor.role !== "platform_admin") fail("FORBIDDEN", "Solo el administrador general.");
+/** Every ISGE 360 company with its course registration code ("" when none is set yet). */
+export async function listCompanyRegCodes() {
   const db = await database();
-  const companyRows = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
+  const rows = await db
+    .select({ companyId: companies.id, companyName: companies.name, regCode: courseCompanySettings.regCode })
+    .from(companies)
+    .leftJoin(courseCompanySettings, eq(courseCompanySettings.companyId, companies.id))
+    .orderBy(asc(companies.name));
+  return rows.map(row => ({ ...row, regCode: row.regCode || "" }));
+}
+
+export async function getCompanyRegCode(companyId: number) {
+  const db = await database();
+  const rows = await db
+    .select({ companyId: companies.id, companyName: companies.name, regCode: courseCompanySettings.regCode })
+    .from(companies)
+    .leftJoin(courseCompanySettings, eq(courseCompanySettings.companyId, companies.id))
+    .where(eq(companies.id, companyId))
+    .limit(1);
+  if (!rows.length) fail("NOT_FOUND", "Empresa no encontrada.");
+  return { ...rows[0], regCode: rows[0].regCode || "" };
+}
+
+/** Sets the code workers type on "Crear cuenta". A blank code is generated only when generateIfBlank is set. */
+export async function saveCompanyRegCode(companyId: number, codigo: string | undefined, opts: { generateIfBlank?: boolean } = {}) {
+  const db = await database();
+  const companyRows = await db.select().from(companies).where(eq(companies.id, companyId)).limit(1);
   if (!companyRows.length) fail("BAD_REQUEST", "Empresa no encontrada.");
-  const code = (input.regCode || "").trim() || makeRegCode(companyRows[0].name);
+  const typed = (codigo || "").trim();
+  if (!typed && !opts.generateIfBlank) fail("BAD_REQUEST", "Escribe el código de la empresa.");
+  const code = typed || makeRegCode(companyRows[0].name);
   if (code.length < 4) fail("BAD_REQUEST", "El código debe tener al menos 4 caracteres.");
+  if (code.length > 32) fail("BAD_REQUEST", "El código puede tener hasta 32 caracteres.");
   const taken = await db.select().from(courseCompanySettings).where(eq(courseCompanySettings.regCode, code)).limit(1);
-  if (taken.length && taken[0].companyId !== input.companyId) fail("CONFLICT", "Ese código ya lo usa otra empresa.");
-  const current = await db.select().from(courseCompanySettings).where(eq(courseCompanySettings.companyId, input.companyId)).limit(1);
+  if (taken.length && taken[0].companyId !== companyId) fail("CONFLICT", "Ese código ya lo usa otra empresa.");
+  const current = await db.select().from(courseCompanySettings).where(eq(courseCompanySettings.companyId, companyId)).limit(1);
   try {
     if (current.length) {
-      await db.update(courseCompanySettings).set({ regCode: code }).where(eq(courseCompanySettings.companyId, input.companyId));
+      await db.update(courseCompanySettings).set({ regCode: code }).where(eq(courseCompanySettings.companyId, companyId));
     } else {
-      await db.insert(courseCompanySettings).values({ companyId: input.companyId, regCode: code });
+      await db.insert(courseCompanySettings).values({ companyId, regCode: code });
     }
   } catch (error) {
     if (isDuplicate(error)) fail("CONFLICT", "Ese código ya lo usa otra empresa.");
