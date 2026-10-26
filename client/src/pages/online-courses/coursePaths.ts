@@ -1,4 +1,4 @@
-import { courseEntryUrl, DEFAULT_COURSE_HOSTS, isCourseHostname } from "@shared/onlineCourses";
+import { courseEntryUrl, DEFAULT_COURSE_HOSTS, isCourseHostname, managementHomeUrl } from "@shared/onlineCourses";
 
 export function isOnlineCourseHost(): boolean {
   if (typeof window === "undefined") return false;
@@ -19,10 +19,18 @@ export function coursePath(path: string): string {
   return `${courseBase()}${suffix === "/" ? "" : suffix}` || "/";
 }
 
-/** Button target from the management site. Production goes to the subdomain. */
+/** Button on the management site. Hits this host first so the session cookie can be shared. */
 export function courseEntryHref(path: string): string {
-  return courseEntryUrl(path, {
+  const suffix = path.startsWith("/") ? path : `/${path}`;
+  if (typeof window !== "undefined" && !isOnlineCourseHost()) {
+    return `/api/auth/session/continue?to=${encodeURIComponent(suffix)}`;
+  }
+  return courseEntryUrl(suffix, {
     publicUrl: import.meta.env.VITE_COURSE_PUBLIC_URL as string | undefined,
     hostname: typeof window === "undefined" ? "" : window.location.hostname,
   });
+}
+
+export function managementHomeHref(): string {
+  return managementHomeUrl(typeof window === "undefined" ? "" : window.location.hostname);
 }

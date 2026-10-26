@@ -1,7 +1,7 @@
 import { parse as parseCookieHeader } from "cookie";
 import { COOKIE_NAME } from "@shared/const";
 import { revokeAuthSessionByPlainToken } from "../authSessionRepository";
-import { getSessionCookieOptions } from "../_core/cookies";
+import { clearSessionCookie } from "../_core/cookies";
 import { publicProcedure, router, protectedProcedure } from "../_core/trpc";
 import {
   getProcessOwnerInvitationsByEmail,
@@ -23,8 +23,7 @@ export const authRouter = router({
         void revokeAuthSessionByPlainToken(plain);
       }
     }
-    const cookieOptions = getSessionCookieOptions(ctx.req);
-    ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+    clearSessionCookie(ctx.res, ctx.req);
     return {
       success: true,
     } as const;

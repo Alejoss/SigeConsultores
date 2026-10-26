@@ -1,7 +1,9 @@
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "crypto";
+import { parse as parseCookieHeader } from "cookie";
 import bcrypt from "bcryptjs";
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
+import { COOKIE_NAME } from "@shared/const";
 import {
   COURSE_COOKIE,
   COURSE_SESSION_HOURS,
@@ -15,6 +17,7 @@ import {
   type LessonQuestion,
 } from "@shared/onlineCourses";
 import { getDb } from "../db";
+import { findActiveAuthSessionByPlainToken } from "../authSessionRepository";
 import {
   accounts,
   accountRoles,
@@ -335,6 +338,12 @@ async function openSession(db: Db, req: CookieReq, res: CookieRes, input: { role
 }
 
 export async function readCourseActor(req: CookieReq): Promise<CourseActor | null> {
+  const fromCourse = await readCourseSessionActor(req);
+  if (fromCourse) return fromCourse;
+  return readPlatformSessionActor(req);
+}
+
+async function readCourseSessionActor(req: CookieReq): Promise<CourseActor | null> {
   const token = readCookie(req, COURSE_COOKIE);
   if (!token) return null;
   const db = await database();
@@ -375,6 +384,25 @@ export async function readCourseActor(req: CookieReq): Promise<CourseActor | nul
     };
   }
   return null;
+}
+
+async function readPlatformSessionActor(req: CookieReq): Promise<CourseActor | null> {
+  const token = parseCookieHeader(req.headers.cookie || "")[COOKIE_NAME];
+  if (typeof token !== "string" || !token) return null;
+  const row = await findActiveAuthSessionByPlainToken(token);
+  if (!row?.accountId) return null;
+  const db = await database();
+  const accountRows = await db.select().from(accounts).where(eq(accounts.id, row.accountId)).limit(1);
+  const account = accountRows[0];
+  if (!account || account.status !== "active") return null;
+  const assigned = await staffRoles(db, account.id);
+  const name = account.name || account.email || "Administrador";
+  if (assigned.some(role => role.slug === "platform_admin")) {
+    return { role: "platform_admin", accountId: account.id, name };
+  }
+  const managed = assigned.find(role => role.slug === "company_manager" && role.companyId > 0);
+  if (!managed) return null;
+  return { role: "company_admin", accountId: account.id, companyId: managed.companyId, name };
 }
 
 async function staffRoles(db: Db, accountId: number) {

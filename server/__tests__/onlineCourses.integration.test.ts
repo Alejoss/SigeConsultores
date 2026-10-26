@@ -3,10 +3,13 @@ import bcrypt from "bcryptjs";
 import { eq, inArray } from "drizzle-orm";
 import { onlineCoursesRouter } from "../routers/onlineCourses";
 import { getDb } from "../db";
+import { createAuthSession } from "../authSessionRepository";
 import { resetCourseLoginLimiter } from "../onlineCourses/service";
+import { COOKIE_NAME } from "@shared/const";
 import {
   accountRoles,
   accounts,
+  authSessions,
   companies,
   courseCompanySettings,
   courseFieldCertificates,
@@ -150,11 +153,35 @@ describe("online courses flow", () => {
     if (companyId) await db.delete(courseCompanySettings).where(eq(courseCompanySettings.companyId, companyId));
     const accountIds = [adminAccountId, managerAccountId].filter(id => id > 0);
     if (accountIds.length) {
+      await db.delete(authSessions).where(inArray(authSessions.accountId, accountIds));
       await db.delete(courseSessions).where(inArray(courseSessions.accountId, accountIds));
       await db.delete(accountRoles).where(inArray(accountRoles.accountId, accountIds));
       if (companyId) await db.delete(companies).where(eq(companies.id, companyId));
       await db.delete(accounts).where(inArray(accounts.id, accountIds));
     }
+  });
+
+  it("lets an ISGE administrator open the catalog with the platform session", async () => {
+    const adminSession = await createAuthSession({ accountId: adminAccountId });
+    const adminCaller = onlineCoursesRouter.createCaller({
+      user: null,
+      manager: null,
+      processLeader: null,
+      req: { headers: { cookie: `${COOKIE_NAME}=${adminSession.plainToken}` }, socket: { remoteAddress: "203.0.113.16" } },
+      res: { setHeader() {} },
+    } as never);
+    expect(await adminCaller.whoami()).toMatchObject({ role: "platform_admin", name: "Admin Capacitaciones" });
+    expect(await adminCaller.catalogOverview()).toMatchObject({ fields: expect.any(Array) });
+
+    const managerSession = await createAuthSession({ accountId: managerAccountId });
+    const managerCaller = onlineCoursesRouter.createCaller({
+      user: null,
+      manager: null,
+      processLeader: null,
+      req: { headers: { cookie: `${COOKIE_NAME}=${managerSession.plainToken}` }, socket: { remoteAddress: "203.0.113.17" } },
+      res: { setHeader() {} },
+    } as never);
+    expect(await managerCaller.whoami()).toMatchObject({ role: "company_admin", name: "Gerente Capacitaciones" });
   });
 
   it("grades on the server, keeps companies apart, and issues cascade certificates", async () => {

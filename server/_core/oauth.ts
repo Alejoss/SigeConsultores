@@ -1,8 +1,7 @@
 import type { Express, Request, Response } from "express";
-import { COOKIE_NAME } from "@shared/const";
 import { createAuthSession } from "../authSessionRepository";
 import * as db from "../db";
-import { getSessionCookieOptions } from "./cookies";
+import { applySessionCookie } from "./cookies";
 import { sdk } from "./sdk";
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
@@ -149,8 +148,7 @@ export function registerOAuthRoutes(app: Express) {
 
       console.log(`[OAuth] [${requestId}] DB session created for account id ${userRow.id}`);
 
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, plainToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      applySessionCookie(res, req, plainToken, ONE_YEAR_MS);
 
       console.log(`[OAuth] [${requestId}] ✅ OAuth callback completed successfully`);
       res.redirect(302, "/dashboard");

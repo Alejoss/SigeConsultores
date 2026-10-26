@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { coursePath } from "./coursePaths";
-import { Shell } from "./PortalPage";
+import { coursePath, managementHomeHref } from "./coursePaths";
+import { LoginForm, Shell } from "./PortalPage";
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : "No se pudo completar la acción.";
 }
 
 export default function CatalogPanelPage() {
+  const [, setLocation] = useLocation();
   const whoami = trpc.onlineCourses.whoami.useQuery(undefined, { retry: false });
   const overview = trpc.onlineCourses.catalogOverview.useQuery(undefined, { enabled: whoami.data?.role === "platform_admin" });
   const logout = trpc.onlineCourses.logout.useMutation();
@@ -28,10 +30,14 @@ export default function CatalogPanelPage() {
     await overview.refetch();
   }
 
+  useEffect(() => {
+    if (whoami.data?.role === "company_admin") setLocation(coursePath("/empresa"));
+    if (whoami.data?.role === "worker") setLocation(coursePath("/"));
+  }, [whoami.data?.role, setLocation]);
+
   if (whoami.isLoading) return <Shell><p>Cargando…</p></Shell>;
-  if (!whoami.data || whoami.data.role !== "platform_admin") {
-    return <Shell><p>Esta pantalla es del administrador general. <a className="underline" href={coursePath("/")}>Volver</a></p></Shell>;
-  }
+  if (!whoami.data) return <LoginForm onDone={() => whoami.refetch()} />;
+  if (whoami.data.role !== "platform_admin") return <Shell><p>Abriendo tu panel…</p></Shell>;
 
   return (
     <Shell>
@@ -40,7 +46,7 @@ export default function CatalogPanelPage() {
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Administración general</p>
           <h1 className="text-3xl font-semibold">Catálogo de capacitaciones</h1>
         </div>
-        <button className="rounded-md border px-3 py-2 text-sm" onClick={async () => { await logout.mutateAsync(); location.href = coursePath("/"); }}>Salir</button>
+        <button className="rounded-md border px-3 py-2 text-sm" onClick={async () => { await logout.mutateAsync(); location.href = managementHomeHref(); }}>Salir</button>
       </div>
       {message && <p className="mb-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</p>}
 

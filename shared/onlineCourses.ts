@@ -6,6 +6,8 @@ export const PASS_RATIO = 0.8;
 export const COURSE_TIME_ZONE = "America/Guayaquil";
 export const DEFAULT_COURSE_HOSTS = ["capacitaciones.isge360.com"];
 export const COURSE_PUBLIC_ORIGIN = "https://capacitaciones.isge360.com";
+export const MANAGEMENT_ORIGIN = "https://isge360.com";
+const COURSE_ENTRY_PATHS = new Set(["/", "/catalogo", "/empresa"]);
 
 export type LessonOption = { id: string; text: string };
 export type LessonQuestion = { q: string; orden: LessonOption[]; correct: string };
@@ -31,6 +33,25 @@ export type ParsedLessonFile = {
 export function isCourseHostname(hostname: string, configured: string[] = DEFAULT_COURSE_HOSTS): boolean {
   const host = hostname.split(":")[0].trim().toLowerCase();
   return configured.some(item => item.trim().toLowerCase() === host);
+}
+
+/** Keeps the continue redirect on a course path. Anything else opens the catalog. */
+export function courseContinuePath(value: unknown): string {
+  return typeof value === "string" && COURSE_ENTRY_PATHS.has(value) ? value : "/catalogo";
+}
+
+/** Same host on the course site. From the management site, the public course origin. */
+export function courseContinueLocation(hostname: string, path: string): string {
+  const host = hostname.split(":")[0].trim().toLowerCase();
+  const suffix = path.startsWith("/") ? path : `/${path}`;
+  if (isCourseHostname(host)) return suffix;
+  return `${COURSE_PUBLIC_ORIGIN}${suffix}`;
+}
+
+export function managementHomeUrl(hostname?: string): string {
+  const host = (hostname || "").split(":")[0].trim().toLowerCase();
+  if (host === "localhost" || host === "127.0.0.1" || host === "::1") return "/dashboard";
+  return `${MANAGEMENT_ORIGIN}/dashboard`;
 }
 
 /** Where the "Capacitaciones On line" button sends the user. */

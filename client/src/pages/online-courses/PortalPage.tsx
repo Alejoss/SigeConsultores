@@ -93,7 +93,7 @@ function StateChip({ state }: { state: string }) {
   return <span className={`font-medium ${color}`}>{label}.</span>;
 }
 
-function LoginForm({ onDone }: { onDone: () => void }) {
+export function LoginForm({ onDone }: { onDone: () => void }) {
   const [mode, setMode] = useState<"in" | "reg">("in");
   const [identificacion, setIdentificacion] = useState("");
   const [password, setPassword] = useState("");
