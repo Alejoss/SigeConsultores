@@ -6,13 +6,13 @@ Detalle de arquitectura: [INFRASTRUCTURE.md](./INFRASTRUCTURE.md). Variables de 
 
 ## Región y dominio
 
-| Dato | Valor |
-|------|--------|
-| Identidad verificada | `isge360.com` |
-| Región SES | `us-west-2` (Oregon) — las identidades son **por región** |
-| Región S3 | `us-east-2` (Ohio) — no mezclar con SES |
-| Remitente | `noreply@isge360.com` (cualquier `@isge360.com` vale una vez verificado el dominio) |
-| Nombre visible | `ISGE 360` |
+| Dato                 | Valor                                                                               |
+| -------------------- | ----------------------------------------------------------------------------------- |
+| Identidad verificada | `isge360.com`                                                                       |
+| Región SES           | `us-west-2` (Oregon) — las identidades son **por región**                           |
+| Región S3            | `us-east-2` (Ohio) — no mezclar con SES                                             |
+| Remitente            | `noreply@isge360.com` (cualquier `@isge360.com` vale una vez verificado el dominio) |
+| Nombre visible       | `ISGE 360`                                                                          |
 
 S3 y SES usan **IAM users distintos**. No sustituyas `AWS_ACCESS_KEY_ID` (S3) por las keys de SES.
 
@@ -49,7 +49,7 @@ Cuentas nuevas de SES empiezan en **sandbox** (por región):
 
 Para clientes reales: SES → Account dashboard → **Request production access**, tipo **Transactional**, URL `https://isge360.com`. AWS apunta a una primera respuesta en 24 h (no es un SLA).
 
-Hasta que el dashboard deje de decir *sandbox*, un envío a un destinatario no verificado falla aunque el `.env` esté bien.
+Hasta que el dashboard deje de decir _sandbox_, un envío a un destinatario no verificado falla aunque el `.env` esté bien.
 
 ## Comprobar que DNS sigue bien
 
@@ -66,6 +66,17 @@ Implementación: `server/_core/emailService.ts`.
 - Alertas de cronograma semanal
 
 Los enlaces de esos correos usan `FRONTEND_URL` / `VITE_FRONTEND_URL` (`https://isge360.com` en producción).
+
+## Resumen semanal de Jefes de Proceso
+
+`server/lib/scheduleAlerts.ts` registra un único cron interno de ISGE 360: todos los lunes a las 07:00, zona `America/Guayaquil`. El correo se encola mediante el mismo servicio Amazon SES; no crea un segundo envío ni usa un proveedor externo.
+
+La fuente del resumen es `getConsolidatedScheduleActivities`, la misma del Cronograma Consolidado. Para cada proceso con correo responsable válido, el mensaje presenta dos secciones sin duplicar registros:
+
+- **Pendientes de esta semana:** actividades abiertas que vencen desde hoy hasta los próximos siete días.
+- **Pendientes acumulados hasta la fecha:** actividades abiertas vencidas hasta ayer. Se muestran con alerta roja y el texto `Vencida hace N días`.
+
+El cron encola el correo si existe al menos una actividad en cualquiera de las secciones. Si no hay pendientes de la semana ni vencidos acumulados, no encola ningún mensaje para ese proceso. La aceptación y entrega posterior dependen de Amazon SES, de sus identidades verificadas y, si sigue vigente, de las restricciones de sandbox.
 
 ## Logs
 
