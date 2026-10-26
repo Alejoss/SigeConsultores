@@ -152,7 +152,7 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" asChild>
-              <a href={courseEntryHref("/catalogo")}>Capacitaciones On line</a>
+              <a href={courseEntryHref("/")}>Capacitaciones On line</a>
             </Button>
             <Button
               variant="outline"

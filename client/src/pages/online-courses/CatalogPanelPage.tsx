@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { coursePath, managementHomeHref } from "./coursePaths";
+import { coursePath } from "./coursePaths";
 import { LoginForm, Shell } from "./PortalPage";
 
 function errorText(error: unknown): string {
@@ -9,14 +8,10 @@ function errorText(error: unknown): string {
 }
 
 export default function CatalogPanelPage() {
-  const [, setLocation] = useLocation();
   const whoami = trpc.onlineCourses.whoami.useQuery(undefined, { retry: false });
   const overview = trpc.onlineCourses.catalogOverview.useQuery(undefined, { enabled: whoami.data?.role === "platform_admin" });
-  const logout = trpc.onlineCourses.logout.useMutation();
-  const createField = trpc.onlineCourses.createField.useMutation();
   const createModule = trpc.onlineCourses.createModule.useMutation();
   const createLesson = trpc.onlineCourses.createLesson.useMutation();
-  const [fieldName, setFieldName] = useState("");
   const [moduleName, setModuleName] = useState("");
   const [fieldId, setFieldId] = useState<number | null>(null);
   const [moduleId, setModuleId] = useState<number | null>(null);
@@ -27,23 +22,17 @@ export default function CatalogPanelPage() {
     await overview.refetch();
   }
 
-  useEffect(() => {
-    if (whoami.data?.role === "company_admin") setLocation(coursePath("/empresa"));
-    if (whoami.data?.role === "worker") setLocation(coursePath("/"));
-  }, [whoami.data?.role, setLocation]);
-
   if (whoami.isLoading) return <Shell><p>Cargando…</p></Shell>;
   if (!whoami.data) return <LoginForm onDone={() => whoami.refetch()} />;
-  if (whoami.data.role !== "platform_admin") return <Shell><p>Abriendo tu panel…</p></Shell>;
+  if (whoami.data.role !== "platform_admin") {
+    return <Shell><p className="text-slate-600">El catálogo lo administra el administrador general de ISGE 360. Usa el menú de arriba para ir a tus secciones.</p></Shell>;
+  }
 
   return (
     <Shell>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Administración general</p>
-          <h1 className="text-3xl font-semibold">Catálogo de capacitaciones</h1>
-        </div>
-        <button className="rounded-md border px-3 py-2 text-sm" onClick={async () => { await logout.mutateAsync(); location.href = managementHomeHref(); }}>Salir</button>
+      <div className="mb-6">
+        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Administración general</p>
+        <h1 className="text-3xl font-semibold">Catálogo de capacitaciones</h1>
       </div>
       {message && <p className="mb-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</p>}
 
@@ -54,7 +43,7 @@ export default function CatalogPanelPage() {
           <tbody>
             {(overview.data?.companies || []).map(company => (
               <tr key={company.id} className="border-b">
-                <td className="py-2">{company.name}</td>
+                <td className="py-2"><a className="text-emerald-800 underline" href={coursePath(`/empresa?empresa=${company.id}`)}>{company.name}</a></td>
                 <td>{company.workers}</td>
               </tr>
             ))}
@@ -76,13 +65,6 @@ export default function CatalogPanelPage() {
             <button className="mt-2 text-sm text-emerald-800 underline" onClick={() => setFieldId(field.id)}>+ Nuevo módulo en este campo</button>
           </article>
         ))}
-        <div className="mt-3 flex gap-2">
-          <input className="rounded-md border px-3 py-2" placeholder="Nombre del campo nuevo" value={fieldName} onChange={event => setFieldName(event.target.value)} />
-          <button className="rounded-md bg-emerald-700 px-3 py-2 text-sm text-white" onClick={async () => {
-            try { await createField.mutateAsync({ name: fieldName }); setFieldName(""); await reload("Campo creado"); }
-            catch (error) { setMessage(errorText(error)); }
-          }}>Agregar campo</button>
-        </div>
       </section>
 
       {fieldId !== null && (

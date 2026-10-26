@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { coursePath } from "./coursePaths";
+import { coursePath, managementHomeHref } from "./coursePaths";
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : "No se pudo completar la acción.";
@@ -10,19 +10,13 @@ function errorText(error: unknown): string {
 export default function PortalPage() {
   const [, setLocation] = useLocation();
   const whoami = trpc.onlineCourses.whoami.useQuery(undefined, { retry: false });
-  const tree = trpc.onlineCourses.tree.useQuery(undefined, { enabled: whoami.data?.role === "worker", retry: false });
-  const logout = trpc.onlineCourses.logout.useMutation();
+  const isStaff = Boolean(whoami.data) && whoami.data?.role !== "worker";
+  const tree = trpc.onlineCourses.tree.useQuery(undefined, { enabled: Boolean(whoami.data), retry: false });
   const [query, setQuery] = useState("");
-  const search = trpc.onlineCourses.search.useQuery({ q: query }, { enabled: whoami.data?.role === "worker" && query.trim().length >= 2 });
-
-  useEffect(() => {
-    if (whoami.data?.role === "company_admin") setLocation(coursePath("/empresa"));
-    if (whoami.data?.role === "platform_admin") setLocation(coursePath("/catalogo"));
-  }, [whoami.data?.role, setLocation]);
+  const search = trpc.onlineCourses.search.useQuery({ q: query }, { enabled: Boolean(whoami.data) && query.trim().length >= 2 });
 
   if (whoami.isLoading) return <Shell><p className="text-slate-500">Cargando…</p></Shell>;
   if (!whoami.data) return <LoginForm onDone={() => whoami.refetch()} />;
-  if (whoami.data.role !== "worker") return <Shell><p className="text-slate-500">Abriendo tu panel…</p></Shell>;
 
   const fields = tree.data?.fields || [];
   const total = fields.reduce((sum, field) => sum + field.modules.length, 0);
@@ -30,15 +24,11 @@ export default function PortalPage() {
 
   return (
     <Shell>
-      <div className="mb-6 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Plataforma de capacitación</p>
-          <h1 className="text-3xl font-semibold text-slate-900">Hola, {whoami.data.name.split(" ")[0]}</h1>
-          <p className="mt-1 text-sm text-slate-500">{approved} de {total} módulos aprobados.</p>
-        </div>
-        <button className="rounded-md border px-3 py-2 text-sm" onClick={async () => { await logout.mutateAsync(); whoami.refetch(); }}>
-          Salir
-        </button>
+      <div className="mb-6">
+        <h1 className="text-3xl font-semibold text-slate-900">Hola, {whoami.data.name.split(" ")[0]}</h1>
+        {isStaff
+          ? <p className="mt-1 text-sm text-slate-500">Vista previa: ves los módulos como tu personal, todos abiertos, y tus evaluaciones no se guardan.</p>
+          : <p className="mt-1 text-sm text-slate-500">{approved} de {total} módulos aprobados.</p>}
       </div>
       <div className="relative mb-6">
         <input className="w-full rounded-lg border px-3 py-3" placeholder="Busca una capacitación por nombre…" value={query} onChange={event => setQuery(event.target.value)} />
@@ -54,7 +44,7 @@ export default function PortalPage() {
           </div>
         )}
       </div>
-      {fields.length === 0 && <p className="text-slate-500">Todavía no hay capacitaciones asignadas a tu empresa.</p>}
+      {fields.length === 0 && <p className="text-slate-500">{isStaff ? "Todavía no hay capacitaciones cargadas." : "Todavía no hay capacitaciones asignadas a tu empresa."}</p>}
       {fields.map(field => (
         <section key={field.id} className="mb-6">
           <div className="mb-2 flex items-center justify-between gap-3">
@@ -174,6 +164,50 @@ export function LoginForm({ onDone }: { onDone: () => void }) {
   );
 }
 
+const NAV_LINKS: { path: string; label: string; roles: string[] }[] = [
+  { path: "/", label: "Capacitaciones", roles: ["worker", "company_admin", "platform_admin"] },
+  { path: "/empresa", label: "Empresa", roles: ["company_admin", "platform_admin"] },
+  { path: "/catalogo", label: "Catálogo", roles: ["platform_admin"] },
+];
+
+/** Top bar on every course screen: the sections this role may open, and sign-out. */
+export function CourseNav() {
+  const [path] = useLocation();
+  const whoami = trpc.onlineCourses.whoami.useQuery(undefined, { retry: false });
+  const logout = trpc.onlineCourses.logout.useMutation();
+  const role = whoami.data?.role;
+  if (!role) return null;
+
+  async function signOut() {
+    await logout.mutateAsync().catch(() => undefined);
+    // The ISGE 360 session is shared with this site; without revoking it the user is signed in again.
+    await fetch("/api/auth/session/logout", { method: "POST", credentials: "include" }).catch(() => undefined);
+    window.location.href = coursePath("/");
+  }
+
+  return (
+    <nav className="mb-6 flex flex-wrap items-center gap-2 border-b pb-3 print:hidden">
+      <a href={coursePath("/")} className="mr-auto text-sm font-semibold text-emerald-800">Plataforma de capacitación</a>
+      {NAV_LINKS.filter(link => link.roles.includes(role)).map(link => {
+        const active = link.path === "/" ? path === "/" || path.startsWith("/modulo") : path.startsWith(link.path);
+        return (
+          <a key={link.path} href={coursePath(link.path)} className={`rounded-md px-3 py-2 text-sm ${active ? "bg-emerald-700 text-white" : "border hover:bg-slate-50"}`}>
+            {link.label}
+          </a>
+        );
+      })}
+      {role !== "worker" && <a href={managementHomeHref()} className="rounded-md border px-3 py-2 text-sm hover:bg-slate-50">ISGE 360</a>}
+      <span className="px-1 text-sm text-slate-500">{whoami.data?.name}</span>
+      <button className="rounded-md border px-3 py-2 text-sm hover:bg-slate-50" onClick={() => void signOut()}>Salir</button>
+    </nav>
+  );
+}
+
 export function Shell({ children }: { children: React.ReactNode }) {
-  return <main className="mx-auto min-h-screen max-w-5xl px-4 py-8">{children}</main>;
+  return (
+    <main className="mx-auto min-h-screen max-w-5xl px-4 py-8">
+      <CourseNav />
+      {children}
+    </main>
+  );
 }

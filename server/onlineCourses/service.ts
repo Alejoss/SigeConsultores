@@ -558,8 +558,58 @@ async function lessonCounts(db: Db) {
   return map;
 }
 
+type StaffActor = Exclude<CourseActor, { role: "worker" }>;
+
+/** Company the staff member previews: the manager's own, none for the general admin. */
+function previewCompanyId(actor: StaffActor): number {
+  return actor.role === "company_admin" ? actor.companyId : 0;
+}
+
+/**
+ * Lets the general admin open the company panel for one company. Without companyId, or for any
+ * other role, the actor is returned unchanged.
+ */
+export async function actAsCompany(actor: CourseActor, companyId?: number): Promise<CourseActor> {
+  if (actor.role !== "platform_admin" || !companyId) return actor;
+  const db = await database();
+  const name = await companyName(db, companyId);
+  if (!name) fail("BAD_REQUEST", "Empresa no encontrada.");
+  return { role: "company_admin", accountId: actor.accountId, companyId, name: actor.name };
+}
+
+/** Staff review: every visible module with lessons, all open, no progress. */
+async function staffTree(actor: StaffActor) {
+  const db = await database();
+  const companyId = previewCompanyId(actor);
+  const fields = await db
+    .select()
+    .from(courseFields)
+    .where(companyId ? or(isNull(courseFields.companyId), eq(courseFields.companyId, companyId)) : isNull(courseFields.companyId))
+    .orderBy(asc(courseFields.sortOrder), asc(courseFields.name));
+  const counts = await lessonCounts(db);
+  const out = [];
+  for (const field of fields) {
+    const modules = await db.select().from(courseModules).where(eq(courseModules.fieldId, field.id)).orderBy(asc(courseModules.sortOrder));
+    const list = modules
+      .filter(moduleRow => (counts.get(moduleRow.id) || 0) > 0)
+      .map(moduleRow => ({
+        id: moduleRow.id,
+        name: moduleRow.name,
+        lessonCount: counts.get(moduleRow.id) || 0,
+        state: "disponible" as ModuleGate["state"],
+        reason: "",
+        closesLabel: null as string | null,
+        done: 0,
+        certificate: false,
+      }));
+    if (!list.length) continue;
+    out.push({ id: field.id, name: field.name, modules: list, certificate: false, approved: 0 });
+  }
+  return { user: { name: actor.name, cedula: "" }, fields: out };
+}
+
 export async function workerTree(actor: CourseActor) {
-  if (actor.role !== "worker") fail("FORBIDDEN", "Solo el personal en capacitación ve este portal.");
+  if (actor.role !== "worker") return staffTree(actor);
   const db = await database();
   const fields = await db
     .select()
@@ -614,7 +664,7 @@ export async function workerTree(actor: CourseActor) {
 }
 
 export async function searchLessons(actor: CourseActor, query: string) {
-  if (actor.role !== "worker") fail("FORBIDDEN", "Solo el personal en capacitación puede buscar.");
+  const scope = actor.role === "platform_admin" ? isNull(courseFields.companyId) : or(isNull(courseFields.companyId), eq(courseFields.companyId, actor.companyId));
   const text = query.trim();
   if (text.length < 2) return { results: [] as { lessonId: number; title: string; moduleId: number; moduleName: string; fieldName: string }[] };
   const db = await database();
@@ -630,14 +680,37 @@ export async function searchLessons(actor: CourseActor, query: string) {
     .from(courseLessons)
     .innerJoin(courseModules, eq(courseModules.id, courseLessons.moduleId))
     .innerJoin(courseFields, eq(courseFields.id, courseModules.fieldId))
-    .where(and(sql`${courseLessons.title} LIKE ${needle}`, or(isNull(courseFields.companyId), eq(courseFields.companyId, actor.companyId))))
+    .where(and(sql`${courseLessons.title} LIKE ${needle}`, scope))
     .orderBy(asc(courseFields.sortOrder), asc(courseModules.sortOrder), asc(courseLessons.sortOrder))
     .limit(12);
   return { results: rows };
 }
 
+/** Staff review of a module: every lesson open, nothing recorded. */
+async function staffModule(actor: StaffActor, moduleId: number) {
+  const db = await database();
+  const modules = await db.select().from(courseModules).where(eq(courseModules.id, moduleId)).limit(1);
+  const moduleRow = modules[0];
+  if (!moduleRow) fail("NOT_FOUND", "Módulo no encontrado.");
+  const field = await visibleField(db, previewCompanyId(actor), moduleRow.fieldId);
+  if (!field) fail("FORBIDDEN", "Este módulo es privado de otra empresa.");
+  const lessons = await db.select().from(courseLessons).where(eq(courseLessons.moduleId, moduleId)).orderBy(asc(courseLessons.sortOrder), asc(courseLessons.id));
+  return {
+    module: { id: moduleRow.id, name: moduleRow.name, field: field.name, fieldId: field.id },
+    lessons: lessons.map(lesson => ({
+      id: lesson.id,
+      number: lesson.number,
+      title: lesson.title,
+      ...parseContent(lesson.contentJson),
+      questions: toPublicQuestions(parseQuestions(lesson.questionsJson)),
+      result: null,
+    })),
+    moduleCertificate: null,
+  };
+}
+
 export async function workerModule(actor: CourseActor, moduleId: number) {
-  if (actor.role !== "worker") fail("FORBIDDEN", "Solo el personal en capacitación abre un módulo.");
+  if (actor.role !== "worker") return staffModule(actor, moduleId);
   const db = await database();
   const modules = await db.select().from(courseModules).where(eq(courseModules.id, moduleId)).limit(1);
   const moduleRow = modules[0];
@@ -686,7 +759,7 @@ export async function workerModule(actor: CourseActor, moduleId: number) {
 }
 
 export async function evaluateLesson(actor: CourseActor, input: { lessonId: number; answers: string[] }) {
-  if (actor.role !== "worker") fail("FORBIDDEN", "Solo el personal en capacitación rinde la evaluación.");
+  if (actor.role !== "worker") return previewEvaluation(actor, input);
   const db = await database();
   const lessons = await db.select().from(courseLessons).where(eq(courseLessons.id, input.lessonId)).limit(1);
   const lesson = lessons[0];
@@ -727,6 +800,7 @@ export async function evaluateLesson(actor: CourseActor, input: { lessonId: numb
       correct: graded.correct,
       total: graded.total,
       alreadyPassed: true,
+      preview: false,
       detail,
     };
   }
@@ -757,7 +831,35 @@ export async function evaluateLesson(actor: CourseActor, input: { lessonId: numb
       },
     });
   if (graded.passed) await issueModuleCertificate(db, actor.workerId, lesson.moduleId);
-  return { scoreTenths: graded.scoreTenths, passed: graded.passed, correct: graded.correct, total: graded.total, alreadyPassed: false, detail };
+  return { scoreTenths: graded.scoreTenths, passed: graded.passed, correct: graded.correct, total: graded.total, alreadyPassed: false, preview: false, detail };
+}
+
+/** Grades a staff review attempt without saving results or issuing certificates. */
+async function previewEvaluation(actor: StaffActor, input: { lessonId: number; answers: string[] }) {
+  const db = await database();
+  const lessons = await db.select().from(courseLessons).where(eq(courseLessons.id, input.lessonId)).limit(1);
+  const lesson = lessons[0];
+  if (!lesson) fail("BAD_REQUEST", "Capacitación no válida.");
+  const modules = await db.select({ fieldId: courseModules.fieldId }).from(courseModules).where(eq(courseModules.id, lesson.moduleId)).limit(1);
+  if (!modules[0] || !(await visibleField(db, previewCompanyId(actor), modules[0].fieldId))) {
+    fail("FORBIDDEN", "No tienes acceso a esta capacitación.");
+  }
+  const questions = parseQuestions(lesson.questionsJson);
+  let graded;
+  try {
+    graded = gradeAnswers(questions, input.answers);
+  } catch (error) {
+    fail("BAD_REQUEST", error instanceof Error ? error.message : "Solicitud no válida.");
+  }
+  return {
+    scoreTenths: graded.scoreTenths,
+    passed: graded.passed,
+    correct: graded.correct,
+    total: graded.total,
+    alreadyPassed: false,
+    preview: true,
+    detail: questions.map(question => ({ correct: question.correct })),
+  };
 }
 
 async function companyName(db: Db, companyId: number) {

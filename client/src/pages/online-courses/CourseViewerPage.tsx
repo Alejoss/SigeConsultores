@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { formatCourseScore } from "@shared/onlineCourses";
 import { coursePath } from "./coursePaths";
-import { Shell } from "./PortalPage";
+import { CourseNav, Shell } from "./PortalPage";
 
 type LessonView = {
   id: number;
@@ -58,7 +58,8 @@ export default function CourseViewerPage() {
     try {
       const result = await evaluate.mutateAsync({ lessonId: current.id, answers: response });
       setDetail(prev => ({ ...prev, [current.id]: result.detail }));
-      setNotice(result.passed ? `Aprobado con ${formatCourseScore(result.scoreTenths)}.` : `No aprobado (${formatCourseScore(result.scoreTenths)}). Necesitas 80%.`);
+      const outcome = result.passed ? `Aprobado con ${formatCourseScore(result.scoreTenths)}.` : `No aprobado (${formatCourseScore(result.scoreTenths)}). Necesitas 80%.`;
+      setNotice(result.preview ? `${outcome} Vista de administrador: no se guarda.` : outcome);
       await moduleQuery.refetch();
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "No se pudo calificar.");
@@ -67,6 +68,7 @@ export default function CourseViewerPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <div className="bg-white px-4 pt-4"><div className="mx-auto max-w-6xl"><CourseNav /></div></div>
       <header className="flex items-center gap-4 border-b bg-white px-4 py-3">
         <a href={coursePath("/")} className="text-sm">← Portal</a>
         <div className="h-2 flex-1 overflow-hidden rounded bg-slate-200"><div className="h-full bg-emerald-600" style={{ width: `${progress}%` }} /></div>
