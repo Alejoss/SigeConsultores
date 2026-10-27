@@ -19,6 +19,10 @@ import {
   SimpleGanttActivity,
 } from "@/components/SimpleGanttChart";
 import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
+import {
+  getConsolidatedActivityHref,
+  type ScheduleNavigation,
+} from "@/lib/consolidatedScheduleNavigation";
 
 interface ScheduleActivity {
   id: string;
@@ -38,6 +42,7 @@ interface ScheduleActivity {
   badgeColor: string;
   daysRemaining?: number;
   completionPercentage?: number;
+  navigation?: ScheduleNavigation;
 }
 
 const MONTHS = [
@@ -178,6 +183,15 @@ export default function ConsolidatedSchedule() {
       })
       .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   }, [activities]);
+
+  const openActivity = (activityId: string) => {
+    const activity = activities.find(item => item.id === activityId);
+    const companyId = Number(localStorage.getItem("selectedCompanyId")) || undefined;
+    const destination = activity
+      ? getConsolidatedActivityHref(activity, processId, companyId)
+      : null;
+    if (destination) navigate(destination);
+  };
 
   // Filter activities by current month and year.
   // Use UTC methods to avoid timezone-shift bugs: dates stored as "YYYY-MM-DD" are
@@ -486,7 +500,10 @@ export default function ConsolidatedSchedule() {
               </div>
             </CardHeader>
             <CardContent className="pt-4 pb-2">
-              <SimpleGanttChart activities={ganttActivities} />
+              <SimpleGanttChart
+                activities={ganttActivities}
+                onOpenActivity={activity => openActivity(activity.id)}
+              />
             </CardContent>
           </Card>
         )}
@@ -611,9 +628,13 @@ export default function ConsolidatedSchedule() {
                           )}
 
                           {/* Action Description */}
-                          <h3 className="font-semibold text-gray-900 mb-3">
+                          <button
+                            type="button"
+                            className="mb-3 text-left font-semibold text-gray-900 underline-offset-2 hover:text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                            onClick={() => openActivity(activity.id)}
+                          >
                             {activity.action}
-                          </h3>
+                          </button>
 
                           {/* Details Grid */}
                           <div className="grid grid-cols-3 gap-4 text-sm">

@@ -33,6 +33,34 @@ export interface ConsolidatedScheduleActivity {
   badgeColor: string;
   daysRemaining: number;
   completionPercentage?: number;
+  navigation:
+    | {
+        destination: "stakeholder";
+        criticalityId: number;
+      }
+    | {
+        destination: "foda";
+        fodaRecordId: number;
+        fodaRowId?: number | string;
+        fodaRowIndex: number;
+      }
+    | {
+        destination: "objective";
+        objectiveId: number;
+        resultKeyId?: string;
+        taskId?: string;
+        resultKeyIndex: number;
+        taskIndex?: number;
+      }
+    | {
+        destination: "compliance";
+        activityId: number;
+        occurrenceDate: string;
+      }
+    | {
+        destination: "linked_commitment";
+        commitmentId: number;
+      };
 }
 
 function calculateDaysRemaining(dueDate: Date): number {
@@ -161,6 +189,10 @@ export async function getConsolidatedScheduleActivities(
       badgeColor: badge.color,
       daysRemaining: calculateDaysRemaining(dueDate),
       completionPercentage: entry.completionPercentage || 0,
+      navigation: {
+        destination: "stakeholder",
+        criticalityId: entry.id,
+      },
     });
   }
 
@@ -179,7 +211,8 @@ export async function getConsolidatedScheduleActivities(
           ? JSON.parse(latestFoda.matrixData)
           : latestFoda.matrixData;
       if (Array.isArray(matrixRows)) {
-        for (const row of matrixRows) {
+        for (let fodaRowIndex = 0; fodaRowIndex < matrixRows.length; fodaRowIndex++) {
+          const row = matrixRows[fodaRowIndex];
           const action =
             row.accionATomar ||
             row.accionDeAprovechamiento ||
@@ -211,6 +244,12 @@ export async function getConsolidatedScheduleActivities(
             badge: badge.badge,
             badgeColor: badge.color,
             daysRemaining: calculateDaysRemaining(dueDate),
+            navigation: {
+              destination: "foda",
+              fodaRecordId: latestFoda.id,
+              fodaRowId: row.id,
+              fodaRowIndex,
+            },
           });
         }
       }
@@ -258,6 +297,14 @@ export async function getConsolidatedScheduleActivities(
               badgeColor: badge.color,
               daysRemaining: calculateDaysRemaining(dueDate),
               completionPercentage,
+              navigation: {
+                destination: "objective",
+                objectiveId: objective.id,
+                resultKeyId: resultKey.id,
+                taskId: task.id,
+                resultKeyIndex,
+                taskIndex,
+              },
             });
           }
         } else {
@@ -280,6 +327,12 @@ export async function getConsolidatedScheduleActivities(
             badgeColor: badge.color,
             daysRemaining: calculateDaysRemaining(dueDate),
             completionPercentage,
+            navigation: {
+              destination: "objective",
+              objectiveId: objective.id,
+              resultKeyId: resultKey.id,
+              resultKeyIndex,
+            },
           });
         }
       }
@@ -314,6 +367,11 @@ export async function getConsolidatedScheduleActivities(
         badgeColor: badge.color,
         daysRemaining: calculateDaysRemaining(dueDate),
         completionPercentage: progress,
+        navigation: {
+          destination: "compliance",
+          activityId: activity.id,
+          occurrenceDate: occurrence.date,
+        },
       });
     }
   }
@@ -345,6 +403,10 @@ export async function getConsolidatedScheduleActivities(
       badgeColor: badge.color,
       daysRemaining: calculateDaysRemaining(dueDate),
       completionPercentage: commitment.status === "completed" ? 100 : 0,
+      navigation: {
+        destination: "linked_commitment",
+        commitmentId: commitment.id,
+      },
     });
   }
 

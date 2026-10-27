@@ -15,9 +15,12 @@ type FODAType = 'Fortaleza' | 'Oportunidad' | 'Debilidad' | 'Amenaza';
 
 interface FODAElement {
   id: number;
+  fodaElementId?: string;
   type: FODAType;
   subprocess: string;
+  policyObjectiveId?: number | null;
   policyObjective: string;
+  policyObjectiveDescription?: string;
   selectedObjectiveContent: string;
   statement: string;
   description: string;
@@ -38,11 +41,10 @@ export default function ProcessFODA() {
   const isLoadingDataRef = useRef(false);
 
   const [elements, setElements] = useState<FODAElement[]>([
-    { id: 1, type: 'Fortaleza', subprocess: '', policyObjective: '', selectedObjectiveContent: '', statement: '', description: '' },
+    { id: 1, fodaElementId: crypto.randomUUID(), type: 'Fortaleza', subprocess: '', policyObjectiveId: null, policyObjective: '', selectedObjectiveContent: '', statement: '', description: '' },
   ]);
 
   const [subprocesses, setSubprocesses] = useState<string[]>([]);
-  const [policyObjectives, setPolicyObjectives] = useState<string[]>([]);
 
   // Load process ID and name from localStorage
   useEffect(() => {
@@ -55,7 +57,7 @@ export default function ProcessFODA() {
   }, []);
 
   // Fetch FODA data from database
-  const { data: fodaData, isLoading, refetch } = trpc.processFODA.get.useQuery(
+  const { data: fodaData, isLoading } = trpc.processFODA.get.useQuery(
     { processId: processId || 0 },
     { enabled: processId !== null }
   );
@@ -80,14 +82,6 @@ export default function ProcessFODA() {
     { policyId: policyId || 0 },
     { enabled: policyId !== null }
   );
-
-  // Load policy objectives from tRPC
-  useEffect(() => {
-    if (policyObjectivesData && Array.isArray(policyObjectivesData)) {
-      const objectives = policyObjectivesData.map((obj: any) => obj.objective).filter((o: string) => o && o.trim());
-      setPolicyObjectives(objectives);
-    }
-  }, [policyObjectivesData]);
 
   // Parse subprocesses from subprocess map
   useEffect(() => {
@@ -155,9 +149,9 @@ export default function ProcessFODA() {
     onSuccess: () => {
       setIsSaving(false);
       setLastSaved(new Date());
-      refetch();
     },
     onError: (error: any) => {
+      setIsSaving(false);
       toast.error(error.message || "Error al guardar el análisis");
     },
   });
@@ -177,7 +171,7 @@ export default function ProcessFODA() {
 
   const addElement = (type: FODAType) => {
     const newId = Math.max(...elements.map(e => e.id), 0) + 1;
-    setElements([...elements, { id: newId, type, subprocess: '', policyObjective: '', selectedObjectiveContent: '', statement: '', description: '' }]);
+    setElements([...elements, { id: newId, fodaElementId: crypto.randomUUID(), type, subprocess: '', policyObjectiveId: null, policyObjective: '', selectedObjectiveContent: '', statement: '', description: '' }]);
   };
 
   const deleteElement = (id: number) => {
@@ -185,15 +179,19 @@ export default function ProcessFODA() {
   };
 
   const updateElement = (id: number, field: keyof FODAElement, value: string) => {
-    setElements(elements.map(e => e.id === id ? { ...e, [field]: value } : e));
+    setElements(current => current.map(e => e.id === id ? { ...e, [field]: value } : e));
   };
 
-  const handleObjectiveChange = (elementId: number, selectedObjective: string) => {
-    // Find the full objective data
-    const fullObjective = policyObjectivesData?.find((obj: any) => obj.objective === selectedObjective);
+  const handleObjectiveChange = (elementId: number, selectedObjectiveId: string) => {
+    const fullObjective = policyObjectivesData?.find((obj: any) => obj.id === Number(selectedObjectiveId));
     const content = fullObjective ? `${fullObjective.objective}\n\n${fullObjective.description || ''}` : '';
-    
-    setElements(elements.map(e => e.id === elementId ? { ...e, policyObjective: selectedObjective, selectedObjectiveContent: content } : e));
+    setElements(current => current.map(e => e.id === elementId ? {
+      ...e,
+      policyObjectiveId: fullObjective?.id ?? null,
+      policyObjective: fullObjective?.objective ?? '',
+      policyObjectiveDescription: fullObjective?.description ?? '',
+      selectedObjectiveContent: content,
+    } : e));
   };
 
   if (!processId) {
@@ -249,13 +247,17 @@ export default function ProcessFODA() {
                 <div>
                   <label className="text-xs font-semibold text-slate-600">Objetivo de la Política</label>
                   <select
-                    value={element.policyObjective}
+                    value={element.policyObjectiveId ?? ''}
                     onChange={(e) => handleObjectiveChange(element.id, e.target.value)}
                     className="w-full text-xs border rounded p-2 min-h-8"
                   >
-                    <option value="">Seleccionar objetivo...</option>
-                    {policyObjectives.map((obj, idx) => (
-                      <option key={idx} value={obj}>{obj}</option>
+                    <option value="" disabled={Boolean(element.policyObjective && !element.policyObjectiveId)}>
+                      {element.policyObjective && !element.policyObjectiveId
+                        ? `Objetivo histórico: ${element.policyObjective}`
+                        : 'Seleccionar objetivo...'}
+                    </option>
+                    {(policyObjectivesData || []).map((obj: any) => (
+                      <option key={obj.id} value={obj.id}>{obj.objective}</option>
                     ))}
                   </select>
                 </div>

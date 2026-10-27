@@ -17,10 +17,11 @@ import {
   type LessonQuestion,
 } from "@shared/onlineCourses";
 import { getDb } from "../db";
-import { findActiveAuthSessionByPlainToken } from "../authSessionRepository";
+import { findActiveAuthSessionByPlainToken, setAuthSessionCourseCompany } from "../authSessionRepository";
 import {
   accounts,
   accountRoles,
+  companyOnlineCourseAccess,
   companies,
   courseCompanySettings,
   courseFieldCertificates,
@@ -34,6 +35,7 @@ import {
   courseSessions,
   courseWorkerOverrides,
   courseWorkers,
+  processes,
   roles,
 } from "../../drizzle/schema";
 
@@ -337,10 +339,49 @@ async function openSession(db: Db, req: CookieReq, res: CookieRes, input: { role
   writeSessionCookie(res, req, token, COURSE_SESSION_HOURS * 60 * 60);
 }
 
+type PlatformSessionResolution = { present: boolean; actor: CourseActor | null };
+
+/**
+ * Returns the companies whose course panel an account can administer. A
+ * delegated permission exists only for an active process-leader role in the
+ * same company; it never creates a company_manager role in ISGE 360.
+ */
+async function companyCourseAdminCompanyIds(db: Db, accountId: number): Promise<number[]> {
+  const assigned = await staffRoles(db, accountId);
+  const managerCompanyIds = assigned
+    .filter(role => role.slug === "company_manager" && role.companyId > 0)
+    .map(role => role.companyId);
+  const activeLeaderRows = await db
+    .select({ companyId: accountRoles.companyId })
+    .from(accountRoles)
+    .innerJoin(roles, eq(roles.id, accountRoles.roleId))
+    .innerJoin(processes, and(eq(processes.id, accountRoles.processId), eq(processes.companyId, accountRoles.companyId)))
+    .where(and(eq(accountRoles.accountId, accountId), eq(accountRoles.status, "active"), eq(roles.slug, "process_leader")));
+  const leaderCompanyIds = new Set(activeLeaderRows.map(row => row.companyId));
+  const delegatedRows = await db
+    .select({ companyId: companyOnlineCourseAccess.companyId })
+    .from(companyOnlineCourseAccess)
+    .where(and(eq(companyOnlineCourseAccess.accountId, accountId), eq(companyOnlineCourseAccess.accessLevel, "online_course_manager")));
+  return Array.from(new Set([...managerCompanyIds, ...delegatedRows.map(row => row.companyId).filter(companyId => leaderCompanyIds.has(companyId))]));
+}
+
+/** Stores a validated company selection; the permission is rechecked on every panel request. */
+export async function selectCourseCompanyForPlatformSession(plainToken: string, companyId: number): Promise<boolean> {
+  const session = await findActiveAuthSessionByPlainToken(plainToken);
+  if (!session?.accountId) return false;
+  const db = await database();
+  if ((await staffRoles(db, session.accountId)).some(role => role.slug === "platform_admin")) return true;
+  if (!(await companyCourseAdminCompanyIds(db, session.accountId)).includes(companyId)) return false;
+  await setAuthSessionCourseCompany(plainToken, companyId);
+  return true;
+}
+
 export async function readCourseActor(req: CookieReq): Promise<CourseActor | null> {
-  const fromCourse = await readCourseSessionActor(req);
-  if (fromCourse) return fromCourse;
-  return readPlatformSessionActor(req);
+  // A valid ISGE session is authoritative, preventing inheritance of another
+  // person's stale course session after an account change in the browser.
+  const platformSession = await readPlatformSessionActor(req);
+  if (platformSession.present) return platformSession.actor;
+  return readCourseSessionActor(req);
 }
 
 async function readCourseSessionActor(req: CookieReq): Promise<CourseActor | null> {
@@ -376,6 +417,7 @@ async function readCourseSessionActor(req: CookieReq): Promise<CourseActor | nul
     return { role: "platform_admin", accountId: account.id, name: account.name || account.email || "Administrador" };
   }
   if (session.role === "company_admin" && session.companyId) {
+    if (!(await companyCourseAdminCompanyIds(db, account.id)).includes(session.companyId)) return null;
     return {
       role: "company_admin",
       accountId: account.id,
@@ -386,23 +428,26 @@ async function readCourseSessionActor(req: CookieReq): Promise<CourseActor | nul
   return null;
 }
 
-async function readPlatformSessionActor(req: CookieReq): Promise<CourseActor | null> {
+async function readPlatformSessionActor(req: CookieReq): Promise<PlatformSessionResolution> {
   const token = parseCookieHeader(req.headers.cookie || "")[COOKIE_NAME];
-  if (typeof token !== "string" || !token) return null;
+  if (typeof token !== "string" || !token) return { present: false, actor: null };
   const row = await findActiveAuthSessionByPlainToken(token);
-  if (!row?.accountId) return null;
+  if (!row?.accountId) return { present: false, actor: null };
   const db = await database();
   const accountRows = await db.select().from(accounts).where(eq(accounts.id, row.accountId)).limit(1);
   const account = accountRows[0];
-  if (!account || account.status !== "active") return null;
+  if (!account || account.status !== "active") return { present: true, actor: null };
   const assigned = await staffRoles(db, account.id);
   const name = account.name || account.email || "Administrador";
   if (assigned.some(role => role.slug === "platform_admin")) {
-    return { role: "platform_admin", accountId: account.id, name };
+    return { present: true, actor: { role: "platform_admin", accountId: account.id, name } };
   }
-  const managed = assigned.find(role => role.slug === "company_manager" && role.companyId > 0);
-  if (!managed) return null;
-  return { role: "company_admin", accountId: account.id, companyId: managed.companyId, name };
+  const companyIds = await companyCourseAdminCompanyIds(db, account.id);
+  if (row.courseCompanyId && companyIds.includes(row.courseCompanyId)) {
+    return { present: true, actor: { role: "company_admin", accountId: account.id, companyId: row.courseCompanyId, name } };
+  }
+  if (companyIds.length !== 1) return { present: true, actor: null };
+  return { present: true, actor: { role: "company_admin", accountId: account.id, companyId: companyIds[0], name } };
 }
 
 async function staffRoles(db: Db, accountId: number) {

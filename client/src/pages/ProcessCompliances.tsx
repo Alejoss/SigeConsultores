@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -379,6 +379,8 @@ export default function ProcessCompliances() {
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const queryProcessId = searchParams.get("processId");
   const queryCompanyId = searchParams.get("companyId");
+  const focusActivityId = Number(searchParams.get("focusActivityId"));
+  const focusOccurrenceDate = searchParams.get("focusOccurrenceDate");
   const selectedProcessId = queryProcessId || localStorage.getItem("selectedProcessId");
   const processId = selectedProcessId ? Number.parseInt(selectedProcessId, 10) : 0;
   const backUrl = queryProcessId
@@ -390,6 +392,7 @@ export default function ProcessCompliances() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ActivityForm>(emptyForm);
   const [lastFormSnapshot, setLastFormSnapshot] = useState("");
+  const focusedActivityRef = useRef<number | null>(null);
 
   const { data: activitiesData, isLoading } = trpc.processCompliances.list.useQuery(
     { processId },
@@ -404,6 +407,19 @@ export default function ProcessCompliances() {
   useEffect(() => {
     if (activitiesData) setActivities(activitiesData as unknown as Activity[]);
   }, [activitiesData]);
+
+  useEffect(() => {
+    if (!focusActivityId || !activities.length || focusedActivityRef.current === focusActivityId) return;
+    const activity = activities.find(item => item.id === focusActivityId);
+    if (!activity) return;
+    focusedActivityRef.current = focusActivityId;
+    setExpandedId(activity.id);
+    window.setTimeout(() => {
+      document
+        .getElementById(`process-activity-${focusActivityId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+  }, [activities, focusActivityId]);
 
   const summary = useMemo(() => {
     const total = activities.length;
@@ -560,9 +576,16 @@ export default function ProcessCompliances() {
             <div className="space-y-3">
               {activities.map(activity => {
                 const expanded = expandedId === activity.id;
-                const shownOccurrences = activity.occurrences.slice(0, 24);
+                const shownOccurrences = activity.occurrences.filter(
+                  (occurrence, index) =>
+                    index < 24 || occurrence.date === focusOccurrenceDate
+                );
                 return (
-                  <Card key={activity.id} className="bg-white overflow-hidden">
+                  <Card
+                    key={activity.id}
+                    id={`process-activity-${activity.id}`}
+                    className={`bg-white overflow-hidden ${activity.id === focusActivityId ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}
+                  >
                     <button type="button" onClick={() => setExpandedId(expanded ? null : activity.id)} className="w-full p-5 text-left hover:bg-slate-50 transition-colors">
                       <div className="flex items-start gap-4">
                         <div className="min-w-0 flex-1">
@@ -588,7 +611,7 @@ export default function ProcessCompliances() {
                         {activity.observations && <div><p className="text-sm font-semibold text-slate-700">Observaciones</p><p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">{activity.observations}</p></div>}
                         <div className="rounded-lg border border-sky-100 bg-sky-50 p-4"><p className="text-sm font-semibold text-sky-900">Tipo de seguimiento: {activity.trackingSummary}</p><p className="mt-1 text-sm text-sky-800">Avance calculado: <strong>{activity.progress}%</strong>{activity.trackingUnit ? ` · Unidad: ${activity.trackingUnit}` : ""}</p></div>
                         {activity.evaluationMode === "vigencia" && activity.validUntil && <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">Dato histórico de vigencia: {activity.validFrom ? `desde ${formatDate(activity.validFrom)} ` : ""}hasta {formatDate(activity.validUntil)}.</div>}
-                        {shownOccurrences.length > 0 && <div><p className="mb-2 text-sm font-semibold text-slate-700">Programación</p><div className="flex flex-wrap gap-2">{shownOccurrences.map(occurrence => <button type="button" key={occurrence.date} onClick={() => void toggleOccurrence(activity, occurrence)} disabled={occurrenceMutation.isPending} className={`rounded-md border px-3 py-2 text-xs font-semibold transition-colors ${occurrence.completed ? "border-green-600 bg-green-500 text-white" : "border-slate-300 bg-white text-slate-700 hover:border-green-400"}`} title="Marcar o desmarcar como realizada">{occurrence.completed ? "✓ " : ""}{formatDate(occurrence.date)}</button>)}</div>{activity.occurrenceTotal > shownOccurrences.length && <p className="mt-2 text-xs text-slate-500">Se muestran las primeras 24 ocurrencias; el Cronograma consolidado conserva toda la programación.</p>}</div>}
+                        {shownOccurrences.length > 0 && <div><p className="mb-2 text-sm font-semibold text-slate-700">Programación</p><div className="flex flex-wrap gap-2">{shownOccurrences.map(occurrence => <button type="button" key={occurrence.date} onClick={() => void toggleOccurrence(activity, occurrence)} disabled={occurrenceMutation.isPending} className={`rounded-md border px-3 py-2 text-xs font-semibold transition-colors ${occurrence.date === focusOccurrenceDate ? "ring-2 ring-blue-500 ring-offset-2 " : ""}${occurrence.completed ? "border-green-600 bg-green-500 text-white" : "border-slate-300 bg-white text-slate-700 hover:border-green-400"}`} title="Marcar o desmarcar como realizada">{occurrence.completed ? "✓ " : ""}{formatDate(occurrence.date)}</button>)}</div>{activity.occurrenceTotal > shownOccurrences.length && <p className="mt-2 text-xs text-slate-500">Se muestran las primeras 24 ocurrencias; la solicitada desde Cronograma también se incluye.</p>}</div>}
                         <div className="flex flex-wrap gap-2 border-t pt-4"><Button variant="outline" size="sm" onClick={() => editActivity(activity)}><Pencil className="mr-1 h-4 w-4" />Editar</Button><Button variant="destructive" size="sm" onClick={() => void deleteActivity(activity)}><Trash2 className="mr-1 h-4 w-4" />Eliminar</Button></div>
                       </CardContent>
                     )}

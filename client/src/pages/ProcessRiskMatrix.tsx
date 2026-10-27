@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 import { ArrowLeft, Plus, Trash2, Save, AlertCircle, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
@@ -238,6 +238,12 @@ function AccionOTGRow({
 // ─── Componente principal ────────────────────────────────────────────────────────────────
 export default function ProcessRiskMatrix() {
   const [, setLocation] = useLocation();
+  const searchParams = useSearch();
+  const focusParams = useMemo(() => new URLSearchParams(searchParams), [searchParams]);
+  const focusFodaRecordId = Number(focusParams.get('focusFodaRecordId'));
+  const focusFodaRowId = focusParams.get('focusFodaRowId');
+  const hasFocusFodaRowIndex = focusParams.has('focusFodaRowIndex');
+  const focusFodaRowIndex = Number(focusParams.get('focusFodaRowIndex'));
   const [processId, setProcessId] = useState<number | null>(null);
   const [processName, setProcessName] = useState('');
   const [rows, setRows] = useState<MatrizFODARow[]>([]);
@@ -249,15 +255,17 @@ export default function ProcessRiskMatrix() {
   const fodaSyncDoneRef = useRef(false);
   const savingRef = useRef(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focusedRowRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('selectedProcessId');
+    const queryProcessId = Number(new URLSearchParams(searchParams).get('processId'));
+    const stored = queryProcessId || Number(localStorage.getItem('selectedProcessId'));
     const storedName = localStorage.getItem('selectedProcessName');
-    if (stored) { setProcessId(parseInt(stored)); setProcessName(storedName || 'Proceso'); }
-  }, []);
+    if (stored > 0) { setProcessId(stored); setProcessName(storedName || 'Proceso'); }
+  }, [searchParams]);
 
   const { data: fodaData } = trpc.processFODA.get.useQuery(
-    { processId: processId || 0 },
+    { processId: processId || 0, recordId: focusFodaRecordId || undefined },
     { enabled: processId !== null }
   );
 
@@ -266,7 +274,7 @@ export default function ProcessRiskMatrix() {
     if (!fodaData || !initialLoadDoneRef.current || fodaSyncDoneRef.current) return;
     fodaSyncDoneRef.current = true;
     try {
-      const allFodaItems: Array<{ statement: string; type: FODAType; subprocess: string; policyObjective: string }> = [
+      const allFodaItems: Array<{ fodaElementId?: string; statement: string; type: FODAType; subprocess: string; policyObjectiveId?: number | null; policyObjective: string; policyObjectiveDescription?: string }> = [
         ...JSON.parse(fodaData.strengths || '[]').map((i: any) => ({ ...i, type: 'Fortaleza' as FODAType })),
         ...JSON.parse(fodaData.opportunities || '[]').map((i: any) => ({ ...i, type: 'Oportunidad' as FODAType })),
         ...JSON.parse(fodaData.weaknesses || '[]').map((i: any) => ({ ...i, type: 'Debilidad' as FODAType })),
@@ -279,7 +287,9 @@ export default function ProcessRiskMatrix() {
           .filter(i => i.statement && !existingStatements.has(i.statement))
           .map((item, idx) => ({
             id: Date.now() + idx,
-            subproceso: item.subprocess || '', objetivoPolitica: item.policyObjective || '',
+            sourceFodaElementId: item.fodaElementId,
+            subproceso: item.subprocess || '', policyObjectiveId: item.policyObjectiveId ?? null,
+            policyObjectiveDescription: item.policyObjectiveDescription || '', objetivoPolitica: item.policyObjective || '',
             elemento: item.statement || '', foda: item.type, factor: 'Humano' as FactorType,
             consecuencia: '', sistemaGestion: 'Calidad' as SistemaGestionType,
             probabilidad: (item.type === 'Debilidad' || item.type === 'Amenaza') ? 'A' as ProbabilidadType : undefined,
@@ -289,9 +299,9 @@ export default function ProcessRiskMatrix() {
             mejoraImplementada: 'NO' as 'SI' | 'NO', observacion: '', medioVerificacion: '',
             objetivoLogrado: 'NO' as 'SI' | 'NO',
           }));
-        const filtered = prev.filter(r => !r.elemento || fodaStatements.has(r.elemento));
-        if (toAdd.length === 0 && filtered.length === prev.length) return prev;
-        return [...filtered, ...toAdd];
+        // Los OTG son evidencia histórica: un cambio o eliminación en FODA no los borra.
+        if (toAdd.length === 0) return prev;
+        return [...prev, ...toAdd];
       });
     } catch (e) { console.error('Error syncing FODA to OTG:', e); }
   }, [fodaData]);
@@ -349,7 +359,9 @@ export default function ProcessRiskMatrix() {
           const addRows = (items: any[], type: FODAType) => {
             items.forEach((item) => {
               newRows.push({
-                id, subproceso: item.subprocess || '', objetivoPolitica: item.policyObjective || '',
+                id, sourceFodaElementId: item.fodaElementId,
+                subproceso: item.subprocess || '', policyObjectiveId: item.policyObjectiveId ?? null,
+                policyObjectiveDescription: item.policyObjectiveDescription || '', objetivoPolitica: item.policyObjective || '',
                 elemento: item.statement || '', foda: type, factor: 'Humano', consecuencia: '',
                 sistemaGestion: 'Calidad',
                 probabilidad: type === 'Debilidad' || type === 'Amenaza' ? 'A' : undefined,
@@ -369,6 +381,19 @@ export default function ProcessRiskMatrix() {
       } catch (error) { console.error('Error loading FODA data:', error); }
     }
   }, [fodaData]);
+
+  useEffect(() => {
+    if ((!focusFodaRowId && !hasFocusFodaRowIndex) || !rows.length) return;
+    const row = (focusFodaRowId ? rows.find(item => String(item.id) === focusFodaRowId) : undefined) || rows[focusFodaRowIndex];
+    if (!row) return;
+    const targetId = `foda-row-${encodeURIComponent(String(row.id))}`;
+    if (focusedRowRef.current === targetId) return;
+    focusedRowRef.current = targetId;
+    setExpandedRows(current => new Set(current).add(row.id));
+    window.setTimeout(() => {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }, [rows, focusFodaRowId, focusFodaRowIndex, hasFocusFodaRowIndex]);
 
   // Indicadores
   const indicadores = useMemo<MatrizFODAIndicadores>(() => {
@@ -589,7 +614,16 @@ export default function ProcessRiskMatrix() {
           const isDA = row.foda === 'Debilidad' || row.foda === 'Amenaza';
 
           return (
-            <Card key={row.id} className="border-l-4 border-l-blue-500">
+            <Card
+              key={row.id}
+              id={`foda-row-${encodeURIComponent(String(row.id))}`}
+              className={`border-l-4 border-l-blue-500 ${
+                String(row.id) === focusFodaRowId ||
+                (!focusFodaRowId && hasFocusFodaRowIndex && rows.indexOf(row) === focusFodaRowIndex)
+                  ? 'ring-2 ring-blue-500 ring-offset-2'
+                  : ''
+              }`}
+            >
               {/* Header colapsable */}
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">

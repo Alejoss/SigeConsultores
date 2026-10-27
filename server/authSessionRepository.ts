@@ -17,7 +17,9 @@ export type CreateAuthSessionInput = {
   accountId: number;
 };
 
-export async function createAuthSession(input: CreateAuthSessionInput): Promise<{ plainToken: string }> {
+export async function createAuthSession(
+  input: CreateAuthSessionInput
+): Promise<{ plainToken: string }> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -56,7 +58,27 @@ export async function findActiveAuthSessionByPlainToken(
   return rows[0] ?? null;
 }
 
-export async function revokeAuthSessionByPlainToken(plainToken: string): Promise<void> {
+/**
+ * Stores only the course-panel company selected by an already authenticated
+ * account. Authorization for that company is checked by the course service on
+ * every request; this value never grants access by itself.
+ */
+export async function setAuthSessionCourseCompany(
+  plainToken: string,
+  companyId: number | null
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  await db
+    .update(authSessions)
+    .set({ courseCompanyId: companyId })
+    .where(eq(authSessions.tokenHash, hashSessionToken(plainToken)));
+}
+
+export async function revokeAuthSessionByPlainToken(
+  plainToken: string
+): Promise<void> {
   const db = await getDb();
   if (!db) return;
 

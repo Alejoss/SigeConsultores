@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { exportSubprocessMapToPDF } from "@/lib/exportSubprocessMapToPDF";
+import { shouldHydrateRemoteSnapshot } from "@/lib/autosaveDraft";
 
 // Auto-expand textarea al escribir
 const autoExpandTextarea = (el: HTMLTextAreaElement | null) => {
@@ -39,6 +40,20 @@ interface SalidaRow {
   salidas: string;
   entregables: string;
   doc: string;
+}
+
+type SubprocessMapData = {
+  entrada: EntradaRow[];
+  subprocesos: SubprocesosRow[];
+  salida: SalidaRow[];
+};
+
+function emptySubprocessMapData(): SubprocessMapData {
+  return {
+    entrada: [{ id: 1, partesInteresadas: "", internoExterno: "", clienteProveedor: "", necesidades: "", solicita: "", entrega: "" }],
+    subprocesos: [{ id: 1, acciones: "", subproceso: "" }],
+    salida: [{ id: 1, salidas: "", entregables: "", doc: "" }],
+  };
 }
 
 export default function SubprocessMap() {
@@ -74,6 +89,10 @@ export default function SubprocessMap() {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasLocalDraftRef = useRef(false);
+  const hydratedProcessIdRef = useRef<number | null>(null);
+  const saveInFlightRef = useRef(false);
+  const queuedSaveRef = useRef<SubprocessMapData | null>(null);
 
   // Update processId and processName when Process Leader session loads
   useEffect(() => {
@@ -87,11 +106,12 @@ export default function SubprocessMap() {
     }
   }, [isProcessLeader, processLeaderSession, contextLoading]);
   
-  const [data, setData] = useState({
-    entrada: [{ id: 1, partesInteresadas: "", internoExterno: "", clienteProveedor: "", necesidades: "", solicita: "", entrega: "" }],
-    subprocesos: [{ id: 1, acciones: "", subproceso: "" }],
-    salida: [{ id: 1, salidas: "", entregables: "", doc: "" }],
-  });
+  const [data, setData] = useState<SubprocessMapData>(emptySubprocessMapData);
+  const dataRef = useRef(data);
+
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   // Fetch subprocess map data
   const { data: subprocessMapData } = trpc.subprocessMap.get.useQuery(
@@ -99,18 +119,32 @@ export default function SubprocessMap() {
     { enabled: !!processId && !contextLoading }
   );
 
-  // Load data from database when available
+  useEffect(() => {
+    if (hydratedProcessIdRef.current === processId) return;
+    hydratedProcessIdRef.current = null;
+    hasLocalDraftRef.current = false;
+    queuedSaveRef.current = null;
+    if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    if (processId) setIsLoading(true);
+  }, [processId]);
+
+  // Load from database only once per process. Later responses must not replace a local draft.
   useEffect(() => {
     // Wait for context to load for Process Leaders
     if (isProcessLeader && contextLoading) {
       return;
     }
     
-    if (subprocessMapData) {
+    if (shouldHydrateRemoteSnapshot({
+      hasSnapshot: subprocessMapData !== undefined,
+      hasHydrated: hydratedProcessIdRef.current === processId,
+      hasLocalDraft: hasLocalDraftRef.current,
+    })) {
       try {
-        let entrada = subprocessMapData.entrada ? JSON.parse(subprocessMapData.entrada) : data.entrada;
-        const subprocesos = subprocessMapData.subprocesos ? JSON.parse(subprocessMapData.subprocesos) : data.subprocesos;
-        const salida = subprocessMapData.salida ? JSON.parse(subprocessMapData.salida) : data.salida;
+        const initial = emptySubprocessMapData();
+        let entrada = subprocessMapData?.entrada ? JSON.parse(subprocessMapData.entrada) : initial.entrada;
+        const subprocesos = subprocessMapData?.subprocesos ? JSON.parse(subprocessMapData.subprocesos) : initial.subprocesos;
+        const salida = subprocessMapData?.salida ? JSON.parse(subprocessMapData.salida) : initial.salida;
         
         // Asegurar que cada fila de entrada tiene los campos solicita y entrega
         entrada = entrada.map((row: any) => ({
@@ -119,29 +153,19 @@ export default function SubprocessMap() {
           entrega: row.entrega || "",
         }));
         
-        setData({ entrada, subprocesos, salida });
+        const remoteData = { entrada, subprocesos, salida };
+        dataRef.current = remoteData;
+        setData(remoteData);
       } catch (error) {
         console.error("Error parsing subprocess map data:", error);
       }
+      hydratedProcessIdRef.current = processId;
     }
     setIsLoading(false);
-  }, [subprocessMapData, isProcessLeader, contextLoading]);
-
-  // Get utils for query invalidation
-  const utils = trpc.useUtils();
+  }, [subprocessMapData, processId, isProcessLeader, contextLoading]);
 
   // Update subprocess map mutation
-  const updateMutation = trpc.subprocessMap.upsert.useMutation({
-    onSuccess: () => {
-      setLastSaved(new Date());
-      setIsSaving(false);
-      utils.subprocessMap.get.invalidate();
-    },
-    onError: (error) => {
-      setIsSaving(false);
-      toast.error(error.message || "Error al guardar el mapa");
-    },
-  });
+  const updateMutation = trpc.subprocessMap.upsert.useMutation();
 
   // Validar que una fila no esté completamente vacía
   const isRowEmpty = (row: any): boolean => {
@@ -159,20 +183,20 @@ export default function SubprocessMap() {
   };
 
   // Validar que no haya filas vacías
-  const validateData = (): boolean => {
-    for (const row of data.entrada) {
+  const validateData = (candidate: SubprocessMapData = dataRef.current): boolean => {
+    for (const row of candidate.entrada) {
       if (isRowEmpty(row)) {
         toast.error("No se puede guardar: hay filas vacías en Entrada. Completa o elimina las filas vacías.");
         return false;
       }
     }
-    for (const row of data.subprocesos) {
+    for (const row of candidate.subprocesos) {
       if (isRowEmpty(row)) {
         toast.error("No se puede guardar: hay filas vacías en Subprocesos. Completa o elimina las filas vacías.");
         return false;
       }
     }
-    for (const row of data.salida) {
+    for (const row of candidate.salida) {
       if (isRowEmpty(row)) {
         toast.error("No se puede guardar: hay filas vacías en Salida. Completa o elimina las filas vacías.");
         return false;
@@ -181,18 +205,8 @@ export default function SubprocessMap() {
     return true;
   };
 
-  // Guardar automáticamente con debounce
-  const autoSave = () => {
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current);
-    }
-
-    autoSaveTimeoutRef.current = setTimeout(() => {
-      if (!validateData()) return;
-      if (!processId) return;
-      
-      // Combinar solicita y entrega en el campo necesidades
-      const necesidadesText = data.entrada
+  const buildSavePayload = (snapshot: SubprocessMapData) => {
+      const necesidadesText = snapshot.entrada
         .map((row) => {
           const parts = [];
           if (row.solicita?.trim()) parts.push(`Solicita: ${row.solicita}`);
@@ -201,45 +215,72 @@ export default function SubprocessMap() {
         })
         .filter(text => text.trim())
         .join('\n---\n');
-      
-      setIsSaving(true);
-      updateMutation.mutate({
-        processId,
-        entrada: JSON.stringify(data.entrada),
+      return {
+        entrada: JSON.stringify(snapshot.entrada),
         necesidades: necesidadesText,
-        subprocesos: JSON.stringify(data.subprocesos),
-        salida: JSON.stringify(data.salida),
-      });
-    }, 1000);
-  }
+        subprocesos: JSON.stringify(snapshot.subprocesos),
+        salida: JSON.stringify(snapshot.salida),
+      };
+  };
 
-  const handleSave = () => {
-    if (!validateData()) return;
-    if (!processId) return;
-    
-    // Combinar solicita y entrega en el campo necesidades
-    const necesidadesText = data.entrada
-      .map((row) => {
-        const parts = [];
-        if (row.solicita?.trim()) parts.push(`Solicita: ${row.solicita}`);
-        if (row.entrega?.trim()) parts.push(`Entrega: ${row.entrega}`);
-        return parts.join('\n');
-      })
-      .filter(text => text.trim())
-      .join('\n---\n');
-    
+  const sendSnapshot = (snapshot: SubprocessMapData) => {
+    if (!processId || !validateData(snapshot)) return;
+    if (saveInFlightRef.current) {
+      queuedSaveRef.current = snapshot;
+      return;
+    }
+
+    saveInFlightRef.current = true;
     setIsSaving(true);
-    updateMutation.mutate({
-      processId,
-      entrada: JSON.stringify(data.entrada),
-      necesidades: necesidadesText,
-      subprocesos: JSON.stringify(data.subprocesos),
-      salida: JSON.stringify(data.salida),
+    updateMutation.mutate({ processId, ...buildSavePayload(snapshot) }, {
+      onSuccess: () => {
+        saveInFlightRef.current = false;
+        setLastSaved(new Date());
+        const nextSnapshot = queuedSaveRef.current;
+        queuedSaveRef.current = null;
+        if (nextSnapshot) sendSnapshot(nextSnapshot);
+        else setIsSaving(false);
+      },
+      onError: (error) => {
+        saveInFlightRef.current = false;
+        queuedSaveRef.current = queuedSaveRef.current || snapshot;
+        setIsSaving(false);
+        toast.error(error.message || "Error al guardar el mapa");
+      },
     });
   };
 
+  const saveDraft = (snapshot: SubprocessMapData) => {
+    hasLocalDraftRef.current = true;
+    queuedSaveRef.current = snapshot;
+    if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      autoSaveTimeoutRef.current = null;
+      const nextSnapshot = queuedSaveRef.current;
+      queuedSaveRef.current = null;
+      if (nextSnapshot) sendSnapshot(nextSnapshot);
+    }, 700);
+  };
+
+  const updateLocalData = (nextData: SubprocessMapData) => {
+    dataRef.current = nextData;
+    setData(nextData);
+    saveDraft(nextData);
+  };
+
+  const handleSave = () => {
+    hasLocalDraftRef.current = true;
+    if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    sendSnapshot(dataRef.current);
+  };
+
   const addRow = (section: "entrada" | "subprocesos" | "salida") => {
-    const newData = { ...data };
+    const newData = {
+      ...dataRef.current,
+      entrada: [...dataRef.current.entrada],
+      subprocesos: [...dataRef.current.subprocesos],
+      salida: [...dataRef.current.salida],
+    };
     const newId = Math.max(...newData[section].map((r: any) => r.id), 0) + 1;
     
     if (section === "entrada") {
@@ -250,12 +291,11 @@ export default function SubprocessMap() {
       (newData.salida as SalidaRow[]).push({ id: newId, salidas: "", entregables: "", doc: "" });
     }
     
-    setData(newData);
-    autoSave();
+    updateLocalData(newData);
   };
 
   const deleteRow = (section: "entrada" | "subprocesos" | "salida", id: number) => {
-    const newData = { ...data };
+    const newData = { ...dataRef.current };
     if (section === "entrada" && newData.entrada.length > 1) {
       newData.entrada = newData.entrada.filter(r => r.id !== id);
     } else if (section === "subprocesos" && newData.subprocesos.length > 1) {
@@ -263,24 +303,19 @@ export default function SubprocessMap() {
     } else if (section === "salida" && newData.salida.length > 1) {
       newData.salida = newData.salida.filter(r => r.id !== id);
     }
-    setData(newData);
-    autoSave();
+    updateLocalData(newData);
   };
 
   const updateField = (section: "entrada" | "subprocesos" | "salida", id: number, field: string, value: string) => {
-    const newData = { ...data };
+    const newData = { ...dataRef.current };
     if (section === "entrada") {
-      const row = newData.entrada.find(r => r.id === id);
-      if (row) (row as any)[field] = value;
+      newData.entrada = dataRef.current.entrada.map(row => row.id === id ? { ...row, [field]: value } : row);
     } else if (section === "subprocesos") {
-      const row = newData.subprocesos.find(r => r.id === id);
-      if (row) (row as any)[field] = value;
+      newData.subprocesos = dataRef.current.subprocesos.map(row => row.id === id ? { ...row, [field]: value } : row);
     } else {
-      const row = newData.salida.find(r => r.id === id);
-      if (row) (row as any)[field] = value;
+      newData.salida = dataRef.current.salida.map(row => row.id === id ? { ...row, [field]: value } : row);
     }
-    setData(newData);
-    autoSave();
+    updateLocalData(newData);
   };
 
   if (isLoading || (isProcessLeader && contextLoading)) {

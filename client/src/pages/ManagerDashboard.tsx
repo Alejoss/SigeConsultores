@@ -10,7 +10,6 @@ import { MODULE_GROUPS } from "@shared/dashboardModules";
 import { ManagerCycleActivationPanel } from "@/components/ManagerCycleActivationPanel";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { clearAllAuthRoleClientContext } from "@/lib/authRoleContext";
-import { courseEntryHref } from "./online-courses/coursePaths";
 import { CourseRegCodeManagerCard } from "@/components/CourseRegCodeCards";
 
 const AXIS_STYLES: Record<string, { card: string; btn: string; icon_bg: string }> = {
@@ -251,13 +250,9 @@ export default function ManagerDashboard() {
                 <Button variant="outline" onClick={() => setLocation("/manager-team-access")}>
                   Accesos del equipo
                 </Button>
-                <Button variant="outline" asChild>
-                  <a href={courseEntryHref("/empresa")}>Capacitaciones On line</a>
-                </Button>
               </div>
             </CardContent>
           </Card>
-          <CourseRegCodeManagerCard />
         </div>
 
         {/* Cycle approval queue — shown above company details */}
@@ -309,6 +304,7 @@ export default function ManagerDashboard() {
               </CardContent>
             </Card>
           </div>
+          <CourseRegCodeManagerCard />
         </details>
       </main>
 

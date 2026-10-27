@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { exportPolicyObjectivesToPDF } from "@/lib/exportPolicyObjectivesToPDF";
 import { getCompanyIdFromSession } from "@/lib/sessionScope";
+import { PolicyObjectiveTraceability } from "@/components/PolicyObjectiveTraceability";
 import {
   CompanyReadOnlyNotice,
   useCompanyManagementPermission,
@@ -39,6 +40,10 @@ export default function PolicyObjectives() {
     { policyId: policyId || 0 },
     { enabled: policyId !== null }
   );
+  const { data: traceability = [], isLoading: isTraceabilityLoading, refetch: refetchTraceability } = trpc.policyObjectives.getTraceability.useQuery(
+    { companyId: companyId || 0 },
+    { enabled: companyId !== null && policyId !== null }
+  );
 
   // Create objective mutation
   const createMutation = trpc.policyObjectives.create.useMutation({
@@ -47,6 +52,7 @@ export default function PolicyObjectives() {
       setFormData({ objective: "", description: "" });
       setShowForm(false);
       refetch();
+      refetchTraceability();
     },
     onError: (error: any) => {
       toast.error(error.message || "Error al agregar el objetivo");
@@ -61,6 +67,7 @@ export default function PolicyObjectives() {
       setEditingId(null);
       setShowForm(false);
       refetch();
+      refetchTraceability();
     },
     onError: (error: any) => {
       toast.error(error.message || "Error al actualizar el objetivo");
@@ -72,6 +79,7 @@ export default function PolicyObjectives() {
     onSuccess: () => {
       toast.success("Objetivo eliminado");
       refetch();
+      refetchTraceability();
     },
     onError: (error: any) => {
       toast.error(error.message || "Error al eliminar el objetivo");
@@ -288,6 +296,18 @@ export default function PolicyObjectives() {
                             <CardDescription className="mt-2 text-sm whitespace-pre-wrap">
                               {objective.description}
                             </CardDescription>
+                          )}
+                          {isTraceabilityLoading ? (
+                            <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                              Calculando la trazabilidad del objetivo…
+                            </div>
+                          ) : (
+                            <PolicyObjectiveTraceability
+                              companyId={companyId}
+                              data={traceability.find((item: any) => item.objectiveId === objective.id)}
+                              canManageCompany={canManageCompany}
+                              onChanged={() => refetchTraceability()}
+                            />
                           )}
                         </div>
                       </div>

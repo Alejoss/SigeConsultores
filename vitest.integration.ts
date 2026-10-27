@@ -7,6 +7,7 @@ export const integrationTestFiles = [
   "server/__tests__/linkedCommitments.integration.test.ts",
   "server/__tests__/meetings.integration.test.ts",
   "server/__tests__/companyManagementAccess.integration.test.ts",
+  "server/__tests__/assignableFindingProcesses.integration.test.ts",
   "server/__tests__/changeManagement.integration.test.ts",
   "server/__tests__/processActivities.integration.test.ts",
   "server/__tests__/operationalFindings.integration.test.ts",
@@ -39,5 +40,7 @@ export const integrationTestFiles = [
   "server/__tests__/tacticalObjectivesFixed.test.ts",
   "server/__tests__/strategicTrendsOtg.integration.test.ts",
   "server/__tests__/tacticalPolicyObjective.integration.test.ts",
+  "server/__tests__/policyObjectiveTraceability.integration.test.ts",
   "server/__tests__/onlineCourses.integration.test.ts",
+  "server/__tests__/onlineCourseManagementAccess.integration.test.ts",
 ] as const;
