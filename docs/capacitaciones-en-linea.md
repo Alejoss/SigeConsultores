@@ -68,9 +68,20 @@ El catálogo (`/catalogo`) ya no edita códigos: solo lista empresas y número d
 
 Un jefe de proceso o un usuario normal de plataforma recibe error en `mine` y `setMine`. La lógica compartida vive en `listCompanyRegCodes`, `getCompanyRegCode` y `saveCompanyRegCode` del servicio de cursos.
 
+## Retiro seguro de contenido
+
+Los paneles **Catálogo** y **Empresa** muestran un basurero junto a cada campo, módulo y capacitación que el administrador puede gestionar. La acción siempre solicita confirmación y el servidor comprueba la propiedad: el administrador general opera únicamente el catálogo general, y el gerente o Jefe autorizado opera únicamente los campos propios de su empresa.
+
+- Si el elemento y sus descendientes no tienen resultados, visitas ni certificados, se eliminan como borrador sin uso.
+- Si ya existe cualquier avance, visita o certificado, el elemento se **archiva**. Deja de aparecer en el portal, la búsqueda, los módulos y los paneles activos, pero no se borra ningún resultado ni certificado emitido.
+- Un campo o módulo archivado archiva también el contenido activo que contiene. Una capacitación archivada no retira su módulo ni las demás capacitaciones.
+- Los certificados ya emitidos siguen consultando sus datos históricos. No existe borrado físico de contenido con historial.
+
+La migración `0097_course_content_archiving.sql` es aditiva: agrega `archivedAt` a `courseFields`, `courseModules` y `courseLessons`; no modifica registros existentes.
+
 ## Pruebas
 
 - `server/__tests__/sessionCookie.test.ts`: dominio de la cookie y limpieza de la copia antigua.
 - `server/__tests__/onlineCourses.test.ts`: destinos permitidos del enlace de continuación y URL de salida.
-- `server/__tests__/onlineCourses.integration.test.ts` (MySQL): ingreso al catálogo con la sesión de ISGE 360, vista de administrador sin guardar avance, edición del código por gerente y administrador, rechazo a jefe de proceso, y el flujo completo de cursos y certificados.
+- `server/__tests__/onlineCourses.integration.test.ts` (MySQL): ingreso al catálogo con la sesión de ISGE 360, vista de administrador sin guardar avance, edición del código por gerente y administrador, rechazo a jefe de proceso, flujo completo de cursos y certificados, y retiro seguro: archivado cuando existe historial, eliminación de borradores y aislamiento por propietario.
 - `server/__tests__/onlineCourseManagementAccess.integration.test.ts` (MySQL): autorización y revocación del Jefe, aislamiento por empresa, suspensión y selección explícita cuando una cuenta tiene dos empresas autorizadas.

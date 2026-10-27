@@ -2,7 +2,7 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { parse as parseCookieHeader } from "cookie";
 import bcrypt from "bcryptjs";
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { COOKIE_NAME } from "@shared/const";
 import {
   COURSE_COOKIE,
@@ -201,7 +201,10 @@ async function lessonPassed(db: Db, workerId: number, lessonId: number): Promise
 }
 
 async function modulePassed(db: Db, workerId: number, moduleId: number): Promise<boolean> {
-  const lessons = await db.select({ id: courseLessons.id }).from(courseLessons).where(eq(courseLessons.moduleId, moduleId));
+  const lessons = await db
+    .select({ id: courseLessons.id })
+    .from(courseLessons)
+    .where(and(eq(courseLessons.moduleId, moduleId), isNull(courseLessons.archivedAt)));
   if (!lessons.length) return false;
   for (const lesson of lessons) {
     if (!(await lessonPassed(db, workerId, lesson.id))) return false;
@@ -234,13 +237,16 @@ async function issueModuleCertificate(db: Db, workerId: number, moduleId: number
 }
 
 async function issueFieldCertificate(db: Db, workerId: number, fieldId: number) {
-  const modules = await db.select({ id: courseModules.id }).from(courseModules).where(eq(courseModules.fieldId, fieldId));
+  const modules = await db
+    .select({ id: courseModules.id })
+    .from(courseModules)
+    .where(and(eq(courseModules.fieldId, fieldId), isNull(courseModules.archivedAt)));
   let required = 0;
   for (const moduleRow of modules) {
     const lessonCount = await db
       .select({ n: sql<number>`count(*)` })
       .from(courseLessons)
-      .where(eq(courseLessons.moduleId, moduleRow.id));
+      .where(and(eq(courseLessons.moduleId, moduleRow.id), isNull(courseLessons.archivedAt)));
     if (!Number(lessonCount[0]?.n || 0)) continue;
     required += 1;
     if (!(await modulePassed(db, workerId, moduleRow.id))) return;
@@ -271,13 +277,13 @@ async function moduleGate(db: Db, worker: Extract<CourseActor, { role: "worker" 
   const previous = await db
     .select({ id: courseModules.id })
     .from(courseModules)
-    .where(and(eq(courseModules.fieldId, moduleRow.fieldId), sql`${courseModules.sortOrder} < ${moduleRow.sortOrder}`))
+    .where(and(eq(courseModules.fieldId, moduleRow.fieldId), isNull(courseModules.archivedAt), sql`${courseModules.sortOrder} < ${moduleRow.sortOrder}`))
     .orderBy(sql`${courseModules.sortOrder} desc`);
   for (const row of previous) {
     const lessonCount = await db
       .select({ n: sql<number>`count(*)` })
       .from(courseLessons)
-      .where(eq(courseLessons.moduleId, row.id));
+      .where(and(eq(courseLessons.moduleId, row.id), isNull(courseLessons.archivedAt)));
     if (!Number(lessonCount[0]?.n || 0)) continue;
     if (!(await modulePassed(db, worker.workerId, row.id))) {
       return { state: "bloqueado", reason: "Debes aprobar el módulo anterior de este campo para continuar.", closesLabel: null };
@@ -316,7 +322,7 @@ async function moduleGate(db: Db, worker: Extract<CourseActor, { role: "worker" 
 }
 
 async function visibleField(db: Db, companyId: number, fieldId: number) {
-  const rows = await db.select().from(courseFields).where(eq(courseFields.id, fieldId)).limit(1);
+  const rows = await db.select().from(courseFields).where(and(eq(courseFields.id, fieldId), isNull(courseFields.archivedAt))).limit(1);
   const field = rows[0];
   if (!field) return null;
   if (field.companyId !== null && field.companyId !== companyId) return null;
@@ -597,6 +603,7 @@ async function lessonCounts(db: Db) {
   const rows = await db
     .select({ moduleId: courseLessons.moduleId, n: sql<number>`count(*)` })
     .from(courseLessons)
+    .where(isNull(courseLessons.archivedAt))
     .groupBy(courseLessons.moduleId);
   const map = new Map<number, number>();
   for (const row of rows) map.set(row.moduleId, Number(row.n));
@@ -629,12 +636,12 @@ async function staffTree(actor: StaffActor) {
   const fields = await db
     .select()
     .from(courseFields)
-    .where(companyId ? or(isNull(courseFields.companyId), eq(courseFields.companyId, companyId)) : isNull(courseFields.companyId))
+    .where(and(companyId ? or(isNull(courseFields.companyId), eq(courseFields.companyId, companyId)) : isNull(courseFields.companyId), isNull(courseFields.archivedAt)))
     .orderBy(asc(courseFields.sortOrder), asc(courseFields.name));
   const counts = await lessonCounts(db);
   const out = [];
   for (const field of fields) {
-    const modules = await db.select().from(courseModules).where(eq(courseModules.fieldId, field.id)).orderBy(asc(courseModules.sortOrder));
+    const modules = await db.select().from(courseModules).where(and(eq(courseModules.fieldId, field.id), isNull(courseModules.archivedAt))).orderBy(asc(courseModules.sortOrder));
     const list = modules
       .filter(moduleRow => (counts.get(moduleRow.id) || 0) > 0)
       .map(moduleRow => ({
@@ -659,12 +666,12 @@ export async function workerTree(actor: CourseActor) {
   const fields = await db
     .select()
     .from(courseFields)
-    .where(or(isNull(courseFields.companyId), eq(courseFields.companyId, actor.companyId)))
+    .where(and(or(isNull(courseFields.companyId), eq(courseFields.companyId, actor.companyId)), isNull(courseFields.archivedAt)))
     .orderBy(asc(courseFields.sortOrder), asc(courseFields.name));
   const counts = await lessonCounts(db);
   const out = [];
   for (const field of fields) {
-    const modules = await db.select().from(courseModules).where(eq(courseModules.fieldId, field.id)).orderBy(asc(courseModules.sortOrder));
+    const modules = await db.select().from(courseModules).where(and(eq(courseModules.fieldId, field.id), isNull(courseModules.archivedAt))).orderBy(asc(courseModules.sortOrder));
     const list = [];
     for (const moduleRow of modules) {
       const n = counts.get(moduleRow.id) || 0;
@@ -725,7 +732,7 @@ export async function searchLessons(actor: CourseActor, query: string) {
     .from(courseLessons)
     .innerJoin(courseModules, eq(courseModules.id, courseLessons.moduleId))
     .innerJoin(courseFields, eq(courseFields.id, courseModules.fieldId))
-    .where(and(sql`${courseLessons.title} LIKE ${needle}`, scope))
+    .where(and(sql`${courseLessons.title} LIKE ${needle}`, scope, isNull(courseFields.archivedAt), isNull(courseModules.archivedAt), isNull(courseLessons.archivedAt)))
     .orderBy(asc(courseFields.sortOrder), asc(courseModules.sortOrder), asc(courseLessons.sortOrder))
     .limit(12);
   return { results: rows };
@@ -734,12 +741,12 @@ export async function searchLessons(actor: CourseActor, query: string) {
 /** Staff review of a module: every lesson open, nothing recorded. */
 async function staffModule(actor: StaffActor, moduleId: number) {
   const db = await database();
-  const modules = await db.select().from(courseModules).where(eq(courseModules.id, moduleId)).limit(1);
+  const modules = await db.select().from(courseModules).where(and(eq(courseModules.id, moduleId), isNull(courseModules.archivedAt))).limit(1);
   const moduleRow = modules[0];
   if (!moduleRow) fail("NOT_FOUND", "Módulo no encontrado.");
   const field = await visibleField(db, previewCompanyId(actor), moduleRow.fieldId);
   if (!field) fail("FORBIDDEN", "Este módulo es privado de otra empresa.");
-  const lessons = await db.select().from(courseLessons).where(eq(courseLessons.moduleId, moduleId)).orderBy(asc(courseLessons.sortOrder), asc(courseLessons.id));
+  const lessons = await db.select().from(courseLessons).where(and(eq(courseLessons.moduleId, moduleId), isNull(courseLessons.archivedAt))).orderBy(asc(courseLessons.sortOrder), asc(courseLessons.id));
   return {
     module: { id: moduleRow.id, name: moduleRow.name, field: field.name, fieldId: field.id },
     lessons: lessons.map(lesson => ({
@@ -757,7 +764,7 @@ async function staffModule(actor: StaffActor, moduleId: number) {
 export async function workerModule(actor: CourseActor, moduleId: number) {
   if (actor.role !== "worker") return staffModule(actor, moduleId);
   const db = await database();
-  const modules = await db.select().from(courseModules).where(eq(courseModules.id, moduleId)).limit(1);
+  const modules = await db.select().from(courseModules).where(and(eq(courseModules.id, moduleId), isNull(courseModules.archivedAt))).limit(1);
   const moduleRow = modules[0];
   if (!moduleRow) fail("NOT_FOUND", "Módulo no encontrado.");
   const field = await visibleField(db, actor.companyId, moduleRow.fieldId);
@@ -768,7 +775,7 @@ export async function workerModule(actor: CourseActor, moduleId: number) {
     .insert(courseModuleVisits)
     .values({ workerId: actor.workerId, moduleId, firstAccessAt: new Date(), lastAccessAt: new Date() })
     .onDuplicateKeyUpdate({ set: { lastAccessAt: new Date() } });
-  const lessons = await db.select().from(courseLessons).where(eq(courseLessons.moduleId, moduleId)).orderBy(asc(courseLessons.sortOrder), asc(courseLessons.id));
+  const lessons = await db.select().from(courseLessons).where(and(eq(courseLessons.moduleId, moduleId), isNull(courseLessons.archivedAt))).orderBy(asc(courseLessons.sortOrder), asc(courseLessons.id));
   const payload = [];
   for (const lesson of lessons) {
     const result = await db
@@ -806,10 +813,10 @@ export async function workerModule(actor: CourseActor, moduleId: number) {
 export async function evaluateLesson(actor: CourseActor, input: { lessonId: number; answers: string[] }) {
   if (actor.role !== "worker") return previewEvaluation(actor, input);
   const db = await database();
-  const lessons = await db.select().from(courseLessons).where(eq(courseLessons.id, input.lessonId)).limit(1);
+  const lessons = await db.select().from(courseLessons).where(and(eq(courseLessons.id, input.lessonId), isNull(courseLessons.archivedAt))).limit(1);
   const lesson = lessons[0];
   if (!lesson) fail("BAD_REQUEST", "Capacitación no válida.");
-  const modules = await db.select().from(courseModules).where(eq(courseModules.id, lesson.moduleId)).limit(1);
+  const modules = await db.select().from(courseModules).where(and(eq(courseModules.id, lesson.moduleId), isNull(courseModules.archivedAt))).limit(1);
   const moduleRow = modules[0];
   if (!moduleRow) fail("BAD_REQUEST", "Capacitación no válida.");
   const field = await visibleField(db, actor.companyId, moduleRow.fieldId);
@@ -819,7 +826,7 @@ export async function evaluateLesson(actor: CourseActor, input: { lessonId: numb
   const ordered = await db
     .select({ id: courseLessons.id })
     .from(courseLessons)
-    .where(eq(courseLessons.moduleId, lesson.moduleId))
+    .where(and(eq(courseLessons.moduleId, lesson.moduleId), isNull(courseLessons.archivedAt)))
     .orderBy(asc(courseLessons.sortOrder), asc(courseLessons.id));
   const index = ordered.findIndex(row => row.id === lesson.id);
   if (index > 0 && !(await lessonPassed(db, actor.workerId, ordered[index - 1].id))) {
@@ -882,10 +889,10 @@ export async function evaluateLesson(actor: CourseActor, input: { lessonId: numb
 /** Grades a staff review attempt without saving results or issuing certificates. */
 async function previewEvaluation(actor: StaffActor, input: { lessonId: number; answers: string[] }) {
   const db = await database();
-  const lessons = await db.select().from(courseLessons).where(eq(courseLessons.id, input.lessonId)).limit(1);
+  const lessons = await db.select().from(courseLessons).where(and(eq(courseLessons.id, input.lessonId), isNull(courseLessons.archivedAt))).limit(1);
   const lesson = lessons[0];
   if (!lesson) fail("BAD_REQUEST", "Capacitación no válida.");
-  const modules = await db.select({ fieldId: courseModules.fieldId }).from(courseModules).where(eq(courseModules.id, lesson.moduleId)).limit(1);
+  const modules = await db.select({ fieldId: courseModules.fieldId }).from(courseModules).where(and(eq(courseModules.id, lesson.moduleId), isNull(courseModules.archivedAt))).limit(1);
   if (!modules[0] || !(await visibleField(db, previewCompanyId(actor), modules[0].fieldId))) {
     fail("FORBIDDEN", "No tienes acceso a esta capacitación.");
   }
@@ -1018,7 +1025,7 @@ export async function certificateView(actor: CourseActor, kind: "capacitacion" |
 }
 
 async function editableField(db: Db, actor: CourseActor, fieldId: number) {
-  const rows = await db.select().from(courseFields).where(eq(courseFields.id, fieldId)).limit(1);
+  const rows = await db.select().from(courseFields).where(and(eq(courseFields.id, fieldId), isNull(courseFields.archivedAt))).limit(1);
   const field = rows[0];
   if (!field) return null;
   if (actor.role === "platform_admin") return field.companyId === null ? field : null;
@@ -1038,7 +1045,7 @@ export async function companyOverview(actor: CourseActor) {
   const fields = await db
     .select()
     .from(courseFields)
-    .where(or(isNull(courseFields.companyId), eq(courseFields.companyId, actor.companyId)))
+    .where(and(or(isNull(courseFields.companyId), eq(courseFields.companyId, actor.companyId)), isNull(courseFields.archivedAt)))
     .orderBy(asc(courseFields.sortOrder), asc(courseFields.name));
   const counts = await lessonCounts(db);
   const accessRows = await db.select().from(courseModuleAccess).where(eq(courseModuleAccess.companyId, actor.companyId));
@@ -1046,24 +1053,30 @@ export async function companyOverview(actor: CourseActor) {
   const fieldViews = [];
   for (const field of fields) {
     const own = field.companyId === actor.companyId;
-    const modules = await db.select().from(courseModules).where(eq(courseModules.fieldId, field.id)).orderBy(asc(courseModules.sortOrder));
+    const modules = await db.select().from(courseModules).where(and(eq(courseModules.fieldId, field.id), isNull(courseModules.archivedAt))).orderBy(asc(courseModules.sortOrder));
     const visible = modules.filter(moduleRow => own || (counts.get(moduleRow.id) || 0) > 0);
     if (!visible.length && !own) continue;
     fieldViews.push({
       id: field.id,
       name: field.name,
       own,
-      modules: visible.map(moduleRow => {
+      modules: await Promise.all(visible.map(async moduleRow => {
         const access = accessByModule.get(moduleRow.id);
+        const lessons = await db
+          .select({ id: courseLessons.id, title: courseLessons.title, number: courseLessons.number })
+          .from(courseLessons)
+          .where(and(eq(courseLessons.moduleId, moduleRow.id), isNull(courseLessons.archivedAt)))
+          .orderBy(asc(courseLessons.sortOrder), asc(courseLessons.id));
         return {
           id: moduleRow.id,
           name: moduleRow.name,
           lessonCount: counts.get(moduleRow.id) || 0,
+          lessons,
           open: Boolean(access?.open),
           opensAt: access?.opensAt ? asDate(access.opensAt)?.toISOString() || null : null,
           closesAt: access?.closesAt ? asDate(access.closesAt)?.toISOString() || null : null,
         };
-      }),
+      })),
     });
   }
   const workers = await db.select().from(courseWorkers).where(eq(courseWorkers.companyId, actor.companyId)).orderBy(asc(courseWorkers.name));
@@ -1153,7 +1166,7 @@ export async function exportCompanyCsv(actor: CourseActor) {
 }
 
 async function assertVisibleModule(db: Db, companyId: number, moduleId: number) {
-  const modules = await db.select().from(courseModules).where(eq(courseModules.id, moduleId)).limit(1);
+  const modules = await db.select().from(courseModules).where(and(eq(courseModules.id, moduleId), isNull(courseModules.archivedAt))).limit(1);
   const moduleRow = modules[0];
   if (!moduleRow) fail("BAD_REQUEST", "Módulo no válido.");
   const field = await visibleField(db, companyId, moduleRow.fieldId);
@@ -1241,7 +1254,7 @@ export async function createCourseField(actor: CourseActor, name: string) {
   const current = await db
     .select({ sortOrder: courseFields.sortOrder })
     .from(courseFields)
-    .where(companyId === null ? isNull(courseFields.companyId) : eq(courseFields.companyId, companyId))
+    .where(and(companyId === null ? isNull(courseFields.companyId) : eq(courseFields.companyId, companyId), isNull(courseFields.archivedAt)))
     .orderBy(sql`${courseFields.sortOrder} desc`)
     .limit(1);
   const inserted = await db.insert(courseFields).values({
@@ -1261,7 +1274,7 @@ export async function createCourseModule(actor: CourseActor, input: { fieldId: n
   const current = await db
     .select({ sortOrder: courseModules.sortOrder })
     .from(courseModules)
-    .where(eq(courseModules.fieldId, input.fieldId))
+    .where(and(eq(courseModules.fieldId, input.fieldId), isNull(courseModules.archivedAt)))
     .orderBy(sql`${courseModules.sortOrder} desc`)
     .limit(1);
   const inserted = await db.insert(courseModules).values({
@@ -1274,7 +1287,7 @@ export async function createCourseModule(actor: CourseActor, input: { fieldId: n
 
 export async function createCourseLesson(actor: CourseActor, input: { moduleId: number; file: unknown }) {
   const db = await database();
-  const modules = await db.select().from(courseModules).where(eq(courseModules.id, input.moduleId)).limit(1);
+  const modules = await db.select().from(courseModules).where(and(eq(courseModules.id, input.moduleId), isNull(courseModules.archivedAt))).limit(1);
   if (!modules.length) fail("BAD_REQUEST", "Módulo no válido.");
   const field = await editableField(db, actor, modules[0].fieldId);
   if (!field) fail("FORBIDDEN", actor.role === "platform_admin" ? "Ese módulo no es del catálogo general." : "Ese módulo no es tuyo para editarlo.");
@@ -1288,7 +1301,7 @@ export async function createCourseLesson(actor: CourseActor, input: { moduleId: 
   const current = await db
     .select({ sortOrder: courseLessons.sortOrder, number: courseLessons.number })
     .from(courseLessons)
-    .where(eq(courseLessons.moduleId, input.moduleId))
+    .where(and(eq(courseLessons.moduleId, input.moduleId), isNull(courseLessons.archivedAt)))
     .orderBy(sql`${courseLessons.sortOrder} desc`)
     .limit(1);
   const inserted = await db.insert(courseLessons).values({
@@ -1302,17 +1315,126 @@ export async function createCourseLesson(actor: CourseActor, input: { moduleId: 
   return { id: Number(inserted[0].insertId), number: (current[0]?.number || 0) + 1 };
 }
 
+export type CourseContentKind = "campo" | "modulo" | "capacitacion";
+
+async function contentHasHistory(db: Db, lessonIds: number[], moduleIds: number[], fieldIds: number[]) {
+  if (lessonIds.length) {
+    const results = await db.select({ lessonId: courseResults.lessonId }).from(courseResults).where(inArray(courseResults.lessonId, lessonIds)).limit(1);
+    if (results.length) return true;
+  }
+  if (moduleIds.length) {
+    const visits = await db.select({ moduleId: courseModuleVisits.moduleId }).from(courseModuleVisits).where(inArray(courseModuleVisits.moduleId, moduleIds)).limit(1);
+    if (visits.length) return true;
+    const certificates = await db.select({ moduleId: courseModuleCertificates.moduleId }).from(courseModuleCertificates).where(inArray(courseModuleCertificates.moduleId, moduleIds)).limit(1);
+    if (certificates.length) return true;
+  }
+  if (fieldIds.length) {
+    const certificates = await db.select({ fieldId: courseFieldCertificates.fieldId }).from(courseFieldCertificates).where(inArray(courseFieldCertificates.fieldId, fieldIds)).limit(1);
+    if (certificates.length) return true;
+  }
+  return false;
+}
+
+/**
+ * Retires only content the current actor owns. Historical results and issued
+ * certificates are never deleted: the content is archived and disappears from
+ * active panels instead. Unused draft content is deleted immediately.
+ */
+export async function removeCourseContent(actor: CourseActor, input: { kind: CourseContentKind; id: number }) {
+  if (actor.role === "worker") fail("FORBIDDEN", "No puedes retirar capacitaciones.");
+  const db = await database();
+  let fieldId = 0;
+  let moduleIds: number[] = [];
+  let lessonIds: number[] = [];
+  let alreadyArchived = false;
+
+  if (input.kind === "campo") {
+    const field = await editableField(db, actor, input.id);
+    if (!field) fail("FORBIDDEN", "Ese campo no es tuyo para retirarlo.");
+    fieldId = field.id;
+    const modules = await db.select().from(courseModules).where(eq(courseModules.fieldId, field.id));
+    moduleIds = modules.map(moduleRow => moduleRow.id);
+    alreadyArchived = modules.some(moduleRow => moduleRow.archivedAt !== null);
+    if (moduleIds.length) {
+      const lessons = await db.select().from(courseLessons).where(inArray(courseLessons.moduleId, moduleIds));
+      lessonIds = lessons.map(lesson => lesson.id);
+      alreadyArchived ||= lessons.some(lesson => lesson.archivedAt !== null);
+    }
+  } else if (input.kind === "modulo") {
+    const moduleRows = await db.select().from(courseModules).where(and(eq(courseModules.id, input.id), isNull(courseModules.archivedAt))).limit(1);
+    const moduleRow = moduleRows[0];
+    if (!moduleRow || !(await editableField(db, actor, moduleRow.fieldId))) fail("FORBIDDEN", "Ese módulo no es tuyo para retirarlo.");
+    fieldId = moduleRow.fieldId;
+    moduleIds = [moduleRow.id];
+    const lessons = await db.select().from(courseLessons).where(eq(courseLessons.moduleId, moduleRow.id));
+    lessonIds = lessons.map(lesson => lesson.id);
+    alreadyArchived = lessons.some(lesson => lesson.archivedAt !== null);
+  } else {
+    const lessonRows = await db.select().from(courseLessons).where(and(eq(courseLessons.id, input.id), isNull(courseLessons.archivedAt))).limit(1);
+    const lesson = lessonRows[0];
+    if (!lesson) fail("NOT_FOUND", "Capacitación no encontrada.");
+    const moduleRows = await db.select().from(courseModules).where(and(eq(courseModules.id, lesson.moduleId), isNull(courseModules.archivedAt))).limit(1);
+    const moduleRow = moduleRows[0];
+    if (!moduleRow || !(await editableField(db, actor, moduleRow.fieldId))) fail("FORBIDDEN", "Esa capacitación no es tuya para retirarla.");
+    fieldId = moduleRow.fieldId;
+    moduleIds = [moduleRow.id];
+    lessonIds = [lesson.id];
+  }
+
+  const archive = alreadyArchived || (await contentHasHistory(db, lessonIds, moduleIds, [fieldId]));
+  await db.transaction(async tx => {
+    if (archive) {
+      const archivedAt = new Date();
+      if (input.kind === "campo") {
+        await tx.update(courseFields).set({ archivedAt }).where(and(eq(courseFields.id, fieldId), isNull(courseFields.archivedAt)));
+      }
+      if (input.kind !== "capacitacion" && moduleIds.length) {
+        await tx.update(courseModules).set({ archivedAt }).where(and(inArray(courseModules.id, moduleIds), isNull(courseModules.archivedAt)));
+      }
+      if (lessonIds.length) {
+        await tx.update(courseLessons).set({ archivedAt }).where(and(inArray(courseLessons.id, lessonIds), isNull(courseLessons.archivedAt)));
+      }
+      return;
+    }
+
+    if (input.kind === "campo" && moduleIds.length) {
+      await tx.delete(courseModuleAccess).where(inArray(courseModuleAccess.moduleId, moduleIds));
+      await tx.delete(courseWorkerOverrides).where(inArray(courseWorkerOverrides.moduleId, moduleIds));
+      await tx.delete(courseModuleVisits).where(inArray(courseModuleVisits.moduleId, moduleIds));
+    }
+    if (input.kind === "modulo") {
+      await tx.delete(courseModuleAccess).where(eq(courseModuleAccess.moduleId, input.id));
+      await tx.delete(courseWorkerOverrides).where(eq(courseWorkerOverrides.moduleId, input.id));
+      await tx.delete(courseModuleVisits).where(eq(courseModuleVisits.moduleId, input.id));
+    }
+    if (lessonIds.length) await tx.delete(courseLessons).where(inArray(courseLessons.id, lessonIds));
+    if (input.kind === "campo" && moduleIds.length) await tx.delete(courseModules).where(inArray(courseModules.id, moduleIds));
+    if (input.kind === "campo") await tx.delete(courseFields).where(eq(courseFields.id, fieldId));
+    if (input.kind === "modulo") await tx.delete(courseModules).where(eq(courseModules.id, input.id));
+  });
+  return { outcome: archive ? "archived" : "deleted" } as const;
+}
+
 export async function catalogOverview() {
   const db = await database();
-  const fields = await db.select().from(courseFields).where(isNull(courseFields.companyId)).orderBy(asc(courseFields.sortOrder), asc(courseFields.name));
+  const fields = await db.select().from(courseFields).where(and(isNull(courseFields.companyId), isNull(courseFields.archivedAt))).orderBy(asc(courseFields.sortOrder), asc(courseFields.name));
   const counts = await lessonCounts(db);
   const fieldViews = [];
   for (const field of fields) {
-    const modules = await db.select().from(courseModules).where(eq(courseModules.fieldId, field.id)).orderBy(asc(courseModules.sortOrder));
+    const modules = await db.select().from(courseModules).where(and(eq(courseModules.fieldId, field.id), isNull(courseModules.archivedAt))).orderBy(asc(courseModules.sortOrder));
     fieldViews.push({
       id: field.id,
       name: field.name,
-      modules: modules.map(moduleRow => ({ id: moduleRow.id, name: moduleRow.name, lessonCount: counts.get(moduleRow.id) || 0 })),
+      modules: await Promise.all(modules.map(async moduleRow => ({
+        id: moduleRow.id,
+        name: moduleRow.name,
+        lessonCount: counts.get(moduleRow.id) || 0,
+        lessons: await db
+          .select({ id: courseLessons.id, title: courseLessons.title, number: courseLessons.number })
+          .from(courseLessons)
+          .where(and(eq(courseLessons.moduleId, moduleRow.id), isNull(courseLessons.archivedAt)))
+          .orderBy(asc(courseLessons.sortOrder), asc(courseLessons.id)),
+      }))),
     });
   }
   const companyRows = await db
@@ -1327,6 +1449,7 @@ export async function catalogOverview() {
   const ownCounts = await db
     .select({ companyId: courseFields.companyId, n: sql<number>`count(*)` })
     .from(courseFields)
+    .where(isNull(courseFields.archivedAt))
     .groupBy(courseFields.companyId);
   const workersByCompany = new Map(workerCounts.map(row => [row.companyId, Number(row.n)]));
   const ownByCompany = new Map(ownCounts.filter(row => row.companyId != null).map(row => [row.companyId as number, Number(row.n)]));

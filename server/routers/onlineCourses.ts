@@ -10,6 +10,7 @@ import {
   createCourseField,
   createCourseLesson,
   createCourseModule,
+  removeCourseContent,
   evaluateLesson,
   exportCompanyCsv,
   loginCourse,
@@ -142,6 +143,10 @@ export const onlineCoursesRouter = router({
   createLesson: publicProcedure
     .input(z.object({ companyId: companyIdInput, moduleId: z.number().int(), file: lessonFile }))
     .mutation(async ({ ctx, input: { companyId, ...input } }) => createCourseLesson(await companyActorFrom(ctx, companyId), input)),
+
+  removeContent: publicProcedure
+    .input(z.object({ companyId: companyIdInput, kind: z.enum(["campo", "modulo", "capacitacion"]), id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input: { companyId, kind, id } }) => removeCourseContent(await companyActorFrom(ctx, companyId), { kind, id })),
 
   catalogOverview: publicProcedure.query(async ({ ctx }) => {
     const actor = await actorFrom(ctx);
