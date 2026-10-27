@@ -171,6 +171,14 @@ sudo apt-get install -y awscli
 
 Causa antigua: `source .env` en bash. Versión actual: solo lee `AWS_*` y el dump va por `docker compose exec mysql`. Actualiza el repo (`git reset --hard origin/main`) y vuelve a ejecutar.
 
+### Error `service "app" has neither an image nor a build context specified`
+
+Causa: `docker-compose.prod.yml` usa `image: ${APP_IMAGE}` y el CD no guarda `APP_IMAGE` en `.env.production` (solo lo inyecta durante el deploy). Afectó al cron desde el 2026-09-24 hasta octubre 2026. Versión actual de `backup-cron.sh`: exporta un valor por defecto de `APP_IMAGE` (el respaldo solo usa el servicio `mysql`). Si el droplet tiene una versión anterior del script:
+
+```bash
+APP_IMAGE=ghcr.io/alejoss/sigeconsultores:latest bash /opt/sige-app-staging/scripts/backup-cron.sh
+```
+
 ### Error "Access Denied" en S3
 
 Verificar credenciales AWS en el `.env` del entorno:
