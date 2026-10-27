@@ -28,9 +28,29 @@ export function ProcessLinkDialog({
   onClose: () => void;
   onLinked: () => void;
 }) {
-  const { data: processes = [], isLoading } = trpc.processMap.list.useQuery({
-    companyId,
-  });
+  const findingSourceType =
+    sourceType === "audit_finding" || sourceType === "inspection_finding"
+      ? sourceType
+      : undefined;
+  const findingTargets =
+    trpc.linkedCommitments.listAssignableFindingProcesses.useQuery(
+      {
+        companyId,
+        sourceType: findingSourceType ?? "audit_finding",
+        sourceId,
+      },
+      { enabled: Boolean(findingSourceType) }
+    );
+  const mapProcesses = trpc.processMap.list.useQuery(
+    { companyId },
+    { enabled: !findingSourceType }
+  );
+  const processes = findingSourceType
+    ? findingTargets.data || []
+    : mapProcesses.data || [];
+  const isLoading = findingSourceType
+    ? findingTargets.isLoading
+    : mapProcesses.isLoading;
   const progress = trpc.linkedCommitments.listSourceProgress.useQuery({
     companyId,
     sourceType,

@@ -63,7 +63,10 @@ function assertCompanyAccess(ctx: TrpcContext, companyId: number) {
   forbidden("No tiene acceso a la empresa solicitada.");
 }
 
-async function assertSourceManagementAccess(ctx: TrpcContext, companyId: number) {
+async function assertSourceManagementAccess(
+  ctx: TrpcContext,
+  companyId: number
+) {
   await assertCompanyManagementAccess(ctx, companyId);
 }
 
@@ -236,7 +239,8 @@ async function resolveSource(
   }
 
   if (sourceType === "audit_finding" || sourceType === "inspection_finding") {
-    const findingSourceType = sourceType === "audit_finding" ? "audit" : "inspection";
+    const findingSourceType =
+      sourceType === "audit_finding" ? "audit" : "inspection";
     const [finding] = await db
       .select()
       .from(operationalFindings)
@@ -332,7 +336,10 @@ async function resolveSource(
         message: "La acción de Gestión de Cambios no existe en esta empresa.",
       });
     const [change] = await db
-      .select({ id: changeManagementRecords.id, title: changeManagementRecords.title })
+      .select({
+        id: changeManagementRecords.id,
+        title: changeManagementRecords.title,
+      })
       .from(changeManagementRecords)
       .where(
         and(
@@ -475,7 +482,8 @@ async function synchronizeSource(
   }
 
   if (sourceType === "audit_finding" || sourceType === "inspection_finding") {
-    const findingSourceType = sourceType === "audit_finding" ? "audit" : "inspection";
+    const findingSourceType =
+      sourceType === "audit_finding" ? "audit" : "inspection";
     await db
       .update(operationalFindings)
       .set({ completed, completedAt: completed ? new Date() : null })
@@ -691,6 +699,44 @@ async function decorateCommitments(
 }
 
 export const linkedCommitmentsRouter = router({
+  /**
+   * Lista únicamente los procesos que pueden recibir un hallazgo de Auditoría
+   * o Inspección. La fuente se valida antes de exponer el selector y el acceso
+   * queda limitado a Gerencia, Administración o Coordinación autorizada.
+   */
+  listAssignableFindingProcesses: companyProcedure
+    .input(
+      z.object({
+        companyId: z.number().int().positive(),
+        sourceType: z.enum(["audit_finding", "inspection_finding"]),
+        sourceId: z.number().int().positive(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await assertSourceManagementAccess(ctx, input.companyId);
+      const db = await getDb();
+      if (!db)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Base de datos no disponible.",
+        });
+      await resolveSource(
+        db,
+        input.companyId,
+        input.sourceType,
+        input.sourceId
+      );
+      return db
+        .select({
+          id: processes.id,
+          name: processes.name,
+          processType: processes.processType,
+        })
+        .from(processes)
+        .where(eq(processes.companyId, input.companyId))
+        .orderBy(asc(processes.name));
+    }),
+
   listByProcess: companyProcedure
     .input(
       z.object({
@@ -1031,7 +1077,9 @@ export const linkedCommitmentsRouter = router({
         requestedStatus === "completed"
       ) {
         const [action] = await db
-          .select({ evidenceExpected: changeManagementActions.evidenceExpected })
+          .select({
+            evidenceExpected: changeManagementActions.evidenceExpected,
+          })
           .from(changeManagementActions)
           .where(
             and(
@@ -1044,7 +1092,9 @@ export const linkedCommitmentsRouter = router({
           const evidence = await db
             .select({ id: linkedCommitmentEvidence.id })
             .from(linkedCommitmentEvidence)
-            .where(eq(linkedCommitmentEvidence.linkedCommitmentId, commitment.id))
+            .where(
+              eq(linkedCommitmentEvidence.linkedCommitmentId, commitment.id)
+            )
             .limit(1);
           if (!evidence[0]) {
             throw new TRPCError({
