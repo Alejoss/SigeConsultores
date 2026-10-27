@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowLeft,
@@ -273,6 +273,7 @@ export default function LinkedCommitments() {
   const url = useMemo(() => new URLSearchParams(window.location.search), []);
   const companyFromUrl = Number(url.get("companyId"));
   const processFromUrl = Number(url.get("processId"));
+  const focusCommitmentId = Number(url.get("focusCommitmentId"));
   const companyId =
     processLeaderSession?.companyId ||
     (isManagerLogin ? managerCompanyId : null) ||
@@ -291,6 +292,7 @@ export default function LinkedCommitments() {
     null
   );
   const [uploadingFor, setUploadingFor] = useState<number | null>(null);
+  const focusedCommitmentRef = useRef<number | null>(null);
 
   const commitmentsQuery = trpc.linkedCommitments.listByProcess.useQuery(
     { companyId: companyId || 0, processId: processId || 0 },
@@ -317,6 +319,17 @@ export default function LinkedCommitments() {
   const commitments = (commitmentsQuery.data || []) as LinkedCommitment[];
   const received = commitments.filter(item => item.sourceType !== "own");
   const own = commitments.filter(item => item.sourceType === "own");
+
+  useEffect(() => {
+    if (!focusCommitmentId || !commitments.length || focusedCommitmentRef.current === focusCommitmentId) return;
+    if (!commitments.some(item => item.id === focusCommitmentId)) return;
+    focusedCommitmentRef.current = focusCommitmentId;
+    window.setTimeout(() => {
+      document
+        .getElementById(`linked-commitment-${focusCommitmentId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+  }, [commitments, focusCommitmentId]);
 
   const uploadEvidence = async (commitment: LinkedCommitment, file: File) => {
     if (!companyId) return;
@@ -426,7 +439,11 @@ export default function LinkedCommitments() {
           <div className="space-y-4">
             {received.length ? (
               received.map(item => (
-                <div key={item.id}>
+                <div
+                  key={item.id}
+                  id={`linked-commitment-${item.id}`}
+                  className={item.id === focusCommitmentId ? "rounded-xl ring-2 ring-blue-500 ring-offset-2" : undefined}
+                >
                   <input
                     ref={element => {
                       evidenceInputRefs.current[item.id] = element;
@@ -547,7 +564,11 @@ export default function LinkedCommitments() {
           <div className="space-y-4">
             {own.length ? (
               own.map(item => (
-                <div key={item.id}>
+                <div
+                  key={item.id}
+                  id={`linked-commitment-${item.id}`}
+                  className={item.id === focusCommitmentId ? "rounded-xl ring-2 ring-blue-500 ring-offset-2" : undefined}
+                >
                   <input
                     ref={element => {
                       evidenceInputRefs.current[item.id] = element;

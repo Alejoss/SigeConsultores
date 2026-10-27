@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { router, companyProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { policies, policyObjectives, processFODA } from "../../drizzle/schema";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { assertProcessAccessById } from "../_core/companyPermissions";
 
 type FodaPayloadItem = Record<string, unknown>;
@@ -91,14 +91,25 @@ async function normalizeObjectiveLinks(
 
 export const processFODARouter = router({
   get: companyProcedure
-    .input(z.object({ processId: z.number() }))
+    .input(z.object({ processId: z.number(), recordId: z.number().optional() }))
     .query(async ({ input, ctx }) => {
       await assertProcessAccessById(ctx, input.processId);
       const db = await getDb();
       if (!db) return null;
 
-      const result = await db.select().from(processFODA)
-        .where(eq(processFODA.processId, input.processId));
+      const result = await db
+        .select()
+        .from(processFODA)
+        .where(
+          input.recordId
+            ? and(
+                eq(processFODA.processId, input.processId),
+                eq(processFODA.id, input.recordId)
+              )
+            : eq(processFODA.processId, input.processId)
+        )
+        .orderBy(desc(processFODA.updatedAt))
+        .limit(1);
 
       return result.length > 0 ? result[0] : null;
     }),

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { ArrowLeft, Plus, Trash2, ChevronDown, Download } from 'lucide-react';
 import { toast } from "sonner";
 import { exportTacticalObjectivesToPDF } from "@/lib/exportTacticalObjectivesToPDF";
@@ -221,6 +221,7 @@ function calcOTMetrics(p: TacticalPlanning): { avanceMeta: number; porcentajeMet
 
 export default function TacticalPlanning() {
   const [, setLocation] = useLocation();
+  const searchParams = useSearch();
   const queryClient = useQueryClient();
   const [processId, setProcessId] = useState<number | null>(null);
   const [plannings, setPlannings] = useState<TacticalPlanning[]>([]);
@@ -233,6 +234,16 @@ export default function TacticalPlanning() {
   const processIdRef = useRef<number | null>(null);
   const pendingSaveRef = useRef(false); // indica si hay cambios pendientes de guardar
   const initialLoadDoneRef = useRef(false); // indica si la carga inicial ya terminó
+  const focusedTargetRef = useRef<string | null>(null);
+  const [focusExpandedPlanningId, setFocusExpandedPlanningId] = useState<string | null>(null);
+  const focusParams = useMemo(() => new URLSearchParams(searchParams), [searchParams]);
+  const focusObjectiveId = Number(focusParams.get("focusObjectiveId"));
+  const focusResultKeyId = focusParams.get("focusResultKeyId");
+  const focusTaskId = focusParams.get("focusTaskId");
+  const focusResultKeyIndex = Number(focusParams.get("focusResultKeyIndex"));
+  const focusTaskIndex = focusParams.has("focusTaskIndex")
+    ? Number(focusParams.get("focusTaskIndex"))
+    : null;
 
   const savePlanningMutation = trpc.processTacticalObjectives.savePlanning.useMutation({
     onError: (error: any) => {
@@ -310,6 +321,29 @@ export default function TacticalPlanning() {
     // Solo marcar como pendiente si la carga inicial ya terminó (cambios del usuario, no carga inicial)
     if (plannings.length > 0 && initialLoadDoneRef.current) pendingSaveRef.current = true;
   }, [plannings]);
+
+  useEffect(() => {
+    if (!focusObjectiveId || !plannings.length) return;
+    const planning = plannings.find(item => item.objectiveId === focusObjectiveId);
+    if (!planning) return;
+    const resultKey = focusResultKeyId
+      ? planning.resultKeys.find(item => item.id === focusResultKeyId)
+      : planning.resultKeys[focusResultKeyIndex];
+    if (!resultKey) return;
+    const resultKeyIndex = planning.resultKeys.indexOf(resultKey);
+    const task = focusTaskId
+      ? resultKey.tasks.find(item => item.id === focusTaskId)
+      : focusTaskIndex === null ? null : resultKey.tasks[focusTaskIndex];
+    const targetId = task
+      ? `ote-task-${planning.objectiveId}-${resultKeyIndex}-${encodeURIComponent(task.id)}`
+      : `ote-result-${planning.objectiveId}-${resultKeyIndex}-${encodeURIComponent(resultKey.id)}`;
+    if (focusedTargetRef.current === targetId) return;
+    focusedTargetRef.current = targetId;
+    setFocusExpandedPlanningId(planning.id);
+    window.setTimeout(() => {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 120);
+  }, [plannings, focusObjectiveId, focusResultKeyId, focusTaskId, focusResultKeyIndex, focusTaskIndex]);
 
   useEffect(() => {
     processIdRef.current = processId;
@@ -410,6 +444,14 @@ export default function TacticalPlanning() {
 
   const toggleExpanded = (id: string) => {
     setPlannings(prev => prev.map(p => p.id === id ? { ...p, expanded: !p.expanded } : p));
+  };
+
+  const toggleVisibleExpansion = (id: string) => {
+    if (focusExpandedPlanningId === id) {
+      setFocusExpandedPlanningId(null);
+      return;
+    }
+    toggleExpanded(id);
   };
 
   const addResultKey = (planningId: string) => {
@@ -958,12 +1000,18 @@ export default function TacticalPlanning() {
         </Card>
 
         <div className="space-y-4">
-          {plannings.map((planning) => (
-            <Card key={planning.id} className="border-l-4 border-l-green-600">
-              <CardHeader className="cursor-pointer" onClick={() => toggleExpanded(planning.id)}>
+          {plannings.map((planning) => {
+            const isExpanded = planning.expanded || focusExpandedPlanningId === planning.id;
+            return (
+            <Card
+              key={planning.id}
+              id={`ote-planning-${planning.objectiveId}`}
+              className={`border-l-4 border-l-green-600 ${planning.objectiveId === focusObjectiveId ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}
+            >
+              <CardHeader className="cursor-pointer" onClick={() => toggleVisibleExpansion(planning.id)}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4 flex-1">
-                    <ChevronDown size={20} className={`transform transition-transform ${planning.expanded ? 'rotate-180' : ''}`} />
+                    <ChevronDown size={20} className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     <div className="flex-1">
                       <CardTitle className="text-lg text-green-900">{planning.objectiveName}</CardTitle>
                       <p className="text-sm text-gray-600 mt-1">Ponderación: {planning.ponderacion || 0}%</p>
@@ -989,7 +1037,7 @@ export default function TacticalPlanning() {
                 </div>
               </CardHeader>
 
-              {planning.expanded && (
+              {isExpanded && (
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
@@ -1047,7 +1095,17 @@ export default function TacticalPlanning() {
                     </div>
 
                     {planning.resultKeys.map((resultKey, rkIdx) => (
-                      <Card key={`rk_${resultKey.id || rkIdx}`} className="bg-sky-100 border-sky-300">
+                      <Card
+                        key={`rk_${resultKey.id || rkIdx}`}
+                        id={`ote-result-${planning.objectiveId}-${rkIdx}-${encodeURIComponent(resultKey.id)}`}
+                        className={`bg-sky-100 border-sky-300 ${
+                          planning.objectiveId === focusObjectiveId &&
+                          (focusResultKeyId ? resultKey.id === focusResultKeyId : rkIdx === focusResultKeyIndex) &&
+                          focusTaskId === null && focusTaskIndex === null
+                            ? "ring-2 ring-blue-500 ring-offset-2"
+                            : ""
+                        }`}
+                      >
                         <CardContent className="pt-4 space-y-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -1135,7 +1193,17 @@ export default function TacticalPlanning() {
                           <div className="space-y-2">
                             <h5 className="font-semibold text-gray-700 text-sm">Tareas</h5>
                             {resultKey.tasks.map((task, taskIdx) => (
-                              <Card key={`task_${task.id || taskIdx}`} className="bg-white border border-gray-200">
+                              <Card
+                                key={`task_${task.id || taskIdx}`}
+                                id={`ote-task-${planning.objectiveId}-${rkIdx}-${encodeURIComponent(task.id)}`}
+                                className={`bg-white border border-gray-200 ${
+                                  planning.objectiveId === focusObjectiveId &&
+                                  (focusResultKeyId ? resultKey.id === focusResultKeyId : rkIdx === focusResultKeyIndex) &&
+                                  (focusTaskId ? task.id === focusTaskId : taskIdx === focusTaskIndex)
+                                    ? "ring-2 ring-blue-500 ring-offset-2"
+                                    : ""
+                                }`}
+                              >
                                 <CardContent className="pt-3 space-y-2">
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs font-bold text-gray-500 bg-blue-100 px-2 py-1 rounded">{taskIdx + 1}</span>
@@ -1261,7 +1329,8 @@ export default function TacticalPlanning() {
                 </CardContent>
               )}
             </Card>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

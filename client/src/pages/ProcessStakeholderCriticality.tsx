@@ -126,6 +126,7 @@ const getCriticalityInfo = (incidenceValues: number[], riskValues: string[]) => 
 export default function ProcessStakeholderCriticality() {
   const [, setLocation] = useLocation();
   const searchParams = useSearch();
+  const focusCriticalityId = Number(new URLSearchParams(searchParams).get("focusCriticalityId"));
   const { session: processLeaderSession, isLoading: contextLoading } = useProcessLeaderAuth();
   const [data, setData] = useState<CriticalityData>({
     processId: "",
@@ -139,6 +140,7 @@ export default function ProcessStakeholderCriticality() {
   const [showAIChat, setShowAIChat] = useState(false);
   // Pestaña activa: 'acciones' | 'encuestas'
   const [activeTab, setActiveTab] = useState<'acciones' | 'encuestas'>('acciones');
+  const focusedCriticalityRef = useRef<number | null>(null);
   // Estado para nueva encuesta en formulario
   const [showSurveyForm, setShowSurveyForm] = useState(false);
   const [editingSurveyId, setEditingSurveyId] = useState<number | null>(null);
@@ -268,6 +270,18 @@ export default function ProcessStakeholderCriticality() {
       setHasInitiallyLoaded(true);
     }
   }, [contextLoading, processLeaderSession, searchParams]);
+
+  useEffect(() => {
+    if (!focusCriticalityId || !data.stakeholders.length || focusedCriticalityRef.current === focusCriticalityId) return;
+    if (!data.stakeholders.some(item => item.dbId === focusCriticalityId)) return;
+    focusedCriticalityRef.current = focusCriticalityId;
+    setActiveTab("acciones");
+    window.setTimeout(() => {
+      document
+        .getElementById(`criticality-action-${focusCriticalityId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  }, [data.stakeholders, focusCriticalityId]);
 
   const { data: subprocessMapData, isLoading: isLoadingSubprocessMap, error: subprocessMapError } = trpc.subprocessMap.get.useQuery(
     { processId: processId ? parseInt(processId) : 0 },
@@ -1262,7 +1276,11 @@ export default function ProcessStakeholderCriticality() {
               </thead>
               <tbody>
                 {data.stakeholders.map((stakeholder) => (
-                  <tr key={`actions-${stakeholder.id}`} className="hover:bg-slate-50">
+                  <tr
+                    key={`actions-${stakeholder.id}`}
+                    id={stakeholder.dbId ? `criticality-action-${stakeholder.dbId}` : undefined}
+                    className={`hover:bg-slate-50 ${stakeholder.dbId === focusCriticalityId ? "bg-blue-50 ring-2 ring-inset ring-blue-500" : ""}`}
+                  >
                     <td className="border border-slate-300 p-2">{stakeholder.name}</td>
                     <td className="border border-slate-300 p-2">
                       {stakeholder.needsSolicita || stakeholder.needsEntrega ? (

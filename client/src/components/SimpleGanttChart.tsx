@@ -11,6 +11,7 @@ export interface SimpleGanttActivity {
 
 interface SimpleGanttChartProps {
   activities: SimpleGanttActivity[];
+  onOpenActivity?: (activity: SimpleGanttActivity) => void;
 }
 
 const MONTH_LABELS = [
@@ -37,6 +38,7 @@ const BADGE_COLORS: Record<string, { bg: string; text: string; dot: string }> =
       dot: "#2563eb",
     },
     Cumplimientos: { bg: "bg-pink-100", text: "text-pink-800", dot: "#db2777" },
+    Actividades: { bg: "bg-pink-100", text: "text-pink-800", dot: "#db2777" },
     Fortaleza: { bg: "bg-green-100", text: "text-green-800", dot: "#16a34a" },
     Oportunidad: {
       bg: "bg-orange-100",
@@ -64,6 +66,7 @@ function getBadgeStyle(badge: string) {
 
 export const SimpleGanttChart: React.FC<SimpleGanttChartProps> = ({
   activities,
+  onOpenActivity,
 }) => {
   const [tooltip, setTooltip] = useState<{
     x: number;
@@ -190,12 +193,15 @@ export const SimpleGanttChart: React.FC<SimpleGanttChartProps> = ({
                     >
                       {activity.badge}
                     </span>
-                    <span
-                      className="text-sm text-gray-800 truncate"
-                      title={activity.label}
+                    <button
+                      type="button"
+                      className="min-w-0 truncate text-left text-sm text-gray-800 underline-offset-2 hover:text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                      title={onOpenActivity ? `Abrir para gestionar: ${activity.label}` : activity.label}
+                      aria-label={`${onOpenActivity ? "Abrir para gestionar" : "Ver detalle de"} ${activity.label}`}
+                      onClick={() => onOpenActivity?.(activity)}
                     >
                       {activity.label}
-                    </span>
+                    </button>
                   </div>
 
                   {/* Month cells */}
@@ -209,8 +215,9 @@ export const SimpleGanttChart: React.FC<SimpleGanttChartProps> = ({
 
                   {/* Milestone dot — rendered as absolute overlay */}
                   {colIdx >= 0 && (
-                    <div
-                      className="absolute flex items-center justify-center cursor-pointer"
+                    <button
+                      type="button"
+                      className="absolute flex items-center justify-center cursor-pointer border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                       style={{
                         left: dotX - 14,
                         top: dotY - 14,
@@ -231,6 +238,10 @@ export const SimpleGanttChart: React.FC<SimpleGanttChartProps> = ({
                       }}
                       onMouseLeave={() => setTooltip(null)}
                       onClick={e => {
+                        if (onOpenActivity) {
+                          onOpenActivity(activity);
+                          return;
+                        }
                         const rect =
                           containerRef.current?.getBoundingClientRect();
                         if (rect)
@@ -240,7 +251,8 @@ export const SimpleGanttChart: React.FC<SimpleGanttChartProps> = ({
                             activity,
                           });
                       }}
-                      aria-label={`Ver detalle de ${activity.label}`}
+                      aria-label={`${onOpenActivity ? "Abrir para gestionar" : "Ver detalle de"} ${activity.label}`}
+                      title={onOpenActivity ? `Abrir para gestionar: ${activity.label}` : undefined}
                     >
                       {activity.completed ? (
                         // Diamante sólido = completada
@@ -273,7 +285,7 @@ export const SimpleGanttChart: React.FC<SimpleGanttChartProps> = ({
                           />
                         </svg>
                       )}
-                    </div>
+                    </button>
                   )}
                 </div>
               );
@@ -321,6 +333,11 @@ export const SimpleGanttChart: React.FC<SimpleGanttChartProps> = ({
           >
             {tooltip.activity.completed ? "✓ Completada" : "◇ Pendiente"}
           </p>
+          {onOpenActivity && (
+            <p className="mt-2 text-xs font-medium text-blue-700">
+              Haz clic en el rombo o en el nombre para abrir esta actividad y gestionarla.
+            </p>
+          )}
         </div>
       )}
     </div>
