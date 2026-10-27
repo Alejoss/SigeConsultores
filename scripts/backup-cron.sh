@@ -46,10 +46,18 @@ if ! command -v aws &>/dev/null; then
   exit 1
 fi
 
+# docker-compose.prod.yml interpolates ${APP_IMAGE} for the app service, but CD does not persist it in
+# .env.production (it is injected only at deploy time). Without it compose rejects every command, even
+# ones that only touch mysql. The backup never starts the app service, so any image name is valid here.
+export APP_IMAGE="${APP_IMAGE:-ghcr.io/alejoss/sigeconsultores:latest}"
+
 COMPOSE_CMD=(docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE")
 
 echo "[$(date -u)] Starting backup → ${S3_PATH}"
 echo "[$(date -u)] Compose: ${COMPOSE_FILE}"
+
+# Fail loudly on an invalid compose project; the `ps` check below hides stderr and would misreport it as "not running".
+"${COMPOSE_CMD[@]}" config --quiet
 
 if ! "${COMPOSE_CMD[@]}" ps --status running mysql 2>/dev/null | grep -q mysql; then
   echo "[$(date -u)] MySQL container not running; starting mysql service..."
