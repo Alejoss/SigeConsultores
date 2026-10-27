@@ -294,4 +294,45 @@ describe("online courses flow", () => {
     const tree = await worker.caller().tree();
     expect(tree.fields.some(field => field.certificate)).toBe(true);
   });
+
+  it("archives content with learner history and deletes unused content only for its owner", async () => {
+    const admin = harness();
+    await admin.caller().login({ identificacion: adminEmail, password: staffPassword });
+
+    const archivedLesson = await admin.caller().removeContent({ kind: "capacitacion", id: firstLessonId });
+    expect(archivedLesson.outcome).toBe("archived");
+    const archivedRow = await db.select().from(courseLessons).where(eq(courseLessons.id, firstLessonId)).limit(1);
+    expect(archivedRow[0]?.archivedAt).not.toBeNull();
+    const preservedResults = await db.select().from(courseResults).where(eq(courseResults.lessonId, firstLessonId));
+    expect(preservedResults.length).toBeGreaterThan(0);
+
+    const archivedModule = await admin.caller().removeContent({ kind: "modulo", id: firstModuleId });
+    expect(archivedModule.outcome).toBe("archived");
+    const archivedModuleRow = await db.select().from(courseModules).where(eq(courseModules.id, firstModuleId)).limit(1);
+    expect(archivedModuleRow[0]?.archivedAt).not.toBeNull();
+    const preservedCertificates = await db.select().from(courseModuleCertificates).where(eq(courseModuleCertificates.moduleId, firstModuleId));
+    expect(preservedCertificates.length).toBeGreaterThan(0);
+
+    const removedModule = await admin.caller().removeContent({ kind: "modulo", id: closedModuleId });
+    expect(removedModule.outcome).toBe("deleted");
+    expect((await db.select().from(courseModules).where(eq(courseModules.id, closedModuleId))).length).toBe(0);
+
+    const manager = harness();
+    await manager.caller().login({ identificacion: managerEmail, password: staffPassword });
+    await expect(manager.caller().removeContent({ kind: "campo", id: fieldId })).rejects.toThrow(/no es tuyo/i);
+
+    const archivedField = await admin.caller().removeContent({ kind: "campo", id: fieldId });
+    expect(archivedField.outcome).toBe("archived");
+    const archivedFieldRow = await db.select().from(courseFields).where(eq(courseFields.id, fieldId)).limit(1);
+    expect(archivedFieldRow[0]?.archivedAt).not.toBeNull();
+    expect((await admin.caller().catalogOverview()).fields.some(field => field.id === fieldId)).toBe(false);
+
+    const unusedFieldId = (await manager.caller().createField({ name: `Desechable ${stamp}` })).id;
+    const unusedModuleId = (await manager.caller().createModule({ fieldId: unusedFieldId, name: "Borrador" })).id;
+    await manager.caller().createLesson({ moduleId: unusedModuleId, file: lessonFile("Borrador sin uso") });
+    const removedField = await manager.caller().removeContent({ kind: "campo", id: unusedFieldId });
+    expect(removedField.outcome).toBe("deleted");
+    expect((await db.select().from(courseFields).where(eq(courseFields.id, unusedFieldId))).length).toBe(0);
+    expect((await db.select().from(courseModules).where(eq(courseModules.id, unusedModuleId))).length).toBe(0);
+  });
 });

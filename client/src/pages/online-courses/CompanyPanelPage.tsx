@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { courseDateTimeLocalValue } from "@shared/onlineCourses";
 import { trpc } from "@/lib/trpc";
 import { LoginForm, Shell } from "./PortalPage";
+import { CourseContentRemovalButton } from "./CourseContentRemovalButton";
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : "No se pudo completar la acción.";
@@ -202,11 +203,43 @@ export default function CompanyPanelPage() {
       <p className="mb-3 text-sm text-slate-500">Solo las ve tu empresa. Se publican directo.</p>
       {(data?.fields || []).filter(field => field.own).map(field => (
         <article key={field.id} className="mb-3 rounded-xl border bg-white p-4">
-          <h3 className="font-semibold">{field.name}</h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-semibold">{field.name}</h3>
+            <CourseContentRemovalButton
+              kind="campo"
+              id={field.id}
+              name={field.name}
+              companyId={companyId}
+              onRemoved={outcome => reload(outcome === "archived" ? "Campo archivado; se conservó el historial" : "Campo eliminado")}
+            />
+          </div>
           {field.modules.map(moduleRow => (
-            <div key={moduleRow.id} className="flex items-center justify-between border-t py-2 text-sm">
-              <span>{moduleRow.name} · {moduleRow.lessonCount}</span>
-              <button className="rounded border px-2 py-1" onClick={() => setModuleId(moduleRow.id)}>+ Cargar capacitación</button>
+            <div key={moduleRow.id} className="border-t py-2 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span>{moduleRow.name} · {moduleRow.lessonCount}</span>
+                <div className="flex items-center gap-1">
+                  <button className="rounded border px-2 py-1" onClick={() => setModuleId(moduleRow.id)}>+ Cargar capacitación</button>
+                  <CourseContentRemovalButton
+                    kind="modulo"
+                    id={moduleRow.id}
+                    name={moduleRow.name}
+                    companyId={companyId}
+                    onRemoved={outcome => reload(outcome === "archived" ? "Módulo archivado; se conservó el historial" : "Módulo eliminado")}
+                  />
+                </div>
+              </div>
+              {moduleRow.lessons.map(lesson => (
+                <div key={lesson.id} className="ml-4 mt-2 flex items-center justify-between gap-3 rounded bg-slate-50 px-2 py-1 text-xs text-slate-600">
+                  <span>Capacitación {lesson.number}: {lesson.title}</span>
+                  <CourseContentRemovalButton
+                    kind="capacitacion"
+                    id={lesson.id}
+                    name={lesson.title}
+                    companyId={companyId}
+                    onRemoved={outcome => reload(outcome === "archived" ? "Capacitación archivada; se conservó el historial" : "Capacitación eliminada")}
+                  />
+                </div>
+              ))}
             </div>
           ))}
           <button className="mt-2 text-sm underline" onClick={() => setFieldId(field.id)}>+ Nuevo módulo</button>

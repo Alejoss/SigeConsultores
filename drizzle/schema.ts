@@ -2805,6 +2805,7 @@ export const courseFields = mysqlTable("courseFields", {
   companyId: int("companyId"),
   name: varchar("name", { length: 255 }).notNull(),
   sortOrder: int("sortOrder").notNull().default(0),
+  archivedAt: timestamp("archivedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -2815,6 +2816,7 @@ export const courseModules = mysqlTable("courseModules", {
   fieldId: int("fieldId").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   sortOrder: int("sortOrder").notNull().default(0),
+  archivedAt: timestamp("archivedAt"),
 });
 
 export type CourseModule = typeof courseModules.$inferSelect;
@@ -2827,6 +2829,7 @@ export const courseLessons = mysqlTable("courseLessons", {
   contentJson: longtext("contentJson").notNull(),
   questionsJson: longtext("questionsJson").notNull(),
   sortOrder: int("sortOrder").notNull().default(0),
+  archivedAt: timestamp("archivedAt"),
 });
 
 export type CourseLesson = typeof courseLessons.$inferSelect;
