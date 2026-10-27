@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, ClipboardCheck, Link2, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ProcessLinkDialog } from "@/components/ProcessLinkDialog";
 import { SourceEvidenceButton } from "@/components/SourceEvidenceButton";
 import { trpc } from "@/lib/trpc";
+import { mergePendingPatch, mergeProtectedDraft } from "@/lib/autosaveDraft";
 
 type SourceType = "audit" | "inspection";
 type LinkedSourceType = "audit_finding" | "inspection_finding";
@@ -26,6 +27,19 @@ type Finding = {
   completed: boolean;
 };
 
+type FindingDraft = {
+  classification: Classification;
+  finding: string;
+  closureTask: string;
+  referenceResponsible: string;
+  targetDate: string;
+  completed: boolean;
+};
+
+type FindingUpdate = Omit<FindingDraft, "referenceResponsible" | "completed"> & {
+  referenceResponsible: string | null;
+};
+
 const classificationOptions: Array<{ value: Classification; label: string; tone: string }> = [
   { value: "major_nc", label: "No conformidad mayor", tone: "border-red-200 bg-red-50 text-red-800" },
   { value: "minor_nc", label: "No conformidad menor", tone: "border-orange-200 bg-orange-50 text-orange-800" },
@@ -37,6 +51,17 @@ function dateInputValue(value: Date | string | null) {
   if (!value) return "";
   if (typeof value === "string") return value.slice(0, 10);
   return value.toISOString().slice(0, 10);
+}
+
+function toFindingDraft(value: Finding): FindingDraft {
+  return {
+    classification: value.classification,
+    finding: value.finding,
+    closureTask: value.closureTask,
+    referenceResponsible: value.referenceResponsible || "",
+    targetDate: dateInputValue(value.targetDate),
+    completed: Boolean(value.completed),
+  };
 }
 
 function FindingCard({
@@ -52,15 +77,12 @@ function FindingCard({
   onChanged: () => void;
   canManage?: boolean;
 }) {
-  const [draft, setDraft] = useState(() => ({
-    classification: value.classification,
-    finding: value.finding,
-    closureTask: value.closureTask,
-    referenceResponsible: value.referenceResponsible || "",
-    targetDate: dateInputValue(value.targetDate),
-    completed: Boolean(value.completed),
-  }));
+  const [draft, setDraft] = useState(() => toFindingDraft(value));
   const [linkDialog, setLinkDialog] = useState(false);
+  const saveTimeoutRef = useRef<number | null>(null);
+  const updateInFlightRef = useRef(false);
+  const pendingPatchRef = useRef<Partial<FindingUpdate> | null>(null);
+  const dirtyFieldsRef = useRef<Set<keyof FindingDraft>>(new Set());
   const utils = trpc.useUtils();
   const linkedSourceType: LinkedSourceType = sourceType === "audit" ? "audit_finding" : "inspection_finding";
   const progress = trpc.linkedCommitments.listSourceProgress.useQuery({
@@ -68,13 +90,7 @@ function FindingCard({
     sourceType: linkedSourceType,
     sourceId: value.id,
   });
-  const update = trpc.operationalFindings.update.useMutation({
-    onSuccess: () => {
-      utils.operationalFindings.list.invalidate();
-      onChanged();
-    },
-    onError: error => toast.error(error.message),
-  });
+  const update = trpc.operationalFindings.update.useMutation();
   const remove = trpc.operationalFindings.delete.useMutation({
     onSuccess: () => {
       toast.success("Hallazgo eliminado");
@@ -84,28 +100,52 @@ function FindingCard({
   });
 
   useEffect(() => {
-    setDraft({
-      classification: value.classification,
-      finding: value.finding,
-      closureTask: value.closureTask,
-      referenceResponsible: value.referenceResponsible || "",
-      targetDate: dateInputValue(value.targetDate),
-      completed: Boolean(value.completed),
-    });
+    setDraft(current => mergeProtectedDraft(current, toFindingDraft(value), dirtyFieldsRef.current));
   }, [value]);
+
+  useEffect(() => () => {
+    if (saveTimeoutRef.current !== null) window.clearTimeout(saveTimeoutRef.current);
+  }, []);
 
   const classification = classificationOptions.find(option => option.value === draft.classification)!;
   const isInspection = sourceType === "inspection";
   const hasLinks = (progress.data?.total || 0) > 0;
-  const change = <K extends keyof typeof draft>(field: K, next: (typeof draft)[K]) => {
+  const sendPendingUpdate = () => {
+    if (updateInFlightRef.current || !pendingPatchRef.current) return;
+
+    const patch = pendingPatchRef.current;
+    pendingPatchRef.current = null;
+    updateInFlightRef.current = true;
+    update.mutate({ id: value.id, companyId, ...patch }, {
+      onSuccess: () => {
+        updateInFlightRef.current = false;
+        for (const field of Object.keys(patch) as Array<keyof FindingDraft>) {
+          if (!(field in (pendingPatchRef.current || {}))) dirtyFieldsRef.current.delete(field);
+        }
+        utils.operationalFindings.list.invalidate();
+        onChanged();
+        sendPendingUpdate();
+      },
+      onError: error => {
+        updateInFlightRef.current = false;
+        pendingPatchRef.current = mergePendingPatch(patch, pendingPatchRef.current || {});
+        toast.error(error.message);
+      },
+    });
+  };
+
+  const change = <K extends keyof FindingDraft>(field: K, next: FindingDraft[K]) => {
     setDraft(current => ({ ...current, [field]: next }));
-    window.setTimeout(() => {
-      update.mutate({
-        id: value.id,
-        companyId,
-        [field]: field === "referenceResponsible" ? (next || null) : next,
-      } as Parameters<typeof update.mutate>[0]);
-    }, 350);
+    dirtyFieldsRef.current.add(field);
+    const nextPatch: Partial<FindingUpdate> = field === "referenceResponsible"
+      ? { referenceResponsible: typeof next === "string" && next.length > 0 ? next : null }
+      : ({ [field]: next } as Partial<FindingUpdate>);
+    pendingPatchRef.current = mergePendingPatch(pendingPatchRef.current, nextPatch);
+    if (saveTimeoutRef.current !== null) window.clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = window.setTimeout(() => {
+      saveTimeoutRef.current = null;
+      sendPendingUpdate();
+    }, 500);
   };
 
   return (
