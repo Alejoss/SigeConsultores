@@ -683,6 +683,33 @@ export const processFODA = mysqlTable("processFODA", {
 export type ProcessFODA = typeof processFODA.$inferSelect;
 export type InsertProcessFODA = typeof processFODA.$inferInsert;
 
+/** Excepción auditada para objetivos de Política que no aplican a un proceso. */
+export const policyObjectiveProcessApplicability = mysqlTable(
+  "policyObjectiveProcessApplicability",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    policyObjectiveId: int("policyObjectiveId").notNull(),
+    processId: int("processId").notNull(),
+    status: mysqlEnum("status", ["not_applicable"]).notNull(),
+    justification: text("justification").notNull(),
+    confirmedByName: varchar("confirmedByName", { length: 255 }),
+    confirmedByEmail: varchar("confirmedByEmail", { length: 320 }),
+    confirmedAt: timestamp("confirmedAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    policyObjectiveProcessApplicabilityUnique: unique("policy_objective_process_applicability_unique").on(
+      table.policyObjectiveId,
+      table.processId
+    ),
+  })
+);
+
+export type PolicyObjectiveProcessApplicability = typeof policyObjectiveProcessApplicability.$inferSelect;
+export type InsertPolicyObjectiveProcessApplicability = typeof policyObjectiveProcessApplicability.$inferInsert;
+
 /**
  * Process Risk Matrix - Stores risk assessment for specific processes
  */

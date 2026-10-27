@@ -78,6 +78,11 @@ export interface MatrizFODARow {
   
   // Identificación
   subproceso: string;
+  /** Identidad persistente del FODA de origen en filas nuevas. */
+  sourceFodaElementId?: string;
+  /** Vínculo canónico del Objetivo de la Política; el texto conserva el histórico. */
+  policyObjectiveId?: number | null;
+  policyObjectiveDescription?: string;
   objetivoPolitica?: string;
   elemento: string;
   foda: FODAType;

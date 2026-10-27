@@ -266,7 +266,7 @@ export default function ProcessRiskMatrix() {
     if (!fodaData || !initialLoadDoneRef.current || fodaSyncDoneRef.current) return;
     fodaSyncDoneRef.current = true;
     try {
-      const allFodaItems: Array<{ statement: string; type: FODAType; subprocess: string; policyObjective: string }> = [
+      const allFodaItems: Array<{ fodaElementId?: string; statement: string; type: FODAType; subprocess: string; policyObjectiveId?: number | null; policyObjective: string; policyObjectiveDescription?: string }> = [
         ...JSON.parse(fodaData.strengths || '[]').map((i: any) => ({ ...i, type: 'Fortaleza' as FODAType })),
         ...JSON.parse(fodaData.opportunities || '[]').map((i: any) => ({ ...i, type: 'Oportunidad' as FODAType })),
         ...JSON.parse(fodaData.weaknesses || '[]').map((i: any) => ({ ...i, type: 'Debilidad' as FODAType })),
@@ -279,7 +279,9 @@ export default function ProcessRiskMatrix() {
           .filter(i => i.statement && !existingStatements.has(i.statement))
           .map((item, idx) => ({
             id: Date.now() + idx,
-            subproceso: item.subprocess || '', objetivoPolitica: item.policyObjective || '',
+            sourceFodaElementId: item.fodaElementId,
+            subproceso: item.subprocess || '', policyObjectiveId: item.policyObjectiveId ?? null,
+            policyObjectiveDescription: item.policyObjectiveDescription || '', objetivoPolitica: item.policyObjective || '',
             elemento: item.statement || '', foda: item.type, factor: 'Humano' as FactorType,
             consecuencia: '', sistemaGestion: 'Calidad' as SistemaGestionType,
             probabilidad: (item.type === 'Debilidad' || item.type === 'Amenaza') ? 'A' as ProbabilidadType : undefined,
@@ -289,9 +291,9 @@ export default function ProcessRiskMatrix() {
             mejoraImplementada: 'NO' as 'SI' | 'NO', observacion: '', medioVerificacion: '',
             objetivoLogrado: 'NO' as 'SI' | 'NO',
           }));
-        const filtered = prev.filter(r => !r.elemento || fodaStatements.has(r.elemento));
-        if (toAdd.length === 0 && filtered.length === prev.length) return prev;
-        return [...filtered, ...toAdd];
+        // Los OTG son evidencia histórica: un cambio o eliminación en FODA no los borra.
+        if (toAdd.length === 0) return prev;
+        return [...prev, ...toAdd];
       });
     } catch (e) { console.error('Error syncing FODA to OTG:', e); }
   }, [fodaData]);
@@ -349,7 +351,9 @@ export default function ProcessRiskMatrix() {
           const addRows = (items: any[], type: FODAType) => {
             items.forEach((item) => {
               newRows.push({
-                id, subproceso: item.subprocess || '', objetivoPolitica: item.policyObjective || '',
+                id, sourceFodaElementId: item.fodaElementId,
+                subproceso: item.subprocess || '', policyObjectiveId: item.policyObjectiveId ?? null,
+                policyObjectiveDescription: item.policyObjectiveDescription || '', objetivoPolitica: item.policyObjective || '',
                 elemento: item.statement || '', foda: type, factor: 'Humano', consecuencia: '',
                 sistemaGestion: 'Calidad',
                 probabilidad: type === 'Debilidad' || type === 'Amenaza' ? 'A' : undefined,
