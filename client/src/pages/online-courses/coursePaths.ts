@@ -1,4 +1,9 @@
-import { courseEntryUrl, DEFAULT_COURSE_HOSTS, isCourseHostname, managementHomeUrl } from "@shared/onlineCourses";
+import {
+  courseEntryUrl,
+  DEFAULT_COURSE_HOSTS,
+  isCourseHostname,
+  managementHomeUrl,
+} from "@shared/onlineCourses";
 
 export function isOnlineCourseHost(): boolean {
   if (typeof window === "undefined") return false;
@@ -6,7 +11,10 @@ export function isOnlineCourseHost(): boolean {
     .split(",")
     .map(item => item.trim())
     .filter(Boolean);
-  return isCourseHostname(window.location.hostname, [...DEFAULT_COURSE_HOSTS, ...extra]);
+  return isCourseHostname(window.location.hostname, [
+    ...DEFAULT_COURSE_HOSTS,
+    ...extra,
+  ]);
 }
 
 /** Course pages live on the subdomain, so their links have no /cursos prefix. */
@@ -20,10 +28,14 @@ export function coursePath(path: string): string {
 }
 
 /** Button on the management site. Hits this host first so the session cookie can be shared. */
-export function courseEntryHref(path: string): string {
+export function courseEntryHref(path: string, companyId?: number): string {
   const suffix = path.startsWith("/") ? path : `/${path}`;
   if (typeof window !== "undefined" && !isOnlineCourseHost()) {
-    return `/api/auth/session/continue?to=${encodeURIComponent(suffix)}`;
+    const params = new URLSearchParams({ to: suffix });
+    if (companyId && Number.isInteger(companyId) && companyId > 0) {
+      params.set("companyId", String(companyId));
+    }
+    return `/api/auth/session/continue?${params.toString()}`;
   }
   return courseEntryUrl(suffix, {
     publicUrl: import.meta.env.VITE_COURSE_PUBLIC_URL as string | undefined,
@@ -32,5 +44,7 @@ export function courseEntryHref(path: string): string {
 }
 
 export function managementHomeHref(): string {
-  return managementHomeUrl(typeof window === "undefined" ? "" : window.location.hostname);
+  return managementHomeUrl(
+    typeof window === "undefined" ? "" : window.location.hostname
+  );
 }

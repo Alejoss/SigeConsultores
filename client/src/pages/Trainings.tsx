@@ -13,6 +13,8 @@ import {
   CompanyReadOnlyNotice,
   useCompanyManagementPermission,
 } from "@/hooks/useCompanyManagementPermission";
+import { useOnlineCourseManagementPermission } from "@/hooks/useOnlineCourseManagementPermission";
+import { courseEntryHref } from "./online-courses/coursePaths";
 
 interface ImportRow {
   name: string;
@@ -585,9 +587,11 @@ export default function Trainings() {
         if (urlCid) return parseInt(urlCid);
         const stored = localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId");
         return stored ? parseInt(stored) : 0;
-      })()
+  })()
     : 0;
   const { canManageCompany, isChecking } = useCompanyManagementPermission(companyId);
+  const { canManageOnlineCourses, isChecking: isCheckingOnlineCourses } =
+    useOnlineCourseManagementPermission(companyId);
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [backupsPanelId, setBackupsPanelId] = useState<number | null>(null);
@@ -952,12 +956,19 @@ export default function Trainings() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-4xl font-bold text-gray-900">Capacitaciones</h1>
-          <Button variant="outline" onClick={() => {
-            const cid = localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId");
-            navigate(cid ? `/audits-inspections?companyId=${cid}` : "/audits-inspections");
-          }}>
-            ← Volver
-          </Button>
+          <div className="flex items-center gap-2">
+            {!isCheckingOnlineCourses && canManageOnlineCourses && (
+              <Button variant="outline" asChild>
+                <a href={courseEntryHref("/empresa", companyId)}>Capacitaciones On line</a>
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => {
+              const cid = localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId");
+              navigate(cid ? `/audits-inspections?companyId=${cid}` : "/audits-inspections");
+            }}>
+              ← Volver
+            </Button>
+          </div>
         </div>
 
         {!isChecking && !canManageCompany && <CompanyReadOnlyNotice />}

@@ -6,6 +6,8 @@ import {
   accounts,
   accountRoles,
   companyManagementAccess,
+  companyOnlineCourseAccess,
+  companyOnlineCourseAccessAudit,
   processes,
   roles,
 } from "../../drizzle/schema";
@@ -51,6 +53,34 @@ export const teamAccessRouter = router({
       return { accessLevel: access?.accessLevel === "coordinator" ? "coordinator" as const : "standard" as const };
     }),
 
+  getMyOnlineCourseManagementAccess: companyProcedure
+    .input(companyInput)
+    .query(async ({ input, ctx }) => {
+      if (ctx.user?.role === "admin") return { accessLevel: "admin" as const };
+      if (ctx.manager?.companyId === input.companyId) return { accessLevel: "manager" as const };
+      if (!ctx.processLeader || ctx.processLeader.companyId !== input.companyId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "No tiene acceso a esta empresa." });
+      }
+      const db = await getDb();
+      if (!db) throw new Error("Base de datos no disponible");
+      const [access] = await db
+        .select({ accessLevel: companyOnlineCourseAccess.accessLevel })
+        .from(companyOnlineCourseAccess)
+        .where(
+          and(
+            eq(companyOnlineCourseAccess.companyId, input.companyId),
+            eq(companyOnlineCourseAccess.accountId, ctx.processLeader.processLeaderId)
+          )
+        )
+        .limit(1);
+      return {
+        accessLevel:
+          access?.accessLevel === "online_course_manager"
+            ? ("online_course_manager" as const)
+            : ("standard" as const),
+      };
+    }),
+
   listProcessLeaders: companyProcedure
     .input(companyInput)
     .query(async ({ input, ctx }) => {
@@ -70,6 +100,8 @@ export const teamAccessRouter = router({
         status: accountRoles.status,
         accessLevel: companyManagementAccess.accessLevel,
         grantedAt: companyManagementAccess.grantedAt,
+        onlineCourseAccessLevel: companyOnlineCourseAccess.accessLevel,
+        onlineCourseGrantedAt: companyOnlineCourseAccess.grantedAt,
       })
         .from(accountRoles)
         .innerJoin(accounts, eq(accountRoles.accountId, accounts.id))
@@ -79,6 +111,13 @@ export const teamAccessRouter = router({
           and(
             eq(companyManagementAccess.companyId, input.companyId),
             eq(companyManagementAccess.accountId, accountRoles.accountId)
+          )
+        )
+        .leftJoin(
+          companyOnlineCourseAccess,
+          and(
+            eq(companyOnlineCourseAccess.companyId, input.companyId),
+            eq(companyOnlineCourseAccess.accountId, accountRoles.accountId)
           )
         )
         .where(and(
@@ -176,6 +215,91 @@ export const teamAccessRouter = router({
             : "Autorización de Coordinador de empresa revocada; conserva la gestión de su propio proceso.",
       });
 
+      return { success: true, accessLevel: input.accessLevel };
+    }),
+
+  /**
+   * Autoriza o revoca únicamente el panel de Capacitaciones en Línea para un
+   * Jefe activo de esta empresa. No modifica Coordinación ni roles de ISGE.
+   */
+  setOnlineCourseManagementAccess: companyProcedure
+    .input(
+      companyInput.extend({
+        accountId: z.number().int().positive(),
+        accessLevel: z.enum(["standard", "online_course_manager"]),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      requireManagerCompany(ctx, input.companyId);
+      const db = await getDb();
+      if (!db) throw new Error("Base de datos no disponible");
+      const processLeaderRoleId = await getRoleIdBySlug(db, "process_leader");
+      if (processLeaderRoleId == null) throw new Error("No se encontró el rol de Jefe de Proceso");
+      const [leader] = await db
+        .select({ accountId: accountRoles.accountId })
+        .from(accountRoles)
+        .where(
+          and(
+            eq(accountRoles.accountId, input.accountId),
+            eq(accountRoles.companyId, input.companyId),
+            eq(accountRoles.roleId, processLeaderRoleId),
+            eq(accountRoles.status, "active")
+          )
+        )
+        .limit(1);
+      if (!leader) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "El Jefe de Proceso activo no pertenece a esta empresa.",
+        });
+      }
+      const [managerAccount] = await db
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(eq(accounts.email, ctx.manager!.managerEmail))
+        .limit(1);
+      const now = new Date();
+      const [existing] = await db
+        .select({ id: companyOnlineCourseAccess.id })
+        .from(companyOnlineCourseAccess)
+        .where(
+          and(
+            eq(companyOnlineCourseAccess.companyId, input.companyId),
+            eq(companyOnlineCourseAccess.accountId, input.accountId)
+          )
+        )
+        .limit(1);
+      const accessData = {
+        accessLevel: input.accessLevel,
+        grantedByAccountId: managerAccount?.id ?? null,
+        grantedAt: input.accessLevel === "online_course_manager" ? now : null,
+        revokedAt: input.accessLevel === "standard" ? now : null,
+      } as const;
+      if (existing) {
+        await db
+          .update(companyOnlineCourseAccess)
+          .set({ ...accessData, updatedAt: now })
+          .where(eq(companyOnlineCourseAccess.id, existing.id));
+      } else {
+        await db.insert(companyOnlineCourseAccess).values({
+          companyId: input.companyId,
+          accountId: input.accountId,
+          ...accessData,
+        });
+      }
+      await db.insert(companyOnlineCourseAccessAudit).values({
+        eventType:
+          input.accessLevel === "online_course_manager"
+            ? "granted"
+            : "revoked",
+        companyId: input.companyId,
+        accountId: input.accountId,
+        performedByAccountId: managerAccount?.id ?? null,
+        description:
+          input.accessLevel === "online_course_manager"
+            ? "Jefe autorizado para administrar únicamente Capacitaciones en Línea de esta empresa."
+            : "Autorización de Capacitaciones en Línea revocada; conserva la gestión de su propio proceso.",
+      });
       return { success: true, accessLevel: input.accessLevel };
     }),
 

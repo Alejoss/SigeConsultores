@@ -134,12 +134,59 @@ export type InsertCompanyManagementAccess =
   typeof companyManagementAccess.$inferInsert;
 
 /**
+ * Reversible authorization to administer only Capacitaciones en Línea for an
+ * existing process leader. It does not confer company coordination, access to
+ * other processes, or personnel/access-management rights in ISGE 360.
+ */
+export const companyOnlineCourseAccess = mysqlTable(
+  "companyOnlineCourseAccess",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    accountId: int("accountId").notNull(),
+    accessLevel: mysqlEnum("accessLevel", ["standard", "online_course_manager"])
+      .default("standard")
+      .notNull(),
+    grantedByAccountId: int("grantedByAccountId"),
+    grantedAt: timestamp("grantedAt"),
+    revokedAt: timestamp("revokedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    companyOnlineCourseAccessScope: unique("company_online_course_access_scope").on(
+      table.companyId,
+      table.accountId
+    ),
+  })
+);
+
+export type CompanyOnlineCourseAccess = typeof companyOnlineCourseAccess.$inferSelect;
+export type InsertCompanyOnlineCourseAccess =
+  typeof companyOnlineCourseAccess.$inferInsert;
+
+/** Bitácora exclusiva de autorizaciones de Capacitaciones en Línea. */
+export const companyOnlineCourseAccessAudit = mysqlTable("companyOnlineCourseAccessAudit", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  accountId: int("accountId").notNull(),
+  performedByAccountId: int("performedByAccountId"),
+  eventType: mysqlEnum("eventType", ["granted", "revoked"]).notNull(),
+  description: text("description").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CompanyOnlineCourseAccessAudit =
+  typeof companyOnlineCourseAccessAudit.$inferSelect;
+
+/**
  * One session row per login — always tied to `accounts.id`.
  */
 export const authSessions = mysqlTable("auth_sessions", {
   id: int("id").autoincrement().primaryKey(),
   tokenHash: varchar("tokenHash", { length: 64 }).notNull().unique(),
   accountId: int("accountId").notNull(),
+  /** Empresa elegida solo para abrir el panel de Capacitaciones en Línea. */
+  courseCompanyId: int("courseCompanyId"),
   expiresAt: timestamp("expiresAt").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   revokedAt: timestamp("revokedAt"),

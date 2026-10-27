@@ -5,6 +5,7 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { courseContinueLocation, courseContinuePath } from "@shared/onlineCourses";
 import { findActiveAuthSessionByPlainToken, revokeAuthSessionByPlainToken } from "../authSessionRepository";
 import { getDb } from "../db";
+import { selectCourseCompanyForPlatformSession } from "../onlineCourses/service";
 import { applySessionCookie, clearSessionCookie } from "./cookies";
 import { resolveAuthFromRequest } from "./resolveRequestAuth";
 import { completeUnifiedLoginSession, tryUnifiedLogin } from "./unifiedLogin";
@@ -139,7 +140,16 @@ export function registerAuthSessionRoutes(app: Express) {
     const plain = readSessionCookie(req);
     if (plain) {
       const row = await findActiveAuthSessionByPlainToken(plain);
-      if (row?.accountId) applySessionCookie(res, req, plain, ONE_YEAR_MS);
+      if (row?.accountId) {
+        const requestedCompanyId = Number(req.query.companyId);
+        if (path === "/empresa" && Number.isInteger(requestedCompanyId) && requestedCompanyId > 0) {
+          const selected = await selectCourseCompanyForPlatformSession(plain, requestedCompanyId);
+          if (!selected) {
+            return res.status(403).send("No tienes permiso para administrar capacitaciones de esta empresa.");
+          }
+        }
+        applySessionCookie(res, req, plain, ONE_YEAR_MS);
+      }
     }
     return res.redirect(302, courseContinueLocation(req.hostname, path));
   });
