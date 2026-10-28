@@ -82,6 +82,7 @@ import OrganizationChart from "./pages/OrganizationChart";
 import OrganizationChartView from "./pages/OrganizationChartView";
 import Payroll from "./pages/Payroll";
 import PayrollInactive from "./pages/PayrollInactive";
+import PayrollJobDescriptions from "./pages/PayrollJobDescriptions";
 import AuditsInspections from "./pages/AuditsInspections";
 import Performance from "./pages/Performance";
 import StrategicTrends from "./pages/StrategicTrends";
@@ -302,6 +303,7 @@ function Router() {
       />
       <Route path={"/payroll"} component={Payroll} />
       <Route path={"/payroll-inactive"} component={PayrollInactive} />
+      <Route path={"/payroll/job-descriptions"} component={PayrollJobDescriptions} />
       <Route path={"/performance"} component={Performance} />
       <Route path={"/strategic-trends"} component={StrategicTrends} />
       <Route path={"/axis-estrategia"} component={AxisEstrategia} />
