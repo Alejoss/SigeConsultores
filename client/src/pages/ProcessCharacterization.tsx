@@ -66,6 +66,11 @@ const CHARACTERIZATION_MODULE_GROUPS: CharacterizationModuleGroup[] = [
       { id: "recursos", label: "Recursos", icon: "📦" },
       { id: "subprocesos", label: "Mapa de Subprocesos", icon: "📊" },
       {
+        id: "control-liberacion-salidas",
+        label: "Control y liberación de salidas",
+        icon: "✅",
+      },
+      {
         id: "criticidad",
         label: "Gestión con Partes Interesadas",
         icon: "⚠️",
@@ -395,6 +400,7 @@ export default function ProcessCharacterization() {
 
     const routes: { [key: string]: string } = {
       subprocesos: `/subprocess-map${qs}`,
+      "control-liberacion-salidas": `/process-output-release${qs}`,
       criticidad: `/process-stakeholder-criticality${qs}`,
       foda: `/process-foda${qs}`,
       matriz: `/process-risk-matrix${qs}`,

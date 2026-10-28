@@ -129,6 +129,7 @@ import { meetingsRouter } from "./routers/meetings";
 import { processActivitiesRouter } from "./routers/processActivities";
 import { operationalFindingsRouter } from "./routers/operationalFindings";
 import { stakeholderSurveysRouter } from "./routers/stakeholderSurveys";
+import { processOutputReleaseRouter } from "./routers/processOutputRelease";
 import { strategicTrendsRouter } from "./routers/strategicTrends";
 import { onlineCoursesRouter } from "./routers/onlineCourses";
 import { courseRegCodesRouter } from "./routers/courseRegCodes";
@@ -436,6 +437,9 @@ export const appRouter = router({
 
   // Subprocess Map
   subprocessMap: subprocessMapRouter,
+
+  // Control y liberación de salidas críticas del proceso
+  processOutputRelease: processOutputReleaseRouter,
 
   // Process Map
   processMap: processMapRouter,

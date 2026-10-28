@@ -491,7 +491,7 @@ function StakeholdersPanel({ processId, partesValue }: { processId: number; part
   );
 }
 
-type PanelType = "ote" | "otg" | "partes" | "cumplimientos" | "compromisos" | null;
+type PanelType = "ote" | "otg" | "partes" | "cumplimientos" | "compromisos" | "salidas" | null;
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function ProcessIndicators() {
@@ -518,12 +518,14 @@ export default function ProcessIndicators() {
   const otgData = indicatorsData?.find((d: any) => d.id === "total_alcanzado");
   const partesData = indicatorsData?.find((d: any) => d.id === "cumplimiento");
   const cumplimientosData = indicatorsData?.find((d: any) => d.id === "promedio_cumplimiento");
+  const salidasData = indicatorsData?.find((d: any) => d.id === "control_salidas");
 
   const oteValue = oteData?.value ?? 0;
   // El porcentaje OTG procede del avance real de tareas; "Logrado" sólo es un estado informativo.
   const otgValue = otgData?.compliance ?? 0;
   const partesValue: number | null = partesData?.value ?? null;
   const cumplimientosValue = cumplimientosData?.value ?? 0;
+  const salidasValue: number | null = salidasData?.value ?? null;
   const receivedCommitments = useMemo(
     () => (linkedCommitmentsData || []).filter((commitment: any) => commitment.sourceType !== "own"),
     [linkedCommitmentsData]
@@ -534,6 +536,7 @@ export default function ProcessIndicators() {
     : 0;
   const totalComponents = [oteValue, otgValue, cumplimientosValue];
   if (partesValue !== null) totalComponents.push(partesValue);
+  if (salidasValue !== null) totalComponents.push(salidasValue);
   if (receivedCommitments.length > 0) totalComponents.push(linkedCommitmentsValue);
   const totalAverage = Math.round(totalComponents.reduce((total, value) => total + value, 0) / totalComponents.length);
 
@@ -576,6 +579,7 @@ export default function ProcessIndicators() {
       partes: "Gestión con Partes Interesadas",
       cumplimientos: "Actividades",
       compromisos: "Compromisos vinculados",
+      salidas: "Control y liberación de salidas",
     };
 
     return (
@@ -721,6 +725,52 @@ export default function ProcessIndicators() {
               </div>
             )}
 
+            {/* Control y liberación de salidas */}
+            {activePanel === "salidas" && !isLoading && (
+              <div>
+                <div className="grid gap-4 mb-6 sm:grid-cols-3">
+                  <div className="rounded-xl p-4 text-center" style={{ backgroundColor: C.veryLightGreen }}>
+                    <p className="text-xs font-semibold mb-1" style={{ color: C.textSecondary }}>Liberaciones en plazo</p>
+                    <p className={`text-3xl font-bold ${pctColor(salidasValue)}`}>
+                      {salidasValue === null ? "—" : `${salidasValue}%`}
+                    </p>
+                  </div>
+                  <div className="rounded-xl p-4 text-center" style={{ backgroundColor: C.veryLightGreen }}>
+                    <p className="text-xs font-semibold mb-1" style={{ color: C.textSecondary }}>Salidas críticas activas</p>
+                    <p className="text-3xl font-bold" style={{ color: C.darkGreen }}>{salidasData?.scheduledControls ?? 0}</p>
+                  </div>
+                  <div className="rounded-xl p-4 text-center" style={{ backgroundColor: C.veryLightGreen }}>
+                    <p className="text-xs font-semibold mb-1" style={{ color: C.textSecondary }}>Pendientes vencidas</p>
+                    <p className="text-3xl font-bold text-amber-600">{salidasData?.overdueOpen ?? 0}</p>
+                  </div>
+                </div>
+                {salidasValue === null ? (
+                  <div className="py-10 text-center text-gray-400">
+                    <CheckSquare size={40} className="mx-auto mb-3 opacity-30" />
+                    <p>
+                      {salidasData?.status === "pending_evaluation"
+                        ? "Hay controles configurados, pero aún no existen liberaciones evaluables."
+                        : "No hay salidas críticas configuradas para controlar."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border p-5 text-center" style={{ borderColor: C.lightGreenBg }}>
+                    <p className="text-sm text-slate-600">
+                      {salidasData?.releasedOnTime ?? 0} de {salidasData?.assessableControls ?? 0} liberaciones evaluables se realizaron dentro de su fecha.
+                    </p>
+                    {(salidasData?.exceptions ?? 0) > 0 && (
+                      <p className="mt-2 text-sm text-amber-700">{salidasData?.exceptions ?? 0} con observación registrada.</p>
+                    )}
+                  </div>
+                )}
+                <div className="mt-5 text-right">
+                  <Button onClick={() => navigate(`/process-output-release?processId=${processId}&companyId=${companyIdFromUrl}`)} className="text-sm" style={{ backgroundColor: C.darkGreen }}>
+                    Gestionar salidas
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Actividades */}
             {activePanel === "cumplimientos" && !isLoading && (
               <div className="text-center py-8">
@@ -790,6 +840,24 @@ export default function ProcessIndicators() {
       value: linkedCommitmentsValue,
       extra: isLoadingLinkedCommitments ? "Cargando..." : `${completedLinkedCommitments} de ${receivedCommitments.length} cumplidos`,
       status: receivedCommitments.length > 0 ? pctLabel(linkedCommitmentsValue) : "Sin compromisos",
+    },
+    {
+      id: "salidas" as PanelType,
+      title: "Control de Salidas",
+      subtitle: "Control de calidad del proceso",
+      description: "% de salidas críticas liberadas dentro de la fecha programada",
+      icon: <CheckSquare size={32} style={{ color: C.medGreen }} />,
+      value: salidasValue,
+      extra: salidasValue === null
+        ? salidasData?.status === "pending_evaluation"
+          ? "Sin liberaciones evaluables"
+          : "Sin controles programados"
+        : `${salidasData?.releasedOnTime ?? 0} de ${salidasData?.assessableControls ?? 0} liberadas en plazo`,
+      status: salidasValue === null
+        ? salidasData?.status === "pending_evaluation"
+          ? "Sin evaluación"
+          : "Sin controles"
+        : undefined,
     },
   ];
 

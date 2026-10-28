@@ -25,6 +25,11 @@ export type ScheduleNavigation =
   | {
       destination: "linked_commitment";
       commitmentId: number;
+    }
+  | {
+      destination: "output_release";
+      controlId: number;
+      periodId: number;
     };
 
 export type SchedulableActivity = {
@@ -81,6 +86,11 @@ export function getConsolidatedActivityHref(
     case "linked_commitment":
       return withScope("/linked-commitments", processId, companyId, {
         focusCommitmentId: activity.navigation.commitmentId,
+      });
+    case "output_release":
+      return withScope("/process-output-release", processId, companyId, {
+        focusControlId: activity.navigation.controlId,
+        focusPeriodId: activity.navigation.periodId,
       });
   }
 }
