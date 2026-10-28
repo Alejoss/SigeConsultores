@@ -5,6 +5,7 @@ import { TrendingUp, Target, Settings, Users, CheckSquare, ArrowLeft, Camera, Ch
 import { useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis as RadarAngleAxis, Tooltip } from "recharts";
+import { calculateStakeholderActionProgress, latestStakeholderActionRows } from "@shared/stakeholderActionProgress";
 
 // ─── Mapa de etiquetas para tipo de seguimiento ───────────────────────────────
 const TRACKING_LABELS: Record<string, string> = {
@@ -366,26 +367,25 @@ function OTGCard({ otg, index }: { otg: any; index: number }) {
 // ─── Tipos de ventana ─────────────────────────────────────────────────────────
 
 // ─── Componente: Panel de Partes Interesadas enriquecido ────────────────────────
-function StakeholdersPanel({ processId, partesValue }: { processId: number; partesValue: number }) {
+function StakeholdersPanel({ processId, partesValue }: { processId: number; partesValue: number | null }) {
   const { data: critData = [], isLoading } = trpc.criticalityMatrix.getWithStakeholders.useQuery(
     { processId },
     { enabled: processId > 0 }
   );
   const stats = useMemo(() => {
-    const total = (critData as any[]).length;
-    const implemented = (critData as any[]).filter((c: any) => c.implementationStatus === true || c.implementationStatus === 1).length;
-    const pending = total - implemented;
-    const internal = (critData as any[]).filter((c: any) => c.stakeholderIsInternal === true || c.stakeholderIsInternal === 1).length;
+    const rows = latestStakeholderActionRows(critData as any[]);
+    const actionProgress = calculateStakeholderActionProgress(rows);
+    const total = actionProgress.total;
+    const internal = rows.filter((c: any) => c.stakeholderIsInternal === true || c.stakeholderIsInternal === 1).length;
     const external = total - internal;
-    const highCrit = (critData as any[]).filter((c: any) => (c.criticality || "").toUpperCase() === "A").length;
-    const medCrit = (critData as any[]).filter((c: any) => (c.criticality || "").toUpperCase() === "B").length;
-    const lowCrit = (critData as any[]).filter((c: any) => (c.criticality || "").toUpperCase() === "C").length;
-    const pctImpl = total > 0 ? Math.round((implemented / total) * 100) : 0;
-    return { total, implemented, pending, internal, external, highCrit, medCrit, lowCrit, pctImpl };
+    const highCrit = rows.filter((c: any) => (c.criticality || "").toUpperCase() === "A").length;
+    const medCrit = rows.filter((c: any) => (c.criticality || "").toUpperCase() === "B").length;
+    const lowCrit = rows.filter((c: any) => (c.criticality || "").toUpperCase() === "C").length;
+    return { ...actionProgress, rows, internal, external, highCrit, medCrit, lowCrit };
   }, [critData]);
   const radarData = [
     { subject: "Identificadas", value: stats.total > 0 ? 100 : 0 },
-    { subject: "Implementadas", value: stats.pctImpl },
+    { subject: "Implementadas", value: stats.percentage ?? 0 },
     { subject: "Internas", value: stats.total > 0 ? Math.round((stats.internal / stats.total) * 100) : 0 },
     { subject: "Externas", value: stats.total > 0 ? Math.round((stats.external / stats.total) * 100) : 0 },
     { subject: "Criticidad Alta", value: stats.total > 0 ? Math.round((stats.highCrit / stats.total) * 100) : 0 },
@@ -406,29 +406,33 @@ function StakeholdersPanel({ processId, partesValue }: { processId: number; part
           <p className="text-3xl font-bold" style={{ color: C.darkGreen }}>{stats.total}</p>
         </div>
         <div className="rounded-xl p-3 text-center bg-green-50 border border-green-100">
-          <p className="text-xs font-semibold mb-1 text-green-600">Implementadas</p>
-          <p className="text-3xl font-bold text-green-700">{stats.implemented}</p>
+          <p className="text-xs font-semibold mb-1 text-green-600">Acciones realizadas</p>
+          <p className="text-3xl font-bold text-green-700">{stats.completed}</p>
         </div>
         <div className="rounded-xl p-3 text-center bg-amber-50 border border-amber-100">
-          <p className="text-xs font-semibold mb-1 text-amber-600">Pendientes</p>
-          <p className="text-3xl font-bold text-amber-700">{stats.pending}</p>
+          <p className="text-xs font-semibold mb-1 text-amber-600">Acciones pendientes</p>
+          <p className="text-3xl font-bold text-amber-700">{stats.planned - stats.completed}</p>
         </div>
-        <div className="rounded-xl p-3 text-center border-2" style={{ borderColor: (partesValue >= 80 ? "#22c55e" : partesValue >= 60 ? "#f59e0b" : "#ef4444") + "40", backgroundColor: (partesValue >= 80 ? "#22c55e" : partesValue >= 60 ? "#f59e0b" : "#ef4444") + "10" }}>
-          <p className="text-xs font-semibold mb-1" style={{ color: partesValue >= 80 ? "#16a34a" : partesValue >= 60 ? "#ca8a04" : "#dc2626" }}>% Implementado</p>
-          <p className="text-3xl font-bold" style={{ color: partesValue >= 80 ? "#16a34a" : partesValue >= 60 ? "#ca8a04" : "#dc2626" }}>{partesValue}%</p>
+        <div className="rounded-xl p-3 text-center border-2" style={{ borderColor: partesValue === null ? "#cbd5e1" : (partesValue >= 80 ? "#22c55e" : partesValue >= 60 ? "#f59e0b" : "#ef4444") + "40", backgroundColor: partesValue === null ? "#f8fafc" : (partesValue >= 80 ? "#22c55e" : partesValue >= 60 ? "#f59e0b" : "#ef4444") + "10" }}>
+          <p className="text-xs font-semibold mb-1" style={{ color: partesValue === null ? "#64748b" : partesValue >= 80 ? "#16a34a" : partesValue >= 60 ? "#ca8a04" : "#dc2626" }}>% de acciones</p>
+          <p className="text-2xl font-bold" style={{ color: partesValue === null ? "#64748b" : partesValue >= 80 ? "#16a34a" : partesValue >= 60 ? "#ca8a04" : "#dc2626" }}>{partesValue === null ? "Sin acciones" : `${partesValue}%`}</p>
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="rounded-xl border p-4 bg-white" style={{ borderColor: C.lightGreenBg }}>
           <p className="text-sm font-semibold mb-3" style={{ color: C.darkGreen }}>Radar de Gestión</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <RadarChart data={radarData}>
-              <PolarGrid stroke="#e2e8f0" />
-              <RadarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: "#64748b" }} />
-              <Radar name="PI" dataKey="value" stroke={C.medGreen} fill={C.medGreen} fillOpacity={0.25} strokeWidth={2} />
-              <Tooltip formatter={(v: any) => [`${v}%`]} />
-            </RadarChart>
-          </ResponsiveContainer>
+          {partesValue === null ? (
+            <div className="h-[200px] flex items-center justify-center text-center text-sm text-slate-400 px-8">Aún no hay acciones planificadas para calcular el avance.</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <RadarChart data={radarData}>
+                <PolarGrid stroke="#e2e8f0" />
+                <RadarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: "#64748b" }} />
+                <Radar name="PI" dataKey="value" stroke={C.medGreen} fill={C.medGreen} fillOpacity={0.25} strokeWidth={2} />
+                <Tooltip formatter={(v: any) => [`${v}%`]} />
+              </RadarChart>
+            </ResponsiveContainer>
+          )}
         </div>
         <div className="rounded-xl border p-4 bg-white space-y-3" style={{ borderColor: C.lightGreenBg }}>
           <p className="text-sm font-semibold" style={{ color: C.darkGreen }}>Distribución</p>
@@ -459,7 +463,7 @@ function StakeholdersPanel({ processId, partesValue }: { processId: number; part
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: C.lightGreenBg }}>
         <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wide" style={{ backgroundColor: C.veryLightGreen, color: C.textSecondary }}>Detalle de Partes Interesadas</div>
         <div className="divide-y" style={{ borderColor: C.lightGreenBg }}>
-          {(critData as any[]).map((c: any) => (
+          {stats.rows.map((c: any) => (
             <div key={c.id} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-slate-50 transition-colors">
               <div className="flex-shrink-0">{c.implementationStatus ? <span className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs font-bold">✓</span> : <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs font-bold">!</span>}</div>
               <div className="flex-1 min-w-0">
@@ -473,7 +477,11 @@ function StakeholdersPanel({ processId, partesValue }: { processId: number; part
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className="text-xs font-bold px-2 py-0.5 rounded-md" style={{ backgroundColor: (c.criticality || "").toUpperCase() === "A" ? "#fee2e2" : (c.criticality || "").toUpperCase() === "B" ? "#fef9c3" : "#dcfce7", color: (c.criticality || "").toUpperCase() === "A" ? "#dc2626" : (c.criticality || "").toUpperCase() === "B" ? "#ca8a04" : "#16a34a" }}>Crit. {c.criticality || "—"}</span>
-                {c.completionPercentage !== null && c.completionPercentage !== undefined && (<span className={`text-xs font-bold ${pctColor(c.completionPercentage)}`}>{c.completionPercentage}%</span>)}
+                {c.actionToTake?.trim() ? (
+                  <span className={`text-xs font-bold ${c.implementationStatus ? "text-green-600" : "text-amber-600"}`}>{c.implementationStatus ? "Realizada" : "Pendiente"}</span>
+                ) : (
+                  <span className="text-xs font-medium text-slate-400">Sin acción</span>
+                )}
               </div>
             </div>
           ))}
@@ -514,7 +522,7 @@ export default function ProcessIndicators() {
   const oteValue = oteData?.value ?? 0;
   // El porcentaje OTG procede del avance real de tareas; "Logrado" sólo es un estado informativo.
   const otgValue = otgData?.compliance ?? 0;
-  const partesValue = partesData?.value ?? 0;
+  const partesValue: number | null = partesData?.value ?? null;
   const cumplimientosValue = cumplimientosData?.value ?? 0;
   const receivedCommitments = useMemo(
     () => (linkedCommitmentsData || []).filter((commitment: any) => commitment.sourceType !== "own"),
@@ -524,7 +532,8 @@ export default function ProcessIndicators() {
   const linkedCommitmentsValue = receivedCommitments.length > 0
     ? Math.round((completedLinkedCommitments / receivedCommitments.length) * 100)
     : 0;
-  const totalComponents = [oteValue, otgValue, partesValue, cumplimientosValue];
+  const totalComponents = [oteValue, otgValue, cumplimientosValue];
+  if (partesValue !== null) totalComponents.push(partesValue);
   if (receivedCommitments.length > 0) totalComponents.push(linkedCommitmentsValue);
   const totalAverage = Math.round(totalComponents.reduce((total, value) => total + value, 0) / totalComponents.length);
 
@@ -755,10 +764,13 @@ export default function ProcessIndicators() {
       id: "partes" as PanelType,
       title: "Partes Interesadas",
       subtitle: "Gestión con Partes Interesadas",
-      description: "% de acciones implementadas en la matriz de criticidad",
+      description: "% de acciones de mejora planificadas y realizadas",
       icon: <Users size={32} style={{ color: C.medGreen }} />,
       value: partesValue,
-      extra: "",
+      extra: partesValue === null
+        ? "Sin acciones planificadas"
+        : `${partesData?.completedActions ?? 0} de ${partesData?.plannedActions ?? 0} acciones realizadas`,
+      status: partesValue === null ? "Sin acciones" : undefined,
     },
     {
       id: "cumplimientos" as PanelType,
@@ -834,14 +846,14 @@ export default function ProcessIndicators() {
                 <p className="text-xs text-gray-500 mb-4 leading-snug">{panel.description}</p>
                 <div className="flex items-end justify-between">
                   <div>
-                    <p className={`text-3xl font-bold ${pctColor(panel.value)}`}>{panel.value}%</p>
+                    <p className={`text-3xl font-bold ${pctColor(panel.value)}`}>{panel.value === null ? "—" : `${panel.value}%`}</p>
                     {panel.extra && <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>{panel.extra}</p>}
                   </div>
                   <span className="text-xs font-semibold group-hover:underline" style={{ color: C.medGreen }}>
                     Ver detalle →
                   </span>
                 </div>
-                <ProgressBar value={panel.value} />
+                <ProgressBar value={panel.value ?? 0} />
               </button>
             ))}
           </div>

@@ -5,6 +5,8 @@ import { getDb } from "../db";
 import { processFODA, processCompliances, criticalityMatrix, processTacticalObjectives } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { calculateActivityProgress } from "../lib/processActivities";
+import { calculateOtgProgress } from "../lib/otgProgress";
+import { calculateStakeholderActionProgress } from "@shared/stakeholderActionProgress";
 
 // ─── Helpers de cálculo (replicados del frontend) ────────────────────────────
 
@@ -63,19 +65,11 @@ export const consolidatedIndicatorsRouter = router({
         const criticalityEntries = await db.select().from(criticalityMatrix)
           .where(eq(criticalityMatrix.processId, input.processId));
 
-        let criticalidadCumplimiento = 0;
-        if (criticalityEntries.length > 0) {
-          const latestByStakeholder = new Map();
-          criticalityEntries.forEach((entry: any) => {
-            const existing = latestByStakeholder.get(entry.stakeholderId);
-            if (!existing || new Date(entry.createdAt).getTime() > new Date(existing.createdAt).getTime()) {
-              latestByStakeholder.set(entry.stakeholderId, entry);
-            }
-          });
-          const uniqueEntries = Array.from(latestByStakeholder.values());
-          const completed = uniqueEntries.filter((entry: any) => entry.implementationStatus === true).length;
-          criticalidadCumplimiento = Math.round((completed / uniqueEntries.length) * 100);
-        }
+        // Una parte interesada sólo entra al indicador si se ha planificado una
+        // acción. La misma fórmula es usada por la matriz de Gestión con Partes
+        // Interesadas; así ambos lugares muestran exactamente el mismo avance.
+        const criticalityProgress = calculateStakeholderActionProgress(criticalityEntries);
+        const criticalidadCumplimiento = criticalityProgress.percentage;
 
         // ── OTG (Matriz FODA) ─────────────────────────────────────────────────
         const fodaData = await db.select().from(processFODA)
@@ -101,45 +95,12 @@ export const consolidatedIndicatorsRouter = router({
                 const communicated = matrixRows.filter((row: any) => row.comunicado === "SI").length;
                 matrizComunicado = matrixRows.length > 0 ? Math.round((communicated / matrixRows.length) * 100) : 0;
 
-                // Construir detalle por OTG y calcular su avance exclusivamente desde tareas.
+                // El avance OTG usa la fórmula canónica de la matriz. Esta cubre
+                // acciones actuales (valor puntual, mensuales y checklist) y
+                // registros históricos que guardaban el porcentaje en la fila.
                 otgRows = matrixRows.map((row: any) => {
                   const acciones: any[] = Array.isArray(row.acciones) ? row.acciones : [];
-                  const totalPonderacion = acciones.reduce((s: number, a: any) => s + (a.ponderacion || 0), 0);
-                  let pctOTG = 0;
-                  if (totalPonderacion > 0) {
-                    pctOTG = acciones.reduce((s: number, a: any) => {
-                      // calcularPorcentajeAccion simplificado
-                      const type = a.tipoSeguimiento || 'puntual';
-                      let pct = 0;
-                      if (type === 'puntual') {
-                        const pp = parseFloat(a.puntoPartida) || 0;
-                        const pl = parseFloat(a.puntoLlegada) || 0;
-                        const alc = parseFloat(a.alcanzado) || 0;
-                        pct = calcPct(pp, pl, alc);
-                      } else if (type === 'mensual_checklist') {
-                        const vals: boolean[] = Array.isArray(a.checklistValues) ? a.checklistValues : Array(12).fill(false);
-                        pct = Math.round((vals.filter(Boolean).length / 12) * 100);
-                      } else if (type === 'mensual_sumatoria') {
-                        const vals: number[] = Array.isArray(a.monthlyValues) ? a.monthlyValues : Array(12).fill(0);
-                        const suma = vals.reduce((s: number, v: number) => s + (v || 0), 0);
-                        const pp = parseFloat(a.puntoPartida) || 0;
-                        const pl = parseFloat(a.puntoLlegada) || 0;
-                        pct = calcPct(pp, pl, suma);
-                      } else if (type === 'mensual_promedio') {
-                        const vals: number[] = Array.isArray(a.monthlyValues) ? a.monthlyValues : Array(12).fill(0);
-                        const nonZero = vals.filter((v: number) => v !== 0);
-                        const promedio = nonZero.length > 0 ? nonZero.reduce((s: number, v: number) => s + v, 0) / nonZero.length : 0;
-                        const pp = parseFloat(a.puntoPartida) || 0;
-                        const pl = parseFloat(a.puntoLlegada) || 0;
-                        pct = calcPct(pp, pl, promedio);
-                      }
-                      return s + pct * (a.ponderacion / totalPonderacion);
-                    }, 0);
-                  } else if (acciones.length > 0) {
-                    pctOTG = acciones.reduce((s: number, a: any) => s + (parseFloat(a.alcanzado) || 0), 0) / acciones.length;
-                  }
-
-                  const pctOTGRedondeado = Math.round(pctOTG);
+                  const pctOTGRedondeado = calculateOtgProgress(row);
                   // Un OTG sólo está logrado si tiene tareas y todas alcanzan el 100 % real.
                   const objetivoLogrado = acciones.length > 0 && pctOTGRedondeado >= 100;
                   return {
@@ -318,7 +279,9 @@ export const consolidatedIndicatorsRouter = router({
             name: "Gestión con Partes Interesadas",
             indicator: "Porcentaje de cumplimiento",
             value: criticalidadCumplimiento,
-            performance: criticalidadCumplimiento
+            performance: criticalidadCumplimiento,
+            plannedActions: criticalityProgress.planned,
+            completedActions: criticalityProgress.completed,
           },
           {
             id: "total_alcanzado",

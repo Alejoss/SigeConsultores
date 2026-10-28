@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { AIChatPanel } from "@/components/AIChatPanel";
 import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
+import { calculateStakeholderActionProgress } from "@shared/stakeholderActionProgress";
 
 
 // Componente de tooltip informativo al hacer clic
@@ -81,6 +82,13 @@ interface CriticalityData {
   stakeholders: StakeholderCriticality[];
 }
 
+type FloatingHorizontalScroll = {
+  visible: boolean;
+  left: number;
+  width: number;
+  contentWidth: number;
+};
+
 const incidenceCriteriaOptions = [
   "Impacto económico",
   "Frecuencia de interacción",
@@ -141,6 +149,14 @@ export default function ProcessStakeholderCriticality() {
   // Pestaña activa: 'acciones' | 'encuestas'
   const [activeTab, setActiveTab] = useState<'acciones' | 'encuestas'>('acciones');
   const focusedCriticalityRef = useRef<number | null>(null);
+  const actionsTableScrollRef = useRef<HTMLDivElement>(null);
+  const floatingActionsScrollRef = useRef<HTMLDivElement>(null);
+  const [floatingHorizontalScroll, setFloatingHorizontalScroll] = useState<FloatingHorizontalScroll>({
+    visible: false,
+    left: 0,
+    width: 0,
+    contentWidth: 0,
+  });
   // Estado para nueva encuesta en formulario
   const [showSurveyForm, setShowSurveyForm] = useState(false);
   const [editingSurveyId, setEditingSurveyId] = useState<number | null>(null);
@@ -800,44 +816,76 @@ export default function ProcessStakeholderCriticality() {
     localStorage.setItem(criticalityDataKey, JSON.stringify(newData));
   };
 
-  const calculateCompletionPercentage = () => {
-    // % acciones realizadas
-    let accionesPercent = 0;
-    if (data.stakeholders.length > 0) {
-      const completed = data.stakeholders.filter(s => s.completed === "Si").length;
-      accionesPercent = Math.round((completed / data.stakeholders.length) * 100);
+  const actionProgress = useMemo(
+    () => calculateStakeholderActionProgress(
+      data.stakeholders.map(stakeholder => ({
+        id: stakeholder.dbId ?? stakeholder.id,
+        stakeholderId: stakeholder.dbId ?? stakeholder.id,
+        actionToTake: stakeholder.actionToTake,
+        implementationStatus: stakeholder.completed === "Si",
+      }))
+    ),
+    [data.stakeholders]
+  );
+
+  // La barra nativa queda al final de una tabla extensa. Este control fijo se
+  // sincroniza con ella para que el desplazamiento horizontal esté disponible
+  // mientras el usuario revisa cualquier fila de la matriz.
+  useEffect(() => {
+    if (activeTab !== 'acciones') {
+      setFloatingHorizontalScroll(current => current.visible ? { ...current, visible: false } : current);
+      return;
     }
 
-    // Si hay encuestas, calcular promedio de satisfacción y mezclar 50/50
-    if (surveysFromDb && surveysFromDb.length > 0) {
-      const surveyScores: number[] = [];
-      for (const s of surveysFromDb as any[]) {
-        // NPS: escala -100 a 100 -> normalizar a 0-100
-        if (s.nps !== null && s.nps !== undefined) {
-          surveyScores.push(Math.round((s.nps + 100) / 2));
-        }
-        // CSAT: ya está en 0-100
-        if (s.csat !== null && s.csat !== undefined) {
-          surveyScores.push(s.csat);
-        }
-        // avgRating: parsear "4.2/5" o "8.4/10"
-        if (s.avgRating) {
-          const match = s.avgRating.match(/([\d.]+)\s*\/\s*([\d.]+)/);
-          if (match) {
-            const val = parseFloat(match[1]);
-            const max = parseFloat(match[2]);
-            if (max > 0) surveyScores.push(Math.round((val / max) * 100));
-          }
-        }
-      }
-      if (surveyScores.length > 0) {
-        const avgSurvey = Math.round(surveyScores.reduce((a, b) => a + b, 0) / surveyScores.length);
-        return Math.round((accionesPercent + avgSurvey) / 2);
-      }
-    }
+    const tableContainer = actionsTableScrollRef.current;
+    if (!tableContainer) return;
 
-    return accionesPercent;
-  };
+    const updateFloatingScroll = () => {
+      const rect = tableContainer.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const left = Math.max(12, Math.round(rect.left));
+      const width = Math.max(0, Math.min(Math.round(rect.width), viewportWidth - left - 12));
+      const visible = rect.top < window.innerHeight - 72 && rect.bottom > 72 && tableContainer.scrollWidth > tableContainer.clientWidth;
+      const next: FloatingHorizontalScroll = {
+        visible,
+        left,
+        width,
+        contentWidth: tableContainer.scrollWidth,
+      };
+      setFloatingHorizontalScroll(current => (
+        current.visible === next.visible &&
+        current.left === next.left &&
+        current.width === next.width &&
+        current.contentWidth === next.contentWidth
+          ? current
+          : next
+      ));
+      if (floatingActionsScrollRef.current && floatingActionsScrollRef.current.scrollLeft !== tableContainer.scrollLeft) {
+        floatingActionsScrollRef.current.scrollLeft = tableContainer.scrollLeft;
+      }
+    };
+
+    const syncFromTable = () => {
+      if (floatingActionsScrollRef.current && floatingActionsScrollRef.current.scrollLeft !== tableContainer.scrollLeft) {
+        floatingActionsScrollRef.current.scrollLeft = tableContainer.scrollLeft;
+      }
+      updateFloatingScroll();
+    };
+
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateFloatingScroll) : null;
+    observer?.observe(tableContainer);
+    tableContainer.addEventListener('scroll', syncFromTable, { passive: true });
+    window.addEventListener('resize', updateFloatingScroll);
+    window.addEventListener('scroll', updateFloatingScroll, { passive: true });
+    updateFloatingScroll();
+
+    return () => {
+      observer?.disconnect();
+      tableContainer.removeEventListener('scroll', syncFromTable);
+      window.removeEventListener('resize', updateFloatingScroll);
+      window.removeEventListener('scroll', updateFloatingScroll);
+    };
+  }, [activeTab, data.stakeholders.length]);
 
   const exportToPDF = () => {
     try {
@@ -1027,20 +1075,30 @@ export default function ProcessStakeholderCriticality() {
 
           <div className="mb-6 p-4 bg-slate-50 rounded-lg">
             <h3 className="font-bold mb-2">Porcentaje de Cumplimiento</h3>
-            <div className="w-full bg-slate-200 rounded-full h-8 flex items-center justify-center">
-              <div
-                className="bg-blue-500 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold transition-all"
-                style={{ width: `${calculateCompletionPercentage()}%` }}
-              >
-                {calculateCompletionPercentage()}%
-              </div>
-            </div>
-            <p className="text-sm text-slate-600 mt-2">
-              {data.stakeholders.filter(s => s.completed === "Si").length} de {data.stakeholders.length} acciones completadas
-              {surveysFromDb && surveysFromDb.length > 0 && (
-                <span className="ml-2 text-blue-600">· Promedio mixto: acciones + {surveysFromDb.length} encuesta{surveysFromDb.length > 1 ? 's' : ''}</span>
-              )}
-            </p>
+            {actionProgress.percentage === null ? (
+              <>
+                <div className="w-full bg-slate-200 rounded-full h-8 flex items-center justify-center text-sm font-semibold text-slate-500">
+                  Sin acciones planificadas
+                </div>
+                <p className="text-sm text-slate-600 mt-2">
+                  El porcentaje aparecerá cuando se registre una Acción a tomar. Las partes interesadas sin acción no se promedian como 0 %.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="w-full bg-slate-200 rounded-full h-8 flex items-center justify-center">
+                  <div
+                    className="bg-blue-500 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold transition-all"
+                    style={{ width: `${actionProgress.percentage}%` }}
+                  >
+                    {actionProgress.percentage}%
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600 mt-2">
+                  {actionProgress.completed} de {actionProgress.planned} acciones planificadas realizadas
+                </p>
+              </>
+            )}
           </div>
 
           {/* Sección ASOCIADOS DE NEGOCIO eliminada según solicitud del usuario */}
@@ -1259,19 +1317,23 @@ export default function ProcessStakeholderCriticality() {
           {/* PESTAÑA: Acciones de Mejora */}
           {activeTab === 'acciones' && (
           <>
-          <div className="mb-8 overflow-x-auto">
-            <h3 className="text-lg font-bold text-blue-900 mb-4">MEJORA CONTINUA ENTRE PARTES INTERESADAS</h3>
-            <table className="w-full min-w-[1120px] table-fixed border-collapse text-xs">
+          <div className="mb-8">
+            <div className="flex flex-wrap items-end justify-between gap-2 mb-3">
+              <h3 className="text-lg font-bold text-blue-900">MEJORA CONTINUA ENTRE PARTES INTERESADAS</h3>
+              <p className="text-xs text-slate-500">Desplace la tabla horizontalmente para revisar todos los datos. La fecha final y el estado permanecen visibles.</p>
+            </div>
+            <div ref={actionsTableScrollRef} className="overflow-x-auto rounded-lg border border-slate-200 shadow-inner">
+            <table className="min-w-[1700px] w-full table-fixed border-collapse text-xs">
               <thead>
                 <tr className="bg-green-500 text-white">
-                  <th className="w-[11%] border border-slate-300 p-2 text-left">ASOCIADO</th>
-                  <th className="w-[22%] border border-slate-300 p-2 text-left">NECESIDADES Y EXPECTATIVAS</th>
-                  <th className="w-[25%] border border-slate-300 p-2 text-left">ACCIÓN A TOMAR</th>
-                  <th className="w-[15%] border border-slate-300 p-2 text-left">FUENTE</th>
-                  <th className="w-[12%] border border-slate-300 p-2 text-left">OBSERVACIONES</th>
-                  <th className="w-[6%] border border-slate-300 p-2 text-left">FECHA INICIO</th>
-                  <th className="w-[6%] border border-slate-300 p-2 text-left">FECHA FIN</th>
-                  <th className="w-[3%] border border-slate-300 p-2 text-left">REALIZADO</th>
+                  <th className="w-[180px] sticky left-0 z-30 border border-slate-300 bg-green-500 p-2 text-left shadow-[2px_0_3px_rgba(0,0,0,0.12)]">ASOCIADO</th>
+                  <th className="w-[300px] border border-slate-300 p-2 text-left">NECESIDADES Y EXPECTATIVAS</th>
+                  <th className="w-[330px] border border-slate-300 p-2 text-left">ACCIÓN A TOMAR</th>
+                  <th className="w-[220px] border border-slate-300 p-2 text-left">FUENTE</th>
+                  <th className="w-[220px] border border-slate-300 p-2 text-left">OBSERVACIONES</th>
+                  <th className="w-[140px] border border-slate-300 p-2 text-left">FECHA INICIO</th>
+                  <th className="w-[140px] sticky right-[112px] z-30 border border-slate-300 bg-green-500 p-2 text-left shadow-[-2px_0_3px_rgba(0,0,0,0.12)]">FECHA FIN</th>
+                  <th className="w-[112px] sticky right-0 z-30 border border-slate-300 bg-green-500 p-2 text-left">REALIZADO</th>
                 </tr>
               </thead>
               <tbody>
@@ -1281,7 +1343,7 @@ export default function ProcessStakeholderCriticality() {
                     id={stakeholder.dbId ? `criticality-action-${stakeholder.dbId}` : undefined}
                     className={`hover:bg-slate-50 ${stakeholder.dbId === focusCriticalityId ? "bg-blue-50 ring-2 ring-inset ring-blue-500" : ""}`}
                   >
-                    <td className="border border-slate-300 p-2">{stakeholder.name}</td>
+                    <td className="sticky left-0 z-20 border border-slate-300 bg-white p-2 shadow-[2px_0_3px_rgba(0,0,0,0.08)]">{stakeholder.name}</td>
                     <td className="border border-slate-300 p-2">
                       {stakeholder.needsSolicita || stakeholder.needsEntrega ? (
                         <div className="text-xs space-y-1">
@@ -1346,22 +1408,22 @@ export default function ProcessStakeholderCriticality() {
                         type="date"
                         value={stakeholder.startDate}
                         onChange={(e) => updateStakeholder(stakeholder.id, "startDate", e.target.value)}
-                        className="text-xs"
+                        className="min-w-[120px] text-xs"
                       />
                     </td>
-                    <td className="border border-slate-300 p-2">
+                    <td className="sticky right-[112px] z-20 border border-slate-300 bg-white p-2 shadow-[-2px_0_3px_rgba(0,0,0,0.08)]">
                       <Input
                         type="date"
                         value={stakeholder.endDate}
                         onChange={(e) => updateStakeholder(stakeholder.id, "endDate", e.target.value)}
-                        className="text-xs"
+                        className="min-w-[120px] text-xs"
                       />
                     </td>
-                    <td className="border border-slate-300 p-2">
+                    <td className="sticky right-0 z-20 border border-slate-300 bg-white p-2">
                       <select
                         value={stakeholder.completed}
                         onChange={(e) => updateStakeholder(stakeholder.id, "completed", e.target.value)}
-                        className="w-full text-xs border rounded p-1"
+                        className="min-w-[92px] w-full text-xs border rounded p-1"
                       >
                         <option value="No">No</option>
                         <option value="Si">Si</option>
@@ -1371,6 +1433,7 @@ export default function ProcessStakeholderCriticality() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="flex gap-2">
@@ -1388,6 +1451,35 @@ export default function ProcessStakeholderCriticality() {
             </Button>
           </div>
           </>
+          )}
+
+          {activeTab === 'acciones' && floatingHorizontalScroll.visible && (
+            <div
+              className="fixed bottom-16 z-50 rounded-lg border border-slate-300 bg-white/95 px-2 py-1 shadow-lg backdrop-blur"
+              style={{ left: floatingHorizontalScroll.left, width: floatingHorizontalScroll.width }}
+            >
+              <div className="flex items-center gap-2 px-1">
+                <span className="hidden shrink-0 text-[11px] font-medium text-slate-500 sm:inline">Desplazar tabla</span>
+                <div
+                  ref={floatingActionsScrollRef}
+                  className="h-5 min-w-0 flex-1 overflow-x-auto overflow-y-hidden"
+                  onScroll={(event) => {
+                    if (actionsTableScrollRef.current) {
+                      const maxScrollLeft = actionsTableScrollRef.current.scrollWidth - actionsTableScrollRef.current.clientWidth;
+                      const nextScrollLeft = Math.min(event.currentTarget.scrollLeft, Math.max(0, maxScrollLeft));
+                      actionsTableScrollRef.current.scrollLeft = nextScrollLeft;
+                      if (event.currentTarget.scrollLeft !== nextScrollLeft) {
+                        event.currentTarget.scrollLeft = nextScrollLeft;
+                      }
+                    }
+                  }}
+                  aria-label="Desplazamiento horizontal de la matriz de partes interesadas"
+                  title="Arrastre esta barra para mover la tabla de izquierda a derecha"
+                >
+                  <div style={{ width: floatingHorizontalScroll.contentWidth, height: 1 }} />
+                </div>
+              </div>
+            </div>
           )}
 
           {/* PESTAÑA: Encuestas */}
