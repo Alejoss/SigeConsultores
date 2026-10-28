@@ -1,14 +1,17 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useLocation, useSearch } from 'wouter';
-import { ArrowLeft, Plus, Trash2, Save, AlertCircle, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, AlertCircle, ChevronDown, ChevronUp, Download, Info } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import {
   MatrizFODARow, MatrizFODAIndicadores, FODAType, FactorType, SistemaGestionType,
-  ProbabilidadType, ImpactoType, calcularNivelRiesgo,
+  ProbabilidadType, ImpactoType, calcularNivelRiesgo, describirImpacto, ESCALA_IMPACTO,
+  ESCALA_PROBABILIDAD, ETIQUETAS_SISTEMA_GESTION, MATRIZ_RIESGO,
+  obtenerPresentacionRiesgo,
   AccionOTG, TrackingOTGType, MONTHS_SHORT, calcularPorcentajeAccion, calcularPorcentajeOTG,
 } from '@/types/matrizFODA';
 import { exportRiskMatrixToPDF } from '@/lib/exportRiskMatrixToPDF';
@@ -23,6 +26,137 @@ function calcularPorcentajeAlcanzado(alcanzado: number | undefined, puntoPartida
   if (pl === pa) return 0;
   const pct = ((al - pa) / (pl - pa)) * 100;
   return Math.min(100, Math.max(0, Math.round(pct)));
+}
+
+function RiskScaleHelp({ label, children }: { label: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onMouseEnter={() => setOpen(true)}
+          onFocus={() => setOpen(true)}
+          onClick={() => setOpen((current) => !current)}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 underline decoration-dotted underline-offset-4 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+          aria-label={`Ver guía de ${label}`}
+        >
+          {label}
+          <Info size={14} aria-hidden="true" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[min(32rem,calc(100vw-2rem))] p-4">
+        {children}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ProbabilityGuide({ label = 'Probabilidad (A–E)' }: { label?: string }) {
+  return (
+    <RiskScaleHelp label={label}>
+      <div className="space-y-2">
+        <p className="font-semibold text-slate-900">Valoración de la probabilidad</p>
+        {ESCALA_PROBABILIDAD.map((scale) => (
+          <div key={scale.value} className="border-l-2 border-blue-300 pl-2">
+            <p className="text-sm font-semibold text-slate-800">{scale.value} — {scale.nombre}</p>
+            <p className="text-xs text-slate-600">{scale.descripcion}</p>
+          </div>
+        ))}
+      </div>
+    </RiskScaleHelp>
+  );
+}
+
+function ImpactGuide({ label = 'Impacto (1–5)' }: { label?: string }) {
+  return (
+    <RiskScaleHelp label={label}>
+      <div className="space-y-2">
+        <p className="font-semibold text-slate-900">Valoración del impacto</p>
+        {ESCALA_IMPACTO.map((scale) => (
+          <div key={scale.value} className="border-l-2 border-orange-300 pl-2">
+            <p className="text-sm font-semibold text-slate-800">{scale.value} — {scale.nombre}</p>
+            <p className="text-xs text-slate-600">{scale.descripcion}</p>
+          </div>
+        ))}
+      </div>
+    </RiskScaleHelp>
+  );
+}
+
+function RiskMatrixGuide({
+  probabilidad,
+  impacto,
+  estimacion,
+  label = 'Nivel de Riesgo',
+}: {
+  probabilidad?: ProbabilidadType;
+  impacto?: ImpactoType;
+  estimacion?: MatrizFODARow['estimacion'];
+  label?: string;
+}) {
+  const selectedKey = probabilidad && impacto ? `${probabilidad}${impacto}` : undefined;
+  const selectedPresentation = obtenerPresentacionRiesgo(estimacion);
+
+  return (
+    <RiskScaleHelp label={label}>
+      <div className="space-y-3">
+        <div>
+          <p className="font-semibold text-slate-900">Tabla de valoración del riesgo</p>
+          <p className="mt-1 text-xs text-slate-600">Cruza la probabilidad (A–E) con el impacto (1–5). La celda seleccionada se resalta.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[430px] border-collapse text-center text-xs">
+            <thead>
+              <tr>
+                <th className="border bg-slate-100 p-1.5">Prob. / Impacto</th>
+                {ESCALA_IMPACTO.map((scale) => (
+                  <th key={scale.value} className="border bg-slate-100 p-1.5" title={scale.nombre}>
+                    {scale.value}<span className="block text-[10px] font-normal">{scale.nombre}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ESCALA_PROBABILIDAD.map((probabilityScale) => (
+                <tr key={probabilityScale.value}>
+                  <th className="border bg-slate-100 p-1.5 text-left">
+                    {probabilityScale.value}<span className="ml-1 text-[10px] font-normal">{probabilityScale.nombre}</span>
+                  </th>
+                  {ESCALA_IMPACTO.map((impactScale) => {
+                    const key = `${probabilityScale.value}${impactScale.value}`;
+                    const risk = MATRIZ_RIESGO[key as keyof typeof MATRIZ_RIESGO];
+                    const presentation = obtenerPresentacionRiesgo(risk.estimacion);
+                    return (
+                      <td
+                        key={key}
+                        className={`border p-1.5 ${presentation?.cellClassName} ${key === selectedKey ? 'ring-2 ring-inset ring-slate-900 font-bold' : ''}`}
+                      >
+                        <span className="block font-semibold">{key}</span>
+                        <span className="text-[10px]">{presentation?.categoria}</span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-slate-600">Rojo: <strong>Grave</strong> · Amarillo: <strong>Medio</strong> · Verde: <strong>Bajo</strong>.</p>
+        {selectedPresentation && <p className="text-xs font-semibold text-slate-700">Nivel técnico actual: {estimacion} · Presentación: {selectedPresentation.categoria}.</p>}
+      </div>
+    </RiskScaleHelp>
+  );
+}
+
+function riskBadgeClass(estimacion?: MatrizFODARow['estimacion']) {
+  return obtenerPresentacionRiesgo(estimacion)?.className || 'bg-slate-200 text-slate-600';
+}
+
+function visibleRiskLevel(nivel?: string, estimacion?: MatrizFODARow['estimacion']) {
+  const presentation = obtenerPresentacionRiesgo(estimacion);
+  return nivel ? `${nivel}${presentation ? ` · ${presentation.categoria}` : ''}` : '-';
 }
 
 // ─── AccionOTGRow ────────────────────────────────────────────────────────────────
@@ -252,6 +386,7 @@ export default function ProcessRiskMatrix() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const initialLoadDoneRef = useRef(false);
+  const skipInitialAutoSaveRef = useRef(false);
   const fodaSyncDoneRef = useRef(false);
   const savingRef = useRef(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -376,6 +511,9 @@ export default function ProcessRiskMatrix() {
           addRows(strengths, 'Fortaleza'); addRows(opportunities, 'Oportunidad');
           addRows(weaknesses, 'Debilidad'); addRows(threats, 'Amenaza');
         }
+        // La carga solo normaliza la vista local. No debe regrabar registros
+        // históricos por el simple hecho de abrir la matriz.
+        skipInitialAutoSaveRef.current = true;
         setRows(newRows);
         initialLoadDoneRef.current = true;
       } catch (error) { console.error('Error loading FODA data:', error); }
@@ -448,6 +586,10 @@ export default function ProcessRiskMatrix() {
   // Auto-save — solo depende de rows y processId
   useEffect(() => {
     if (!initialLoadDoneRef.current) return;
+    if (skipInitialAutoSaveRef.current) {
+      skipInitialAutoSaveRef.current = false;
+      return;
+    }
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
       if (rows.length > 0 && processId && !savingRef.current) {
@@ -719,7 +861,7 @@ export default function ProcessRiskMatrix() {
                           <option value="Calidad">Calidad</option>
                           <option value="Ambiente">Ambiente</option>
                           <option value="SSO">SSO</option>
-                          <option value="Seguridad Física">Seguridad Física</option>
+                          <option value="Seguridad Física">{ETIQUETAS_SISTEMA_GESTION['Seguridad Física']}</option>
                           <option value="Responsabilidad Social">Responsabilidad Social</option>
                           <option value="Otro">Otro</option>
                         </select>
@@ -924,27 +1066,20 @@ export default function ProcessRiskMatrix() {
                         <h3 className="font-semibold text-blue-900 mb-4">B. VALORACIÓN DE DEBILIDADES Y AMENAZAS</h3>
                         <div className="grid grid-cols-3 gap-4">
                           <div>
-                            <label className="text-xs font-semibold text-slate-600">Probabilidad (A-E)</label>
+                            <ProbabilityGuide />
                             <select value={row.probabilidad || 'A'} onChange={(e) => updateRow(row.id, 'probabilidad', e.target.value as ProbabilidadType)} className="w-full border rounded p-2 text-sm mt-1" translate="no">
-                              <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option>
+                              {ESCALA_PROBABILIDAD.map((scale) => <option key={scale.value} value={scale.value}>{scale.value} — {scale.nombre}</option>)}
                             </select>
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-slate-600">Impacto (1-5)</label>
+                            <ImpactGuide />
                             <select value={row.impacto || 1} onChange={(e) => updateRow(row.id, 'impacto', parseInt(e.target.value) as ImpactoType)} className="w-full border rounded p-2 text-sm mt-1">
-                              <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                              {ESCALA_IMPACTO.map((scale) => <option key={scale.value} value={scale.value}>{describirImpacto(scale.value)}</option>)}
                             </select>
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-slate-600">Nivel de Riesgo</label>
-                            <div className={`w-full border rounded p-2 text-sm font-semibold text-center text-white mt-1 ${
-                              row.nivelRiesgo
-                                ? row.estimacion === 'Crítico' ? 'bg-red-600'
-                                  : row.estimacion === 'Alto' ? 'bg-yellow-500'
-                                  : row.estimacion === 'Medio' ? 'bg-yellow-300 text-slate-700'
-                                  : 'bg-green-500'
-                                : 'bg-slate-200 text-slate-600'
-                            }`}>{row.nivelRiesgo || '-'}</div>
+                            <RiskMatrixGuide probabilidad={row.probabilidad} impacto={row.impacto} estimacion={row.estimacion} />
+                            <div className={`w-full border rounded p-2 text-sm font-semibold text-center mt-1 ${riskBadgeClass(row.estimacion)}`}>{visibleRiskLevel(row.nivelRiesgo, row.estimacion)}</div>
                           </div>
                         </div>
                       </div>
@@ -1023,25 +1158,18 @@ export default function ProcessRiskMatrix() {
                             <h4 className="font-semibold text-slate-700 mb-3">Reevaluación de Riesgo</h4>
                             <div className="grid grid-cols-3 gap-4">
                               <div>
-                                <label className="text-xs font-semibold text-slate-600">Probabilidad Nueva (A-E)</label>
+                                <ProbabilityGuide label="Probabilidad nueva (A–E)" />
                                 <select value={row.probabilidadNueva || row.probabilidad || 'A'} onChange={(e) => updateRow(row.id, 'probabilidadNueva', e.target.value as ProbabilidadType)} className="w-full border rounded p-2 text-sm mt-1" translate="no">
-                                  <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option>
+                                  {ESCALA_PROBABILIDAD.map((scale) => <option key={scale.value} value={scale.value}>{scale.value} — {scale.nombre}</option>)}
                                 </select>
                               </div>
                               <div>
-                                <label className="text-xs font-semibold text-slate-600">Impacto (sin cambios)</label>
-                                <div className="w-full border rounded p-2 text-sm bg-slate-100 text-slate-700 font-semibold mt-1">{row.impacto || '-'}</div>
+                                <ImpactGuide label="Impacto (sin cambios)" />
+                                <div className="w-full border rounded p-2 text-sm bg-slate-100 text-slate-700 font-semibold mt-1">{describirImpacto(row.impacto)}</div>
                               </div>
                               <div>
-                                <label className="text-xs font-semibold text-slate-600">Nuevo Nivel de Riesgo</label>
-                                <div className={`w-full border rounded p-2 text-sm font-semibold text-center text-white mt-1 ${
-                                  row.nivelRiesgoNuevo
-                                    ? row.estimacionNueva === 'Crítico' ? 'bg-red-600'
-                                      : row.estimacionNueva === 'Alto' ? 'bg-yellow-500'
-                                      : row.estimacionNueva === 'Medio' ? 'bg-yellow-300 text-slate-700'
-                                      : 'bg-green-500'
-                                    : 'bg-slate-200 text-slate-600'
-                                }`}>{row.nivelRiesgoNuevo || '-'}</div>
+                                <RiskMatrixGuide probabilidad={row.probabilidadNueva || row.probabilidad} impacto={row.impacto} estimacion={row.estimacionNueva} label="Nuevo Nivel de Riesgo" />
+                                <div className={`w-full border rounded p-2 text-sm font-semibold text-center mt-1 ${riskBadgeClass(row.estimacionNueva)}`}>{visibleRiskLevel(row.nivelRiesgoNuevo, row.estimacionNueva)}</div>
                               </div>
                             </div>
                           </div>
