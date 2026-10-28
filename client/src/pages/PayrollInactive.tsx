@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
-  ArrowLeft,
   FileDown,
   FileText,
   Pencil,
@@ -12,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { PayrollSectionTabs } from "@/components/PayrollSectionTabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -227,9 +227,10 @@ export default function PayrollInactive() {
           <div className="flex flex-wrap justify-end gap-2">
             <Button variant="outline" onClick={exportInactiveExcel} disabled={employees.length === 0} className="gap-2 border-emerald-300 text-emerald-700"><FileDown className="h-4 w-4" />Exportar Excel</Button>
             <Button variant="outline" onClick={exportInactivePdf} disabled={employees.length === 0} className="gap-2 border-rose-300 text-rose-700"><FileText className="h-4 w-4" />Exportar PDF</Button>
-            <Button variant="outline" onClick={() => setLocation(`/payroll?companyId=${companyId}`)} className="gap-2"><ArrowLeft className="h-4 w-4" />Volver a Nómina</Button>
           </div>
         </div>
+
+        <PayrollSectionTabs active="inactive" companyId={companyId} />
 
         <Card>
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 space-y-0">

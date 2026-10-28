@@ -6,7 +6,9 @@ import {
   participantWorkerKpiValues,
   payrollEmployees,
   payrollEmploymentPeriods,
+  processCharacterizations,
   processParticipants,
+  processes,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { companyPersonnelManagementProcedure, companyProcedure, companyReadProcedure, router } from "../_core/trpc";
@@ -347,6 +349,125 @@ export const payrollRouter = router({
           ? null
           : workPositionByParticipant.get(employee.currentProcessParticipantId) ?? null,
         performance: performanceByEmployee.get(employee.id) ?? null,
+      }));
+    }),
+
+  /**
+   * Consolidación estrictamente de lectura de los descriptivos creados en
+   * Participantes. No usa Nómina porque el cargo contractual y el puesto
+   * funcional son conceptos distintos, y porque un puesto puede no tener
+   * todavía trabajadores vinculados.
+   */
+  jobDescriptions: companyReadProcedure
+    .input(z.object({ companyId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const processRows = await db
+        .select({
+          id: processes.id,
+          name: processes.name,
+          processType: processes.processType,
+        })
+        .from(processes)
+        .where(eq(processes.companyId, input.companyId))
+        .orderBy(asc(processes.name), asc(processes.id));
+
+      if (!processRows.length) return [];
+
+      const processIds = processRows.map(process => process.id);
+      const characterizationRows = await db
+        .select({
+          id: processCharacterizations.id,
+          processId: processCharacterizations.processId,
+          macroProcess: processCharacterizations.macroProcess,
+        })
+        .from(processCharacterizations)
+        .where(inArray(processCharacterizations.processId, processIds))
+        .orderBy(asc(processCharacterizations.id));
+
+      // La mayoría de puestos usa el id de caracterización. Algunos registros
+      // históricos, sin embargo, guardaron el id del proceso: se incluyen las
+      // dos referencias sin modificar los datos existentes.
+      const allowedReferences = Array.from(
+        new Set(
+          [...processIds, ...characterizationRows.map(characterization => characterization.id)]
+        )
+      );
+      const participantRows = allowedReferences.length
+        ? await db
+            .select({
+              id: processParticipants.id,
+              processCharacterizationId:
+                processParticipants.processCharacterizationId,
+              position: processParticipants.position,
+              objective: processParticipants.objective,
+              responsibility: processParticipants.responsibility,
+              authority: processParticipants.authority,
+              orderIndex: processParticipants.orderIndex,
+              updatedAt: processParticipants.updatedAt,
+            })
+            .from(processParticipants)
+            .where(
+              inArray(
+                processParticipants.processCharacterizationId,
+                allowedReferences
+              )
+            )
+        : [];
+
+      const processByCharacterizationId = new Map(
+        characterizationRows.map(characterization => [
+          characterization.id,
+          characterization.processId,
+        ])
+      );
+      const processById = new Map(processRows.map(process => [process.id, process]));
+      const macroProcessById = new Map<number, string | null>();
+      for (const characterization of characterizationRows) {
+        if (!macroProcessById.has(characterization.processId)) {
+          macroProcessById.set(
+            characterization.processId,
+            characterization.macroProcess
+          );
+        }
+      }
+      const positionsByProcessId = new Map<
+        number,
+        typeof participantRows
+      >();
+
+      for (const participant of participantRows) {
+        // Prioriza el vínculo canónico a caracterización y conserva el fallback
+        // histórico al id del proceso.
+        const processId =
+          processByCharacterizationId.get(participant.processCharacterizationId) ??
+          participant.processCharacterizationId;
+        if (!processById.has(processId)) continue;
+        const positions = positionsByProcessId.get(processId) || [];
+        positions.push(participant);
+        positionsByProcessId.set(processId, positions);
+      }
+
+      return processRows.map(process => ({
+        id: process.id,
+        name: process.name,
+        processType: process.processType,
+        macroProcess: macroProcessById.get(process.id) ?? null,
+        positions: (positionsByProcessId.get(process.id) || [])
+          .sort(
+            (left, right) =>
+              left.orderIndex - right.orderIndex || left.id - right.id
+          )
+          .map(position => ({
+            id: position.id,
+            position: position.position,
+            objective: position.objective,
+            responsibility: position.responsibility,
+            authority: position.authority,
+            updatedAt: position.updatedAt,
+          })),
       }));
     }),
 

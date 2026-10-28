@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Building2, UsersRound } from "lucide-react";
+import { ArrowLeft, BriefcaseBusiness, Building2, UsersRound } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,18 +16,18 @@ export default function OrganizationChart() {
       <div className="mx-auto max-w-5xl space-y-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Nómina y Organigrama</h1>
-            <p className="mt-2 text-slate-600">Gestiona la estructura organizacional y la información de personal de tu empresa.</p>
+            <h1 className="text-3xl font-bold text-slate-900">Organización y Personal</h1>
+            <p className="mt-2 text-slate-600">Consulta la estructura organizacional, administra la nómina y revisa los descriptivos de cargo de la empresa.</p>
           </div>
           <Button variant="outline" onClick={() => setLocation(getAxisBackPathForRole())} className="gap-2"><ArrowLeft className="h-4 w-4" />Volver</Button>
         </div>
 
-        {!companyId ? <p className="rounded-lg border border-dashed py-12 text-center text-slate-600">Selecciona una empresa antes de ingresar a Nómina y Organigrama.</p> : (
-          <div className="grid gap-6 md:grid-cols-2">
+        {!companyId ? <p className="rounded-lg border border-dashed py-12 text-center text-slate-600">Selecciona una empresa antes de ingresar a Organización y Personal.</p> : (
+          <div className="grid gap-6 md:grid-cols-3">
             <Card className="cursor-pointer border-blue-200 bg-blue-50 transition-shadow hover:shadow-lg" onClick={() => setLocation(scopedPath("/organization-chart/view"))}>
               <CardHeader>
                 <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><Building2 className="h-6 w-6" /></div>
-                <CardTitle>Ver organigrama</CardTitle>
+                <CardTitle>Organigrama</CardTitle>
                 <CardDescription>Visualiza y administra la estructura organizacional de la empresa.</CardDescription>
               </CardHeader>
               <CardContent><Button variant="outline" className="w-full border-blue-300 text-blue-700">Acceder</Button></CardContent>
@@ -39,6 +39,14 @@ export default function OrganizationChart() {
                 <CardDescription>Registra el personal activo y conserva el historial de personal pasivo.</CardDescription>
               </CardHeader>
               <CardContent><Button variant="outline" className="w-full border-emerald-300 text-emerald-700">Acceder</Button></CardContent>
+            </Card>
+            <Card className="cursor-pointer border-violet-200 bg-violet-50 transition-shadow hover:shadow-lg" onClick={() => setLocation(scopedPath("/payroll/job-descriptions"))}>
+              <CardHeader>
+                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 text-violet-700"><BriefcaseBusiness className="h-6 w-6" /></div>
+                <CardTitle>Descriptivos de cargo</CardTitle>
+                <CardDescription>Consulta los puestos definidos por proceso, con sus objetivos, responsabilidades y autoridad.</CardDescription>
+              </CardHeader>
+              <CardContent><Button variant="outline" className="w-full border-violet-300 text-violet-700">Acceder</Button></CardContent>
             </Card>
           </div>
         )}

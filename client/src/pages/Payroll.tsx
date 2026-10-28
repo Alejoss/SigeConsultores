@@ -31,11 +31,11 @@ import {
   Plus,
   Search,
   Trash2,
-  UserRoundX,
   UsersRound,
   X,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { PayrollSectionTabs } from "@/components/PayrollSectionTabs";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -1042,16 +1042,6 @@ export default function Payroll() {
               <FileText className="h-4 w-4" />
               Exportar PDF
             </Button>
-            <Button
-              variant="outline"
-              onClick={() =>
-                setLocation(`/payroll-inactive?companyId=${companyId}`)
-              }
-              className="gap-2"
-            >
-              <UserRoundX className="h-4 w-4" />
-              Personal Pasivo
-            </Button>
             <Button variant="outline" onClick={goBack} className="gap-2">
               <ArrowLeft className="h-4 w-4" />
               Volver
@@ -1065,6 +1055,8 @@ export default function Payroll() {
             />
           </div>
         </div>
+
+        <PayrollSectionTabs active="active" companyId={companyId} />
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card className="border-l-4 border-l-emerald-500">
