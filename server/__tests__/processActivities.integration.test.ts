@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { companies, processCompliances, processes } from "../../drizzle/schema";
+import { companies, criticalityMatrix, processCompliances, processFODA, processes, stakeholders } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { getConsolidatedScheduleActivities } from "../lib/consolidatedScheduleActivities";
 import { consolidatedIndicatorsRouter } from "../routers/consolidatedIndicators";
@@ -97,7 +97,10 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (!db) return;
+  if (processId) await db.delete(criticalityMatrix).where(eq(criticalityMatrix.processId, processId));
+  if (processId) await db.delete(stakeholders).where(eq(stakeholders.processId, processId));
   if (processId) await db.delete(processCompliances).where(eq(processCompliances.processId, processId));
+  if (processId) await db.delete(processFODA).where(eq(processFODA.processId, processId));
   if (processId) await db.delete(processes).where(eq(processes.id, processId));
   if (companyId) await db.delete(companies).where(eq(companies.id, companyId));
   if (foreignProcessId) await db.delete(processes).where(eq(processes.id, foreignProcessId));
@@ -194,6 +197,76 @@ describe("Actividades del proceso: integración local", () => {
     const activitiesIndicator = indicators.find(item => item.id === "promedio_cumplimiento");
     expect(activitiesIndicator?.name).toBe("Actividades");
     expect(activitiesIndicator?.value).toBe(33);
+  });
+
+  it("refleja en OTG las acciones de seguimiento actuales", async () => {
+    await db.insert(processFODA).values({
+      processId,
+      matrixData: JSON.stringify([
+        {
+          id: "otg-actual",
+          acciones: [
+            {
+              ponderacion: 60,
+              tipoSeguimiento: "mensual_checklist",
+              checklistValues: [true, true, true, true, true, true, true, true, false, false, false, false],
+            },
+            {
+              ponderacion: 40,
+              tipoSeguimiento: "puntual",
+              valorPuntual: 7,
+              puntoLlegadaAccion: 10,
+            },
+          ],
+        },
+        {
+          id: "otg-historico",
+          acciones: [],
+          porcentajeAlcanzadoOTG: 82,
+        },
+      ]),
+    });
+
+    const indicators = await consolidatedIndicatorsRouter.createCaller({
+      user: { role: "admin" }, manager: null, processLeader: null, req: {} as never, res: {} as never,
+    } as never).getConsolidatedIndicators({ processId });
+    const otgIndicator = indicators.find(item => item.id === "total_alcanzado");
+
+    expect(otgIndicator?.compliance).toBe(75);
+    expect(otgIndicator?.otgRows).toHaveLength(2);
+  });
+
+  it("mide Partes Interesadas sólo con las acciones que sí fueron planificadas", async () => {
+    const insertStakeholder = async (name: string) => {
+      const result = await db.insert(stakeholders).values({
+        processId,
+        name,
+        type: "cliente",
+        isInternal: false,
+        orderIndex: 0,
+      });
+      return Number(result[0].insertId);
+    };
+
+    const completedStakeholderId = await insertStakeholder("Parte con acción realizada");
+    const pendingStakeholderId = await insertStakeholder("Parte con acción pendiente");
+    const unplannedStakeholderId = await insertStakeholder("Parte sin acción");
+    await db.insert(criticalityMatrix).values([
+      { processId, stakeholderId: completedStakeholderId, incidence: "1", risk: "C", criticality: "1C", actionToTake: "Confirmar acuerdo", implementationStatus: true },
+      { processId, stakeholderId: pendingStakeholderId, incidence: "2", risk: "B", criticality: "2B", actionToTake: "Revisar compromiso", implementationStatus: false },
+      { processId, stakeholderId: unplannedStakeholderId, incidence: "3", risk: "A", criticality: "3A", actionToTake: null, implementationStatus: true },
+    ]);
+
+    const indicators = await consolidatedIndicatorsRouter.createCaller({
+      user: { role: "admin" }, manager: null, processLeader: null, req: {} as never, res: {} as never,
+    } as never).getConsolidatedIndicators({ processId });
+    const stakeholderIndicator = indicators.find(item => item.id === "cumplimiento");
+
+    expect(stakeholderIndicator).toMatchObject({
+      value: 50,
+      plannedActions: 2,
+      completedActions: 1,
+    });
   });
 
   it("permite a un Jefe gestionar sólo las actividades de su proceso", async () => {

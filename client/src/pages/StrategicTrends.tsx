@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
+import { calculateCompanyComplianceSummary } from "@/lib/companyComplianceProgress";
 import {
   LineChart,
   Line,
@@ -683,7 +684,7 @@ function SGIView({ companyId, onBack }: { companyId: number; onBack: () => void 
   const { data: programs = [] } = trpc.managementPrograms.list.useQuery({ companyId }, { enabled: companyId > 0 });
   const { data: audits = [] } = trpc.auditsInspections.listAudits.useQuery({ companyId }, { enabled: companyId > 0 });
   const { data: inspections = [] } = trpc.auditsInspections.listInspections.useQuery({ companyId }, { enabled: companyId > 0 });
-  const { data: macroIndicators = [] } = trpc.macroIndicators.getMacroIndicators.useQuery({ companyId }, { enabled: companyId > 0 });
+  const { data: companyCompliances = [] } = trpc.companyCompliances.list.useQuery({ companyId }, { enabled: companyId > 0 });
   const { data: companyTrainingsList = [] } = trpc.companyTrainings.list.useQuery({ companyId }, { enabled: companyId > 0 });
 
   const programsCompliance = useMemo(() => {
@@ -717,10 +718,8 @@ function SGIView({ companyId, onBack }: { companyId: number; onBack: () => void 
   }, [inspections]);
 
   const avgCompliances = useMemo(() => {
-    if (!(macroIndicators as any[]).length) return 0;
-    const total = (macroIndicators as any[]).reduce((sum: number, p: any) => sum + (p.compliancesPercentage || 0), 0);
-    return Math.round(total / (macroIndicators as any[]).length);
-  }, [macroIndicators]);
+    return calculateCompanyComplianceSummary(companyCompliances).averageCompliance;
+  }, [companyCompliances]);
 
   const avgTrainings = useMemo(() => {
     const list = companyTrainingsList as any[];
