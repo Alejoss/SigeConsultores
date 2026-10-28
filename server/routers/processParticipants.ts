@@ -15,21 +15,18 @@ import {
   processParticipants,
   processes,
 } from "../../drizzle/schema";
+import {
+  canonicalizePayrollAreas,
+  isPayrollAreaEligible,
+  normalizePayrollArea,
+  resolvePayrollAreaSelection,
+  samePayrollArea,
+  serializePayrollAreaSelection,
+} from "../lib/payrollAreaSelection";
 
 /** Normaliza nombres de Áreas para comparar mayúsculas, tildes y separadores. */
-const normalizeArea = (value: string | null | undefined) => (value || "")
-  .normalize("NFD")
-  .replace(/[\u0300-\u036f]/g, "")
-  .toLocaleLowerCase()
-  .replace(/[^a-z0-9]+/g, " ")
-  .trim()
-  .replace(/\s+/g, " ");
-
-const sameArea = (left: string | null | undefined, right: string | null | undefined) => {
-  const leftKey = normalizeArea(left);
-  const rightKey = normalizeArea(right);
-  return Boolean(leftKey && rightKey && leftKey === rightKey);
-};
+const normalizeArea = normalizePayrollArea;
+const sameArea = samePayrollArea;
 
 const suggestedArea = (processName: string, areas: string[]) => {
   const processKey = normalizeArea(processName);
@@ -57,6 +54,83 @@ const kpiPercentage = (monthlyTarget: unknown, values: Array<{ actualValue: unkn
 };
 
 const companyInput = z.object({ companyId: z.number().int().positive() });
+
+type ParticipantsDb = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
+async function assignPayrollWorkersToParticipant(
+  db: ParticipantsDb,
+  companyId: number,
+  processParticipantId: number,
+  payrollEmployeeIds: number[],
+) {
+  const uniqueEmployeeIds = Array.from(new Set(payrollEmployeeIds));
+  return db.transaction(async tx => {
+    const [participant] = await tx.select({
+      id: processParticipants.id,
+      payrollArea: processCharacterizations.payrollArea,
+      payrollAreaSelection: processCharacterizations.payrollAreaSelection,
+    })
+      .from(processParticipants)
+      .innerJoin(processCharacterizations, or(
+        eq(processParticipants.processCharacterizationId, processCharacterizations.id),
+        eq(processParticipants.processCharacterizationId, processCharacterizations.processId),
+      ))
+      .innerJoin(processes, eq(processCharacterizations.processId, processes.id))
+      .where(and(eq(processParticipants.id, processParticipantId), eq(processes.companyId, companyId)))
+      .for("update")
+      .limit(1);
+    if (!participant) throw new Error("No se encontró el Puesto de Trabajo de esta empresa");
+
+    const selection = resolvePayrollAreaSelection(participant.payrollAreaSelection, participant.payrollArea);
+    if (selection.mode === "none") throw new Error("Primero selecciona las áreas de Nómina asociadas al proceso");
+
+    const employees = await tx.select({
+      id: payrollEmployees.id,
+      area: payrollEmployees.area,
+      currentProcessParticipantId: payrollEmployees.currentProcessParticipantId,
+    })
+      .from(payrollEmployees)
+      .where(and(
+        eq(payrollEmployees.companyId, companyId),
+        eq(payrollEmployees.status, "activo"),
+        inArray(payrollEmployees.id, uniqueEmployeeIds),
+      ))
+      .for("update");
+    if (employees.length !== uniqueEmployeeIds.length) {
+      throw new Error("Uno o más trabajadores seleccionados ya no están activos o no pertenecen a esta empresa");
+    }
+    if (employees.some(employee => !isPayrollAreaEligible(selection, employee.area))) {
+      throw new Error("Uno o más trabajadores no pertenecen a las áreas de Nómina asociadas a este proceso");
+    }
+    if (employees.some(employee => employee.currentProcessParticipantId !== null && employee.currentProcessParticipantId !== processParticipantId)) {
+      throw new Error("Uno o más trabajadores ya están vinculados a otro Puesto de Trabajo. Retíralos primero para poder vincularlos aquí.");
+    }
+
+    const existing = await tx.select({ payrollEmployeeId: participantWorkerAssignments.payrollEmployeeId })
+      .from(participantWorkerAssignments)
+      .where(and(
+        eq(participantWorkerAssignments.processParticipantId, processParticipantId),
+        inArray(participantWorkerAssignments.payrollEmployeeId, uniqueEmployeeIds),
+      ));
+    const existingEmployeeIds = new Set(existing.map(assignment => assignment.payrollEmployeeId));
+    const employeesToAdd = employees.filter(employee => employee.currentProcessParticipantId !== processParticipantId);
+    for (const employee of employeesToAdd) {
+      if (!existingEmployeeIds.has(employee.id)) {
+        await tx.insert(participantWorkerAssignments).values({ processParticipantId, payrollEmployeeId: employee.id });
+      }
+    }
+    if (employeesToAdd.length) {
+      await tx.update(payrollEmployees)
+        .set({ currentProcessParticipantId: processParticipantId, updatedAt: new Date() })
+        .where(inArray(payrollEmployees.id, employeesToAdd.map(employee => employee.id)));
+    }
+    return {
+      success: true,
+      addedCount: employeesToAdd.length,
+      alreadyLinkedCount: uniqueEmployeeIds.length - employeesToAdd.length,
+    };
+  });
+}
 
 export const processParticipantsRouter = router({
   list: companyProcedure
@@ -96,10 +170,16 @@ export const processParticipantsRouter = router({
     .query(async ({ input, ctx }) => {
       await assertProcessCharacterizationAccess(ctx, input.processCharacterizationId);
       const db = await getDb();
-      if (!db) return { payrollArea: null, suggestedPayrollArea: null, areas: [] as string[] };
+      if (!db) return {
+        payrollArea: null,
+        payrollAreaSelection: { mode: "none" as const },
+        suggestedPayrollArea: null,
+        areas: [] as string[],
+      };
 
       const [characterization] = await db.select({
         payrollArea: processCharacterizations.payrollArea,
+        payrollAreaSelection: processCharacterizations.payrollAreaSelection,
         processName: processes.name,
       })
         .from(processCharacterizations)
@@ -124,6 +204,7 @@ export const processParticipantsRouter = router({
           .sort((left, right) => left.localeCompare(right, "es"));
         return {
           payrollArea: null,
+          payrollAreaSelection: { mode: "none" as const },
           suggestedPayrollArea: process ? suggestedArea(process.processName, areas) : null,
           areas,
         };
@@ -134,9 +215,16 @@ export const processParticipantsRouter = router({
         .where(and(eq(payrollEmployees.companyId, input.companyId), eq(payrollEmployees.status, "activo")));
       const areas = Array.from(new Set(rows.map((row) => row.area.trim()).filter(Boolean)))
         .sort((left, right) => left.localeCompare(right, "es"));
+      const payrollAreaSelection = resolvePayrollAreaSelection(
+        characterization.payrollAreaSelection,
+        characterization.payrollArea,
+      );
       return {
         payrollArea: characterization.payrollArea,
-        suggestedPayrollArea: characterization.payrollArea ? null : suggestedArea(characterization.processName, areas),
+        payrollAreaSelection,
+        suggestedPayrollArea: payrollAreaSelection.mode === "none"
+          ? suggestedArea(characterization.processName, areas)
+          : null,
         areas,
       };
     }),
@@ -195,9 +283,73 @@ export const processParticipantsRouter = router({
       }
 
       await db.update(processCharacterizations)
-        .set({ payrollArea: area.area, updatedAt: new Date() })
+        .set({
+          payrollArea: area.area,
+          payrollAreaSelection: serializePayrollAreaSelection({ mode: "selected", areas: [area.area] }),
+          updatedAt: new Date(),
+        })
         .where(eq(processCharacterizations.id, characterization.id));
       return { success: true, payrollArea: area.area };
+    }),
+
+  setPayrollAreaSelection: companyProcedure
+    .input(companyInput.extend({
+      processCharacterizationId: z.number().int().positive(),
+      selection: z.discriminatedUnion("mode", [
+        z.object({ mode: z.literal("all") }),
+        z.object({
+          mode: z.literal("selected"),
+          areas: z.array(z.string().trim().min(1).max(255)).min(1).max(100),
+        }),
+      ]),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessCharacterizationAccess(ctx, input.processCharacterizationId);
+      const db = await getDb();
+      if (!db) throw new Error("Base de datos no disponible");
+      return db.transaction(async tx => {
+        const [characterization] = await tx.select({
+          id: processCharacterizations.id,
+          processId: processCharacterizations.processId,
+        })
+          .from(processCharacterizations)
+          .innerJoin(processes, eq(processCharacterizations.processId, processes.id))
+          .where(and(
+            or(
+              eq(processCharacterizations.id, input.processCharacterizationId),
+              eq(processCharacterizations.processId, input.processCharacterizationId),
+            ),
+            eq(processes.companyId, input.companyId),
+          ))
+          .for("update")
+          .limit(1);
+        if (!characterization) throw new Error("No se encontró el proceso caracterizado de esta empresa");
+
+        const activeEmployees = await tx.select({ area: payrollEmployees.area })
+          .from(payrollEmployees)
+          .where(and(eq(payrollEmployees.companyId, input.companyId), eq(payrollEmployees.status, "activo")));
+        const activeAreas = Array.from(new Set(activeEmployees.map(employee => employee.area.trim()).filter(Boolean)));
+        const selection = input.selection.mode === "all"
+          ? { mode: "all" as const }
+          : { mode: "selected" as const, areas: canonicalizePayrollAreas(input.selection.areas, activeAreas) };
+
+        const participantRows = await tx.select({ id: processParticipants.id })
+          .from(processParticipants)
+          .where(inArray(processParticipants.processCharacterizationId, [characterization.id, characterization.processId]));
+        const participantIds = participantRows.map(participant => participant.id);
+        const assignedEmployees = participantIds.length
+          ? await tx.select({ area: payrollEmployees.area })
+            .from(payrollEmployees)
+            .where(and(eq(payrollEmployees.companyId, input.companyId), inArray(payrollEmployees.currentProcessParticipantId, participantIds)))
+          : [];
+        if (assignedEmployees.some(employee => !isPayrollAreaEligible(selection, employee.area))) {
+          throw new Error("No puedes quitar un área que contiene trabajadores ya vinculados. Reasígnalos o incluye nuevamente esa área antes de guardar.");
+        }
+        await tx.update(processCharacterizations)
+          .set({ payrollAreaSelection: serializePayrollAreaSelection(selection), updatedAt: new Date() })
+          .where(eq(processCharacterizations.id, characterization.id));
+        return { success: true, payrollAreaSelection: selection };
+      });
     }),
 
   create: companyProcedure
@@ -318,6 +470,7 @@ export const processParticipantsRouter = router({
         id: processCharacterizations.id,
         processId: processCharacterizations.processId,
         payrollArea: processCharacterizations.payrollArea,
+        payrollAreaSelection: processCharacterizations.payrollAreaSelection,
       })
         .from(processCharacterizations)
         .innerJoin(processes, eq(processCharacterizations.processId, processes.id))
@@ -345,10 +498,11 @@ export const processParticipantsRouter = router({
       const activeEmployees = await db.select().from(payrollEmployees)
         .where(and(eq(payrollEmployees.companyId, input.companyId), eq(payrollEmployees.status, "activo")))
         .orderBy(asc(payrollEmployees.fullName));
-      const payrollArea = characterization.payrollArea || null;
-      const areaEmployees = payrollArea
-        ? activeEmployees.filter((employee) => sameArea(employee.area, payrollArea))
-        : [];
+      const payrollAreaSelection = resolvePayrollAreaSelection(
+        characterization.payrollAreaSelection,
+        characterization.payrollArea,
+      );
+      const areaEmployees = activeEmployees.filter((employee) => isPayrollAreaEligible(payrollAreaSelection, employee.area));
 
       const participantIds = participants.map((participant) => participant.id);
       const assignments = participantIds.length
@@ -415,7 +569,8 @@ export const processParticipantsRouter = router({
 
       const assignedWorkers = participantRows.flatMap((row) => row.workers);
       return {
-        payrollArea,
+        payrollArea: characterization.payrollArea || null,
+        payrollAreaSelection,
         participants: participantRows,
         totalPositions: participants.length,
         totalAssignedWorkers: assignedWorkers.length,
@@ -537,57 +692,29 @@ export const processParticipantsRouter = router({
       await assertProcessParticipantAccess(ctx, input.processParticipantId);
       const db = await getDb();
       if (!db) throw new Error("Base de datos no disponible");
-      const [participant] = await db.select({
-        id: processParticipants.id,
-        position: processParticipants.position,
-        payrollArea: processCharacterizations.payrollArea,
-      })
-        .from(processParticipants)
-        .innerJoin(processCharacterizations, or(
-          eq(processParticipants.processCharacterizationId, processCharacterizations.id),
-          eq(processParticipants.processCharacterizationId, processCharacterizations.processId),
-        ))
-        .innerJoin(processes, eq(processCharacterizations.processId, processes.id))
-        .where(and(
-          eq(processParticipants.id, input.processParticipantId),
-          eq(processes.companyId, input.companyId),
-        ))
-        .limit(1);
-      const [employee] = await db.select().from(payrollEmployees).where(and(
-        eq(payrollEmployees.id, input.payrollEmployeeId),
-        eq(payrollEmployees.companyId, input.companyId),
-        eq(payrollEmployees.status, "activo"),
-      ));
-      if (!participant || !employee) throw new Error("No se encontró el puesto o trabajador activo seleccionado");
-      if (!participant.payrollArea) throw new Error("Primero selecciona la Área de Nómina asociada al proceso");
-      if (!sameArea(participant.payrollArea, employee.area)) {
-        throw new Error("El trabajador no pertenece a la Área de Nómina asociada a este proceso");
-      }
+      return assignPayrollWorkersToParticipant(
+        db,
+        input.companyId,
+        input.processParticipantId,
+        [input.payrollEmployeeId],
+      );
+    }),
 
-      const existing = await db.select().from(participantWorkerAssignments).where(and(
-        eq(participantWorkerAssignments.processParticipantId, input.processParticipantId),
-        eq(participantWorkerAssignments.payrollEmployeeId, input.payrollEmployeeId),
-      ));
-      const previousParticipantId = employee.currentProcessParticipantId;
-      let assignmentId: number;
-      if (existing.length) {
-        assignmentId = existing[0].id;
-      } else {
-        const result = await db.insert(participantWorkerAssignments).values({
-          processParticipantId: input.processParticipantId,
-          payrollEmployeeId: input.payrollEmployeeId,
-        });
-        assignmentId = Number(result[0].insertId);
-      }
-      await db.update(payrollEmployees)
-        .set({ currentProcessParticipantId: input.processParticipantId, updatedAt: new Date() })
-        .where(eq(payrollEmployees.id, employee.id));
-      return {
-        success: true,
-        id: assignmentId,
-        alreadyAssigned: existing.length > 0,
-        reassigned: previousParticipantId !== null && previousParticipantId !== input.processParticipantId,
-      };
+  assignWorkers: companyProcedure
+    .input(companyInput.extend({
+      processParticipantId: z.number().int().positive(),
+      payrollEmployeeIds: z.array(z.number().int().positive()).min(1).max(100),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessParticipantAccess(ctx, input.processParticipantId);
+      const db = await getDb();
+      if (!db) throw new Error("Base de datos no disponible");
+      return assignPayrollWorkersToParticipant(
+        db,
+        input.companyId,
+        input.processParticipantId,
+        input.payrollEmployeeIds,
+      );
     }),
 
   unassignWorker: companyProcedure

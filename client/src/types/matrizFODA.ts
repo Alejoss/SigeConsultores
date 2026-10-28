@@ -8,6 +8,65 @@ export type ProbabilidadType = 'A' | 'B' | 'C' | 'D' | 'E';
 export type ImpactoType = 1 | 2 | 3 | 4 | 5;
 export type EstimacionType = 'Crítico' | 'Alto' | 'Medio' | 'Bajo';
 
+/** Mantiene el valor histórico almacenado y actualiza únicamente el nombre visible. */
+export const ETIQUETAS_SISTEMA_GESTION: Record<SistemaGestionType, string> = {
+  Calidad: 'Calidad',
+  Ambiente: 'Ambiente',
+  SSO: 'SSO',
+  'Seguridad Física': 'Sistema de Gestión en Control y Seguridad',
+  'Responsabilidad Social': 'Responsabilidad Social',
+  Otro: 'Otro',
+};
+
+/**
+ * Los códigos se conservan tal como están almacenados históricamente en la
+ * matriz: Probabilidad A–E e Impacto 1–5. Estas leyendas solo explican su
+ * significado visible y no convierten ni reescriben evaluaciones anteriores.
+ */
+export const ESCALA_PROBABILIDAD = [
+  { value: 'A', nombre: 'Frecuente', descripcion: 'Es probable que suceda muchas veces; ha ocurrido frecuentemente.' },
+  { value: 'B', nombre: 'Ocasional', descripcion: 'Es posible que suceda algunas veces; ha ocurrido con poca frecuencia.' },
+  { value: 'C', nombre: 'Remoto', descripcion: 'Es poco probable que ocurra, pero no imposible; rara vez ha ocurrido.' },
+  { value: 'D', nombre: 'Improbable', descripcion: 'Es muy poco probable que ocurra; no se sabe si ha ocurrido.' },
+  { value: 'E', nombre: 'Sumamente improbable', descripcion: 'Es casi inconcebible que ocurra el evento.' },
+] as const satisfies ReadonlyArray<{ value: ProbabilidadType; nombre: string; descripcion: string }>;
+
+export const ESCALA_IMPACTO = [
+  { value: 5, nombre: 'Catastrófico', descripcion: 'Equipo destruido o varias muertes.' },
+  { value: 4, nombre: 'Peligroso', descripcion: 'Reducción grave de márgenes de seguridad, lesiones graves o daño importante a equipos e instalaciones.' },
+  { value: 3, nombre: 'Grave', descripcion: 'Afectación importante a la seguridad u operación, incidente grave o lesiones para las personas.' },
+  { value: 2, nombre: 'Leve', descripcion: 'Molestias, limitaciones operacionales, uso de procedimiento de emergencia o incidente leve.' },
+  { value: 1, nombre: 'Insignificante', descripcion: 'Pocas consecuencias.' },
+] as const satisfies ReadonlyArray<{ value: ImpactoType; nombre: string; descripcion: string }>;
+
+/** Presentación simplificada solicitada: rojo = grave, amarillo = medio, verde = bajo. */
+export type CategoriaVisualRiesgo = 'Grave' | 'Medio' | 'Bajo';
+
+export const PRESENTACION_RIESGO: Record<EstimacionType, {
+  categoria: CategoriaVisualRiesgo;
+  className: string;
+  cellClassName: string;
+}> = {
+  Crítico: { categoria: 'Grave', className: 'bg-red-600 text-white', cellClassName: 'bg-red-100 text-red-800' },
+  Alto: { categoria: 'Grave', className: 'bg-red-600 text-white', cellClassName: 'bg-red-100 text-red-800' },
+  Medio: { categoria: 'Medio', className: 'bg-yellow-300 text-slate-800', cellClassName: 'bg-yellow-100 text-yellow-900' },
+  Bajo: { categoria: 'Bajo', className: 'bg-green-600 text-white', cellClassName: 'bg-green-100 text-green-800' },
+};
+
+export function obtenerPresentacionRiesgo(estimacion?: EstimacionType) {
+  return estimacion ? PRESENTACION_RIESGO[estimacion] : null;
+}
+
+export function describirProbabilidad(valor?: ProbabilidadType): string {
+  const escala = ESCALA_PROBABILIDAD.find((item) => item.value === valor);
+  return escala ? `${escala.value} — ${escala.nombre}` : valor || '-';
+}
+
+export function describirImpacto(valor?: ImpactoType): string {
+  const escala = ESCALA_IMPACTO.find((item) => item.value === valor);
+  return escala ? `${escala.value} — ${escala.nombre}` : valor ? String(valor) : '-';
+}
+
 // ─── Tipos OTG ────────────────────────────────────────────────────────────────
 export type TrackingOTGType = 'puntual' | 'mensual_sumatoria' | 'mensual_promedio' | 'mensual_checklist';
 export const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'Mayo', 'Jun', 'Jul', 'Agos', 'Sep', 'Oct', 'Nov', 'Dic'];

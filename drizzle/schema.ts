@@ -609,6 +609,8 @@ export const processCharacterizations = mysqlTable("processCharacterizations", {
   resources: text("resources"),
   /** Área de RR.HH. cuyos trabajadores pueden vincularse a los puestos de este proceso. */
   payrollArea: varchar("payrollArea", { length: 255 }),
+  /** Selección nueva de una, varias o todas las áreas; el valor único histórico se conserva intacto. */
+  payrollAreaSelection: text("payrollAreaSelection"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

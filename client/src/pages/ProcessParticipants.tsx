@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useLocation } from "wouter";
 import { Plus, Trash2, AlertCircle, Edit2, ArrowLeft, Download, UsersRound, UserPlus, ChevronDown, ChevronUp, Gauge, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -43,8 +44,10 @@ export default function ProcessParticipants() {
   const [expandedParticipantId, setExpandedParticipantId] = useState<number | null>(null);
   const [expandedRoleDetails, setExpandedRoleDetails] = useState<Set<number>>(() => new Set());
   const [workerPicker, setWorkerPicker] = useState<any | null>(null);
+  const [selectedWorkerIds, setSelectedWorkerIds] = useState<Set<number>>(() => new Set());
   const [kpiFormAssignmentId, setKpiFormAssignmentId] = useState<number | null>(null);
   const [kpiDraft, setKpiDraft] = useState(EMPTY_KPI);
+  const [payrollAreaSelectionDraft, setPayrollAreaSelectionDraft] = useState<any>({ mode: "none" });
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -90,15 +93,21 @@ export default function ProcessParticipants() {
     await refetchPerformance();
   };
 
-  const setPayrollAreaMutation = trpc.processParticipants.setPayrollArea.useMutation({
+  const setPayrollAreaSelectionMutation = trpc.processParticipants.setPayrollAreaSelection.useMutation({
     onSuccess: async (result) => {
-      toast.success(`Área de Nómina asociada: ${result.payrollArea}`);
+      toast.success(result.payrollAreaSelection.mode === "all"
+        ? "Se asociaron todas las áreas activas de Nómina"
+        : `${result.payrollAreaSelection.areas.length} área(s) de Nómina asociada(s)`);
       await utils.processParticipants.payrollAreaOptions.invalidate({ companyId, processCharacterizationId });
       await refetchPayrollArea();
       await refreshPerformance();
     },
-    onError: (error: any) => toast.error(error.message || "No fue posible asociar la Área de Nómina"),
+    onError: (error: any) => toast.error(error.message || "No fue posible asociar las áreas de Nómina"),
   });
+  useEffect(() => {
+    if (!payrollAreaOptions?.payrollAreaSelection || setPayrollAreaSelectionMutation.isPending) return;
+    setPayrollAreaSelectionDraft(payrollAreaOptions.payrollAreaSelection);
+  }, [payrollAreaOptions?.payrollAreaSelection, setPayrollAreaSelectionMutation.isPending]);
   const createMutation = trpc.processParticipants.create.useMutation({
     onSuccess: () => {
       toast.success("Puesto de Trabajo agregado exitosamente");
@@ -124,14 +133,16 @@ export default function ProcessParticipants() {
     onSuccess: () => { toast.success("Puesto de Trabajo eliminado"); refetch(); refreshPerformance(); },
     onError: (error: any) => toast.error(error.message || "Error al eliminar el participante"),
   });
-  const assignWorkerMutation = trpc.processParticipants.assignWorker.useMutation({
+  const assignWorkersMutation = trpc.processParticipants.assignWorkers.useMutation({
     onSuccess: (result) => {
-      toast.success(result.reassigned ? "Trabajador reasignado a este Puesto de Trabajo" : "Trabajador vinculado al Puesto de Trabajo");
+      toast.success(result.addedCount === 1 ? "1 trabajador vinculado al Puesto de Trabajo" : `${result.addedCount} trabajadores vinculados al Puesto de Trabajo`);
+      setSelectedWorkerIds(new Set());
       setWorkerPicker(null);
       refreshPerformance();
     },
-    onError: (error: any) => toast.error(error.message || "No fue posible vincular al trabajador"),
+    onError: (error: any) => toast.error(error.message || "No fue posible vincular a los trabajadores"),
   });
+  useEffect(() => { setSelectedWorkerIds(new Set()); }, [workerPicker?.participant?.id]);
   const unassignWorkerMutation = trpc.processParticipants.unassignWorker.useMutation({
     onSuccess: () => { toast.success("Trabajador retirado del puesto. Su historial de KPI se conserva."); refreshPerformance(); },
     onError: (error: any) => toast.error(error.message || "No fue posible desvincular al trabajador"),
@@ -181,6 +192,23 @@ export default function ProcessParticipants() {
     setKpiValueMutation.mutate({ companyId, kpiId, month, actualValue });
   };
 
+  const selectedPayrollAreas = payrollAreaSelectionDraft?.mode === "selected" ? payrollAreaSelectionDraft.areas || [] : [];
+  const hasPayrollAreaSelection = payrollAreaSelectionDraft?.mode === "all" || selectedPayrollAreas.length > 0;
+  const hasSavedPayrollAreaSelection = payrollAreaOptions?.payrollAreaSelection?.mode === "all"
+    || (payrollAreaOptions?.payrollAreaSelection?.mode === "selected" && payrollAreaOptions.payrollAreaSelection.areas.length > 0);
+  const togglePayrollArea = (area: string, checked: boolean) => {
+    const nextAreas = checked ? [...selectedPayrollAreas, area] : selectedPayrollAreas.filter((selected: string) => selected !== area);
+    setPayrollAreaSelectionDraft({ mode: "selected", areas: nextAreas });
+  };
+  const savePayrollAreaSelection = () => {
+    if (payrollAreaSelectionDraft?.mode === "all") {
+      setPayrollAreaSelectionMutation.mutate({ companyId, processCharacterizationId, selection: { mode: "all" } });
+      return;
+    }
+    if (!selectedPayrollAreas.length) return toast.error("Selecciona al menos una área específica o marca Todas las áreas");
+    setPayrollAreaSelectionMutation.mutate({ companyId, processCharacterizationId, selection: { mode: "selected", areas: selectedPayrollAreas } });
+  };
+
   if (!processId) {
     return <DashboardLayout><Card><CardContent className="pt-6"><div className="flex items-center gap-3 text-slate-600"><AlertCircle size={20} /><p>Por favor, selecciona un proceso primero desde el Mapa de Procesos</p></div><Button className="w-full mt-4" onClick={() => setLocation(getAxisBackPathForRole())}>Volver al Mapa de Procesos</Button></CardContent></Card></DashboardLayout>;
   }
@@ -208,27 +236,42 @@ export default function ProcessParticipants() {
         </div>
 
         <Card className="border border-violet-200 bg-violet-50/60">
-          <CardContent className="flex flex-col gap-3 pt-5 md:flex-row md:items-end md:justify-between">
+          <CardContent className="flex flex-col gap-4 pt-5">
             <div>
-              <p className="font-semibold text-violet-950">Área de Nómina asociada</p>
-              <p className="mt-1 text-sm text-violet-800">Define una sola vez el Área de RR.HH. cuyos trabajadores pueden vincularse a los Puestos de Trabajo de este proceso. El Cargo contractual se conserva sin cambios.</p>
-              {payrollAreaOptions?.suggestedPayrollArea && !payrollAreaOptions.payrollArea && <p className="mt-1 text-xs font-medium text-violet-700">Sugerencia automática: {payrollAreaOptions.suggestedPayrollArea}</p>}
+              <p className="font-semibold text-violet-950">Áreas de Nómina asociadas</p>
+              <p className="mt-1 text-sm text-violet-800">Elige una, varias o todas las áreas de RR.HH. cuyos trabajadores pueden vincularse a los Puestos de Trabajo de este proceso. El Cargo contractual se conserva sin cambios.</p>
+              {payrollAreaOptions?.suggestedPayrollArea && !hasSavedPayrollAreaSelection && <p className="mt-1 text-xs font-medium text-violet-700">Sugerencia automática: {payrollAreaOptions.suggestedPayrollArea}</p>}
             </div>
-            <div className="w-full md:w-80">
-              <Label htmlFor="payroll-area" className="text-xs font-semibold text-violet-950">Área de Nómina</Label>
-              <select
-                id="payroll-area"
-                value={payrollAreaOptions?.payrollArea || ""}
-                disabled={!payrollAreaOptions || setPayrollAreaMutation.isPending}
-                onChange={(event) => {
-                  const payrollArea = event.target.value;
-                  if (payrollArea) setPayrollAreaMutation.mutate({ companyId, processCharacterizationId, payrollArea });
-                }}
-                className="mt-1 h-10 w-full rounded-md border border-violet-300 bg-white px-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-400"
-              >
-                <option value="">Seleccionar Área de Nómina…</option>
-                {(payrollAreaOptions?.areas || []).map((area) => <option key={area} value={area}>{area}</option>)}
-              </select>
+            <div className="rounded-md border border-violet-200 bg-white p-3">
+              <div className="flex items-center gap-2 border-b border-violet-100 pb-3">
+                <Checkbox
+                  id="payroll-area-all"
+                  checked={payrollAreaSelectionDraft?.mode === "all"}
+                  disabled={!payrollAreaOptions || setPayrollAreaSelectionMutation.isPending}
+                  onCheckedChange={(checked) => setPayrollAreaSelectionDraft(checked === true ? { mode: "all" } : { mode: "selected", areas: selectedPayrollAreas })}
+                />
+                <Label htmlFor="payroll-area-all" className="cursor-pointer font-semibold text-violet-950">Todas las áreas</Label>
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {(payrollAreaOptions?.areas || []).map((area) => {
+                  const id = `payroll-area-${area}`;
+                  return <div key={area} className="flex items-center gap-2">
+                    <Checkbox
+                      id={id}
+                      checked={payrollAreaSelectionDraft?.mode === "all" || selectedPayrollAreas.includes(area)}
+                      disabled={!payrollAreaOptions || payrollAreaSelectionDraft?.mode === "all" || setPayrollAreaSelectionMutation.isPending}
+                      onCheckedChange={(checked) => togglePayrollArea(area, checked === true)}
+                    />
+                    <Label htmlFor={id} className="cursor-pointer text-sm text-slate-700">{area}</Label>
+                  </div>;
+                })}
+              </div>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-slate-500">{payrollAreaSelectionDraft?.mode === "all" ? "Se incluirá todo el personal activo de Nómina." : hasPayrollAreaSelection ? `${selectedPayrollAreas.length} área(s) seleccionada(s).` : "Aún no hay áreas seleccionadas."}</p>
+                <Button size="sm" onClick={savePayrollAreaSelection} disabled={!payrollAreaOptions || !hasPayrollAreaSelection || setPayrollAreaSelectionMutation.isPending}>
+                  {setPayrollAreaSelectionMutation.isPending ? "Guardando…" : "Guardar áreas"}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -291,8 +334,36 @@ export default function ProcessParticipants() {
         </div>
       </div>
 
-      <Dialog open={!!workerPicker} onOpenChange={(open) => !open && setWorkerPicker(null)}>
-        <DialogContent className="sm:max-w-xl"><DialogHeader><DialogTitle>Seleccionar trabajador</DialogTitle><DialogDescription>Se muestran los trabajadores activos del Área de Nómina asociada. Si la persona tenía otro Puesto de Trabajo, será reasignada sin borrar su historial de KPI.</DialogDescription></DialogHeader><div className="space-y-2 max-h-[55vh] overflow-y-auto">{workerPicker && (() => { const assignedIds = new Set((workerPicker.workers || []).map((worker: any) => worker.employee.id)); const candidates = (workerPicker.availableWorkers || []).filter((employee: any) => !assignedIds.has(employee.id)); return candidates.length === 0 ? <p className="py-5 text-center text-sm text-slate-500">No hay más trabajadores activos disponibles en el Área de Nómina seleccionada.</p> : candidates.map((employee: any) => <div key={employee.id} className="flex items-center justify-between gap-3 rounded-md border p-3"><div><p className="font-medium">{employee.fullName}</p><p className="text-xs text-slate-500">C.I. {employee.identityCard} · Área: {employee.area} · Cargo: {employee.position}</p></div><Button size="sm" onClick={() => assignWorkerMutation.mutate({ companyId, processParticipantId: workerPicker.participant.id, payrollEmployeeId: employee.id })}>Asignar al puesto</Button></div>); })()}</div></DialogContent>
+      <Dialog open={!!workerPicker} onOpenChange={(open) => { if (!open) { setSelectedWorkerIds(new Set()); setWorkerPicker(null); } }}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Seleccionar trabajadores</DialogTitle>
+            <DialogDescription>Se muestran los trabajadores activos de las áreas de Nómina asociadas que todavía no tienen un Puesto de Trabajo vinculado. Marca uno o varios y vincúlalos en un solo paso.</DialogDescription>
+          </DialogHeader>
+          {workerPicker && (() => {
+            const candidates = (workerPicker.availableWorkers || []).filter((employee: any) => employee.currentProcessParticipantId === null);
+            const candidateIds = candidates.map((employee: any) => employee.id);
+            const allCandidatesSelected = candidates.length > 0 && candidates.every((employee: any) => selectedWorkerIds.has(employee.id));
+            const toggleAllCandidates = (checked: boolean) => setSelectedWorkerIds(checked ? new Set(candidateIds) : new Set());
+            const toggleWorker = (employeeId: number, checked: boolean) => setSelectedWorkerIds((current) => {
+              const next = new Set(current);
+              if (checked) next.add(employeeId); else next.delete(employeeId);
+              return next;
+            });
+            return candidates.length === 0 ? <p className="py-5 text-center text-sm text-slate-500">Todos los trabajadores activos de las áreas seleccionadas ya están vinculados a un Puesto de Trabajo.</p> : <>
+              <div className="flex flex-col gap-3 rounded-md border border-blue-100 bg-blue-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2"><Checkbox id="select-all-workers" checked={allCandidatesSelected} onCheckedChange={(checked) => toggleAllCandidates(checked === true)} /><Label htmlFor="select-all-workers" className="cursor-pointer text-sm font-medium text-blue-950">Seleccionar todos los disponibles ({candidates.length})</Label></div>
+                <Button size="sm" disabled={!selectedWorkerIds.size || assignWorkersMutation.isPending} onClick={() => assignWorkersMutation.mutate({ companyId, processParticipantId: workerPicker.participant.id, payrollEmployeeIds: Array.from(selectedWorkerIds) })}>{assignWorkersMutation.isPending ? "Vinculando…" : `Vincular ${selectedWorkerIds.size || ""} seleccionado${selectedWorkerIds.size === 1 ? "" : "s"}`}</Button>
+              </div>
+              <div className="mt-3 space-y-2 max-h-[48vh] overflow-y-auto">
+                {candidates.map((employee: any) => {
+                  const employeeId = `payroll-worker-${employee.id}`;
+                  return <div key={employee.id} className="flex items-center gap-3 rounded-md border p-3"><Checkbox id={employeeId} checked={selectedWorkerIds.has(employee.id)} disabled={assignWorkersMutation.isPending} onCheckedChange={(checked) => toggleWorker(employee.id, checked === true)} /><Label htmlFor={employeeId} className="min-w-0 flex-1 cursor-pointer"><p className="font-medium text-slate-900">{employee.fullName}</p><p className="text-xs text-slate-500">C.I. {employee.identityCard} · Área: {employee.area} · Cargo: {employee.position}</p></Label></div>;
+                })}
+              </div>
+            </>;
+          })()}
+        </DialogContent>
       </Dialog>
     </DashboardLayout>
   );
