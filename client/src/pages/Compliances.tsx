@@ -10,6 +10,13 @@ import { ChevronUp, ExternalLink, FileText, Link2, Upload } from "lucide-react";
 import { ProcessLinkDialog } from "@/components/ProcessLinkDialog";
 import { SourceEvidenceButton } from "@/components/SourceEvidenceButton";
 import { CompanyReadOnlyNotice, useCompanyManagementPermission } from "@/hooks/useCompanyManagementPermission";
+import {
+  calculateCompanyCompliancePercentage,
+  calculateCompanyComplianceSummary,
+  calculateMonthsCompliancePercentage,
+  calculateVigenciaProgress,
+  parseComplianceMonths,
+} from "@/lib/companyComplianceProgress";
 
 const MONTHS = [
   "Ene",
@@ -26,41 +33,8 @@ const MONTHS = [
   "Dic",
 ] as const;
 
-function parseMonths(value: string | null | undefined): number[] {
-  if (!value) return [];
-  return value
-    .split(",")
-    .map(Number)
-    .filter(n => n >= 1 && n <= 12);
-}
-
 function serializeMonths(months: number[]): string {
   return months.sort((a, b) => a - b).join(",");
-}
-
-function calcPercentageMonths(planned: number[], completed: number[]): number {
-  if (planned.length === 0) return 0;
-  const fulfilled = completed.filter(m => planned.includes(m)).length;
-  return Math.round((fulfilled / planned.length) * 100);
-}
-
-/** Calcula el % de cumplimiento para modo vigencia y devuelve también el estado */
-function calcVigencia(validUntil: string | null | undefined): {
-  pct: number;
-  status: "vigente" | "por_vencer" | "vencido" | "sin_fecha";
-  daysLeft: number;
-} {
-  if (!validUntil) return { pct: 0, status: "sin_fecha", daysLeft: 0 };
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const until = new Date(validUntil);
-  until.setHours(0, 0, 0, 0);
-  const daysLeft = Math.ceil(
-    (until.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  if (daysLeft < 0) return { pct: 0, status: "vencido", daysLeft };
-  if (daysLeft <= 30) return { pct: 100, status: "por_vencer", daysLeft };
-  return { pct: 100, status: "vigente", daysLeft };
 }
 
 function VigenciaBadge({
@@ -262,24 +236,8 @@ export default function Compliances() {
     return () => clearTimeout(timer);
   }, [formData, editingId]);
 
-  /** Calcula el % de una obligación independientemente del modo */
-  function getCompliancePct(c: Compliance): number {
-    if (c.evaluationMode === "vigencia") {
-      return calcVigencia(c.validUntil).pct;
-    }
-    const planned = parseMonths(c.plannedMonths);
-    const completed = parseMonths(c.completedMonths);
-    return calcPercentageMonths(planned, completed);
-  }
-
   const { totalCompliances, averageCompliance } = useMemo(() => {
-    const total = compliances.length;
-    if (total === 0) return { totalCompliances: 0, averageCompliance: 0 };
-    const sum = compliances.reduce((acc, c) => acc + getCompliancePct(c), 0);
-    return {
-      totalCompliances: total,
-      averageCompliance: Math.round(sum / total),
-    };
+    return calculateCompanyComplianceSummary(compliances);
   }, [compliances]);
 
   const uploadEvidencePdf = async (complianceId: number, file: File) => {
@@ -451,8 +409,8 @@ export default function Compliances() {
       obligationType: compliance.obligationType,
       otherObligationType: compliance.otherObligationType || "",
       responsible: compliance.responsible || "",
-      plannedMonths: parseMonths(compliance.plannedMonths),
-      completedMonths: parseMonths(compliance.completedMonths),
+      plannedMonths: parseComplianceMonths(compliance.plannedMonths),
+      completedMonths: parseComplianceMonths(compliance.completedMonths),
       observations: compliance.observations || "",
       evaluationMode: compliance.evaluationMode ?? "meses",
       validFrom: dateInputValue(compliance.validFrom),
@@ -537,11 +495,10 @@ export default function Compliances() {
           ) : (
             compliances.map(compliance => {
               const mode = compliance.evaluationMode ?? "meses";
-              const planned = parseMonths(compliance.plannedMonths);
-              const completed = parseMonths(compliance.completedMonths);
-              const pctMeses = calcPercentageMonths(planned, completed);
-              const vigInfo = calcVigencia(compliance.validUntil);
-              const pct = mode === "vigencia" ? vigInfo.pct : pctMeses;
+              const planned = parseComplianceMonths(compliance.plannedMonths);
+              const completed = parseComplianceMonths(compliance.completedMonths);
+              const vigInfo = calculateVigenciaProgress(compliance.validUntil);
+              const pct = calculateCompanyCompliancePercentage(compliance);
 
               return (
                 <Card key={compliance.id} className="bg-white">
@@ -1121,12 +1078,12 @@ export default function Compliances() {
                       <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all ${
-                            calcPercentageMonths(
+                            calculateMonthsCompliancePercentage(
                               formData.plannedMonths,
                               formData.completedMonths
                             ) >= 80
                               ? "bg-green-500"
-                              : calcPercentageMonths(
+                              : calculateMonthsCompliancePercentage(
                                     formData.plannedMonths,
                                     formData.completedMonths
                                   ) >= 50
@@ -1134,18 +1091,18 @@ export default function Compliances() {
                                 : "bg-red-400"
                           }`}
                           style={{
-                            width: `${calcPercentageMonths(formData.plannedMonths, formData.completedMonths)}%`,
+                            width: `${calculateMonthsCompliancePercentage(formData.plannedMonths, formData.completedMonths)}%`,
                           }}
                         />
                       </div>
                       <span
                         className={`text-lg font-bold min-w-[3rem] text-right ${
-                          calcPercentageMonths(
+                          calculateMonthsCompliancePercentage(
                             formData.plannedMonths,
                             formData.completedMonths
                           ) >= 80
                             ? "text-green-700"
-                            : calcPercentageMonths(
+                            : calculateMonthsCompliancePercentage(
                                   formData.plannedMonths,
                                   formData.completedMonths
                                 ) >= 50
@@ -1153,7 +1110,7 @@ export default function Compliances() {
                               : "text-red-600"
                         }`}
                       >
-                        {calcPercentageMonths(
+                        {calculateMonthsCompliancePercentage(
                           formData.plannedMonths,
                           formData.completedMonths
                         )}
@@ -1205,7 +1162,7 @@ export default function Compliances() {
                 </div>
                 {formData.validUntil &&
                   (() => {
-                    const v = calcVigencia(formData.validUntil);
+                    const v = calculateVigenciaProgress(formData.validUntil);
                     return (
                       <div className="flex items-center gap-3">
                         <VigenciaBadge

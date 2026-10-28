@@ -9,6 +9,7 @@ import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
 import { getAxisBackPathForRole } from "@/lib/sessionScope";
+import { calculateCompanyComplianceSummary } from "@/lib/companyComplianceProgress";
 
 type SubModule = "strategic" | "management" | "systems" | null;
 
@@ -190,6 +191,11 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
     { enabled: companyId > 0 }
   );
 
+  const { data: companyCompliances = [], isLoading: compliancesLoading } = trpc.companyCompliances.list.useQuery(
+    { companyId },
+    { enabled: companyId > 0 }
+  );
+
   // % Programas: promedio de (completedActions / plannedActions) por programa
   const programsCompliance = useMemo(() => {
     if (!programs.length) return 0;
@@ -225,13 +231,12 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
     return count > 0 ? Math.round(total / count) : 0;
   }, [inspections]);
 
-  // % Cumplimientos y % Capacitaciones: promedio de todos los procesos
+  // % Cumplimientos: mismo resumen corporativo de Sistemas de Gestión → Cumplimientos.
   const avgCompliances = useMemo(() => {
-    if (!macroIndicators.length) return 0;
-    const total = macroIndicators.reduce((sum: number, p: any) => sum + (p.compliancesPercentage || 0), 0);
-    return Math.round(total / macroIndicators.length);
-  }, [macroIndicators]);
+    return calculateCompanyComplianceSummary(companyCompliances).averageCompliance;
+  }, [companyCompliances]);
 
+  // % Capacitaciones: promedio de todos los procesos.
   const avgTrainings = useMemo(() => {
     if (!macroIndicators.length) return 0;
     const total = macroIndicators.reduce((sum: number, p: any) => sum + (p.trainingsPercentage || 0), 0);
@@ -246,7 +251,7 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
     { label: "Capacitaciones", value: avgTrainings, icon: "🎓", count: null },
   ];
 
-  const isLoading = programsLoading || indicatorsLoading || auditsLoading || inspectionsLoading;
+  const isLoading = programsLoading || indicatorsLoading || auditsLoading || inspectionsLoading || compliancesLoading;
   if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin w-6 h-6 text-blue-500" /></div>;
 
   return (
