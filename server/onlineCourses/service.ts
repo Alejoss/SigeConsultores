@@ -8,6 +8,7 @@ import {
   COURSE_COOKIE,
   COURSE_SESSION_HOURS,
   COURSE_TIME_ZONE,
+  courseProgressPercent,
   courseDateTimeLocalToDate,
   formatCourseScore,
   gradeAnswers,
@@ -1080,54 +1081,82 @@ export async function companyOverview(actor: CourseActor) {
     });
   }
   const workers = await db.select().from(courseWorkers).where(eq(courseWorkers.companyId, actor.companyId)).orderBy(asc(courseWorkers.name));
-  const moduleIds = fieldViews.flatMap(field => field.modules.map(moduleRow => moduleRow.id));
-  const workerViews = [];
-  for (const worker of workers) {
-    const mods: Record<number, { done: number; total: number; scoreTenths: number | null; status: string; override: string }> = {};
-    let moduleCertificates = 0;
-    for (const moduleId of moduleIds) {
-      const doneRows = await db
-        .select({ n: sql<number>`count(*)` })
+  const moduleRows = fieldViews.flatMap(field => field.modules.map(moduleRow => ({ ...moduleRow, fieldId: field.id, fieldName: field.name })));
+  const moduleIds = moduleRows.map(moduleRow => moduleRow.id);
+  const lessonRows = moduleIds.length
+    ? await db
+        .select({ id: courseLessons.id, moduleId: courseLessons.moduleId, title: courseLessons.title, number: courseLessons.number })
+        .from(courseLessons)
+        .where(and(inArray(courseLessons.moduleId, moduleIds), isNull(courseLessons.archivedAt)))
+        .orderBy(asc(courseLessons.sortOrder), asc(courseLessons.id))
+    : [];
+  const workerIds = workers.map(worker => worker.id);
+  const lessonIds = lessonRows.map(lesson => lesson.id);
+  const resultRows = workerIds.length && lessonIds.length
+    ? await db
+        .select({ workerId: courseResults.workerId, lessonId: courseResults.lessonId, scoreTenths: courseResults.scoreTenths, passed: courseResults.passed, takenAt: courseResults.takenAt })
         .from(courseResults)
-        .innerJoin(courseLessons, eq(courseLessons.id, courseResults.lessonId))
-        .where(and(eq(courseLessons.moduleId, moduleId), eq(courseResults.workerId, worker.id), eq(courseResults.passed, true)));
-      const scoreRows = await db
-        .select({ score: sql<number>`avg(${courseResults.scoreTenths})` })
-        .from(courseResults)
-        .innerJoin(courseLessons, eq(courseLessons.id, courseResults.lessonId))
-        .where(and(eq(courseLessons.moduleId, moduleId), eq(courseResults.workerId, worker.id), eq(courseResults.passed, true)));
-      const visit = await db
-        .select({ workerId: courseModuleVisits.workerId })
+        .where(and(inArray(courseResults.workerId, workerIds), inArray(courseResults.lessonId, lessonIds)))
+    : [];
+  const visitRows = workerIds.length && moduleIds.length
+    ? await db
+        .select({ workerId: courseModuleVisits.workerId, moduleId: courseModuleVisits.moduleId })
         .from(courseModuleVisits)
-        .where(and(eq(courseModuleVisits.workerId, worker.id), eq(courseModuleVisits.moduleId, moduleId)))
-        .limit(1);
-      const override = await db
-        .select({ value: courseWorkerOverrides.value })
+        .where(and(inArray(courseModuleVisits.workerId, workerIds), inArray(courseModuleVisits.moduleId, moduleIds)))
+    : [];
+  const overrideRows = workerIds.length && moduleIds.length
+    ? await db
+        .select({ workerId: courseWorkerOverrides.workerId, moduleId: courseWorkerOverrides.moduleId, value: courseWorkerOverrides.value })
         .from(courseWorkerOverrides)
-        .where(and(eq(courseWorkerOverrides.workerId, worker.id), eq(courseWorkerOverrides.moduleId, moduleId)))
-        .limit(1);
-      const cert = await db
-        .select({ code: courseModuleCertificates.code })
+        .where(and(inArray(courseWorkerOverrides.workerId, workerIds), inArray(courseWorkerOverrides.moduleId, moduleIds)))
+    : [];
+  const certificates = workerIds.length && moduleIds.length
+    ? await db
+        .select({ workerId: courseModuleCertificates.workerId, moduleId: courseModuleCertificates.moduleId })
         .from(courseModuleCertificates)
-        .where(and(eq(courseModuleCertificates.workerId, worker.id), eq(courseModuleCertificates.moduleId, moduleId)))
-        .limit(1);
-      if (cert.length) moduleCertificates += 1;
-      const done = Number(doneRows[0]?.n || 0);
-      const total = fieldViews.flatMap(field => field.modules).find(moduleRow => moduleRow.id === moduleId)?.lessonCount || 0;
-      mods[moduleId] = {
+        .where(and(inArray(courseModuleCertificates.workerId, workerIds), inArray(courseModuleCertificates.moduleId, moduleIds)))
+    : [];
+  const lessonsByModule = new Map<number, typeof lessonRows>();
+  for (const lesson of lessonRows) lessonsByModule.set(lesson.moduleId, [...(lessonsByModule.get(lesson.moduleId) || []), lesson]);
+  const resultByWorkerLesson = new Map(resultRows.map(result => [`${result.workerId}:${result.lessonId}`, result]));
+  const visits = new Set(visitRows.map(visit => `${visit.workerId}:${visit.moduleId}`));
+  const overrides = new Map(overrideRows.map(override => [`${override.workerId}:${override.moduleId}`, override.value]));
+  const certificateKeys = new Set(certificates.map(certificate => `${certificate.workerId}:${certificate.moduleId}`));
+  const now = Date.now();
+  const workerViews = workers.map(worker => {
+    const mods: Record<number, { done: number; total: number; scoreTenths: number | null; status: string; override: string; progressPercent: number | null; availableNow: boolean; lessons: { id: number; title: string; number: number; status: string; scoreTenths: number | null; completedAt: string | null }[] }> = {};
+    let moduleCertificates = 0;
+    for (const moduleRow of moduleRows) {
+      const override = overrides.get(`${worker.id}:${moduleRow.id}`) || "auto";
+      const opensAt = moduleRow.opensAt ? new Date(moduleRow.opensAt).getTime() : null;
+      const closesAt = moduleRow.closesAt ? new Date(moduleRow.closesAt).getTime() : null;
+      const availableNow = override === "abrir" || (override !== "cerrar" && moduleRow.open && (!opensAt || opensAt <= now) && (!closesAt || closesAt >= now));
+      const lessons = (lessonsByModule.get(moduleRow.id) || []).map(lesson => {
+        const result = resultByWorkerLesson.get(`${worker.id}:${lesson.id}`);
+        return {
+          ...lesson,
+          status: result?.passed ? "aprobado" : result ? "reprobado" : "sin_iniciar",
+          scoreTenths: result ? Number(result.scoreTenths) : null,
+          completedAt: result?.takenAt ? asDate(result.takenAt)?.toISOString() || null : null,
+        };
+      });
+      const done = lessons.filter(lesson => lesson.status === "aprobado").length;
+      const total = lessons.length;
+      const completedScores = lessons.filter(lesson => lesson.status === "aprobado" && lesson.scoreTenths != null).map(lesson => lesson.scoreTenths as number);
+      const scoreTenths = completedScores.length ? Math.round(completedScores.reduce((sum, score) => sum + score, 0) / completedScores.length) : null;
+      if (certificateKeys.has(`${worker.id}:${moduleRow.id}`)) moduleCertificates += 1;
+      mods[moduleRow.id] = {
         done,
         total,
-        scoreTenths: scoreRows[0]?.score == null ? null : Math.round(Number(scoreRows[0].score)),
-        status: done === total && total > 0 ? "aprobado" : done || visit.length ? "en_curso" : "sin_iniciar",
-        override: override[0]?.value || "auto",
+        scoreTenths,
+        status: done === total && total > 0 ? "aprobado" : done || visits.has(`${worker.id}:${moduleRow.id}`) || lessons.some(lesson => lesson.status === "reprobado") ? "en_curso" : "sin_iniciar",
+        override,
+        progressPercent: courseProgressPercent(done, total),
+        availableNow,
+        lessons,
       };
     }
-    const fieldCert = await db
-      .select({ code: courseFieldCertificates.code })
-      .from(courseFieldCertificates)
-      .where(eq(courseFieldCertificates.workerId, worker.id))
-      .limit(1);
-    workerViews.push({
+    return {
       id: worker.id,
       name: worker.name,
       cedula: worker.cedula,
@@ -1135,9 +1164,8 @@ export async function companyOverview(actor: CourseActor) {
       workCenter: worker.workCenter,
       modules: mods,
       moduleCertificates,
-      fieldCertificate: fieldCert.length > 0,
-    });
-  }
+    };
+  });
   return { companyName: company, regCode: settings[0]?.regCode || "", workerCount: workers.length, fields: fieldViews, workers: workerViews };
 }
 
@@ -1147,22 +1175,31 @@ function csvCell(value: unknown): string {
 
 export async function exportCompanyCsv(actor: CourseActor) {
   const overview = await companyOverview(actor);
-  const columns = overview.fields.flatMap(field => field.modules.map(moduleRow => ({ id: moduleRow.id, label: `${field.name} · ${moduleRow.name}` })));
-  const statusLabel: Record<string, string> = { aprobado: "Aprobado", en_curso: "En curso", sin_iniciar: "Sin iniciar" };
-  const head = ["Cédula", "Nombre", "Cargo", "Centro de trabajo", ...columns.flatMap(column => [`${column.label} estado`, `${column.label} nota`]), "Certificados de módulo", "Certificado de campo"];
-  const rows = overview.workers.map(worker => [
-    worker.cedula,
-    worker.name,
-    worker.jobTitle,
-    worker.workCenter,
-    ...columns.flatMap(column => {
-      const moduleRow = worker.modules[column.id];
-      return [statusLabel[moduleRow?.status || ""] || "", moduleRow?.scoreTenths == null ? "" : formatCourseScore(moduleRow.scoreTenths)];
-    }),
-    worker.moduleCertificates,
-    worker.fieldCertificate ? "Sí" : "No",
-  ]);
-  return { filename: "avance-capacitaciones.csv", csv: `\ufeff${[head, ...rows].map(row => row.map(csvCell).join(",")).join("\r\n")}` };
+  const statusLabel: Record<string, string> = { aprobado: "Aprobado", reprobado: "Reprobado", sin_iniciar: "Sin iniciar" };
+  const head = ["Persona", "Cédula", "Campo", "Módulo", "Capacitación", "Estado", "Calificación", "Fecha de finalización"];
+  const rows = overview.workers.flatMap(worker =>
+    overview.fields.flatMap(field =>
+      field.modules.flatMap(moduleRow => {
+        const progress = worker.modules[moduleRow.id];
+        return (progress?.lessons || []).map(lesson => [
+          worker.name,
+          worker.cedula,
+          field.name,
+          moduleRow.name,
+          lesson.title,
+          statusLabel[lesson.status] || "Sin iniciar",
+          lesson.scoreTenths == null ? "" : formatCourseScore(lesson.scoreTenths),
+          lesson.completedAt ? lesson.completedAt.slice(0, 10) : "",
+        ]);
+      })
+    )
+  );
+  return {
+    filename: "seguimiento-detallado-capacitaciones.xlsx",
+    headers: head,
+    rows,
+    csv: `\ufeff${[head, ...rows].map(row => row.map(csvCell).join(",")).join("\r\n")}`,
+  };
 }
 
 async function assertVisibleModule(db: Db, companyId: number, moduleId: number) {

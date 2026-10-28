@@ -293,6 +293,30 @@ describe("online courses flow", () => {
     expect(fieldCertificate.code.startsWith("CERT-")).toBe(true);
     const tree = await worker.caller().tree();
     expect(tree.fields.some(field => field.certificate)).toBe(true);
+
+    const tracking = await manager.caller().companyOverview();
+    const trackedWorker = tracking.workers.find(row => row.cedula === workerCedula);
+    expect(trackedWorker?.modules[firstModuleId]).toMatchObject({
+      done: 1,
+      total: 1,
+      progressPercent: 100,
+      status: "aprobado",
+      lessons: [{ id: firstLessonId, status: "aprobado", scoreTenths: 100 }],
+    });
+    const detailedExport = await manager.caller().exportCsv();
+    expect(detailedExport.filename).toBe("seguimiento-detallado-capacitaciones.xlsx");
+    expect(detailedExport.headers).toEqual([
+      "Persona",
+      "Cédula",
+      "Campo",
+      "Módulo",
+      "Capacitación",
+      "Estado",
+      "Calificación",
+      "Fecha de finalización",
+    ]);
+    expect(detailedExport.csv).toContain("Persona");
+    expect(detailedExport.csv).toContain("Ana Trabajadora");
   });
 
   it("archives content with learner history and deletes unused content only for its owner", async () => {

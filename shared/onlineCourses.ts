@@ -148,6 +148,15 @@ export function formatCourseScore(scoreTenths: number): string {
   return `${(scoreTenths / 10).toFixed(1)}/10`;
 }
 
+/**
+ * Progress is always weighted by the number of applicable lessons. A missing
+ * denominator is deliberately represented as null instead of a misleading 0%.
+ */
+export function courseProgressPercent(completedLessons: number, applicableLessons: number): number | null {
+  if (applicableLessons <= 0) return null;
+  return Math.round((completedLessons / applicableLessons) * 100);
+}
+
 /** Value for `<input type="datetime-local">` in the course time zone. */
 export function courseDateTimeLocalValue(iso: string | null | undefined, timeZone = COURSE_TIME_ZONE): string {
   if (!iso) return "";

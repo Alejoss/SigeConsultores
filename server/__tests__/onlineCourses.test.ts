@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  courseProgressPercent,
   courseContinueLocation,
   courseContinuePath,
   courseDateTimeLocalToDate,
@@ -51,6 +52,14 @@ describe("online courses grading", () => {
     const pub = toPublicQuestions(questions);
     expect(pub).toHaveLength(5);
     expect(pub.every(question => !("correct" in question))).toBe(true);
+  });
+});
+
+describe("online courses progress", () => {
+  it("weights progress by applicable lessons and avoids a false zero without lessons", () => {
+    expect(courseProgressPercent(3, 4)).toBe(75);
+    expect(courseProgressPercent(0, 5)).toBe(0);
+    expect(courseProgressPercent(0, 0)).toBeNull();
   });
 });
 
