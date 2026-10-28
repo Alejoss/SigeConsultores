@@ -60,6 +60,25 @@ describe("getConsolidatedActivityHref", () => {
     );
   });
 
+  it("abre la liberación concreta de una salida crítica", () => {
+    expect(
+      getConsolidatedActivityHref(
+        {
+          id: "output-release-73",
+          navigation: {
+            destination: "output_release",
+            controlId: 18,
+            periodId: 73,
+          },
+        },
+        scope.processId,
+        scope.companyId
+      )
+    ).toBe(
+      "/process-output-release?processId=321&companyId=654&focusControlId=18&focusPeriodId=73"
+    );
+  });
+
   it("abre una fila FODA por su identificador persistente y no por coincidencia textual", () => {
     expect(
       getConsolidatedActivityHref(

@@ -32,7 +32,8 @@ interface ScheduleActivity {
     | "objective"
     | "compliance"
     | "training"
-    | "linked_commitment";
+    | "linked_commitment"
+    | "output_release";
   element: string;
   action: string;
   dueDate: Date | string;
@@ -156,6 +157,8 @@ export default function ConsolidatedSchedule() {
             ? "Actividades"
             : a.type === "stakeholder"
               ? "Gestión con Partes Interesadas"
+              : a.type === "output_release"
+                ? "Control de salidas"
               : a.badge,
     }));
   }, [consolidatedData]);

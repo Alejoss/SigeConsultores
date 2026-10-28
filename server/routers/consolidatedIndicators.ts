@@ -2,8 +2,8 @@ import { z } from "zod";
 import { companyProcedure, router } from "../_core/trpc";
 import { assertProcessAccessById } from "../_core/companyPermissions";
 import { getDb } from "../db";
-import { processFODA, processCompliances, criticalityMatrix, processTacticalObjectives } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { processFODA, processCompliances, criticalityMatrix, processOutputReleaseControls, processOutputReleasePeriods, processTacticalObjectives } from "../../drizzle/schema";
+import { eq, inArray } from "drizzle-orm";
 import { calculateActivityProgress } from "../lib/processActivities";
 import { calculateOtgProgress } from "../lib/otgProgress";
 import { calculateStakeholderActionProgress } from "@shared/stakeholderActionProgress";
@@ -273,6 +273,43 @@ export const consolidatedIndicatorsRouter = router({
           );
         }
 
+        // ── Control y liberación de salidas ───────────────────────────────────
+        // La ausencia de controles o de períodos evaluables se conserva como
+        // null: no es un 0 % y no debe empeorar el promedio del proceso.
+        const outputControls = await db
+          .select()
+          .from(processOutputReleaseControls)
+          .where(eq(processOutputReleaseControls.processId, input.processId));
+        const activeOutputControls = outputControls.filter(
+          control => control.isActive && !control.archivedAt
+        );
+        const activeOutputControlIds = activeOutputControls.map(control => control.id);
+        const outputPeriods = activeOutputControlIds.length
+          ? await db
+              .select()
+              .from(processOutputReleasePeriods)
+              .where(inArray(processOutputReleasePeriods.controlId, activeOutputControlIds))
+          : [];
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        const evaluableOutputPeriods = outputPeriods.filter(
+          period => new Date(period.scheduledDate).getTime() <= today.getTime()
+        );
+        const releasedOnTime = evaluableOutputPeriods.filter(period => {
+          if (period.status !== "released" || !period.releasedAt) return false;
+          const deadline = new Date(period.scheduledDate);
+          deadline.setHours(23, 59, 59, 999);
+          return new Date(period.releasedAt).getTime() <= deadline.getTime();
+        }).length;
+        const outputReleaseValue = evaluableOutputPeriods.length
+          ? Math.round((releasedOnTime / evaluableOutputPeriods.length) * 100)
+          : null;
+        const outputReleaseStatus = activeOutputControls.length === 0
+          ? "no_controls"
+          : evaluableOutputPeriods.length === 0
+            ? "pending_evaluation"
+            : "measured";
+
         return [
           {
             id: "cumplimiento",
@@ -313,6 +350,19 @@ export const consolidatedIndicatorsRouter = router({
             indicator: "% promedio de avance",
             value: cumplimientosPromedio,
             performance: cumplimientosPromedio
+          },
+          {
+            id: "control_salidas",
+            name: "Control de Salidas",
+            indicator: "% de liberaciones realizadas en plazo",
+            value: outputReleaseValue,
+            performance: outputReleaseValue,
+            status: outputReleaseStatus,
+            scheduledControls: activeOutputControls.length,
+            assessableControls: evaluableOutputPeriods.length,
+            releasedOnTime,
+            exceptions: evaluableOutputPeriods.filter(period => period.status === "exception").length,
+            overdueOpen: evaluableOutputPeriods.filter(period => period.status === "pending").length,
           }
         ];
       } catch (error) {

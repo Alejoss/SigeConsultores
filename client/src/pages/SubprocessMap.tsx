@@ -37,9 +37,17 @@ interface SubprocesosRow {
 
 interface SalidaRow {
   id: number;
+  /** Identidad persistente para enlazar controles sin duplicar el texto de salida. */
+  sourceOutputKey?: string;
   salidas: string;
   entregables: string;
   doc: string;
+}
+
+function createSourceOutputKey() {
+  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `output-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 type SubprocessMapData = {
@@ -52,7 +60,7 @@ function emptySubprocessMapData(): SubprocessMapData {
   return {
     entrada: [{ id: 1, partesInteresadas: "", internoExterno: "", clienteProveedor: "", necesidades: "", solicita: "", entrega: "" }],
     subprocesos: [{ id: 1, acciones: "", subproceso: "" }],
-    salida: [{ id: 1, salidas: "", entregables: "", doc: "" }],
+    salida: [{ id: 1, sourceOutputKey: createSourceOutputKey(), salidas: "", entregables: "", doc: "" }],
   };
 }
 
@@ -288,7 +296,7 @@ export default function SubprocessMap() {
     } else if (section === "subprocesos") {
       (newData.subprocesos as SubprocesosRow[]).push({ id: newId, acciones: "", subproceso: "" });
     } else {
-      (newData.salida as SalidaRow[]).push({ id: newId, salidas: "", entregables: "", doc: "" });
+      (newData.salida as SalidaRow[]).push({ id: newId, sourceOutputKey: createSourceOutputKey(), salidas: "", entregables: "", doc: "" });
     }
     
     updateLocalData(newData);

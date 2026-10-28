@@ -13,6 +13,7 @@ import Values from "./pages/Values";
 import ProcessMap from "./pages/ProcessMap";
 import ProcessCharacterization from "./pages/ProcessCharacterization";
 import SubprocessMap from "./pages/SubprocessMap";
+import ProcessOutputRelease from "./pages/ProcessOutputRelease";
 import Policy from "./pages/Policy";
 import Indicators from "./pages/Indicators";
 import CriticalityMatrix from "./pages/CriticalityMatrix";
@@ -179,6 +180,7 @@ function Router() {
         component={ProcessCharacterization}
       />
       <Route path={"/subprocess-map"} component={SubprocessMap} />
+      <Route path={"/process-output-release"} component={ProcessOutputRelease} />
       <Route path={"/policy"} component={Policy} />
       <Route path={"/policy-objectives"} component={PolicyObjectives} />
       <Route path={"/flowchart"} component={Flowchart} />

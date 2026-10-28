@@ -115,8 +115,13 @@ async function buildCandidates(companyId: number, processId: number, sourceYear:
     compliance: "compliance",
   };
   for (const activity of scheduleActivities) {
+    const itemType = scheduleTypeToCycleType[activity.type];
+    // Control de Salidas ya está integrado en Cronograma e Indicadores. Su
+    // tratamiento dentro del cierre anual se definirá como una decisión propia,
+    // sin clasificarlo erróneamente como un tipo histórico de ciclo.
+    if (!itemType) continue;
     candidates.push({
-      itemType: scheduleTypeToCycleType[activity.type],
+      itemType,
       sourceItemKey: `schedule:${activity.id}`,
       title: activity.action,
       description: `${activity.badge} · ${activity.element} · Fecha planificada: ${activity.dueDate.toLocaleDateString("es-EC")}`,

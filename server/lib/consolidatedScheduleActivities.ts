@@ -12,7 +12,10 @@ import {
   linkedCommitments,
   processCompliances,
   processFODA,
+  processOutputReleaseControls,
+  processOutputReleasePeriods,
   processTacticalObjectives,
+  subprocessMaps,
   stakeholders,
 } from "../../drizzle/schema";
 
@@ -23,7 +26,8 @@ export interface ConsolidatedScheduleActivity {
     | "foda"
     | "objective"
     | "compliance"
-    | "linked_commitment";
+    | "linked_commitment"
+    | "output_release";
   element: string;
   action: string;
   dueDate: Date;
@@ -60,6 +64,11 @@ export interface ConsolidatedScheduleActivity {
     | {
         destination: "linked_commitment";
         commitmentId: number;
+      }
+    | {
+        destination: "output_release";
+        controlId: number;
+        periodId: number;
       };
 }
 
@@ -69,6 +78,22 @@ function calculateDaysRemaining(dueDate: Date): number {
   const due = new Date(dueDate);
   due.setHours(0, 0, 0, 0);
   return Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function currentOutputLabels(raw: string | null): Map<string, string> {
+  if (!raw) return new Map();
+  try {
+    const rows = JSON.parse(raw);
+    if (!Array.isArray(rows)) return new Map();
+    return new Map(
+      rows.map((row, index) => [
+        row?.sourceOutputKey?.trim() || `legacy:${row?.id ?? index + 1}`,
+        row?.salidas?.trim() || row?.entregables?.trim() || "Salida crítica",
+      ])
+    );
+  } catch {
+    return new Map();
+  }
 }
 
 function getBadgeInfo(
@@ -120,6 +145,11 @@ function getBadgeInfo(
       return {
         badge: "Compromisos vinculados",
         color: "bg-teal-100 text-teal-800 border-teal-300",
+      };
+    case "output_release":
+      return {
+        badge: "Control de salidas",
+        color: "bg-indigo-100 text-indigo-800 border-indigo-300",
       };
   }
 }
@@ -408,6 +438,61 @@ export async function getConsolidatedScheduleActivities(
         commitmentId: commitment.id,
       },
     });
+  }
+
+  // 6. Liberación de salidas críticas. Cada período tiene una identidad única
+  // y por ello aparece una sola vez en Cronograma, Gantt, ICS y alertas.
+  const outputControls = await db
+    .select()
+    .from(processOutputReleaseControls)
+    .where(eq(processOutputReleaseControls.processId, processId));
+  const activeControlIds = outputControls
+    .filter(control => control.isActive && !control.archivedAt)
+    .map(control => control.id);
+  if (activeControlIds.length > 0) {
+    const subprocessMapsForProcess = await db
+      .select({ salida: subprocessMaps.salida })
+      .from(subprocessMaps)
+      .where(eq(subprocessMaps.processId, processId));
+    const subprocessMap = subprocessMapsForProcess[0];
+    const outputLabels = currentOutputLabels(subprocessMap?.salida ?? null);
+    const outputPeriods = await db
+      .select()
+      .from(processOutputReleasePeriods)
+      .where(eq(processOutputReleasePeriods.processId, processId));
+    const controlsById = new Map(outputControls.map(control => [control.id, control]));
+    for (const period of outputPeriods) {
+      if (!activeControlIds.includes(period.controlId)) continue;
+      const control = controlsById.get(period.controlId);
+      if (!control) continue;
+      const dueDate = new Date(period.scheduledDate);
+      if (Number.isNaN(dueDate.getTime())) continue;
+      const badge = getBadgeInfo("output_release");
+      const releaseText =
+        period.status === "released"
+          ? "Liberada"
+          : period.status === "exception"
+            ? "Con observación"
+            : "Pendiente";
+      activities.push({
+        id: `output-release-${period.id}`,
+        type: "output_release",
+        element: control.sourceSubprocessName || "Salida crítica",
+        action: outputLabels.get(control.sourceOutputKey) || control.outputSnapshot,
+        dueDate,
+        completed: period.status === "released" ? "SI" : "NO",
+        completionField: releaseText,
+        badge: badge.badge,
+        badgeColor: badge.color,
+        daysRemaining: calculateDaysRemaining(dueDate),
+        completionPercentage: period.status === "released" ? 100 : 0,
+        navigation: {
+          destination: "output_release",
+          controlId: control.id,
+          periodId: period.id,
+        },
+      });
+    }
   }
 
   const uniqueActivities = new Map<string, ConsolidatedScheduleActivity>();

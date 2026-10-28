@@ -638,6 +638,117 @@ export type SubprocessMap = typeof subprocessMaps.$inferSelect;
 export type InsertSubprocessMap = typeof subprocessMaps.$inferInsert;
 
 /**
+ * Controles configurados por el Dueño de Proceso para las salidas críticas de
+ * su Mapa de Subprocesos. El texto original continúa siendo propiedad del
+ * mapa; los campos snapshot permiten conservar la trazabilidad si se edita.
+ */
+export const processOutputReleaseControls = mysqlTable(
+  "processOutputReleaseControls",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    processId: int("processId").notNull(),
+    /** Clave persistente de la fila del arreglo salida del Mapa de Subprocesos. */
+    sourceOutputKey: varchar("sourceOutputKey", { length: 128 }).notNull(),
+    sourceSubprocessName: text("sourceSubprocessName"),
+    outputSnapshot: text("outputSnapshot").notNull(),
+    deliverableSnapshot: text("deliverableSnapshot"),
+    documentationSnapshot: text("documentationSnapshot"),
+    acceptanceCriteria: text("acceptanceCriteria"),
+    verificationMethod: mysqlEnum("verificationMethod", [
+      "revision_documental",
+      "muestreo",
+      "revision_datos",
+      "confirmacion_cliente",
+      "otra",
+    ]),
+    verificationDetail: text("verificationDetail"),
+    frequency: mysqlEnum("frequency", [
+      "por_evento",
+      "diaria",
+      "semanal",
+      "mensual",
+      "trimestral",
+      "anual",
+      "otra",
+    ]).default("por_evento").notNull(),
+    frequencyDetail: text("frequencyDetail"),
+    isActive: boolean("isActive").default(false).notNull(),
+    configuredByAccountId: int("configuredByAccountId"),
+    revision: int("revision").default(1).notNull(),
+    archivedAt: timestamp("archivedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    processOutputSourceUnique: unique("process_output_release_source_unique").on(
+      table.processId,
+      table.sourceOutputKey
+    ),
+  })
+);
+
+export type ProcessOutputReleaseControl =
+  typeof processOutputReleaseControls.$inferSelect;
+export type InsertProcessOutputReleaseControl =
+  typeof processOutputReleaseControls.$inferInsert;
+
+/**
+ * Cada fila representa una liberación programada una sola vez por control y
+ * periodo. Es la fuente que alimenta el Cronograma Consolidado e Indicadores.
+ */
+export const processOutputReleasePeriods = mysqlTable(
+  "processOutputReleasePeriods",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    controlId: int("controlId").notNull(),
+    processId: int("processId").notNull(),
+    periodKey: varchar("periodKey", { length: 100 }).notNull(),
+    scheduledDate: date("scheduledDate").notNull(),
+    status: mysqlEnum("status", ["pending", "released", "exception"])
+      .default("pending")
+      .notNull(),
+    releasedAt: timestamp("releasedAt"),
+    releasedByAccountId: int("releasedByAccountId"),
+    observations: text("observations"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    controlPeriodUnique: unique("process_output_release_control_period_unique").on(
+      table.controlId,
+      table.periodKey
+    ),
+  })
+);
+
+export type ProcessOutputReleasePeriod =
+  typeof processOutputReleasePeriods.$inferSelect;
+export type InsertProcessOutputReleasePeriod =
+  typeof processOutputReleasePeriods.$inferInsert;
+
+/** Evidencia opcional cargada para una liberación específica de salida. */
+export const processOutputReleaseEvidence = mysqlTable(
+  "processOutputReleaseEvidence",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    periodId: int("periodId").notNull(),
+    companyId: int("companyId").notNull(),
+    fileName: varchar("fileName", { length: 255 }).notNull(),
+    fileKey: varchar("fileKey", { length: 1024 }).notNull(),
+    fileUrl: varchar("fileUrl", { length: 1024 }).notNull(),
+    mimeType: varchar("mimeType", { length: 255 }).notNull(),
+    fileSizeBytes: int("fileSizeBytes").default(0).notNull(),
+    uploadedByAccountId: int("uploadedByAccountId"),
+    uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+  }
+);
+
+export type ProcessOutputReleaseEvidence =
+  typeof processOutputReleaseEvidence.$inferSelect;
+export type InsertProcessOutputReleaseEvidence =
+  typeof processOutputReleaseEvidence.$inferInsert;
+
+/**
  * Subprocess Map Entries - Stores entrada items
  */
 export const subprocessMapEntries = mysqlTable("subprocessMapEntries", {

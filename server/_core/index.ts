@@ -11,6 +11,7 @@ import { registerManagementProgramUploadRoutes } from "../managementProgramUploa
 import { registerManagementSystemUploadRoutes } from "../managementSystemUploadRoutes";
 import { registerLinkedCommitmentUploadRoutes } from "../linkedCommitmentUploadRoutes";
 import { registerMeetingUploadRoutes } from "../meetingUploadRoutes";
+import { registerProcessOutputReleaseUploadRoutes } from "../processOutputReleaseUploadRoutes";
 import { registerPublicApiRoutes } from "./publicApiRoutes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -48,6 +49,7 @@ async function startServer() {
   registerManagementSystemUploadRoutes(app);
   registerLinkedCommitmentUploadRoutes(app);
   registerMeetingUploadRoutes(app);
+  registerProcessOutputReleaseUploadRoutes(app);
   registerPublicApiRoutes(app);
   // tRPC API
   app.use(
@@ -68,8 +70,12 @@ async function startServer() {
 
   server.listen(port, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${port}/`);
-    registerScheduleAlertsCron();
-    registerStrategicSnapshotsCron();
+    if (process.env.DISABLE_SCHEDULED_TASKS === "true") {
+      console.log("[Server] Tareas programadas desactivadas para esta ejecución.");
+    } else {
+      registerScheduleAlertsCron();
+      registerStrategicSnapshotsCron();
+    }
   });
 }
 
