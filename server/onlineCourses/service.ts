@@ -1176,7 +1176,7 @@ function csvCell(value: unknown): string {
 export async function exportCompanyCsv(actor: CourseActor) {
   const overview = await companyOverview(actor);
   const statusLabel: Record<string, string> = { aprobado: "Aprobado", reprobado: "Reprobado", sin_iniciar: "Sin iniciar" };
-  const head = ["Persona", "Cédula", "Campo", "Módulo", "Capacitación", "Estado", "Calificación", "Fecha de finalización"];
+  const head = ["Persona", "Cédula", "Centro de trabajo", "Campo", "Módulo", "Capacitación", "Estado", "Calificación", "Fecha de finalización"];
   const rows = overview.workers.flatMap(worker =>
     overview.fields.flatMap(field =>
       field.modules.flatMap(moduleRow => {
@@ -1184,6 +1184,7 @@ export async function exportCompanyCsv(actor: CourseActor) {
         return (progress?.lessons || []).map(lesson => [
           worker.name,
           worker.cedula,
+          worker.workCenter,
           field.name,
           moduleRow.name,
           lesson.title,
