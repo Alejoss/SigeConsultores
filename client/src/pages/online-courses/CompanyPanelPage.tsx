@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import * as XLSX from "xlsx";
-import { ChevronLeft, ChevronRight, Download, GraduationCap, Layers3, Plus, UserRound } from "lucide-react";
+import { BarChart3, ChevronLeft, ChevronRight, Download, GraduationCap, Layers3, Plus, UserRound } from "lucide-react";
 import { courseDateTimeLocalValue, courseProgressPercent, formatCourseScore } from "@shared/onlineCourses";
 import { trpc } from "@/lib/trpc";
 import { LoginForm, Shell } from "./PortalPage";
 import { CourseContentRemovalButton } from "./CourseContentRemovalButton";
+import { ProgressAnalysisPanel } from "./ProgressAnalysisPanel";
 
 type ContentView =
   | { kind: "fields" }
@@ -69,6 +70,7 @@ export default function CompanyPanelPage() {
   const [moduleName, setModuleName] = useState("");
   const [moduleId, setModuleId] = useState<number | null>(null);
   const [view, setView] = useState<ContentView>({ kind: "fields" });
+  const [personnelView, setPersonnelView] = useState<"tracking" | "analysis">("tracking");
 
   const data = overview.data;
   const fields = data?.fields || [];
@@ -102,6 +104,7 @@ export default function CompanyPanelPage() {
           setSelectedId(id);
           setMessage("");
           setView({ kind: "fields" });
+          setPersonnelView("tracking");
           window.history.replaceState(null, "", id ? `?empresa=${id}` : window.location.pathname);
         }}
       >
@@ -244,22 +247,31 @@ export default function CompanyPanelPage() {
         )}
       </section>
 
-      <section className="mb-8">
-        <div className="mb-2 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-semibold">Seguimiento del personal</h2>
-            <p className="text-sm text-slate-500">Abra una persona, después un campo y un módulo, para revisar las capacitaciones sin desplazarse horizontalmente.</p>
+      {personnelView === "analysis" ? (
+        <ProgressAnalysisPanel
+          fields={fields}
+          workers={data?.workers || []}
+          onBack={() => setPersonnelView("tracking")}
+        />
+      ) : (
+        <section className="mb-8">
+          <div className="mb-2 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">Seguimiento del personal</h2>
+              <p className="text-sm text-slate-500">Abra una persona, después un campo y un módulo, para revisar las capacitaciones sin desplazarse horizontalmente.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <input className="rounded-md border px-3 py-2" placeholder="Buscar por nombre, cédula, cargo o centro" value={query} onChange={event => setQuery(event.target.value)} />
+              <ExcelButton companyId={companyId} />
+              <button className="inline-flex items-center gap-2 rounded-md border border-emerald-200 px-3 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50" onClick={() => setPersonnelView("analysis")}><BarChart3 size={16} /> Análisis de Avance</button>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <input className="rounded-md border px-3 py-2" placeholder="Buscar por nombre, cédula, cargo o centro" value={query} onChange={event => setQuery(event.target.value)} />
-            <ExcelButton companyId={companyId} />
+          <div className="overflow-hidden rounded-xl border bg-white">
+            {!workers.length && <p className="p-5 text-sm text-slate-500">No se encontraron trabajadores.</p>}
+            {workers.map(worker => <PersonnelRow key={worker.id} worker={worker} fields={fields} companyId={companyId} setOverride={setOverride} reload={overview.refetch} setMessage={setMessage} resetPassword={resetPassword} />)}
           </div>
-        </div>
-        <div className="overflow-hidden rounded-xl border bg-white">
-          {!workers.length && <p className="p-5 text-sm text-slate-500">No se encontraron trabajadores.</p>}
-          {workers.map(worker => <PersonnelRow key={worker.id} worker={worker} fields={fields} companyId={companyId} setOverride={setOverride} reload={overview.refetch} setMessage={setMessage} resetPassword={resetPassword} />)}
-        </div>
-      </section>
+        </section>
+      )}
 
       {fieldId !== null && (
         <dialog open className="fixed inset-0 z-20 m-auto max-w-md rounded-xl border bg-white p-5 shadow-xl">
@@ -414,7 +426,7 @@ function ExcelButton({ companyId }: { companyId?: number }) {
     <button className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm" onClick={async () => {
       const file = await utils.onlineCourses.exportCsv.fetch(companyId ? { companyId } : undefined);
       const worksheet = XLSX.utils.aoa_to_sheet([file.headers, ...file.rows]);
-      worksheet["!cols"] = [{ wch: 26 }, { wch: 18 }, { wch: 28 }, { wch: 32 }, { wch: 46 }, { wch: 16 }, { wch: 16 }, { wch: 22 }];
+      worksheet["!cols"] = [{ wch: 26 }, { wch: 18 }, { wch: 24 }, { wch: 28 }, { wch: 32 }, { wch: 46 }, { wch: 16 }, { wch: 16 }, { wch: 22 }];
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Seguimiento detallado");
       XLSX.writeFile(workbook, file.filename);

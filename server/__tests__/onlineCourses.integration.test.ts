@@ -308,6 +308,7 @@ describe("online courses flow", () => {
     expect(detailedExport.headers).toEqual([
       "Persona",
       "Cédula",
+      "Centro de trabajo",
       "Campo",
       "Módulo",
       "Capacitación",
@@ -317,6 +318,7 @@ describe("online courses flow", () => {
     ]);
     expect(detailedExport.csv).toContain("Persona");
     expect(detailedExport.csv).toContain("Ana Trabajadora");
+    expect(detailedExport.rows.some(row => row[2] === "Planta")).toBe(true);
   });
 
   it("archives content with learner history and deletes unused content only for its owner", async () => {
