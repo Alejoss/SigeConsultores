@@ -9,6 +9,7 @@ import {
   boolean,
   decimal,
   date,
+  foreignKey,
   index,
   unique,
   primaryKey,
@@ -1105,9 +1106,7 @@ export const processParticipantCompetencies = mysqlTable(
   "processParticipantCompetencies",
   {
     id: int("id").autoincrement().primaryKey(),
-    processParticipantId: int("processParticipantId")
-      .notNull()
-      .references(() => processParticipants.id, { onDelete: "cascade" }),
+    processParticipantId: int("processParticipantId").notNull(),
     name: varchar("name", { length: 255 }).notNull(),
     competencyType: mysqlEnum("competencyType", ["transversal", "tecnica", "liderazgo"]).notNull(),
     competencyLevel: mysqlEnum("competencyLevel", ["basico", "intermedio", "avanzado", "experto"]).notNull(),
@@ -1115,6 +1114,11 @@ export const processParticipantCompetencies = mysqlTable(
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
+    participantFk: foreignKey({
+      columns: [table.processParticipantId],
+      foreignColumns: [processParticipants.id],
+      name: "pp_competency_participant_fk",
+    }).onDelete("cascade"),
     participantLookup: index("process_participant_competencies_participant_idx").on(
       table.processParticipantId,
       table.id
