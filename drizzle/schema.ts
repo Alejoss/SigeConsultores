@@ -9,6 +9,7 @@ import {
   boolean,
   decimal,
   date,
+  index,
   unique,
   primaryKey,
 } from "drizzle-orm/mysql-core";
@@ -1098,6 +1099,30 @@ export const processParticipants = mysqlTable("processParticipants", {
 
 export type ProcessParticipant = typeof processParticipants.$inferSelect;
 export type InsertProcessParticipant = typeof processParticipants.$inferInsert;
+
+/** Competencias requeridas por el puesto funcional definido en Participantes. */
+export const processParticipantCompetencies = mysqlTable(
+  "processParticipantCompetencies",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    processParticipantId: int("processParticipantId")
+      .notNull()
+      .references(() => processParticipants.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    competencyType: mysqlEnum("competencyType", ["transversal", "tecnica", "liderazgo"]).notNull(),
+    competencyLevel: mysqlEnum("competencyLevel", ["basico", "intermedio", "avanzado", "experto"]).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    participantLookup: index("process_participant_competencies_participant_idx").on(
+      table.processParticipantId,
+      table.id
+    ),
+  })
+);
+export type ProcessParticipantCompetency = typeof processParticipantCompetencies.$inferSelect;
+export type InsertProcessParticipantCompetency = typeof processParticipantCompetencies.$inferInsert;
 
 /**
  * Participant worker assignments - Links active payroll employees to a process role.

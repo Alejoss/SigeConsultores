@@ -3,6 +3,7 @@ import { eq, inArray } from "drizzle-orm";
 import {
   companies,
   processCharacterizations,
+  processParticipantCompetencies,
   processParticipants,
   processes,
 } from "../../drizzle/schema";
@@ -150,6 +151,35 @@ beforeAll(async () => {
       orderIndex: 1,
     },
   ]);
+  const commercialParticipants = await db
+    .select({
+      id: processParticipants.id,
+      position: processParticipants.position,
+    })
+    .from(processParticipants)
+    .where(
+      eq(processParticipants.processCharacterizationId, firstCharacterizationId)
+    );
+  const coordinatorId = commercialParticipants.find(
+    participant => participant.position === "Coordinador Comercial"
+  )?.id;
+  if (!coordinatorId) {
+    throw new Error("No se creó el puesto sintético de Coordinador Comercial.");
+  }
+  await db.insert(processParticipantCompetencies).values([
+    {
+      processParticipantId: coordinatorId,
+      name: "Negociación comercial",
+      competencyType: "tecnica",
+      competencyLevel: "avanzado",
+    },
+    {
+      processParticipantId: coordinatorId,
+      name: "Liderazgo de equipos",
+      competencyType: "liderazgo",
+      competencyLevel: "intermedio",
+    },
+  ]);
 });
 
 afterAll(async () => {
@@ -203,7 +233,22 @@ describe("Nómina: descriptivos de cargo consolidados", () => {
         "Dar seguimiento al equipo y a los indicadores del proceso.",
       authority: "Distribuir actividades comerciales del equipo.",
     });
+    expect(commercial?.positions[0]?.competencies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Negociación comercial",
+          competencyType: "tecnica",
+          competencyLevel: "avanzado",
+        }),
+        expect.objectContaining({
+          name: "Liderazgo de equipos",
+          competencyType: "liderazgo",
+          competencyLevel: "intermedio",
+        }),
+      ])
+    );
     expect(talent?.positions).toHaveLength(1);
+    expect(talent?.positions[0]?.competencies).toEqual([]);
     expect(talent?.positions[0]).toMatchObject({
       position: "Analista de Desarrollo Humano",
       objective: "Asegurar el soporte oportuno al personal.",

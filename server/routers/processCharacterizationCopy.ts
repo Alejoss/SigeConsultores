@@ -3,6 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import {
   processCharacterizations,
+  processParticipantCompetencies,
   processParticipants,
   processResources,
   procedures,
@@ -115,6 +116,17 @@ async function sourceSnapshot(
           ])
         )
     : [];
+  const sourceParticipantCompetencies = sourceParticipants.length
+    ? await db
+        .select()
+        .from(processParticipantCompetencies)
+        .where(
+          inArray(
+            processParticipantCompetencies.processParticipantId,
+            sourceParticipants.map(participant => participant.id)
+          )
+        )
+    : [];
   const sourceResources = characterization
     ? await db
         .select()
@@ -156,6 +168,7 @@ async function sourceSnapshot(
   return {
     characterization,
     sourceParticipants,
+    sourceParticipantCompetencies,
     sourceResources,
     sourceMap,
     sourceMapEntries,
@@ -363,6 +376,27 @@ export const processCharacterizationCopyRouter = router({
                   ),
                   position: participant.position,
                 });
+              }
+              const copiedCompetencies =
+                snapshot.sourceParticipantCompetencies.flatMap(competency => {
+                  const targetParticipant = participantMap.get(
+                    competency.processParticipantId
+                  );
+                  return targetParticipant
+                    ? [
+                        {
+                          processParticipantId: targetParticipant.id,
+                          name: competency.name,
+                          competencyType: competency.competencyType,
+                          competencyLevel: competency.competencyLevel,
+                        },
+                      ]
+                    : [];
+                });
+              if (copiedCompetencies.length) {
+                await tx
+                  .insert(processParticipantCompetencies)
+                  .values(copiedCompetencies);
               }
               counts.participants = snapshot.sourceParticipants.length;
             }

@@ -7,6 +7,7 @@ import {
   payrollEmployees,
   payrollEmploymentPeriods,
   processCharacterizations,
+  processParticipantCompetencies,
   processParticipants,
   processes,
 } from "../../drizzle/schema";
@@ -416,6 +417,31 @@ export const payrollRouter = router({
               )
             )
         : [];
+      const competencyRows = participantRows.length
+        ? await db
+            .select({
+              id: processParticipantCompetencies.id,
+              processParticipantId: processParticipantCompetencies.processParticipantId,
+              name: processParticipantCompetencies.name,
+              competencyType: processParticipantCompetencies.competencyType,
+              competencyLevel: processParticipantCompetencies.competencyLevel,
+              updatedAt: processParticipantCompetencies.updatedAt,
+            })
+            .from(processParticipantCompetencies)
+            .where(
+              inArray(
+                processParticipantCompetencies.processParticipantId,
+                participantRows.map(participant => participant.id)
+              )
+            )
+            .orderBy(asc(processParticipantCompetencies.id))
+        : [];
+      const competenciesByParticipantId = new Map<number, typeof competencyRows>();
+      for (const competency of competencyRows) {
+        const competencies = competenciesByParticipantId.get(competency.processParticipantId) || [];
+        competencies.push(competency);
+        competenciesByParticipantId.set(competency.processParticipantId, competencies);
+      }
 
       const processByCharacterizationId = new Map(
         characterizationRows.map(characterization => [
@@ -466,6 +492,7 @@ export const payrollRouter = router({
             objective: position.objective,
             responsibility: position.responsibility,
             authority: position.authority,
+            competencies: competenciesByParticipantId.get(position.id) || [],
             updatedAt: position.updatedAt,
           })),
       }));

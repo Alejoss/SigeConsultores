@@ -12,9 +12,11 @@ import {
   participantWorkerKpiValues,
   payrollEmployees,
   processCharacterizations,
+  processParticipantCompetencies,
   processParticipants,
   processes,
 } from "../../drizzle/schema";
+import { PROCESS_PARTICIPANT_COMPETENCY_LEVELS, PROCESS_PARTICIPANT_COMPETENCY_TYPES } from "../../shared/processParticipantCompetencies";
 import {
   canonicalizePayrollAreas,
   isPayrollAreaEligible,
@@ -160,9 +162,23 @@ export const processParticipantsRouter = router({
 
       // Algunas caracterizaciones antiguas guardaron los puestos con el id del
       // proceso. Se consultan ambos identificadores para conservar ese contenido.
-      return db.select().from(processParticipants)
+      const participantRows = await db.select().from(processParticipants)
         .where(inArray(processParticipants.processCharacterizationId, [characterization.id, characterization.processId]))
         .orderBy(asc(processParticipants.orderIndex));
+      if (!participantRows.length) return [];
+      const competencyRows = await db.select().from(processParticipantCompetencies)
+        .where(inArray(processParticipantCompetencies.processParticipantId, participantRows.map(participant => participant.id)))
+        .orderBy(asc(processParticipantCompetencies.id));
+      const competenciesByParticipantId = new Map<number, typeof competencyRows>();
+      for (const competency of competencyRows) {
+        const competencies = competenciesByParticipantId.get(competency.processParticipantId) || [];
+        competencies.push(competency);
+        competenciesByParticipantId.set(competency.processParticipantId, competencies);
+      }
+      return participantRows.map(participant => ({
+        ...participant,
+        competencies: competenciesByParticipantId.get(participant.id) || [],
+      }));
     }),
 
   payrollAreaOptions: companyProcedure
@@ -402,6 +418,66 @@ export const processParticipantsRouter = router({
 
       return { success: true };
     }),
+
+  createCompetency: companyProcedure.input(companyInput.extend({
+    processParticipantId: z.number().int().positive(),
+    name: z.string().trim().min(1).max(255),
+    competencyType: z.enum(PROCESS_PARTICIPANT_COMPETENCY_TYPES),
+    competencyLevel: z.enum(PROCESS_PARTICIPANT_COMPETENCY_LEVELS),
+  })).mutation(async ({ input, ctx }) => {
+    const processReference = await assertProcessParticipantAccess(ctx, input.processParticipantId);
+    if (processReference.companyId !== input.companyId) {
+      throw new Error("El Puesto de Trabajo no pertenece a esta empresa.");
+    }
+    const db = await getDb();
+    if (!db) throw new Error("Base de datos no disponible");
+    const inserted = await db.insert(processParticipantCompetencies).values({
+      processParticipantId: input.processParticipantId,
+      name: input.name,
+      competencyType: input.competencyType,
+      competencyLevel: input.competencyLevel,
+    });
+    const competencyId = Number((inserted as any)[0]?.insertId || (inserted as any).insertId);
+    const [competency] = await db.select().from(processParticipantCompetencies)
+      .where(eq(processParticipantCompetencies.id, competencyId)).limit(1);
+    return { success: true, competency };
+  }),
+
+  updateCompetency: companyProcedure.input(companyInput.extend({
+    competencyId: z.number().int().positive(),
+    name: z.string().trim().min(1).max(255),
+    competencyType: z.enum(PROCESS_PARTICIPANT_COMPETENCY_TYPES),
+    competencyLevel: z.enum(PROCESS_PARTICIPANT_COMPETENCY_LEVELS),
+  })).mutation(async ({ input, ctx }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Base de datos no disponible");
+    const [competency] = await db.select({ processParticipantId: processParticipantCompetencies.processParticipantId })
+      .from(processParticipantCompetencies).where(eq(processParticipantCompetencies.id, input.competencyId)).limit(1);
+    if (!competency) throw new Error("No se encontró la competencia.");
+    const processReference = await assertProcessParticipantAccess(ctx, competency.processParticipantId);
+    if (processReference.companyId !== input.companyId) throw new Error("La competencia no pertenece a esta empresa.");
+    await db.update(processParticipantCompetencies).set({
+      name: input.name,
+      competencyType: input.competencyType,
+      competencyLevel: input.competencyLevel,
+      updatedAt: new Date(),
+    }).where(eq(processParticipantCompetencies.id, input.competencyId));
+    return { success: true };
+  }),
+
+  deleteCompetency: companyProcedure.input(companyInput.extend({
+    competencyId: z.number().int().positive(),
+  })).mutation(async ({ input, ctx }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Base de datos no disponible");
+    const [competency] = await db.select({ processParticipantId: processParticipantCompetencies.processParticipantId })
+      .from(processParticipantCompetencies).where(eq(processParticipantCompetencies.id, input.competencyId)).limit(1);
+    if (!competency) throw new Error("No se encontró la competencia.");
+    const processReference = await assertProcessParticipantAccess(ctx, competency.processParticipantId);
+    if (processReference.companyId !== input.companyId) throw new Error("La competencia no pertenece a esta empresa.");
+    await db.delete(processParticipantCompetencies).where(eq(processParticipantCompetencies.id, input.competencyId));
+    return { success: true };
+  }),
 
   delete: companyProcedure
     .input(companyInput.extend({ id: z.number().int().positive() }))

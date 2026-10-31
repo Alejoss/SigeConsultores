@@ -19,8 +19,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { getCompanyIdFromSession } from "@/lib/sessionScope";
+import { getJobDescriptionProcessTypeLabel } from "./payrollJobDescriptionLabels";
+import {
+  getProcessParticipantCompetencyLevelLabel,
+  getProcessParticipantCompetencyTypeLabel,
+} from "../../../shared/processParticipantCompetencies";
 
 const normalizeSearchText = (value: unknown) =>
   String(value ?? "")
@@ -60,7 +66,7 @@ export default function PayrollJobDescriptions() {
         const processMatches = matchesSearch(
           normalizedQuery,
           process.name,
-          process.macroProcess
+          getJobDescriptionProcessTypeLabel(process.processType)
         );
         const matchingPositions = process.positions.filter(position =>
           matchesSearch(
@@ -68,7 +74,12 @@ export default function PayrollJobDescriptions() {
             position.position,
             position.objective,
             position.responsibility,
-            position.authority
+            position.authority,
+            ...position.competencies.flatMap(competency => [
+              competency.name,
+              getProcessParticipantCompetencyTypeLabel(competency.competencyType),
+              getProcessParticipantCompetencyLevelLabel(competency.competencyLevel),
+            ])
           )
         );
         return processMatches
@@ -124,8 +135,8 @@ export default function PayrollJobDescriptions() {
                 Descriptivos de cargo
               </h1>
               <p className="mt-1 max-w-3xl text-slate-600">
-                Consulta los puestos definidos por cada proceso y sus objetivos,
-                responsabilidades y autoridad.
+                Consulta los puestos definidos por cada proceso, sus funciones y
+                las competencias requeridas.
               </p>
             </div>
           </div>
@@ -146,8 +157,8 @@ export default function PayrollJobDescriptions() {
             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-violet-700" />
             <p>
               Esta es una consolidación de solo lectura. Para crear o actualizar
-              un descriptivo, ingresa a <strong>Participantes</strong> dentro
-              del proceso correspondiente.
+              funciones o competencias, ingresa a <strong>Participantes</strong>{" "}
+              dentro del proceso correspondiente.
             </p>
           </CardContent>
         </Card>
@@ -237,9 +248,7 @@ export default function PayrollJobDescriptions() {
                               {process.name}
                             </span>
                             <span className="mt-0.5 block text-sm text-slate-500">
-                              {process.macroProcess
-                                ? `${process.macroProcess} · `
-                                : ""}
+                              {getJobDescriptionProcessTypeLabel(process.processType)} · {" "}
                               {process.positions.length} puesto
                               {process.positions.length === 1 ? "" : "s"} de
                               trabajo
@@ -286,20 +295,47 @@ export default function PayrollJobDescriptions() {
                                     />
                                   </button>
                                   {isPositionExpanded && (
-                                    <div className="grid gap-4 border-t border-slate-200 p-4 md:grid-cols-3">
-                                      <DescriptionBlock
-                                        title="Objetivo"
-                                        value={position.objective}
-                                      />
-                                      <DescriptionBlock
-                                        title="Responsabilidades"
-                                        value={position.responsibility}
-                                      />
-                                      <DescriptionBlock
-                                        title="Autoridad"
-                                        value={position.authority}
-                                      />
-                                    </div>
+                                    <Tabs defaultValue="functions" className="border-t border-slate-200 p-4">
+                                      <TabsList aria-label="Información del cargo">
+                                        <TabsTrigger value="functions">Funciones del cargo</TabsTrigger>
+                                        <TabsTrigger value="competencies">Competencias</TabsTrigger>
+                                      </TabsList>
+                                      <TabsContent value="functions" className="mt-3">
+                                        <div className="grid gap-4 md:grid-cols-3">
+                                          <DescriptionBlock title="Objetivo" value={position.objective} />
+                                          <DescriptionBlock title="Responsabilidades" value={position.responsibility} />
+                                          <DescriptionBlock title="Autoridad" value={position.authority} />
+                                        </div>
+                                      </TabsContent>
+                                      <TabsContent value="competencies" className="mt-3">
+                                        {position.competencies.length === 0 ? (
+                                          <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                                            Aún no hay competencias registradas para este puesto.
+                                          </p>
+                                        ) : (
+                                          <div className="overflow-x-auto rounded-lg border border-slate-200">
+                                            <table className="min-w-full text-sm">
+                                              <thead className="bg-slate-50 text-left text-slate-600">
+                                                <tr>
+                                                  <th className="px-4 py-3 font-semibold">Competencia</th>
+                                                  <th className="px-4 py-3 font-semibold">Tipo</th>
+                                                  <th className="px-4 py-3 font-semibold">Nivel requerido</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody className="divide-y divide-slate-100 bg-white">
+                                                {position.competencies.map(competency => (
+                                                  <tr key={competency.id}>
+                                                    <td className="px-4 py-3 font-medium text-slate-900">{competency.name}</td>
+                                                    <td className="px-4 py-3 text-slate-600">{getProcessParticipantCompetencyTypeLabel(competency.competencyType)}</td>
+                                                    <td className="px-4 py-3 text-slate-600">{getProcessParticipantCompetencyLevelLabel(competency.competencyLevel)}</td>
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        )}
+                                      </TabsContent>
+                                    </Tabs>
                                   )}
                                 </article>
                               );
