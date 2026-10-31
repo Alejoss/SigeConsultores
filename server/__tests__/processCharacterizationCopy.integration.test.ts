@@ -8,6 +8,7 @@ import {
   procedureRecords,
   procedures,
   processCharacterizations,
+  processParticipantCompetencies,
   processParticipants,
   processResources,
   processes,
@@ -194,6 +195,20 @@ beforeAll(async () => {
     month: 1,
     actualValue: "9.00",
   });
+  await db.insert(processParticipantCompetencies).values([
+    {
+      processParticipantId: sourceParticipantId,
+      name: "Comunicación temporal",
+      competencyType: "transversal",
+      competencyLevel: "intermedio",
+    },
+    {
+      processParticipantId: sourceParticipantId,
+      name: "Liderazgo temporal",
+      competencyType: "liderazgo",
+      competencyLevel: "avanzado",
+    },
+  ]);
 
   await db.insert(processResources).values([
     {
@@ -358,6 +373,14 @@ afterAll(async () => {
       );
     const participantIds = participantRows.map(participant => participant.id);
     if (participantIds.length) {
+      await db
+        .delete(processParticipantCompetencies)
+        .where(
+          inArray(
+            processParticipantCompetencies.processParticipantId,
+            participantIds
+          )
+        );
       const assignments = await db
         .select()
         .from(participantWorkerAssignments)
@@ -484,6 +507,29 @@ describe("Copia selectiva de Caracterización: integración local", () => {
 
     const copiedParticipantIds = copiedParticipants.map(
       participant => participant.id
+    );
+    const copiedCompetencies = await db
+      .select()
+      .from(processParticipantCompetencies)
+      .where(
+        inArray(
+          processParticipantCompetencies.processParticipantId,
+          copiedParticipantIds
+        )
+      );
+    expect(copiedCompetencies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Comunicación temporal",
+          competencyType: "transversal",
+          competencyLevel: "intermedio",
+        }),
+        expect.objectContaining({
+          name: "Liderazgo temporal",
+          competencyType: "liderazgo",
+          competencyLevel: "avanzado",
+        }),
+      ])
     );
     const copiedAssignments = await db
       .select()
