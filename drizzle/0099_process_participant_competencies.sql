@@ -9,7 +9,7 @@ CREATE TABLE `processParticipantCompetencies` (
   `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  CONSTRAINT `process_participant_competencies_participant_fk`
+  CONSTRAINT `pp_competency_participant_fk`
     FOREIGN KEY (`processParticipantId`)
     REFERENCES `processParticipants` (`id`)
     ON DELETE CASCADE,
