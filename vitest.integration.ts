@@ -8,6 +8,7 @@ export const integrationTestFiles = [
   "server/__tests__/meetings.integration.test.ts",
   "server/__tests__/companyManagementAccess.integration.test.ts",
   "server/__tests__/assignableFindingProcesses.integration.test.ts",
+  "server/__tests__/complianceLinkTargets.integration.test.ts",
   "server/__tests__/changeManagement.integration.test.ts",
   "server/__tests__/processActivities.integration.test.ts",
   "server/__tests__/processOutputRelease.integration.test.ts",
