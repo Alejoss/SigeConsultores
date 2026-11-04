@@ -28,6 +28,12 @@ export function ProcessLinkDialog({
   onClose: () => void;
   onLinked: () => void;
 }) {
+  const isComplianceSource = sourceType === "company_compliance";
+  const complianceTargets =
+    trpc.linkedCommitments.listAssignableComplianceProcesses.useQuery(
+      { companyId, sourceId },
+      { enabled: isComplianceSource }
+    );
   const findingSourceType =
     sourceType === "audit_finding" || sourceType === "inspection_finding"
       ? sourceType
@@ -43,14 +49,15 @@ export function ProcessLinkDialog({
     );
   const mapProcesses = trpc.processMap.list.useQuery(
     { companyId },
-    { enabled: !findingSourceType }
+    { enabled: !findingSourceType && !isComplianceSource }
   );
-  const processes = findingSourceType
-    ? findingTargets.data || []
-    : mapProcesses.data || [];
-  const isLoading = findingSourceType
-    ? findingTargets.isLoading
-    : mapProcesses.isLoading;
+  const targets = isComplianceSource
+    ? complianceTargets
+    : findingSourceType
+      ? findingTargets
+      : mapProcesses;
+  const { isLoading, error } = targets;
+  const processes = error ? [] : targets.data || [];
   const progress = trpc.linkedCommitments.listSourceProgress.useQuery({
     companyId,
     sourceType,
@@ -101,6 +108,12 @@ export function ProcessLinkDialog({
                 Los Jefes verán este compromiso en Caracterización. El origen se
                 actualizará sólo cuando todos los procesos vinculados cumplan.
               </p>
+              {isComplianceSource && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Vincular una responsabilidad no permite ingresar ni editar el
+                  proceso seleccionado.
+                </p>
+              )}
             </div>
             <Button size="sm" variant="ghost" onClick={onClose}>
               Cerrar
@@ -117,12 +130,15 @@ export function ProcessLinkDialog({
           )}
           <div className="mt-4 flex items-center justify-between rounded-lg border bg-slate-50 px-3 py-2">
             <span className="text-sm font-medium text-slate-700">
-              Procesos del Mapa
+              {isComplianceSource
+                ? "Procesos de la empresa"
+                : "Procesos del Mapa"}
             </span>
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
                 checked={allSelected}
+                disabled={isLoading || Boolean(error) || processes.length === 0}
                 onChange={event => selectAll(event.target.checked)}
               />
               Seleccionar todos
@@ -132,6 +148,10 @@ export function ProcessLinkDialog({
             {isLoading ? (
               <p className="py-5 text-center text-sm text-slate-500">
                 Cargando procesos...
+              </p>
+            ) : error ? (
+              <p role="alert" className="py-5 text-center text-sm text-red-700">
+                No se pudieron cargar los procesos disponibles. {error.message}
               </p>
             ) : processes.length === 0 ? (
               <p className="py-5 text-center text-sm text-slate-500">
@@ -178,7 +198,12 @@ export function ProcessLinkDialog({
             </Button>
             <Button
               className="bg-teal-700 hover:bg-teal-800"
-              disabled={!selectedIds.length || createLinks.isPending}
+              disabled={
+                !selectedIds.length ||
+                createLinks.isPending ||
+                isLoading ||
+                Boolean(error)
+              }
               onClick={() =>
                 createLinks.mutate({
                   companyId,

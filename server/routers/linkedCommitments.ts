@@ -737,6 +737,39 @@ export const linkedCommitmentsRouter = router({
         .orderBy(asc(processes.name));
     }),
 
+  /** Directorio para asignar Cumplimientos, independiente del acceso al Mapa. */
+  listAssignableComplianceProcesses: companyProcedure
+    .input(
+      z.object({
+        companyId: z.number().int().positive(),
+        sourceId: z.number().int().positive(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await assertSourceManagementAccess(ctx, input.companyId);
+      const db = await getDb();
+      if (!db)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Base de datos no disponible.",
+        });
+      await resolveSource(
+        db,
+        input.companyId,
+        "company_compliance",
+        input.sourceId
+      );
+      return db
+        .select({
+          id: processes.id,
+          name: processes.name,
+          processType: processes.processType,
+        })
+        .from(processes)
+        .where(eq(processes.companyId, input.companyId))
+        .orderBy(asc(processes.name));
+    }),
+
   listByProcess: companyProcedure
     .input(
       z.object({
