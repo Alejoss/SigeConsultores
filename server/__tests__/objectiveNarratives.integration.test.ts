@@ -1,4 +1,4 @@
-import { randomInt, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq, inArray } from "drizzle-orm";
 import {
@@ -13,7 +13,6 @@ import { appRouter } from "../routers";
 
 // Never use real companies, processes, accounts or email addresses.
 const suffix = randomUUID();
-const fixtureBase = randomInt(1_000_000_000, 1_400_000_000);
 const narrativeKeys = [
   "situacionInicial",
   "resultadoEsperado",
@@ -117,11 +116,9 @@ async function fodaRow(id: number) {
 
 async function insertObjective(
   planningData: string | null,
-  id?: number,
   targetProcessId = processId
 ) {
   const [inserted] = await db.insert(processTacticalObjectives).values({
-    ...(id !== undefined ? { id } : {}),
     processId: targetProcessId,
     name: `OTE sintético ${suffix}`,
     description: "Descripción histórica que no se debe vaciar",
@@ -138,7 +135,7 @@ async function insertObjective(
     createdAt: new Date("2023-02-03T00:00:00Z"),
     updatedAt: new Date("2023-04-05T00:00:00Z"),
   });
-  return id ?? Number(inserted.insertId);
+  return Number(inserted.insertId);
 }
 
 beforeAll(async () => {
@@ -159,49 +156,40 @@ beforeAll(async () => {
   db = (await getDb()) as NonNullable<Awaited<ReturnType<typeof getDb>>>;
   if (!db) throw new Error("Base local no disponible para narrativas.");
 
-  await db.insert(accounts).values({
-    id: fixtureBase,
+  // Let MySQL allocate each ID; explicit consecutive IDs are not reserved.
+  const [insertedAccount] = await db.insert(accounts).values({
     openId: `narratives-${suffix}`,
     name: "Cuenta sintética sin correo",
     status: "active",
   });
-  accountId = fixtureBase;
+  accountId = Number(insertedAccount.insertId);
 
   for (let index = 0; index < 2; index++) {
-    const id = fixtureBase + index;
-    await db.insert(companies).values({
-      id,
+    const [inserted] = await db.insert(companies).values({
       name: `Empresa sintética narrativas ${index} ${suffix}`,
       ownerAccountId: accountId,
       status: "En Proceso",
     });
-    companyIds.push(id);
+    companyIds.push(Number(inserted.insertId));
   }
   companyId = companyIds[0];
 
   for (let index = 0; index < 3; index++) {
-    const id = fixtureBase + index;
-    await db.insert(processes).values({
-      id,
+    const [inserted] = await db.insert(processes).values({
       companyId: index === 2 ? companyIds[1] : companyId,
       name: `Proceso sintético narrativas ${index} ${suffix}`,
       processType: "soporte",
     });
-    processIds.push(id);
+    processIds.push(Number(inserted.insertId));
   }
   [processId, siblingProcessId, foreignProcessId] = processIds;
-  legacyObjectiveId = await insertObjective(
-    JSON.stringify(legacyPlanning()),
-    fixtureBase
-  );
+  legacyObjectiveId = await insertObjective(JSON.stringify(legacyPlanning()));
   siblingObjectiveId = await insertObjective(
     JSON.stringify(legacyPlanning()),
-    fixtureBase + 1,
     siblingProcessId
   );
   foreignObjectiveId = await insertObjective(
     JSON.stringify(legacyPlanning()),
-    fixtureBase + 2,
     foreignProcessId
   );
 });
