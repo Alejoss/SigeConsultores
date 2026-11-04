@@ -9,6 +9,8 @@ import { trpc } from "@/lib/trpc";
 import { getProcessIdFromSession, getSessionScope } from "@/lib/sessionScope";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { AutosavingObjectiveNarratives } from "@/components/ObjectiveNarrativeFields";
+import { objectivePlanningSaveSignature, type ObjectiveNarratives } from "@/lib/objectiveNarratives";
 
 // ─── Tipos de seguimiento disponibles ────────────────────────────────────────
 // 'puntual'            → un valor directo; % = (condicionActual - ci) / (meta - ci) * 100
@@ -48,7 +50,7 @@ interface ResultKey {
   ooChecklistValues?: boolean[];   // 12 booleanos (mensual_checklist)
 }
 
-interface TacticalPlanning {
+interface TacticalPlanning extends ObjectiveNarratives {
   id: string;
   objectiveId: number;
   objectiveName: string;
@@ -244,6 +246,9 @@ export default function TacticalPlanning() {
   const focusTaskIndex = focusParams.has("focusTaskIndex")
     ? Number(focusParams.get("focusTaskIndex"))
     : null;
+  // Kept outside plannings so text-only edits never run savePlanning or recalculate metrics.
+  const narrativeDraftsRef = useRef<Record<number, ObjectiveNarratives>>({});
+  const saveNarrativesMutation = trpc.processTacticalObjectives.saveNarratives.useMutation();
 
   const savePlanningMutation = trpc.processTacticalObjectives.savePlanning.useMutation({
     onError: (error: any) => {
@@ -297,6 +302,9 @@ export default function TacticalPlanning() {
           objectiveEnunciation: obj.name || '',
           objectiveExplanation: obj.description || '',
           objectiveResponsible: obj.responsible || '',
+          situacionInicial: obj.situacionInicial ?? '',
+          resultadoEsperado: obj.resultadoEsperado ?? '',
+          indicador: obj.indicador ?? '',
           policyObjective: obj.policyObjective || '',
           strategicObjective: obj.strategicObjective || '',
           goal: '',
@@ -316,11 +324,17 @@ export default function TacticalPlanning() {
     setTimeout(() => { initialLoadDoneRef.current = true; pendingSaveRef.current = false; }, 50);
   }, [tacticalObjectivesData, planningDataFromDB]);
 
+  // Expanding the card to reach narrative fields is view-only, not a numeric/planning edit.
+  const planningSaveSignature = objectivePlanningSaveSignature(plannings);
+
   useEffect(() => {
     planningsRef.current = plannings;
+  }, [plannings]);
+
+  useEffect(() => {
     // Solo marcar como pendiente si la carga inicial ya terminó (cambios del usuario, no carga inicial)
     if (plannings.length > 0 && initialLoadDoneRef.current) pendingSaveRef.current = true;
-  }, [plannings]);
+  }, [planningSaveSignature]);
 
   useEffect(() => {
     if (!focusObjectiveId || !plannings.length) return;
@@ -401,7 +415,7 @@ export default function TacticalPlanning() {
       }
     }, 800);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
-  }, [plannings, processId]);
+  }, [planningSaveSignature, processId]);
 
   // Guardar al desmontar el componente si hay cambios pendientes
   useEffect(() => {
@@ -961,7 +975,7 @@ export default function TacticalPlanning() {
           </div>
           <div className="flex items-center gap-4">
             {plannings.length > 0 && (
-              <Button onClick={() => { exportTacticalObjectivesToPDF(plannings, getSessionScope().processName || 'Proceso'); toast.success('PDF exportado correctamente'); }}
+              <Button onClick={() => { exportTacticalObjectivesToPDF(plannings.map(planning => ({ ...planning, ...narrativeDraftsRef.current[planning.objectiveId] })), getSessionScope().processName || 'Proceso'); toast.success('PDF exportado correctamente'); }}
                 className="bg-green-600 hover:bg-green-700 flex items-center gap-2">
                 <Download size={20} /> Exportar a PDF
               </Button>
@@ -1066,6 +1080,14 @@ export default function TacticalPlanning() {
 
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
                     <h5 className="font-semibold text-blue-900">Datos del Objetivo Táctico</h5>
+                    <AutosavingObjectiveNarratives
+                      initialValues={{ ...planning, ...narrativeDraftsRef.current[planning.objectiveId] }}
+                      autosaveKey={`ote:${planning.objectiveId}`}
+                      save={patch => saveNarrativesMutation.mutateAsync({ objectiveId: planning.objectiveId, ...patch })}
+                      onChange={patch => {
+                        narrativeDraftsRef.current[planning.objectiveId] = { ...narrativeDraftsRef.current[planning.objectiveId], ...patch };
+                      }}
+                    />
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1">Ponderación (%)</label>

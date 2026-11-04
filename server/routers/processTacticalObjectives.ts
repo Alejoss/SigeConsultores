@@ -7,6 +7,36 @@ import { and, desc, eq, or } from "drizzle-orm";
 import { updateProcessTacticalObjective } from "../db";
 import { assertProcessAccessById, assertProcessTacticalObjectiveAccess } from "../_core/companyPermissions";
 
+const objectiveNarrativeFields = {
+  situacionInicial: z.string().max(10_000).optional(),
+  resultadoEsperado: z.string().max(10_000).optional(),
+  indicador: z.string().max(10_000).optional(),
+};
+
+type ObjectiveNarratives = {
+  situacionInicial?: string;
+  resultadoEsperado?: string;
+  indicador?: string;
+};
+
+/** Omitted fields must not create or clear historical JSON keys; '' is explicit. */
+function suppliedNarratives(input: ObjectiveNarratives): ObjectiveNarratives {
+  return {
+    ...(input.situacionInicial !== undefined ? { situacionInicial: input.situacionInicial } : {}),
+    ...(input.resultadoEsperado !== undefined ? { resultadoEsperado: input.resultadoEsperado } : {}),
+    ...(input.indicador !== undefined ? { indicador: input.indicador } : {}),
+  };
+}
+
+/** Empty-string fallbacks belong to the response only, never to persistence. */
+function readNarratives(planningData: any): Required<ObjectiveNarratives> {
+  return {
+    situacionInicial: typeof planningData?.situacionInicial === "string" ? planningData.situacionInicial : "",
+    resultadoEsperado: typeof planningData?.resultadoEsperado === "string" ? planningData.resultadoEsperado : "",
+    indicador: typeof planningData?.indicador === "string" ? planningData.indicador : "",
+  };
+}
+
 /**
  * Resuelve el Objetivo de la Política seleccionado y comprueba que pertenezca a
  * la misma empresa del proceso. Incluye registros históricos guardados con el
@@ -74,6 +104,7 @@ export const processTacticalObjectivesRouter = router({
         
         return {
           ...obj,
+          ...readNarratives(planningData),
           ponderacion: planningData.ponderacion || 0,
           puntoPartida: planningData.puntoPartida || 0,
           metaLlegada: planningData.metaLlegada || 0,
@@ -86,6 +117,7 @@ export const processTacticalObjectivesRouter = router({
   create: companyProcedure
     .input(z.object({
       processId: z.number(),
+      ...objectiveNarrativeFields,
       name: z.string(),
       description: z.string().optional(),
       target: z.string().optional(),
@@ -118,6 +150,7 @@ export const processTacticalObjectivesRouter = router({
         const existingPlanningData = input.planningData ? JSON.parse(input.planningData) : {};
         const planningDataObj = {
           ...existingPlanningData,
+          ...suppliedNarratives(input),
           ponderacion: input.ponderacion !== undefined ? input.ponderacion : (existingPlanningData.ponderacion || 0),
           puntoPartida: input.puntoPartida !== undefined ? input.puntoPartida : (existingPlanningData.puntoPartida || 0),
           metaLlegada: input.metaLlegada !== undefined ? input.metaLlegada : (existingPlanningData.metaLlegada || 0),
@@ -164,6 +197,7 @@ export const processTacticalObjectivesRouter = router({
   update: companyProcedure
     .input(z.object({
       objectiveId: z.number(),
+      ...objectiveNarrativeFields,
       name: z.string(),
       description: z.string().optional(),
       target: z.string().optional(),
@@ -187,10 +221,12 @@ export const processTacticalObjectivesRouter = router({
 
       const completedValue = input.completed || "NO";
       
+      return db.transaction(async tx => {
       // FIX: Get existing planning data to preserve all fields (category, goal, resultKeys, avanceMeta, etc.)
-      const existing = await db.select().from(processTacticalObjectives)
+      const existing = await tx.select().from(processTacticalObjectives)
         .where(eq(processTacticalObjectives.id, input.objectiveId))
-        .limit(1);
+        .limit(1)
+        .for("update");
 
       const existingPlanningData = existing.length > 0 && existing[0].planningData
         ? JSON.parse(existing[0].planningData)
@@ -205,13 +241,14 @@ export const processTacticalObjectivesRouter = router({
       // Merge logic: preserve existing planning data, only update provided fields
       const planningDataObj = {
         ...existingPlanningData,
+        ...suppliedNarratives(input),
         ponderacion: input.ponderacion !== undefined ? input.ponderacion : (existingPlanningData.ponderacion || 0),
         puntoPartida: input.puntoPartida !== undefined ? input.puntoPartida : (existingPlanningData.puntoPartida || 0),
         metaLlegada: input.metaLlegada !== undefined ? input.metaLlegada : (existingPlanningData.metaLlegada || 0),
         unidadMedida: input.unidadMedida !== undefined ? input.unidadMedida : (existingPlanningData.unidadMedida || ''),
       };
       
-      await db.update(processTacticalObjectives)
+      await tx.update(processTacticalObjectives)
         .set({
           name: input.name,
           description: input.description || null,
@@ -236,6 +273,56 @@ export const processTacticalObjectivesRouter = router({
         .where(eq(processTacticalObjectives.id, input.objectiveId));
 
       return { success: true, message: "Objetivo táctico actualizado exitosamente" };
+      });
+    }),
+
+  saveNarratives: companyProcedure
+    .input(z.object({
+      objectiveId: z.number(),
+      ...objectiveNarrativeFields,
+    }))
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessTacticalObjectiveAccess(ctx, input.objectiveId);
+      const narratives = suppliedNarratives(input);
+      if (Object.keys(narratives).length === 0) {
+        return { success: true, changed: false, message: "Sin cambios narrativos" };
+      }
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      return db.transaction(async tx => {
+        const [existing] = await tx.select().from(processTacticalObjectives)
+          .where(eq(processTacticalObjectives.id, input.objectiveId))
+          .limit(1)
+          .for("update");
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Objetivo táctico no encontrado." });
+        }
+
+        let planningData: Record<string, unknown>;
+        try {
+          const parsed = existing.planningData === null ? {} : JSON.parse(existing.planningData);
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            throw new Error("not-object");
+          }
+          planningData = parsed;
+        } catch {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "La planificación existente no tiene un JSON válido; no se modificaron los textos.",
+          });
+        }
+
+        await tx.update(processTacticalObjectives)
+          .set({
+            planningData: JSON.stringify({ ...planningData, ...narratives }),
+            // Preserve column metadata too: this endpoint changes only JSON narratives.
+            updatedAt: existing.updatedAt,
+          })
+          .where(eq(processTacticalObjectives.id, input.objectiveId));
+
+        return { success: true, changed: true, message: "Textos del objetivo táctico guardados" };
+      });
     }),
 
   delete: companyProcedure
@@ -254,6 +341,7 @@ export const processTacticalObjectivesRouter = router({
   savePlanning: companyProcedure
     .input(z.object({
       objectiveId: z.number(),
+      ...objectiveNarrativeFields,
       category: z.string().optional(),
       goal: z.string().optional(),
       resultKeys: z.any().optional(),
@@ -273,10 +361,12 @@ export const processTacticalObjectivesRouter = router({
       if (!db) throw new Error("Database not available");
 
       try {
+        return await db.transaction(async tx => {
         // Get existing planning data to preserve all fields
-        const existing = await db.select().from(processTacticalObjectives)
+        const existing = await tx.select().from(processTacticalObjectives)
           .where(eq(processTacticalObjectives.id, input.objectiveId))
-          .limit(1);
+          .limit(1)
+          .for("update");
 
         const existingPlanningData = existing.length > 0 && existing[0].planningData
           ? JSON.parse(existing[0].planningData)
@@ -314,6 +404,7 @@ export const processTacticalObjectivesRouter = router({
         // Merge with new data, preserving existing fields
         const planningData = {
           ...existingPlanningData,
+          ...suppliedNarratives(input),
           category: input.category !== undefined ? input.category : (existingPlanningData.category || ''),
           goal: input.goal !== undefined ? input.goal : (existingPlanningData.goal || ''),
           resultKeys: input.resultKeys !== undefined ? sanitizeForJSON(input.resultKeys) : (existingPlanningData.resultKeys || []),
@@ -335,7 +426,7 @@ export const processTacticalObjectivesRouter = router({
         }
 
         // Store planning data as JSON in the planningData field
-        await db.update(processTacticalObjectives)
+        await tx.update(processTacticalObjectives)
           .set({
             planningData: jsonString as any,
             updatedAt: new Date(),
@@ -343,6 +434,7 @@ export const processTacticalObjectivesRouter = router({
           .where(eq(processTacticalObjectives.id, input.objectiveId));
 
         return { success: true, message: "Planificación guardada" };
+        });
       } catch (error) {
         console.error('[savePlanning] Error:', error);
         throw error;
@@ -423,6 +515,7 @@ export const processTacticalObjectivesRouter = router({
             id: `planning_${obj.id}`,
             objectiveId: obj.id,
             objectiveName: obj.name || '',
+            ...readNarratives(planningData),
             objectiveEnunciation: obj.name || '',
             objectiveExplanation: obj.description || '',
             objectiveResponsible: obj.responsible || '',
@@ -450,6 +543,7 @@ export const processTacticalObjectivesRouter = router({
             id: `planning_${obj.id}`,
             objectiveId: obj.id,
             objectiveName: obj.name || '',
+            ...readNarratives(undefined),
             objectiveEnunciation: obj.name || '',
             objectiveExplanation: obj.description || '',
             objectiveResponsible: obj.responsible || '',

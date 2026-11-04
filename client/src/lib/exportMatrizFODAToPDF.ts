@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { MatrizFODARow } from '../types/matrizFODA';
+import { exportObjectiveNarratives } from './exportObjectiveNarratives';
 
 function calcularPorcentajeAlcanzado(
   alcanzado: number | undefined,
@@ -184,6 +185,7 @@ export const exportMatrizFODAToPDF = (matrixRows: MatrizFODARow[], processName: 
         addField('Elemento (FODA)', row.elemento || '');
         addFieldInline([['FODA', row.foda], ['Factor', row.factor || ''], ['Sistema de Gestión', row.sistemaGestion || '']]);
         addField('Objetivo Táctico de Gestión', (row as any).objetivoTactico || '');
+        y = exportObjectiveNarratives(doc, row, { x: ml, y, width: maxW, bottom: pageHeight - 15, pageTop: 15 });
         addFieldInline([['Punto de Partida', String((row as any).puntoPartida ?? '')], ['Punto de Llegada', String((row as any).puntoLlegada ?? '')], ['Unidad de Medida', (row as any).unidadMedida || ''], ['Responsable', (row as any).responsableOTG || '']]);
         addFieldInline([['Alcanzado', String((row as any).alcanzado ?? '')], ['% Alcanzado', `${pctAlcanzado}%`]]);
         addFieldInline([['Fecha Planificación', row.fechaPlanificacionMejora || ''], ['Fecha Final Prevista', row.fechaFinalPrevista || '']]);
