@@ -17,6 +17,9 @@ import {
 import { exportRiskMatrixToPDF } from '@/lib/exportRiskMatrixToPDF';
 import { exportMatrizFODAToPDF } from '@/lib/exportMatrizFODAToPDF';
 
+import { AutosavingObjectiveNarratives } from '@/components/ObjectiveNarrativeFields';
+import { editedObjectiveNarratives, OBJECTIVE_NARRATIVE_KEYS, type ObjectiveNarratives } from '@/lib/objectiveNarratives';
+
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 /** Calcula el % alcanzado del OTG en función del valor alcanzado y la meta */
 function calcularPorcentajeAlcanzado(alcanzado: number | undefined, puntoPartida: number | undefined, puntoLlegada: number | undefined): number {
@@ -391,6 +394,9 @@ export default function ProcessRiskMatrix() {
   const savingRef = useRef(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusedRowRef = useRef<string | null>(null);
+  const narrativeDraftsRef = useRef<Record<number, ObjectiveNarratives>>({});
+  const persistedRowIdsRef = useRef(new Set<string>());
+  const saveNarrativesMutation = trpc.processFODA.saveObjectiveNarratives.useMutation();
 
   useEffect(() => {
     const queryProcessId = Number(new URLSearchParams(searchParams).get('processId'));
@@ -461,6 +467,7 @@ export default function ProcessRiskMatrix() {
           try {
             const parsed = JSON.parse(fodaData.matrixData);
             if (Array.isArray(parsed) && parsed.length > 0) {
+              persistedRowIdsRef.current = new Set(parsed.map(row => String(row.id)));
               newRows = parsed.map((row: any) => {
                 const pct = calcularPorcentajeAlcanzado(
                   (row as any).alcanzado,
@@ -569,9 +576,23 @@ export default function ProcessRiskMatrix() {
     return { totalPlanificado, totalAlcanzado, pctAlcanzadoOTG, pctAlcanzadoTareas, porcentajeComunicado, alcancePorSistema };
   }, [rows]);
 
+  // Full saves omit narratives on existing rows; the server preserves those omitted keys.
+  // Only a new row's explicitly edited drafts belong in matrix creation.
+  const serializeMatrix = (currentRows: MatrizFODARow[]) => JSON.stringify(currentRows.map(row => {
+    const { situacionInicial, resultadoEsperado, indicador, ...remaining } = row;
+    return persistedRowIdsRef.current.has(String(row.id)) ? remaining : {
+      ...remaining,
+      ...editedObjectiveNarratives(narrativeDraftsRef.current[row.id] || {}, [...OBJECTIVE_NARRATIVE_KEYS]),
+    };
+  }));
+
   // Mutation — definida UNA vez, sin incluirla en deps del autosave
   const saveMatrixMutation = trpc.processFODA.saveMatrixData.useMutation({
-    onSuccess: () => { setIsAutoSaving(false); setLastSaved(new Date()); },
+    onSuccess: (_data, input) => {
+      persistedRowIdsRef.current = new Set(JSON.parse(input.matrixData).map((row: MatrizFODARow) => String(row.id)));
+      // This render enables dedicated narrative saving for rows just created in the matrix.
+      setIsAutoSaving(false); setLastSaved(new Date());
+    },
     onError: (error: any) => {
       setIsAutoSaving(false);
       toast.error('Error guardando: ' + (error?.message || 'Error desconocido'));
@@ -595,7 +616,7 @@ export default function ProcessRiskMatrix() {
       if (rows.length > 0 && processId && !savingRef.current) {
         savingRef.current = true;
         setIsAutoSaving(true);
-        mutateRef.current({ processId, matrixData: JSON.stringify(rows) });
+        mutateRef.current({ processId, matrixData: serializeMatrix(rows) });
       }
     }, 1500);
     return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
@@ -673,7 +694,7 @@ export default function ProcessRiskMatrix() {
     if (!processId) return;
     setIsSaving(true);
     saveMatrixMutation.mutate(
-      { processId, matrixData: JSON.stringify(rows) },
+      { processId, matrixData: serializeMatrix(rows) },
       { onSuccess: () => { setIsSaving(false); toast.success('Guardado correctamente'); }, onError: () => setIsSaving(false) }
     );
   };
@@ -703,7 +724,7 @@ export default function ProcessRiskMatrix() {
           <Button onClick={handleManualSave} className="gap-2 bg-blue-600 hover:bg-blue-700" disabled={isSaving}>
             <Save size={16} />{isSaving ? 'Guardando...' : 'Guardar'}
           </Button>
-          <Button onClick={() => { exportMatrizFODAToPDF(rows, processName); toast.success('PDF exportado'); }} className="gap-2 bg-green-600 hover:bg-green-700">
+          <Button onClick={() => { exportMatrizFODAToPDF(rows.map(row => ({ ...row, ...narrativeDraftsRef.current[row.id] })), processName); toast.success('PDF exportado'); }} className="gap-2 bg-green-600 hover:bg-green-700">
             <Download size={16} />Descargar Matriz
           </Button>
           <Button variant="outline" onClick={() => setLocation('/process-characterization')} className="gap-2">
@@ -887,6 +908,21 @@ export default function ProcessRiskMatrix() {
                         onChange={(e) => updateRow(row.id, 'accionATomar', e.target.value)}
                         className="w-full text-sm min-h-[70px] mt-1"
                         placeholder="Describe el objetivo táctico de gestión..."
+                      />
+                    </div>
+
+                    <div className="mt-4">
+                      <AutosavingObjectiveNarratives
+                        initialValues={{ ...row, ...narrativeDraftsRef.current[row.id] }}
+                        autosaveKey={`otg:${processId}:${fodaData?.id ?? 'new'}:${row.id}`}
+                        save={persistedRowIdsRef.current.has(String(row.id)) ? patch => saveNarrativesMutation.mutateAsync({
+                          processId, recordId: fodaData?.id, rowId: row.id, ...patch,
+                        }) : undefined}
+                        onChange={patch => {
+                          narrativeDraftsRef.current[row.id] = { ...narrativeDraftsRef.current[row.id], ...patch };
+                          // Existing rows do not touch rows/updateRow; new drafts join the normal creation save.
+                          if (!persistedRowIdsRef.current.has(String(row.id))) setRows(current => [...current]);
+                        }}
                       />
                     </div>
 

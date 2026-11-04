@@ -172,6 +172,9 @@ export interface MatrizFODARow {
   
   // OTG
   objetivoTactico?: string;
+  situacionInicial?: string;
+  resultadoEsperado?: string;
+  indicador?: string;
   puntoPartida?: number;
   puntoLlegada?: number;
   unidadMedida?: string;

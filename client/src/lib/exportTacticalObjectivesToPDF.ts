@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { exportObjectiveNarratives, type ObjectiveNarratives } from './exportObjectiveNarratives';
 
 interface Task {
   id: string;
@@ -26,7 +27,7 @@ interface ResultKey {
   porcentajeAlcanzado?: number;
 }
 
-interface TacticalPlanning {
+interface TacticalPlanning extends ObjectiveNarratives {
   id: string;
   objectiveId: number;
   objectiveName: string;
@@ -52,7 +53,7 @@ interface IndicadorGeneral {
   diferencia: number;
 }
 
-interface LegacyTacticalObjective {
+interface LegacyTacticalObjective extends ObjectiveNarratives {
   id?: number | string;
   policyObjective?: string;
   subprocess?: string;
@@ -170,6 +171,10 @@ export const exportTacticalObjectivesToPDF = (data: ExportData[], processName: s
         doc.setTextColor(100, 100, 100);
         yPosition = addTextWithLineBreaks(responsible, margin + 10, yPosition, maxWidth - 10, 9);
       }
+
+      yPosition = exportObjectiveNarratives(doc, item, {
+        x: margin + 5, y: yPosition, width: maxWidth - 5, bottom: pageHeight - 20, pageTop: 20,
+      });
 
       // Additional fields for planning data
       if (isPlanningData) {

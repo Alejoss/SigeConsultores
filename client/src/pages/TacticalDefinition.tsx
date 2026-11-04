@@ -10,8 +10,10 @@ import { exportTacticalObjectivesToPDF } from "@/lib/exportTacticalObjectivesToP
 import { parseStrategicObjectiveDescription } from "@/lib/parseStrategicObjective";
 import { trpc } from "@/lib/trpc";
 import { getCompanyIdFromSession, getProcessIdFromSession } from "@/lib/sessionScope";
+import { AutosavingObjectiveNarratives } from "@/components/ObjectiveNarrativeFields";
+import { editedObjectiveNarratives, OBJECTIVE_NARRATIVE_KEYS, type ObjectiveNarratives } from "@/lib/objectiveNarratives";
 
-interface TacticalObjectiveDefinition {
+interface TacticalObjectiveDefinition extends ObjectiveNarratives {
   id: string;
   dbId?: number;
   policyObjectiveId?: number | null;
@@ -43,6 +45,10 @@ export default function TacticalDefinition() {
   const initialLoadRef = useRef(false);
   // Ref para mantener siempre la referencia más reciente a objectives y evitar stale closure en autoSave
   const objectivesRef = useRef<TacticalObjectiveDefinition[]>([]);
+
+  // Text drafts do not dirty the existing objective or trigger its generic/numeric save.
+  const narrativeDraftsRef = useRef<Record<string, ObjectiveNarratives>>({});
+  const saveNarrativesMutation = trpc.processTacticalObjectives.saveNarratives.useMutation();
 
   // Get utils for query invalidation (like SubprocessMap does)
   const utils = trpc.useUtils();
@@ -133,6 +139,9 @@ export default function TacticalDefinition() {
           strategicObjectiveDescription: obj.strategicObjectiveDescription || '',
           enunciation: obj.name || '',
           explanation: obj.description || '',
+          situacionInicial: obj.situacionInicial ?? '',
+          resultadoEsperado: obj.resultadoEsperado ?? '',
+          indicador: obj.indicador ?? '',
           ponderacion: obj.ponderacion || 0,
           puntoPartida: obj.puntoPartida || 0,
           metaLlegada: obj.metaLlegada || 0,
@@ -206,6 +215,7 @@ export default function TacticalDefinition() {
           const result = await createMutation.mutateAsync({
             processId,
             ...payload,
+            ...editedObjectiveNarratives(narrativeDraftsRef.current[obj.id] || {}, [...OBJECTIVE_NARRATIVE_KEYS]),
           });
           const newDbId = result.id;
           if (!newDbId) {
@@ -214,7 +224,7 @@ export default function TacticalDefinition() {
           setObjectives(prevObjs =>
             prevObjs.map(o =>
               o.id === obj.id
-                ? { ...o, dbId: newDbId, isNew: false, isDirty: false, id: `db_${newDbId}` }
+                ? { ...o, dbId: newDbId, isNew: false, isDirty: false }
                 : o
             )
           );
@@ -315,7 +325,7 @@ export default function TacticalDefinition() {
       toast.error("No hay objetivos para exportar");
       return;
     }
-    exportTacticalObjectivesToPDF(objectives, (processId || 0).toString());
+    exportTacticalObjectivesToPDF(objectives.map(obj => ({ ...obj, ...narrativeDraftsRef.current[obj.id] })), (processId || 0).toString());
   };
 
   return (
@@ -500,6 +510,17 @@ export default function TacticalDefinition() {
                       rows={3}
                     />
                   </div>
+
+                  <AutosavingObjectiveNarratives
+                    initialValues={{ ...obj, ...narrativeDraftsRef.current[obj.id] }}
+                    autosaveKey={obj.dbId ? `ote:${obj.dbId}` : undefined}
+                    save={obj.dbId ? patch => saveNarrativesMutation.mutateAsync({ objectiveId: obj.dbId!, ...patch }) : undefined}
+                    onChange={patch => {
+                      narrativeDraftsRef.current[obj.id] = { ...narrativeDraftsRef.current[obj.id], ...patch };
+                      // A new row includes edited narratives in creation; existing rows use only saveNarratives.
+                      if (!obj.dbId) autoSave();
+                    }}
+                  />
 
                   {/* Metrics Row */}
                   <div className="grid grid-cols-2 gap-4">

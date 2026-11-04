@@ -160,6 +160,60 @@ export const processFODARouter = router({
       return { success: true, message: "FODA guardado exitosamente" };
     }),
 
+  saveObjectiveNarratives: companyProcedure
+    .input(z.object({
+      processId: z.number(),
+      recordId: z.number().int().positive().optional(),
+      rowId: z.union([z.number(), z.string()]),
+      situacionInicial: z.string().max(10_000).optional(),
+      resultadoEsperado: z.string().max(10_000).optional(),
+      indicador: z.string().max(10_000).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      await assertProcessAccessById(ctx, input.processId);
+      const narratives = {
+        ...(input.situacionInicial !== undefined ? { situacionInicial: input.situacionInicial } : {}),
+        ...(input.resultadoEsperado !== undefined ? { resultadoEsperado: input.resultadoEsperado } : {}),
+        ...(input.indicador !== undefined ? { indicador: input.indicador } : {}),
+      };
+      if (Object.keys(narratives).length === 0) {
+        return { success: true, changed: false, message: "Sin cambios narrativos" };
+      }
+
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      return db.transaction(async tx => {
+        const [existing] = await tx.select().from(processFODA)
+          .where(input.recordId !== undefined
+            ? and(eq(processFODA.processId, input.processId), eq(processFODA.id, input.recordId))
+            : eq(processFODA.processId, input.processId))
+          .orderBy(desc(processFODA.updatedAt))
+          .limit(1)
+          .for("update");
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Registro FODA no encontrado." });
+        }
+
+        // Unlike full matrix saves, this path must not normalize links, metrics or actions.
+        const rows = parsePayloadArray(existing.matrixData ?? "", "matriz OTG existente");
+        const index = rows.findIndex(row => String(row.id) === String(input.rowId));
+        if (index < 0) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Objetivo táctico general no encontrado." });
+        }
+        rows[index] = { ...rows[index], ...narratives };
+
+        await tx.update(processFODA)
+          .set({
+            matrixData: JSON.stringify(rows),
+            // Preserve every other FODA column, including its stored timestamps.
+            updatedAt: existing.updatedAt,
+          })
+          .where(and(eq(processFODA.id, existing.id), eq(processFODA.processId, input.processId)));
+
+        return { success: true, changed: true, message: "Textos del objetivo táctico general guardados" };
+      });
+    }),
+
   saveMatrixData: companyProcedure
     .input(z.object({
       processId: z.number(),
@@ -177,27 +231,49 @@ export const processFODARouter = router({
         "objetivoPolitica"
       );
 
-      const existing = await db.select().from(processFODA)
-        .where(eq(processFODA.processId, input.processId));
+      const incomingRows = parsePayloadArray(matrixData, "matriz OTG");
+      return db.transaction(async tx => {
+        const existing = await tx.select().from(processFODA)
+          .where(eq(processFODA.processId, input.processId))
+          .orderBy(processFODA.id)
+          .for("update");
 
-      if (existing.length > 0) {
-        await db.update(processFODA)
-          .set({
+        if (existing.length > 0) {
+          // Validate every version before writing; malformed JSON may hide narratives.
+          const matrices = existing.map(record => {
+            const storedRows = parsePayloadArray(record.matrixData ?? "[]", "matriz OTG existente");
+            const storedById = new Map(storedRows.map(row => [String(row.id), row]));
+            const rows = incomingRows.map(row => {
+              const stored = storedById.get(String(row.id));
+              const merged = { ...row };
+              for (const key of ["situacionInicial", "resultadoEsperado", "indicador"] as const) {
+                if (!Object.prototype.hasOwnProperty.call(row, key)
+                  && stored && Object.prototype.hasOwnProperty.call(stored, key)) {
+                  merged[key] = stored[key];
+                }
+              }
+              return merged;
+            });
+            return { id: record.id, matrixData: JSON.stringify(rows) };
+          });
+          const updatedAt = new Date();
+          for (const matrix of matrices) {
+            await tx.update(processFODA)
+              .set({ matrixData: matrix.matrixData, updatedAt })
+              .where(and(eq(processFODA.id, matrix.id), eq(processFODA.processId, input.processId)));
+          }
+        } else {
+          await tx.insert(processFODA).values({
+            processId: input.processId,
             matrixData,
-            updatedAt: new Date(),
-          })
-          .where(eq(processFODA.processId, input.processId));
-      } else {
-        await db.insert(processFODA).values({
-          processId: input.processId,
-          matrixData,
-          strengths: null,
-          opportunities: null,
-          weaknesses: null,
-          threats: null,
-        });
-      }
+            strengths: null,
+            opportunities: null,
+            weaknesses: null,
+            threats: null,
+          });
+        }
 
-      return { success: true, message: "Matriz guardada exitosamente" };
+        return { success: true, message: "Matriz guardada exitosamente" };
+      });
     }),
 });
