@@ -1,0 +1,44 @@
+.p-assessment-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 16px;
+}
+.p-assessment-button-ghost {
+  background: transparent;
+}
+.p-assessment-button-ghost:hover {
+  background: #eef3e9;
+}
+.p-assessment-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.p-assessment-radio {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  aspect-ratio: 1;
+  border: 1px solid #7d946c;
+  border-radius: 50%;
+  color: #496f32;
+  background: transparent;
+}
+.p-assessment-radio-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.p-assessment-radio:focus-visible,
+.p-assessment-button:focus-visible {
+  outline: 3px solid #537d37;
+  outline-offset: 3px;
+}

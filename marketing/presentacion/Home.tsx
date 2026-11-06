@@ -15,9 +15,15 @@ import {
   ShieldCheck,
   Workflow,
 } from "lucide-react";
+import ManagementAssessment from "./ManagementAssessment";
+import ManagementContext from "./ManagementContext";
 import "./presentation.css";
 
-const media = { logo: "/presentacion/media/logo.png", video: "/presentacion/media/presentacion.mp4", poster: "/presentacion/media/poster.jpg" };
+const media = {
+  logo: "/presentacion/media/logo.png",
+  video: "/presentacion/media/presentacion.mp4",
+  poster: "/presentacion/media/poster.jpg",
+};
 export const whatsappUrl =
   "https://wa.me/593987298644?text=" +
   encodeURIComponent(
@@ -92,16 +98,11 @@ export default function Home() {
           <a className="p-nav-link" href="#servicios">
             Servicios
           </a>
+          <a className="p-nav-link" href="#autoevaluacion">
+            Autoevaluación
+          </a>
           <a className="p-nav-link" href="#contacto">
             Contacto
-          </a>
-          <a
-            className="p-nav-cta"
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Hablemos <ArrowUpRight size={17} aria-hidden="true" />
           </a>
         </nav>
       </header>
@@ -132,22 +133,17 @@ export default function Home() {
                 </span>
               </p>
               <div className="p-hero-actions">
-                <a
-                  className="p-button p-button-green"
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Solicitar una demostración{" "}
-                  <ArrowUpRight size={20} aria-hidden="true" />
-                </a>
                 <button
-                  className="p-text-button"
+                  className="p-button p-button-green"
                   type="button"
                   onClick={playVideo}
                 >
                   <Play size={17} aria-hidden="true" /> Ver presentación · 30 s
                 </button>
+                <a className="p-button p-button-green" href="#autoevaluacion">
+                  Autoevaluación · 1 minuto{" "}
+                  <ChevronRight size={16} aria-hidden="true" />
+                </a>
               </div>
               <div className="p-no-login">
                 <Check size={15} aria-hidden="true" /> Conoce la plataforma sin
@@ -203,14 +199,6 @@ export default function Home() {
                     rel="noopener noreferrer"
                   >
                     Abrir video directamente
-                  </a>{" "}
-                  o{" "}
-                  <a
-                    href={whatsappUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    contactar a Esteban
                   </a>
                   .
                 </p>
@@ -224,6 +212,7 @@ export default function Home() {
             <ArrowDown size={18} aria-hidden="true" />
           </a>
         </section>
+        <ManagementContext />
         <section
           className="p-roles"
           id="responsabilidades"
@@ -314,6 +303,7 @@ export default function Home() {
             </div>
           </div>
         </section>
+        <ManagementAssessment />
         <section
           className="p-contact"
           id="contacto"

@@ -34,4 +34,27 @@ describe("Public commercial presentation (static only)", () => {
     expect(source).toContain('preload="none"');
     expect(source).toContain('playsInline');
   });
+  it("keeps the assessment after services and before contact, with internal-only hero actions", () => {
+    const source = fs.readFileSync(path.resolve(process.cwd(), "marketing/presentacion/Home.tsx"), "utf8");
+    expect(source.indexOf('id="servicios"')).toBeLessThan(source.indexOf('<ManagementAssessment />'));
+    expect(source.indexOf('<ManagementAssessment />')).toBeLessThan(source.indexOf('id="contacto"'));
+    const hero = source.slice(source.indexOf('className="p-hero"'), source.indexOf('<ManagementContext />'));
+    expect(hero).toContain('Ver presentación · 30 s');
+    expect(hero).toContain('Autoevaluación · 1 minuto');
+    expect(hero).not.toMatch(/whatsappUrl|Solicitar una demostración|Hablemos/);
+  });
+  it("calculates locally and opens only a voluntary WhatsApp draft", () => {
+    const source = fs.readFileSync(path.resolve(process.cwd(), "marketing/presentacion/ManagementAssessment.tsx"), "utf8");
+    const calculation = fs.readFileSync(path.resolve(process.cwd(), "marketing/presentacion/managementAssessment.ts"), "utf8");
+    expect(source).not.toMatch(/localStorage|sessionStorage|document\.cookie|fetch\(|useQuery|useMutation/);
+    expect(calculation).not.toMatch(/localStorage|sessionStorage|document\.cookie|fetch\(/);
+    expect(source).toContain('No guardamos ni enviamos tus respuestas');
+    expect(source).toContain('no un porcentaje de cumplimiento ni una');
+    expect(source).toContain('Contactarme');
+    expect(source).toContain('con ISGE 360 sobre mi resultado');
+    const js = fs.readdirSync(path.join(root, "assets")).filter(f => f.endsWith(".js")).map(f => fs.readFileSync(path.join(root, "assets", f), "utf8")).join("\n");
+    expect(js).toContain('Gestión fragmentada');
+    expect(js).toContain('Gestión en proceso de integración');
+    expect(js).toContain('Gestión integrada');
+  });
 });
