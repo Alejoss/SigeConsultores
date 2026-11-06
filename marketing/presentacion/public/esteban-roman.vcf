@@ -1,0 +1,11 @@
+BEGIN:VCARD
+VERSION:3.0
+N:Román;Esteban;;;
+FN:Esteban Román
+ORG:ISGE 360
+TEL;TYPE=CELL,VOICE:+593987298644
+EMAIL;TYPE=INTERNET:esteban@isge360.com
+ADR;TYPE=WORK:;;;Quito;;;Ecuador
+URL:https://isge360.com/presentacion
+NOTE:ISGE 360 — La estrategia hecha gestión.
+END:VCARD

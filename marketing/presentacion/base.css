@@ -1,0 +1,4 @@
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: #f6f8f5; font-family: 'Manrope', Arial, sans-serif; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
