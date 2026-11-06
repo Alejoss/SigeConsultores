@@ -2,11 +2,17 @@
 
 ## Estado y alcance
 
-Preparada y validada localmente. No se publica por crear estos archivos: requiere autorización del usuario y el flujo normal staging → PR → main → CI → CD.
+Página inicial publicada; actualización con autoevaluación autorizada el 6 de noviembre de 2026. No se publica por crear estos archivos: requiere el flujo normal staging → PR → main → CI → CD.
 
 Destino definitivo: **https://isge360.com/presentacion**. Express redirige esta carpeta a `/presentacion/`. El QR debe apuntar a la dirección del dominio, no al MP4 de Manus ni a la URL temporal de revisión.
 
 La página pública muestra el video de 30 segundos, las responsabilidades de Gerencia, Responsable SIG y Jefes de Proceso, y los contactos autorizados de Esteban Román. Las pantallas del video corresponden a Masa Viva, empresa ficticia. No solicita login, no carga datos empresariales, no crea sesiones, no usa tRPC, no envía correos, no modifica roles y no agrega seguimiento comercial.
+
+La autoevaluación consta de seis preguntas, con Sí (2 puntos), Parcialmente (1) y No (0). Solo presenta resultado al completar las seis: 0–4 gestión fragmentada, 5–8 en proceso de integración, 9–12 integrada. Es orientativa, no una auditoría, certificación ni porcentaje de cumplimiento normativo. Muestra fortalezas declaradas y oportunidades vinculadas a las respuestas; un puntaje alto no oculta respuestas negativas o parciales.
+
+Las respuestas existen únicamente en memoria del navegador y desaparecen al recargar o salir. No hay base de datos, formularios de contacto ni envío automático. «Contactarme con ISGE 360 sobre mi resultado» solo abre un borrador de WhatsApp dirigido al contacto autorizado; el visitante decide si lo envía.
+
+Orden comercial: presentación y botones verdes en columna (video primero, acceso a evaluación debajo), situaciones habituales, estrategia → procesos → resultados, responsabilidades, servicios, evaluación, contacto. No hay solicitud de demostración en el encabezado ni en el bloque inicial. Los controles accesibles están aislados en `assessmentControls.tsx`; no cargan la aplicación empresarial.
 
 ## Archivos y mantenimiento
 
