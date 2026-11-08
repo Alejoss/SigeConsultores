@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,6 +19,8 @@ import { exportRiskMatrixToPDF } from '@/lib/exportRiskMatrixToPDF';
 import { exportMatrizFODAToPDF } from '@/lib/exportMatrizFODAToPDF';
 
 import { AutosavingObjectiveNarratives } from '@/components/ObjectiveNarrativeFields';
+import { ProcessQuickNavigation, waitForNavigationMutations } from '@/components/ProcessQuickNavigation';
+import { getCompanyIdFromSession } from '@/lib/sessionScope';
 import { editedObjectiveNarratives, OBJECTIVE_NARRATIVE_KEYS, type ObjectiveNarratives } from '@/lib/objectiveNarratives';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
@@ -376,6 +379,8 @@ function AccionOTGRow({
 export default function ProcessRiskMatrix() {
   const [, setLocation] = useLocation();
   const searchParams = useSearch();
+  const queryClient = useQueryClient();
+  const companyId = getCompanyIdFromSession();
   const focusParams = useMemo(() => new URLSearchParams(searchParams), [searchParams]);
   const focusFodaRecordId = Number(focusParams.get('focusFodaRecordId'));
   const focusFodaRowId = focusParams.get('focusFodaRowId');
@@ -389,14 +394,26 @@ export default function ProcessRiskMatrix() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const initialLoadDoneRef = useRef(false);
-  const skipInitialAutoSaveRef = useRef(false);
+  const skipInitialAutoSaveRef = useRef<MatrizFODARow[] | null>(null);
   const fodaSyncDoneRef = useRef(false);
   const savingRef = useRef(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingMatrixSaveRef = useRef(false);
+  // Navigation starts before blur-triggered renders; always flush the latest committed draft.
+  const navigationDraftRef = useRef({ rows, processId });
+  navigationDraftRef.current = { rows, processId };
   const focusedRowRef = useRef<string | null>(null);
   const narrativeDraftsRef = useRef<Record<number, ObjectiveNarratives>>({});
   const persistedRowIdsRef = useRef(new Set<string>());
-  const saveNarrativesMutation = trpc.processFODA.saveObjectiveNarratives.useMutation();
+  const failedNarrativeRowsRef = useRef(new Set<string>());
+  const saveNarrativesMutation = trpc.processFODA.saveObjectiveNarratives.useMutation({
+    onError: (_error, input) => {
+      failedNarrativeRowsRef.current.add(`${input.processId}:${input.recordId ?? 'new'}:${input.rowId}`);
+    },
+    onSuccess: (_data, input) => {
+      failedNarrativeRowsRef.current.delete(`${input.processId}:${input.recordId ?? 'new'}:${input.rowId}`);
+    },
+  });
 
   useEffect(() => {
     const queryProcessId = Number(new URLSearchParams(searchParams).get('processId'));
@@ -520,7 +537,7 @@ export default function ProcessRiskMatrix() {
         }
         // La carga solo normaliza la vista local. No debe regrabar registros
         // históricos por el simple hecho de abrir la matriz.
-        skipInitialAutoSaveRef.current = true;
+        skipInitialAutoSaveRef.current = newRows;
         setRows(newRows);
         initialLoadDoneRef.current = true;
       } catch (error) { console.error('Error loading FODA data:', error); }
@@ -595,6 +612,7 @@ export default function ProcessRiskMatrix() {
     },
     onError: (error: any) => {
       setIsAutoSaving(false);
+      pendingMatrixSaveRef.current = true;
       toast.error('Error guardando: ' + (error?.message || 'Error desconocido'));
     },
     onSettled: () => { savingRef.current = false; },
@@ -608,19 +626,53 @@ export default function ProcessRiskMatrix() {
   useEffect(() => {
     if (!initialLoadDoneRef.current) return;
     if (skipInitialAutoSaveRef.current) {
-      skipInitialAutoSaveRef.current = false;
+      // Loading sets the ref before React commits newRows; skip both renders.
+      if (rows === skipInitialAutoSaveRef.current) skipInitialAutoSaveRef.current = null;
       return;
     }
+    pendingMatrixSaveRef.current = true;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
-      if (rows.length > 0 && processId && !savingRef.current) {
+      autoSaveTimerRef.current = null;
+      if (pendingMatrixSaveRef.current && rows.length > 0 && processId && !savingRef.current) {
+        pendingMatrixSaveRef.current = false;
         savingRef.current = true;
         setIsAutoSaving(true);
         mutateRef.current({ processId, matrixData: serializeMatrix(rows) });
       }
     }, 1500);
-    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    };
   }, [rows, processId]);
+
+  const flushBeforeNavigate = async (): Promise<boolean> => {
+    const cancelDebounce = () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    };
+    cancelDebounce();
+    // Serialize behind an older matrix/narrative request instead of overwriting newer edits.
+    if (!(await waitForNavigationMutations(queryClient))) return false;
+    if (failedNarrativeRowsRef.current.size > 0) return false;
+    while (pendingMatrixSaveRef.current) {
+      cancelDebounce();
+      const draft = navigationDraftRef.current;
+      if (!draft.processId || !initialLoadDoneRef.current) return false;
+      try {
+        const matrixData = serializeMatrix(draft.rows);
+        pendingMatrixSaveRef.current = false;
+        savingRef.current = true;
+        setIsAutoSaving(true);
+        await saveMatrixMutation.mutateAsync({ processId: draft.processId, matrixData });
+      } catch {
+        pendingMatrixSaveRef.current = true;
+        return false;
+      }
+    }
+    return failedNarrativeRowsRef.current.size === 0;
+  };
 
   const updateRow = (id: number, field: keyof MatrizFODARow, value: any) => {
     setRows(rows.map((row) => {
@@ -693,15 +745,28 @@ export default function ProcessRiskMatrix() {
   const handleManualSave = () => {
     if (!processId) return;
     setIsSaving(true);
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = null;
+    pendingMatrixSaveRef.current = false;
     saveMatrixMutation.mutate(
       { processId, matrixData: serializeMatrix(rows) },
       { onSuccess: () => { setIsSaving(false); toast.success('Guardado correctamente'); }, onError: () => setIsSaving(false) }
     );
   };
 
+  const quickNavigation = (
+    <ProcessQuickNavigation
+      processId={processId}
+      companyId={companyId}
+      indicatorPanel="otg"
+      beforeNavigate={flushBeforeNavigate}
+    />
+  );
+
   if (!processId) {
     return (
       <div className="p-6">
+        <div className="flex flex-wrap items-center gap-2 mb-6">{quickNavigation}</div>
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3 text-slate-600"><AlertCircle size={20} /><p>Por favor, selecciona un proceso primero</p></div>
@@ -715,18 +780,19 @@ export default function ProcessRiskMatrix() {
   return (
     <div className="space-y-6 p-6 bg-white min-h-screen">
       {/* Encabezado */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-blue-900">OTG - OBJETIVOS TÁCTICOS DE GESTIÓN</h1>
           <p className="text-slate-600 mt-2">Proceso: <strong>{processName}</strong></p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button onClick={handleManualSave} className="gap-2 bg-blue-600 hover:bg-blue-700" disabled={isSaving}>
             <Save size={16} />{isSaving ? 'Guardando...' : 'Guardar'}
           </Button>
           <Button onClick={() => { exportMatrizFODAToPDF(rows.map(row => ({ ...row, ...narrativeDraftsRef.current[row.id] })), processName); toast.success('PDF exportado'); }} className="gap-2 bg-green-600 hover:bg-green-700">
             <Download size={16} />Descargar Matriz
           </Button>
+          {quickNavigation}
           <Button variant="outline" onClick={() => setLocation('/process-characterization')} className="gap-2">
             <ArrowLeft size={16} />VOLVER
           </Button>

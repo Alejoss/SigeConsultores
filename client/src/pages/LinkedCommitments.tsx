@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowLeft,
@@ -14,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ProcessQuickNavigation } from "@/components/ProcessQuickNavigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -78,23 +79,40 @@ function CommitmentCard({
   onRefresh,
   onViewEvidence,
   onUploadEvidence,
+  onMutationResult,
 }: {
   commitment: LinkedCommitment;
   companyId: number;
   onRefresh: () => void;
   onViewEvidence: (commitment: LinkedCommitment) => void;
   onUploadEvidence: (commitment: LinkedCommitment) => void;
+  onMutationResult: (key: string, failed: boolean) => void;
 }) {
+  const reportProgressResult = (values: Record<string, unknown>, failed: boolean) => {
+    Object.keys(values)
+      .filter(field => field !== "id" && field !== "companyId")
+      .forEach(field => onMutationResult(`progress:${commitment.id}:${field}`, failed));
+  };
   const update = trpc.linkedCommitments.updateProgress.useMutation({
-    onSuccess: onRefresh,
-    onError: error => toast.error(error.message),
+    onSuccess: (_data, values) => {
+      reportProgressResult(values, false);
+      onRefresh();
+    },
+    onError: (error, values) => {
+      reportProgressResult(values, true);
+      toast.error(error.message);
+    },
   });
   const remove = trpc.linkedCommitments.delete.useMutation({
     onSuccess: () => {
+      onMutationResult(`delete:${commitment.id}`, false);
       toast.success("Actividad propia eliminada");
       onRefresh();
     },
-    onError: error => toast.error(error.message),
+    onError: error => {
+      onMutationResult(`delete:${commitment.id}`, true);
+      toast.error(error.message);
+    },
   });
   const isOwn = commitment.sourceType === "own";
   const isVigency = commitment.kind === "vigency";
@@ -293,6 +311,11 @@ export default function LinkedCommitments() {
   );
   const [uploadingFor, setUploadingFor] = useState<number | null>(null);
   const focusedCommitmentRef = useRef<number | null>(null);
+  const failedMutationKeys = useRef(new Set<string>());
+  const reportMutationResult = useCallback((key: string, failed: boolean) => {
+    if (failed) failedMutationKeys.current.add(key);
+    else failedMutationKeys.current.delete(key);
+  }, []);
 
   const commitmentsQuery = trpc.linkedCommitments.listByProcess.useQuery(
     { companyId: companyId || 0, processId: processId || 0 },
@@ -304,16 +327,26 @@ export default function LinkedCommitments() {
   );
   const createOwn = trpc.linkedCommitments.createOwn.useMutation({
     onSuccess: () => {
+      reportMutationResult("createOwn", false);
       setOwnDraft({ title: "", description: "", dueDate: "" });
       setShowOwnForm(false);
       commitmentsQuery.refetch();
       toast.success("Actividad agregada a la planificación del proceso");
     },
-    onError: error => toast.error(error.message),
+    onError: error => {
+      reportMutationResult("createOwn", true);
+      toast.error(error.message);
+    },
   });
   const deleteEvidence = trpc.linkedCommitments.deleteEvidence.useMutation({
-    onSuccess: () => evidenceQuery.refetch(),
-    onError: error => toast.error(error.message),
+    onSuccess: (_data, values) => {
+      reportMutationResult(`deleteEvidence:${values.id}`, false);
+      evidenceQuery.refetch();
+    },
+    onError: (error, values) => {
+      reportMutationResult(`deleteEvidence:${values.id}`, true);
+      toast.error(error.message);
+    },
   });
 
   const commitments = (commitmentsQuery.data || []) as LinkedCommitment[];
@@ -348,10 +381,12 @@ export default function LinkedCommitments() {
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.ok)
         throw new Error(result?.error || "No fue posible subir la evidencia");
+      reportMutationResult(`uploadEvidence:${commitment.id}`, false);
       toast.success("Evidencia subida correctamente", { id: loadingToast });
       commitmentsQuery.refetch();
       if (evidenceTarget?.id === commitment.id) evidenceQuery.refetch();
     } catch (error) {
+      reportMutationResult(`uploadEvidence:${commitment.id}`, true);
       toast.error(
         error instanceof Error
           ? error.message
@@ -369,9 +404,41 @@ export default function LinkedCommitments() {
     ? `/process-characterization?processId=${processId}${companyId ? `&companyId=${companyId}` : ""}`
     : "/process-map";
 
+  const beforeQuickNavigate = () => {
+    // There are no save debounces here: the shared blur/tick and mutation wait
+    // cover card saves. Uploads use fetch instead of the mutation cache.
+    if (uploadingFor !== null) {
+      toast.error("Espera a que termine la subida de evidencia antes de salir.");
+      return false;
+    }
+    if (failedMutationKeys.current.size > 0) return false;
+    // Keep an uncreated activity in this page, even when its form is collapsed.
+    // Only the explicit 'Agregar a planificación' button may create it.
+    if (ownDraft.title || ownDraft.description || ownDraft.dueDate) {
+      toast.error("Tienes una actividad sin agregar. Consérvala aquí o usa Agregar a planificación antes de salir.");
+      return false;
+    }
+    return true;
+  };
+  const navigationBar = (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <Button variant="outline" size="sm" onClick={() => setLocation(backPath)}>
+        <ArrowLeft size={16} className="mr-1" />
+        Volver
+      </Button>
+      <ProcessQuickNavigation
+        processId={processId}
+        companyId={companyId}
+        indicatorLabel="Ir a Indicadores del Área"
+        beforeNavigate={beforeQuickNavigate}
+      />
+    </div>
+  );
+
   if (processLeaderLoading || managerLoading || commitmentsQuery.isLoading) {
     return (
       <DashboardLayout>
+        <div className="mx-auto max-w-5xl px-4 pt-8">{navigationBar}</div>
         <div className="flex items-center justify-center gap-2 py-16 text-slate-600">
           <Loader2 className="h-5 w-5 animate-spin" />
           Cargando compromisos vinculados...
@@ -382,6 +449,7 @@ export default function LinkedCommitments() {
   if (!companyId || !processId) {
     return (
       <DashboardLayout>
+        <div className="mx-auto max-w-5xl px-4 pt-8">{navigationBar}</div>
         <div className="mx-auto max-w-xl py-16 text-center text-slate-600">
           Seleccione un proceso desde el Mapa de Procesos para administrar sus
           compromisos.
@@ -393,16 +461,9 @@ export default function LinkedCommitments() {
   return (
     <DashboardLayout>
       <main className="mx-auto max-w-5xl px-4 py-8">
+        {navigationBar}
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div className="flex items-start gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setLocation(backPath)}
-            >
-              <ArrowLeft size={16} className="mr-1" />
-              Volver
-            </Button>
             <div>
               <h1 className="text-2xl font-bold text-slate-800">
                 Compromisos vinculados
@@ -460,6 +521,7 @@ export default function LinkedCommitments() {
                     commitment={item}
                     companyId={companyId}
                     onRefresh={() => commitmentsQuery.refetch()}
+                    onMutationResult={reportMutationResult}
                     onViewEvidence={setEvidenceTarget}
                     onUploadEvidence={target =>
                       evidenceInputRefs.current[target.id]?.click()
@@ -585,6 +647,7 @@ export default function LinkedCommitments() {
                     commitment={item}
                     companyId={companyId}
                     onRefresh={() => commitmentsQuery.refetch()}
+                    onMutationResult={reportMutationResult}
                     onViewEvidence={setEvidenceTarget}
                     onUploadEvidence={target =>
                       evidenceInputRefs.current[target.id]?.click()

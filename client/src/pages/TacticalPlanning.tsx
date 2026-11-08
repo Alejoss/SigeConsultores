@@ -10,7 +10,8 @@ import { getProcessIdFromSession, getSessionScope } from "@/lib/sessionScope";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AutosavingObjectiveNarratives } from "@/components/ObjectiveNarrativeFields";
-import { objectivePlanningSaveSignature, type ObjectiveNarratives } from "@/lib/objectiveNarratives";
+import { ProcessQuickNavigation } from "@/components/ProcessQuickNavigation";
+import { objectiveNarrativeAutosaveQueue, objectivePlanningSaveSignature, OBJECTIVE_NARRATIVE_KEYS, type ObjectiveNarratives } from "@/lib/objectiveNarratives";
 
 // ─── Tipos de seguimiento disponibles ────────────────────────────────────────
 // 'puntual'            → un valor directo; % = (condicionActual - ci) / (meta - ci) * 100
@@ -249,6 +250,10 @@ export default function TacticalPlanning() {
   // Kept outside plannings so text-only edits never run savePlanning or recalculate metrics.
   const narrativeDraftsRef = useRef<Record<number, ObjectiveNarratives>>({});
   const saveNarrativesMutation = trpc.processTacticalObjectives.saveNarratives.useMutation();
+  const narrativePendingRef = useRef<Record<number, ObjectiveNarratives>>({});
+  const narrativeQueuesRef = useRef<Record<number, ReturnType<typeof objectiveNarrativeAutosaveQueue>>>({});
+  const saveFailuresRef = useRef(0);
+  const navigationFlushRef = useRef<Promise<boolean> | null>(null);
 
   const savePlanningMutation = trpc.processTacticalObjectives.savePlanning.useMutation({
     onError: (error: any) => {
@@ -266,6 +271,70 @@ export default function TacticalPlanning() {
     { processId: processId || 0 },
     { enabled: processId !== null, staleTime: 0, gcTime: 0 }
   );
+
+  const persistNarratives = async (objectiveId: number, patch: ObjectiveNarratives) => {
+    // The shared queue owns serialization/debounce. Track only edits not yet acknowledged.
+    const pending = narrativePendingRef.current[objectiveId] || {};
+    const editedPatch: ObjectiveNarratives = {};
+    for (const key of OBJECTIVE_NARRATIVE_KEYS) {
+      if (key in pending && typeof patch[key] === "string") editedPatch[key] = patch[key];
+    }
+    if (Object.keys(editedPatch).length === 0) return;
+    try {
+      await saveNarrativesMutation.mutateAsync({ objectiveId, ...editedPatch });
+      const latestPending = narrativePendingRef.current[objectiveId];
+      for (const key of OBJECTIVE_NARRATIVE_KEYS) {
+        if (key in editedPatch && latestPending?.[key] === editedPatch[key]) delete latestPending[key];
+      }
+      if (latestPending && Object.keys(latestPending).length === 0) delete narrativePendingRef.current[objectiveId];
+    } catch (error) {
+      saveFailuresRef.current += 1;
+      // Leave drafts pending; the shared queue also restores its failed snapshot.
+      throw error;
+    }
+  };
+
+  const savePendingPlanning = async () => {
+    if (savingRef.current || !pendingSaveRef.current) return;
+    const latestPlannings = planningsRef.current;
+    const latestProcessId = processIdRef.current;
+    if (!latestProcessId || latestPlannings.length === 0) throw new Error("No se pudo resolver la planificación pendiente.");
+    savingRef.current = true;
+    setSaving(true);
+    pendingSaveRef.current = false;
+    try {
+      const planningsToSave = latestPlannings.map(p => {
+        const metrics = calcOTMetrics(p);
+        return { ...p, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado };
+      });
+      localStorage.setItem(`tactical_planning_${latestProcessId}`, JSON.stringify(planningsToSave));
+      const results = await Promise.allSettled(planningsToSave.map(planning =>
+        savePlanningMutation.mutateAsync({
+          objectiveId: planning.objectiveId,
+          goal: typeof planning.goal === 'string' ? planning.goal : String(planning.goal || ''),
+          resultKeys: planning.resultKeys,
+          ponderacion: planning.ponderacion || 0,
+          puntoPartida: planning.puntoPartida || 0,
+          metaLlegada: planning.metaLlegada || 0,
+          unidadMedida: planning.unidadMedida || '',
+          avanceMeta: planning.avanceMeta || 0,
+          trackingType: (planning.trackingType || 'puntual') as any,
+          monthlyValues: Array(12).fill(0).map((_, i) => Number((planning.monthlyValues || [])[i] || 0)),
+          checklistValues: Array(12).fill(false).map((_, i) => Boolean((planning.checklistValues || [])[i] || false)),
+        })
+      ));
+      const failures = results.filter(result => result.status === 'rejected');
+      if (failures.length > 0) throw new Error(`Error al guardar ${failures.length} objetivo(s)`);
+      setLastSaveTime(new Date().toLocaleTimeString());
+    } catch (error) {
+      pendingSaveRef.current = true;
+      saveFailuresRef.current += 1;
+      throw error;
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
 
   useEffect(() => {
     const pid = getProcessIdFromSession();
@@ -369,49 +438,14 @@ export default function TacticalPlanning() {
     // No guardar durante la carga inicial (evita guardado innecesario al montar el componente)
     if (!initialLoadDoneRef.current) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    // Capturar el estado actual en el closure para que el timeout use siempre los datos más recientes
-    const currentPlannings = plannings;
-    const currentProcessId = processId;
+    // El flush de salida se ocupa de los cambios nuevos mientras espera una escritura activa.
+    if (navigationFlushRef.current) return;
     saveTimeoutRef.current = setTimeout(async () => {
-      pendingSaveRef.current = false;
-      if (savingRef.current || !currentProcessId) return;
-      if (currentPlannings.length === 0) return;
+      saveTimeoutRef.current = null;
       try {
-        // Recalcular avanceMeta antes de guardar para asegurar que sea correcto
-        const planningsToSave = currentPlannings.map(p => {
-          const metrics = calcOTMetrics(p);
-          return { ...p, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado };
-        });
-        localStorage.setItem(`tactical_planning_${currentProcessId}`, JSON.stringify(planningsToSave));
-        savingRef.current = true;
-        setSaving(true);
-        const savePromises = planningsToSave.map(planning =>
-          savePlanningMutation.mutateAsync({
-            objectiveId: planning.objectiveId,
-            goal: typeof planning.goal === 'string' ? planning.goal : String(planning.goal || ''),
-            resultKeys: planning.resultKeys,
-            ponderacion: planning.ponderacion || 0,
-            puntoPartida: planning.puntoPartida || 0,
-            metaLlegada: planning.metaLlegada || 0,
-            unidadMedida: planning.unidadMedida || '',
-            avanceMeta: planning.avanceMeta || 0,
-            trackingType: (planning.trackingType || 'puntual') as any,
-            monthlyValues: Array(12).fill(0).map((_, i) => Number((planning.monthlyValues || [])[i] || 0)),
-            checklistValues: Array(12).fill(false).map((_, i) => Boolean((planning.checklistValues || [])[i] || false)),
-          })
-        );
-        const results = await Promise.allSettled(savePromises);
-        const failures = results.filter(r => r.status === 'rejected');
-        if (failures.length > 0) {
-          toast.error(`Error al guardar ${failures.length} objetivo(s)`);
-        } else {
-          setLastSaveTime(new Date().toLocaleTimeString());
-        }
+        await savePendingPlanning();
       } catch (error) {
-        toast.error("Error al guardar la planificación");
-      } finally {
-        savingRef.current = false;
-        setSaving(false);
+        toast.error(error instanceof Error ? error.message : "Error al guardar la planificación");
       }
     }, 800);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
@@ -635,46 +669,59 @@ export default function TacticalPlanning() {
     return { metaAlcanzada, alcanzadoPorOO, alcanzadoPorTareas, isEfficient: alcanzadoPorOO < metaAlcanzada };
   }, [plannings]);
 
-  const handleBack = async () => {
-    // Forzar blur en el campo activo para que NumericInput actualice el estado padre
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-      // Esperar un tick para que el estado React se actualice
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    // Guardar antes de navegar si hay cambios pendientes
-    // Usar planningsRef.current para obtener el estado más reciente (incluyendo el valor del blur)
-    const latestPlannings = planningsRef.current;
-    if (pendingSaveRef.current && latestPlannings.length > 0 && processId) {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      pendingSaveRef.current = false;
+  const flushBeforeNavigate = (): Promise<boolean> => {
+    // Share a single drain if VOLVER and a quick action are clicked together.
+    if (navigationFlushRef.current) return navigationFlushRef.current;
+    const flush = async (): Promise<boolean> => {
+      const failuresBeforeFlush = saveFailuresRef.current;
+      const deadline = Date.now() + 30_000;
+      const cancelPlanningDebounce = () => {
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      };
       try {
-        const planningsToSave = latestPlannings.map(p => {
-          const metrics = calcOTMetrics(p);
-          return { ...p, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado };
-        });
-        localStorage.setItem(`tactical_planning_${processId}`, JSON.stringify(planningsToSave));
-        await Promise.allSettled(planningsToSave.map(planning =>
-          savePlanningMutation.mutateAsync({
-            objectiveId: planning.objectiveId,
-            goal: typeof planning.goal === 'string' ? planning.goal : String(planning.goal || ''),
-            resultKeys: planning.resultKeys,
-            ponderacion: planning.ponderacion || 0,
-            puntoPartida: planning.puntoPartida || 0,
-            metaLlegada: planning.metaLlegada || 0,
-            unidadMedida: planning.unidadMedida || '',
-            avanceMeta: planning.avanceMeta || 0,
-            trackingType: (planning.trackingType || 'puntual') as any,
-            monthlyValues: Array(12).fill(0).map((_, i) => Number((planning.monthlyValues || [])[i] || 0)),
-            checklistValues: Array(12).fill(false).map((_, i) => Boolean((planning.checklistValues || [])[i] || false)),
-          })
-        ));
-        // Eliminar el caché de tRPC para que al remontar el componente se carguen los datos frescos desde la BD
-        queryClient.removeQueries();
-      } catch (e) {
-        // ignore errors on exit
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        await new Promise(resolve => setTimeout(resolve, 50));
+        cancelPlanningDebounce();
+        do {
+          // An autosave batch must finish before reading/sending the latest refs.
+          while (savingRef.current) {
+            if (Date.now() >= deadline) throw new Error("El guardado sigue en curso; espera e intenta nuevamente.");
+            await new Promise(resolve => setTimeout(resolve, 25));
+          }
+          if (saveFailuresRef.current !== failuresBeforeFlush) throw new Error("Falló un guardado. Tus cambios siguen pendientes.");
+          if (Date.now() >= deadline) throw new Error("No se pudo completar el guardado antes de salir.");
+          cancelPlanningDebounce();
+          await savePendingPlanning();
+          const pendingObjectives = Object.keys(narrativePendingRef.current).map(Number);
+          // Flush the same serial queues used by the editors, including collapsed cards.
+          // Their flush handles the 1200ms debounce but catches failures internally;
+          // persistNarratives' counter and pending patches make those failures observable.
+          const results = await Promise.allSettled(pendingObjectives.map(objectiveId =>
+            narrativeQueuesRef.current[objectiveId].flush()
+          ));
+          if (results.some(result => result.status === "rejected") || saveFailuresRef.current !== failuresBeforeFlush) {
+            throw new Error("No se pudieron guardar todos los cambios. Se conservan para reintentar.");
+          }
+          // A queue may have had an older request active or edits may arrive during saving.
+          // Drain again rather than navigating with a remaining debounce/draft.
+        } while (savingRef.current || pendingSaveRef.current || Object.keys(narrativePendingRef.current).length > 0);
+        return true;
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "No se pudo completar el guardado antes de salir.");
+        return false;
+      } finally {
+        cancelPlanningDebounce();
       }
-    }
+    };
+    navigationFlushRef.current = flush().finally(() => { navigationFlushRef.current = null; });
+    return navigationFlushRef.current;
+  };
+
+  const handleBack = async () => {
+    if (!(await flushBeforeNavigate())) return;
+    // Mantener el destino de VOLVER y refrescar datos sólo después de guardar con éxito.
+    queryClient.removeQueries();
     setLocation('/process-tactical-objectives');
   };
 
@@ -964,7 +1011,7 @@ export default function TacticalPlanning() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <div>
             <h1 className="text-4xl font-bold text-green-900 mb-2">OTE - PLANIFICACIÓN DE OBJETIVOS TÁCTICOS ESTRATÉGICOS</h1>
             <p className="text-gray-600">Proceso: <span className="font-semibold">{getSessionScope().processName || ""}</span></p>
@@ -973,7 +1020,13 @@ export default function TacticalPlanning() {
               {lastSaveTime && ` (Último: ${lastSaveTime})`}
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <ProcessQuickNavigation
+              processId={processId}
+              companyId={getSessionScope().companyId}
+              indicatorPanel="ote"
+              beforeNavigate={flushBeforeNavigate}
+            />
             {plannings.length > 0 && (
               <Button onClick={() => { exportTacticalObjectivesToPDF(plannings.map(planning => ({ ...planning, ...narrativeDraftsRef.current[planning.objectiveId] })), getSessionScope().processName || 'Proceso'); toast.success('PDF exportado correctamente'); }}
                 className="bg-green-600 hover:bg-green-700 flex items-center gap-2">
@@ -1016,6 +1069,13 @@ export default function TacticalPlanning() {
         <div className="space-y-4">
           {plannings.map((planning) => {
             const isExpanded = planning.expanded || focusExpandedPlanningId === planning.id;
+            // Retain the queue itself so navigation never replaces the mounted editor's
+            // status callback. The child registers that callback when rendered below.
+            narrativeQueuesRef.current[planning.objectiveId] = objectiveNarrativeAutosaveQueue(
+              `ote:${planning.objectiveId}`,
+              patch => persistNarratives(planning.objectiveId, patch),
+              () => {},
+            );
             return (
             <Card
               key={planning.id}
@@ -1083,9 +1143,10 @@ export default function TacticalPlanning() {
                     <AutosavingObjectiveNarratives
                       initialValues={{ ...planning, ...narrativeDraftsRef.current[planning.objectiveId] }}
                       autosaveKey={`ote:${planning.objectiveId}`}
-                      save={patch => saveNarrativesMutation.mutateAsync({ objectiveId: planning.objectiveId, ...patch })}
+                      save={patch => persistNarratives(planning.objectiveId, patch)}
                       onChange={patch => {
                         narrativeDraftsRef.current[planning.objectiveId] = { ...narrativeDraftsRef.current[planning.objectiveId], ...patch };
+                        narrativePendingRef.current[planning.objectiveId] = { ...narrativePendingRef.current[planning.objectiveId], ...patch };
                       }}
                     />
                     <div className="grid grid-cols-2 gap-3">

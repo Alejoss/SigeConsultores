@@ -7,6 +7,7 @@ import {
   timestamp,
   varchar,
   boolean,
+  double,
   decimal,
   date,
   foreignKey,
@@ -304,6 +305,70 @@ export const strategicObjectives = mysqlTable("strategicObjectives", {
 
 export type StrategicObjective = typeof strategicObjectives.$inferSelect;
 export type InsertStrategicObjective = typeof strategicObjectives.$inferInsert;
+
+/** Separate measurement definition; legacy OE / OTE columns remain untouched. */
+export const strategicObjectiveMeasurementConfigs = mysqlTable(
+  "strategicObjectiveMeasurementConfigs",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    objectiveId: int("objectiveId").notNull(),
+    initialSituation: text("initialSituation").notNull(),
+    expectedResult: text("expectedResult").notNull(),
+    indicator: text("indicator").notNull(),
+    weight: double("weight"),
+    baseline: double("baseline"),
+    goal: double("goal"),
+    unit: varchar("unit", { length: 255 }).notNull(),
+    // Drafts may have an empty deadline; exact calendar dates are preserved.
+    deadline: varchar("deadline", { length: 10 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    objectiveReference: foreignKey({
+      name: "soe_measurement_config_objective_fk",
+      columns: [table.objectiveId], foreignColumns: [strategicObjectives.id],
+    }).onDelete("cascade"),
+    objectiveConfig: unique("strategic_objective_measurement_config_objective_unique")
+      .on(table.objectiveId),
+    companyConfig: index("strategic_objective_measurement_config_company_idx")
+      .on(table.companyId),
+  })
+);
+
+export type StrategicObjectiveMeasurementConfigRow = typeof strategicObjectiveMeasurementConfigs.$inferSelect;
+
+/** One real observation per objective/calendar day; autosave updates that day. */
+export const strategicObjectiveMeasurements = mysqlTable(
+  "strategicObjectiveMeasurements",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    objectiveId: int("objectiveId").notNull(),
+    measurementDate: date("measurementDate", { mode: "string" }).notNull(),
+    value: double("value").notNull(),
+    observation: text("observation").notNull(),
+    // Plain reference text, never downloaded, executed or uploaded by the API.
+    evidence: varchar("evidence", { length: 2000 }).notNull(),
+    percent: double("percent").notNull(),
+    definitionSnapshot: text("definitionSnapshot"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    objectiveReference: foreignKey({
+      name: "soe_measurement_objective_fk",
+      columns: [table.objectiveId], foreignColumns: [strategicObjectives.id],
+    }).onDelete("cascade"),
+    objectiveDate: unique("strategic_objective_measurement_objective_date_unique")
+      .on(table.objectiveId, table.measurementDate),
+    companyMeasurements: index("strategic_objective_measurement_company_idx")
+      .on(table.companyId),
+  })
+);
+
+export type StrategicObjectiveMeasurementRow = typeof strategicObjectiveMeasurements.$inferSelect;
 
 /**
  * Processes - Stores processes in the Mapa de Procesos
