@@ -15,6 +15,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
+import { ProcessQuickNavigation } from "@/components/ProcessQuickNavigation";
+import { getCompanyIdFromSession } from "@/lib/sessionScope";
 
 const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"] as const;
 const WEEKDAYS = [
@@ -383,6 +385,7 @@ export default function ProcessCompliances() {
   const focusOccurrenceDate = searchParams.get("focusOccurrenceDate");
   const selectedProcessId = queryProcessId || localStorage.getItem("selectedProcessId");
   const processId = selectedProcessId ? Number.parseInt(selectedProcessId, 10) : 0;
+  const companyId = getCompanyIdFromSession();
   const backUrl = queryProcessId
     ? `/process-characterization?processId=${queryProcessId}${queryCompanyId ? `&companyId=${queryCompanyId}` : ""}`
     : "/process-characterization";
@@ -393,6 +396,11 @@ export default function ProcessCompliances() {
   const [form, setForm] = useState<ActivityForm>(emptyForm);
   const [lastFormSnapshot, setLastFormSnapshot] = useState("");
   const focusedActivityRef = useRef<number | null>(null);
+  const autosaveTimerRef = useRef<number | null>(null);
+  const activitySaveRef = useRef<Promise<boolean> | null>(null);
+  const flushingActivityRef = useRef(false);
+  const latestDraftRef = useRef({ editingId, form, lastFormSnapshot });
+  latestDraftRef.current = { editingId, form, lastFormSnapshot };
 
   const { data: activitiesData, isLoading } = trpc.processCompliances.list.useQuery(
     { processId },
@@ -484,25 +492,69 @@ export default function ProcessCompliances() {
     }
   };
 
-  const saveActivity = async (silent = false) => {
-    if (!editingId || !validateForm()) return;
-    try {
-      await updateMutation.mutateAsync({ id: editingId, ...buildPayload() });
-      setLastFormSnapshot(JSON.stringify(form));
-      if (!silent) toast.success("Actividad actualizada correctamente");
-      await refreshActivities();
-    } catch (error: any) {
-      if (!silent) toast.error(error?.message || "No se pudo actualizar la actividad.");
-    }
+  const saveActivity = (silent = false): Promise<boolean> => {
+    // Reuse an active save; the navigation guard checks the latest draft afterwards.
+    if (activitySaveRef.current) return activitySaveRef.current;
+    if (!editingId || !validateForm()) return Promise.resolve(false);
+    const snapshot = JSON.stringify(form);
+    const save = (async () => {
+      try {
+        await updateMutation.mutateAsync({ id: editingId, ...buildPayload() });
+        if (latestDraftRef.current.editingId === editingId) {
+          latestDraftRef.current.lastFormSnapshot = snapshot;
+          setLastFormSnapshot(snapshot);
+        }
+        if (!silent) toast.success("Actividad actualizada correctamente");
+        await refreshActivities();
+        return true;
+      } catch (error: any) {
+        if (!silent) toast.error(error?.message || "No se pudo actualizar la actividad.");
+        return false;
+      }
+    })().finally(() => {
+      activitySaveRef.current = null;
+    });
+    activitySaveRef.current = save;
+    return save;
   };
+  const latestSaveActivityRef = useRef(saveActivity);
+  latestSaveActivityRef.current = saveActivity;
 
   useEffect(() => {
-    if (!editingId || !form.requirement.trim()) return;
+    if (flushingActivityRef.current || !editingId || !form.requirement.trim()) return;
     const snapshot = JSON.stringify(form);
     if (snapshot === lastFormSnapshot) return;
-    const timer = window.setTimeout(() => void saveActivity(true), 1400);
-    return () => window.clearTimeout(timer);
+    const timer = window.setTimeout(() => {
+      autosaveTimerRef.current = null;
+      void saveActivity(true);
+    }, 1400);
+    autosaveTimerRef.current = timer;
+    return () => {
+      window.clearTimeout(timer);
+      if (autosaveTimerRef.current === timer) autosaveTimerRef.current = null;
+    };
   }, [form, editingId, lastFormSnapshot]);
+
+  const flushActivityAutosave = async (): Promise<boolean> => {
+    if (autosaveTimerRef.current !== null) {
+      window.clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    flushingActivityRef.current = true;
+    try {
+      while (true) {
+        if (activitySaveRef.current && !(await activitySaveRef.current)) return false;
+        const draft = latestDraftRef.current;
+        // New activities retain their explicit "Agregar actividad" workflow.
+        if (!draft.editingId || JSON.stringify(draft.form) === draft.lastFormSnapshot) return true;
+        if (!(await latestSaveActivityRef.current(false))) return false;
+      }
+    } catch {
+      return false;
+    } finally {
+      flushingActivityRef.current = false;
+    }
+  };
 
   const editActivity = (activity: Activity) => {
     const nextForm = formFromActivity(activity);
@@ -543,8 +595,12 @@ export default function ProcessCompliances() {
 
   if (!processId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6 flex items-center justify-center">
-        <Card className="max-w-md"><CardContent className="pt-6 text-center"><p className="text-gray-600 mb-4">Seleccione un proceso antes de gestionar actividades.</p><Button onClick={() => navigate("/process-characterization")}>Volver</Button></CardContent></Card>
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6">
+        <div className="max-w-6xl mx-auto mb-6 flex flex-wrap items-center justify-end gap-2">
+          <ProcessQuickNavigation processId={processId} companyId={companyId} indicatorLabel="Ir a Indicadores del Área" beforeNavigate={flushActivityAutosave} />
+          <Button variant="outline" onClick={() => navigate("/process-characterization")}>← Volver</Button>
+        </div>
+        <Card className="max-w-md mx-auto"><CardContent className="pt-6 text-center"><p className="text-gray-600">Seleccione un proceso antes de gestionar actividades.</p></CardContent></Card>
       </div>
     );
   }
@@ -558,7 +614,10 @@ export default function ProcessCompliances() {
               <h1 className="text-4xl font-bold text-gray-900">Actividades del proceso</h1>
               <ActivePlanningCycleBadge companyId={Number(queryCompanyId || localStorage.getItem("selectedCompanyId"))} />
             </div>
-            <Button variant="outline" onClick={() => navigate(backUrl)}>← Volver</Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <ProcessQuickNavigation processId={processId} companyId={companyId} indicatorLabel="Ir a Indicadores del Área" beforeNavigate={flushActivityAutosave} />
+              <Button variant="outline" onClick={() => navigate(backUrl)}>← Volver</Button>
+            </div>
           </div>
           <p className="max-w-3xl text-sm text-slate-600">Planifique las actividades diarias, semanales o mensuales del proceso. Cada programación se refleja automáticamente en el Cronograma consolidado.</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">

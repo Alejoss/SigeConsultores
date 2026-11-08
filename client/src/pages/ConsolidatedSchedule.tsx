@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
+import { getCompanyIdFromSession } from "@/lib/sessionScope";
+import { getOEReturnTab, positiveScopeId, readScheduleView, scheduleViewKey } from "@/lib/processQuickNavigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
@@ -129,9 +131,20 @@ export default function ConsolidatedSchedule() {
 
   const processId = resolvedProcessId;
 
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  const [showGantt, setShowGantt] = useState(false);
+  const companyId = positiveScopeId(queryParams.get("companyId")) || positiveScopeId(getCompanyIdFromSession()) || 0;
+  const restoredView = useMemo(() => {
+    if (queryParams.get("restore") !== "1") return null;
+    try { return readScheduleView(sessionStorage.getItem(scheduleViewKey(processId, companyId))); }
+    catch { return null; }
+  }, [processId, companyId, searchParams]);
+  const [currentMonth, setCurrentMonth] = useState(() => restoredView?.month ?? new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState(() => restoredView?.year ?? new Date().getFullYear());
+  const [showGantt, setShowGantt] = useState(() => restoredView?.gantt ?? false);
+  useEffect(() => {
+    if (!processId) return;
+    try { sessionStorage.setItem(scheduleViewKey(processId, companyId), JSON.stringify({ month: currentMonth, year: currentYear, gantt: showGantt })); }
+    catch { /* Session storage is only a convenience; schedule data stays on the server. */ }
+  }, [processId, companyId, currentMonth, currentYear, showGantt]);
 
   const { data: consolidatedData, isLoading } =
     trpc.consolidatedSchedule.getConsolidatedSchedule.useQuery(
@@ -189,11 +202,10 @@ export default function ConsolidatedSchedule() {
 
   const openActivity = (activityId: string) => {
     const activity = activities.find(item => item.id === activityId);
-    const companyId = Number(localStorage.getItem("selectedCompanyId")) || undefined;
     const destination = activity
       ? getConsolidatedActivityHref(activity, processId, companyId)
       : null;
-    if (destination) navigate(destination);
+    if (destination) navigate(`${destination}&oeReturnTab=${getOEReturnTab(searchParams)}`);
   };
 
   // Filter activities by current month and year.

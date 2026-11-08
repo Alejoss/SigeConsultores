@@ -49,4 +49,5 @@ export const integrationTestFiles = [
   "server/__tests__/policyObjectiveTraceability.integration.test.ts",
   "server/__tests__/onlineCourses.integration.test.ts",
   "server/__tests__/onlineCourseManagementAccess.integration.test.ts",
+  "server/__tests__/strategicObjectiveMeasurement.integration.test.ts",
 ] as const;

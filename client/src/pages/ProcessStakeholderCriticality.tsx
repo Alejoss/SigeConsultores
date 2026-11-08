@@ -10,6 +10,8 @@ import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { AIChatPanel } from "@/components/AIChatPanel";
 import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
 import { calculateStakeholderActionProgress } from "@shared/stakeholderActionProgress";
+import { ProcessQuickNavigation } from "@/components/ProcessQuickNavigation";
+import { getCompanyIdFromSession } from "@/lib/sessionScope";
 
 
 // Componente de tooltip informativo al hacer clic
@@ -143,7 +145,12 @@ export default function ProcessStakeholderCriticality() {
   const [isSaving, setIsSaving] = useState(false);
   const [processId, setProcessId] = useState<string>("");
   const [processName, setProcessName] = useState<string>("");
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const savedSignatureRef = useRef<string | null>(null);
+  const savePromiseRef = useRef<Promise<boolean> | null>(null);
+  const dataRef = useRef(data);
+  dataRef.current = data;
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   // Pestaña activa: 'acciones' | 'encuestas'
@@ -205,6 +212,7 @@ export default function ProcessStakeholderCriticality() {
 
   // Get companyId from localStorage
   const companyId = parseInt(localStorage.getItem("selectedCompanyId") || "0");
+  const navigationCompanyId = getCompanyIdFromSession() || processLeaderSession?.companyId || null;
 
   const handleAIQuery = async (query: string): Promise<string> => {
     try {
@@ -268,21 +276,23 @@ export default function ProcessStakeholderCriticality() {
       
       console.log("DEBUG: Loading criticality data for processId:", resolvedProcessId);
       
+      let loadedData: CriticalityData = { processId: resolvedProcessId, stakeholders: [] };
       if (storedCriticalityData) {
         try {
           const parsedData = JSON.parse(storedCriticalityData);
           console.log("DEBUG: Loaded criticality data:", parsedData);
-          setData(parsedData);
+          loadedData = { ...parsedData, processId: resolvedProcessId };
         } catch (e) {
           console.error("Error parsing criticality data:", e);
         }
       } else {
         console.log("DEBUG: No criticality data found for processId:", resolvedProcessId);
-        setData({
-          processId: resolvedProcessId,
-          stakeholders: [],
-        });
       }
+      dataRef.current = loadedData;
+      savedSignatureRef.current = JSON.stringify(loadedData);
+      setData(loadedData);
+      setSaveStatus('idle');
+      setSaveError(null);
       setHasInitiallyLoaded(true);
     }
   }, [contextLoading, processLeaderSession, searchParams]);
@@ -315,11 +325,6 @@ export default function ProcessStakeholderCriticality() {
   }, [subprocessMapData, isLoadingSubprocessMap, subprocessMapError, processId]);
 
   const hasLoadedStakeholders = useRef(false);
-  const dataRef = useRef(data);
-  
-  useEffect(() => {
-    dataRef.current = data;
-  }, [data]);
 
   // Auto-load stakeholders when subprocess map and criticality data are ready
   useEffect(() => {
@@ -343,7 +348,7 @@ export default function ProcessStakeholderCriticality() {
 
     console.log("DEBUG: Auto-loading stakeholders from subprocess map");
     hasLoadedStakeholders.current = true;
-    loadStakeholdersFromSubprocessMap();
+    loadStakeholdersFromSubprocessMap(true);
   }, [processId, subprocessMapData, criticalityDataFromDb, data.stakeholders.length]);
 
   // Autosave con debounce de 1.5 segundos (solo después de carga inicial)
@@ -357,27 +362,37 @@ export default function ProcessStakeholderCriticality() {
     // Limpiar timeout anterior
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current);
+      autoSaveTimeoutRef.current = null;
     }
 
-    // Mostrar estado "guardando"
-    setSaveStatus('saving');
+    // La carga y los guardados confirmados no son cambios pendientes.
+    if (JSON.stringify(dataRef.current) === savedSignatureRef.current) {
+      if (!savePromiseRef.current && !saveError) setSaveStatus('idle');
+      return;
+    }
+    if (!saveError) setSaveStatus('saving');
 
     // Guardar después de 1.5 segundos sin cambios
     autoSaveTimeoutRef.current = setTimeout(() => {
-      handleSave();
-      setSaveStatus('saved');
-      // Limpiar estado después de 2 segundos
-      setTimeout(() => setSaveStatus('idle'), 2000);
+      autoSaveTimeoutRef.current = null;
+      void handleSave();
     }, 1500);
 
     return () => {
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
+        autoSaveTimeoutRef.current = null;
       }
     };
   }, [data, hasInitiallyLoaded]);
+
+  useEffect(() => {
+    if (saveStatus !== 'saved') return;
+    const timeout = setTimeout(() => setSaveStatus('idle'), 2000);
+    return () => clearTimeout(timeout);
+  }, [saveStatus]);
   
-  const loadStakeholdersFromSubprocessMap = useCallback(() => {
+  const loadStakeholdersFromSubprocessMap = useCallback((initialLoad = false) => {
     console.log("DEBUG: loadStakeholdersFromSubprocessMap called");
     console.log("DEBUG: processId:", processId);
     console.log("DEBUG: subprocessMapData:", subprocessMapData);
@@ -545,6 +560,8 @@ export default function ProcessStakeholderCriticality() {
         stakeholders: finalStakeholders,
       };
 
+      dataRef.current = newData;
+      if (initialLoad) savedSignatureRef.current = JSON.stringify(newData);
       setData(newData);
       // AISLAMIENTO POR PROCESSID: Guardar con clave específica para este proceso
       const criticalityDataKey = `criticalityData_${processId}`;
@@ -588,84 +605,114 @@ export default function ProcessStakeholderCriticality() {
     e.target.value = '';
   };
 
-  const handleSave = async () => {
-    if (isSaving) return; // Evitar múltiples guardados simultáneos
+  const handleSave = async (): Promise<boolean> => {
+    // Compartir el resultado real: navegar nunca abandona un guardado activo.
+    if (savePromiseRef.current) return savePromiseRef.current;
+    if (!hasInitiallyLoaded || !processId) return false;
+    if (JSON.stringify(dataRef.current) === savedSignatureRef.current) return true;
+
     setIsSaving(true);
-    try {
-      // AISLAMIENTO POR PROCESSID: Guardar con clave específica para este proceso
-      const criticalityDataKey = `criticalityData_${processId}`;
-      localStorage.setItem(criticalityDataKey, JSON.stringify(data));
-      console.log("DEBUG: Autosave - Saved criticality data to localStorage key:", criticalityDataKey);
-      
-      // Save each stakeholder to the database
-      for (const stakeholder of data.stakeholders) {
-        if (!stakeholder.name) {
-          console.warn("[handleSave] Skipping stakeholder with empty name");
-          continue;
-        }
-
-        try {
-          // Step 1: Get or create stakeholder
-          console.log(`[handleSave] Getting or creating stakeholder: ${stakeholder.name}`);
-          const stakeholderRecord = await getOrCreateStakeholderMutation.mutateAsync({
-            processId: parseInt(processId),
-            name: stakeholder.name,
-            type: stakeholder.clienteProveedor ? (stakeholder.clienteProveedor.toLowerCase() as "cliente" | "proveedor") : undefined,
-            isInternal: stakeholder.internalExternal === "Interno",
-            orderIndex: 0,
-          });
-
-          if (!stakeholderRecord) {
-            console.error(`[handleSave] Failed to get or create stakeholder: ${stakeholder.name}`);
-            continue;
+    setSaveStatus('saving');
+    const savePromise = Promise.resolve().then(async () => {
+      try {
+        // Si se edita durante una mutación, completar después el borrador nuevo.
+        while (JSON.stringify(dataRef.current) !== savedSignatureRef.current) {
+          const signature = JSON.stringify(dataRef.current);
+          // Los handlers existentes mutan filas: tomar una copia inmutable por lote.
+          const draft: CriticalityData = JSON.parse(signature);
+          if (draft.processId !== processId) throw new Error('El proceso cambió durante el guardado.');
+          const failures: string[] = [];
+          try {
+            localStorage.setItem(`criticalityData_${processId}`, signature);
+          } catch (error) {
+            console.error('Error conservando el borrador local:', error);
+            failures.push('No se pudo conservar el borrador local.');
           }
 
-          console.log(`[handleSave] Got stakeholder with ID: ${stakeholderRecord.id}`);
+          // Acumular fallos sin presentar un lote parcialmente guardado como éxito.
+          for (const stakeholder of draft.stakeholders) {
+            if (!stakeholder.name.trim()) {
+              failures.push('Hay un asociado sin nombre.');
+              continue;
+            }
+            try {
+              const stakeholderRecord = await getOrCreateStakeholderMutation.mutateAsync({
+                processId: parseInt(processId),
+                name: stakeholder.name,
+                type: stakeholder.clienteProveedor ? (stakeholder.clienteProveedor.toLowerCase() as "cliente" | "proveedor") : undefined,
+                isInternal: stakeholder.internalExternal === "Interno",
+                orderIndex: 0,
+              });
 
-          // Step 2: Determine criticality score
-          const criticityInfo = getCriticalityInfo(
-            stakeholder.incidenceValue,
-            stakeholder.riskValue
-          );
+              if (!stakeholderRecord?.id) throw new Error('No se pudo obtener el asociado.');
 
-          // Step 3: Save criticality matrix entry
-          console.log(`[handleSave] Saving criticality matrix entry for stakeholder: ${stakeholder.name}`);
-          
-          const maxIncidence = stakeholder.incidenceValue.length > 0 ? Math.max(...stakeholder.incidenceValue) : 1;
-          const maxRiskIndex = stakeholder.riskValue.length > 0 ? Math.min(...stakeholder.riskValue.map(r => r.charCodeAt(0))) : "C".charCodeAt(0);
-          const maxRisk = String.fromCharCode(maxRiskIndex) as "A" | "B" | "C";
+              const criticityInfo = getCriticalityInfo(stakeholder.incidenceValue, stakeholder.riskValue);
+              const maxIncidence = stakeholder.incidenceValue.length > 0 ? Math.max(...stakeholder.incidenceValue) : 1;
+              const maxRiskIndex = stakeholder.riskValue.length > 0 ? Math.min(...stakeholder.riskValue.map(r => r.charCodeAt(0))) : "C".charCodeAt(0);
+              const maxRisk = String.fromCharCode(maxRiskIndex) as "A" | "B" | "C";
 
-          await upsertCriticalityMutation.mutateAsync({
-            id: stakeholder.dbId,  // Pass database ID if it exists
-            processId: parseInt(processId),
-            stakeholderId: stakeholderRecord.id,
-            incidence: maxIncidence.toString() as "1" | "2" | "3",
-            risk: maxRisk,
-            criticality: criticityInfo.score,
-            existingDefenses: stakeholder.existingDefenses || undefined,
-            actionToTake: stakeholder.actionToTake || undefined,
-            observations: stakeholder.observations || undefined,
-            startDate: stakeholder.startDate || undefined,
-            endDate: stakeholder.endDate || undefined,
-            implementationStatus: stakeholder.completed === "Si",
-            actionSource: stakeholder.actionSource || "Iniciativa propia",
-            surveyId: stakeholder.surveyId || null,
-          });
-
-          console.log(`[handleSave] Successfully saved criticality entry for: ${stakeholder.name}`);
-        } catch (error) {
-          console.error(`[handleSave] Error saving stakeholder ${stakeholder.name}:`, error);
-          throw error;
+              const savedRecord = await upsertCriticalityMutation.mutateAsync({
+                id: stakeholder.dbId,
+                processId: parseInt(processId),
+                stakeholderId: stakeholderRecord.id,
+                incidence: maxIncidence.toString() as "1" | "2" | "3",
+                risk: maxRisk,
+                criticality: criticityInfo.score,
+                // Vacío explícito permite borrar; undefined omitiría la actualización.
+                existingDefenses: stakeholder.existingDefenses || '',
+                actionToTake: stakeholder.actionToTake || '',
+                observations: stakeholder.observations || '',
+                startDate: stakeholder.startDate || '',
+                endDate: stakeholder.endDate || '',
+                implementationStatus: stakeholder.completed === "Si",
+                actionSource: stakeholder.actionSource || "Iniciativa propia",
+                surveyId: stakeholder.surveyId || null,
+              });
+              if (!savedRecord?.id) throw new Error('No se confirmó el guardado de la criticidad.');
+            } catch (error) {
+              console.error(`[handleSave] Error saving stakeholder ${stakeholder.name}:`, error);
+              failures.push(`${stakeholder.name}: ${error instanceof Error ? error.message : 'Error de guardado'}`);
+            }
+          }
+          if (failures.length) throw new Error(failures.join(' '));
+          savedSignatureRef.current = signature;
         }
+        setSaveError(null);
+        setSaveStatus('saved');
+        return true;
+      } catch (error) {
+        // Un lote parcial invalida incluso la firma previa: hay que reintentarlo.
+        savedSignatureRef.current = null;
+        console.error('Autosave - Error saving data:', error);
+        setSaveError(error instanceof Error ? error.message : 'No se pudieron guardar los cambios.');
+        setSaveStatus('error');
+        return false;
       }
-      
-      // Also save to localStorage as backup
-      console.log("Autosave - Data saved to database");
-    } catch (error) {
-      console.error("Autosave - Error saving data:", error);
-      setSaveStatus('idle');
-    } finally {
+    }).finally(() => {
+      savePromiseRef.current = null;
       setIsSaving(false);
+    });
+    savePromiseRef.current = savePromise;
+    return savePromise;
+  };
+
+  const beforeNavigate = async (): Promise<boolean> => {
+    const cancelAutosave = () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+        autoSaveTimeoutRef.current = null;
+      }
+    };
+    cancelAutosave();
+    try {
+      return await handleSave();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'No se pudieron guardar los cambios.');
+      setSaveStatus('error');
+      return false;
+    } finally {
+      // También retirar cualquier debounce creado mientras se esperaba el lote.
+      cancelAutosave();
     }
   };
 
@@ -934,6 +981,7 @@ export default function ProcessStakeholderCriticality() {
     return (
       <Card>
         <CardContent className="pt-6">
+          <ProcessQuickNavigation processId={processId} companyId={navigationCompanyId} indicatorPanel="partes" beforeNavigate={beforeNavigate} className="mb-4" />
           <p className="text-center text-slate-600">
             Por favor, selecciona un proceso desde el Mapa de Procesos
           </p>
@@ -950,16 +998,18 @@ export default function ProcessStakeholderCriticality() {
 
   return (
     <div className="space-y-6 p-6 bg-white min-h-screen" translate="no">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-bold text-blue-900">GESTIÓN CON PARTES INTERESADAS</h1><ActivePlanningCycleBadge companyId={Number(companyId)} /></div>
-          <p className="text-sm text-slate-600 mt-1">
-            {saveStatus === 'saving' && '💾 Guardando cambios...'}
+          <p className={`text-sm mt-1 ${saveStatus === 'error' ? 'text-red-700' : 'text-slate-600'}`} role="status">
+            {saveStatus === 'saving' && (isSaving ? 'Guardando cambios...' : 'Cambios pendientes de guardar...')}
             {saveStatus === 'saved' && '✓ Cambios guardados'}
+            {saveStatus === 'error' && `No se pudieron guardar todos los cambios. ${saveError || ''} Tus cambios siguen en esta página; vuelve a intentar.`}
             {saveStatus === 'idle' && ''}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ProcessQuickNavigation processId={processId} companyId={navigationCompanyId} indicatorPanel="partes" beforeNavigate={beforeNavigate} />
           <Button
             variant="outline"
             size="sm"
@@ -1012,7 +1062,7 @@ export default function ProcessStakeholderCriticality() {
                 <strong>Nota:</strong> Esta matriz está interconectada con el Mapa de Subprocesos. Puedes cargar automáticamente los asociados de negocio desde el Mapa de Subprocesos.
               </p>
               <Button
-                onClick={loadStakeholdersFromSubprocessMap}
+                onClick={() => loadStakeholdersFromSubprocessMap()}
                 className="bg-blue-600 hover:bg-blue-700 text-white gap-2 w-fit"
                 disabled={isLoadingSubprocessMap}
               >

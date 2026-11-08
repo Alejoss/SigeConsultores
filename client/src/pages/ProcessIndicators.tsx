@@ -1,8 +1,11 @@
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { TrendingUp, Target, Settings, Users, CheckSquare, ArrowLeft, Camera, ChevronLeft, Link2 } from "lucide-react";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
+import { getCompanyIdFromSession, getProcessIdFromSession } from "@/lib/sessionScope";
+import { getOEHref, getOEReturnTab, getProcessQuickHref, positiveScopeId, selectNavigationProcess } from "@/lib/processQuickNavigation";
+import { getPerformanceHref, getPerformanceReturnView } from "@/lib/performanceAreaNavigation";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis as RadarAngleAxis, Tooltip } from "recharts";
 import { calculateStakeholderActionProgress, latestStakeholderActionRows } from "@shared/stakeholderActionProgress";
@@ -496,13 +499,19 @@ type PanelType = "ote" | "otg" | "partes" | "cumplimientos" | "compromisos" | "s
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function ProcessIndicators() {
   const [, navigate] = useLocation();
-  const urlParams = new URLSearchParams(window.location.search);
-  const selectedProcessId = localStorage.getItem("selectedProcessId");
-  const processIdFromUrl = Number(urlParams.get("processId")) || 0;
-  const processId = processIdFromUrl || (selectedProcessId ? parseInt(selectedProcessId) : 0);
-  const companyIdFromUrl = Number(urlParams.get("companyId")) || 0;
-  const [activePanel, setActivePanel] = useState<PanelType>(null);
+  const search = useSearch();
+  const urlParams = new URLSearchParams(search);
+  const processId = positiveScopeId(urlParams.get("processId")) || positiveScopeId(getProcessIdFromSession()) || 0;
+  const companyIdFromUrl = positiveScopeId(urlParams.get("companyId")) || positiveScopeId(getCompanyIdFromSession()) || 0;
+  const requestedPanel = urlParams.get("panel");
+  const directPanel: PanelType = requestedPanel === "ote" || requestedPanel === "otg" || requestedPanel === "partes" || requestedPanel === "cumplimientos" || requestedPanel === "compromisos" || requestedPanel === "salidas" ? requestedPanel : null;
+  const [activePanel, setActivePanel] = useState<PanelType>(directPanel);
+  useEffect(() => { setActivePanel(directPanel); }, [directPanel, processId]);
   const exportRef = useRef<HTMLDivElement>(null);
+  const performanceReturnView = getPerformanceReturnView(search, activePanel) || (activePanel === "otg" ? "otg" : activePanel === "partes" ? "gpi" : null);
+  const process = trpc.processMap.get.useQuery({ processId }, { enabled: processId > 0, retry: false });
+  const verifiedCompanyId = positiveScopeId(process.data?.companyId);
+  const canNavigateArea = Boolean(verifiedCompanyId && (!companyIdFromUrl || verifiedCompanyId === companyIdFromUrl));
 
   const { data: indicatorsData, isLoading } = trpc.consolidatedIndicators.getConsolidatedIndicators.useQuery(
     { processId },
@@ -586,7 +595,7 @@ export default function ProcessIndicators() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-green-50 p-4">
         <div className="max-w-5xl mx-auto">
           {/* Barra superior */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <button
               onClick={() => setActivePanel(null)}
               className="flex items-center gap-2 text-sm font-semibold px-3 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50"
@@ -594,6 +603,14 @@ export default function ProcessIndicators() {
               <ChevronLeft size={16} /> Volver
             </button>
             <h2 className="text-xl font-bold text-gray-800" translate="no">{panelTitle[activePanel]}</h2>
+            {activePanel === "ote" && <div className="flex flex-wrap gap-2 sm:ml-auto">
+              <Button size="sm" variant="outline" disabled={!canNavigateArea} onClick={() => verifiedCompanyId && navigate(getOEHref(verifiedCompanyId, getOEReturnTab(search)))}>Volver a OE</Button>
+              <Button size="sm" variant="outline" disabled={!canNavigateArea} onClick={() => { if (verifiedCompanyId && process.data) { selectNavigationProcess(process.data); navigate(getProcessQuickHref("planning", processId, verifiedCompanyId, undefined, getOEReturnTab(search))); } }}>Ir a OTE</Button>
+            </div>}
+            {performanceReturnView && <div className="flex flex-wrap gap-2 sm:ml-auto">
+              <Button size="sm" variant="outline" className="h-auto max-w-full whitespace-normal py-2" disabled={!canNavigateArea} onClick={() => verifiedCompanyId && navigate(getPerformanceHref(verifiedCompanyId, performanceReturnView))}>{performanceReturnView === "otg" ? "Volver a OTG" : "Volver a Partes Interesadas"}</Button>
+              <Button size="sm" variant="outline" className="h-auto max-w-full whitespace-normal py-2" disabled={!canNavigateArea} onClick={() => { if (verifiedCompanyId && process.data) { selectNavigationProcess(process.data); navigate(`${performanceReturnView === "otg" ? "/process-risk-matrix" : "/process-stakeholder-criticality"}?processId=${processId}&companyId=${verifiedCompanyId}`); } }}>{performanceReturnView === "otg" ? "Ir a OTG" : "Ir a Gestión con Partes Interesadas"}</Button>
+            </div>}
             <Button
               onClick={handleExportImage}
               className="flex items-center gap-2 text-sm"
@@ -609,7 +626,7 @@ export default function ProcessIndicators() {
             <div className="mb-5 pb-3 border-b" style={{ borderColor: C.lightGreenBg }}>
               <h3 className="text-lg font-bold" style={{ color: C.darkGreen }} translate="no">{panelTitle[activePanel]}</h3>
               <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>
-                Indicadores del proceso · {new Date().toLocaleDateString("es-EC", { year: "numeric", month: "long", day: "numeric" })}
+                Indicadores del proceso{process.data?.name ? ` · ${process.data.name}` : ""} · {new Date().toLocaleDateString("es-EC", { year: "numeric", month: "long", day: "numeric" })}
               </p>
             </div>
 

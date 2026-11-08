@@ -17,6 +17,9 @@ const clientDomTests = [
   "client/src/pages/__tests__/ManagerLogin.test.ts",
   "client/src/pages/__tests__/ProcessStakeholderCriticalityManagerFix.test.tsx",
   "client/__tests__/clipboard.test.ts",
+  "client/src/components/strategic-measurement/StrategicMeasurement.test.tsx",
+  "client/src/hooks/__tests__/useStrategicAutosave.test.tsx",
+  "client/src/components/__tests__/ProcessQuickNavigation.test.tsx",
 ];
 
 /** Component specs pending alignment with current UI (were not executed before Vitest client project). */

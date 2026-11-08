@@ -1,6 +1,13 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { StrategicMeasurementOverview } from "@/components/strategic-measurement/StrategicMeasurementOverview";
+import type { StrategicObjectiveDetailHandle } from "@/components/strategic-measurement/StrategicObjectiveDetail";
+import { StrategicMeasurementTimeline } from "@/components/strategic-measurement/StrategicMeasurementTimeline";
+import { OTEByArea } from "@/components/strategic-measurement/OTEByArea";
+import { getOEHref, type OEReturnTab } from "@/lib/processQuickNavigation";
 import { createPortal } from "react-dom";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
+import { PerformanceAreaTabs, PerformanceAreasView } from "@/components/PerformanceAreasView";
+import { isPerformanceAreaView, getPerformanceHref } from "@/lib/performanceAreaNavigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +17,6 @@ import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
 import { calculateCompanyComplianceSummary } from "@/lib/companyComplianceProgress";
 import {
-  LineChart,
-  Line,
   BarChart,
   Bar,
   Cell,
@@ -21,7 +26,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ReferenceLine,
   RadarChart,
   Radar,
   PolarGrid,
@@ -170,35 +174,23 @@ function SubViewHeader({
 function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
-  const [activeSubView, setActiveSubView] = useState<"overview" | "timeline" | "heatmap">("overview");
+  const [, navigate] = useLocation();
+  const search = useSearch();
+  const requestedTab = new URLSearchParams(search).get("tab");
+  const parsedTab: OEReturnTab = requestedTab === "areas" || requestedTab === "heatmap" || requestedTab === "timeline" ? requestedTab : "overview";
+  const [activeSubView, setActiveSubView] = useState<OEReturnTab>(parsedTab);
+  useEffect(() => { setActiveSubView(parsedTab); }, [parsedTab]);
   const [activeObjectiveTooltip, setActiveObjectiveTooltip] = useState<number | null>(null);
+  const measurementRef = useRef<StrategicObjectiveDetailHandle>(null);
+  async function leaveOverview(action: () => void) {
+    if (!measurementRef.current || await measurementRef.current.flush()) action();
+  }
 
   const { data: oeData, isLoading } = trpc.strategicTrends.getStrategicObjectivesBreakdown.useQuery(
     { companyId },
-    { enabled: companyId > 0 }
+    { enabled: companyId > 0 && activeSubView === "heatmap" }
   );
-  const { data: trendsResult, refetch: refetchTrends } = trpc.strategicTrends.getTrends.useQuery(
-    { companyId },
-    { enabled: companyId > 0 }
-  );
-  const snapshotMutation = trpc.strategicTrends.snapshotCurrentMonth.useMutation({
-    onSuccess: () => { refetchTrends(); },
-  });
-
-  const trendData = trendsResult?.data ?? [];
-  const snapshotRequestRef = useRef<string | null>(null);
-  const now = new Date();
-  const currentSnapshotKey = `${companyId}-${now.getFullYear()}-${now.getMonth() + 1}`;
-  // Al entrar a la vista, se actualiza el punto del mes vigente una sola vez.
-  // Al iniciar un nuevo mes, la clave cambia: el mes anterior queda congelado como histórico.
-  useEffect(() => {
-    if (activeSubView !== "timeline" || companyId <= 0 || !trendsResult || snapshotRequestRef.current === currentSnapshotKey) return;
-    snapshotRequestRef.current = currentSnapshotKey;
-    snapshotMutation.mutate({ companyId });
-  }, [activeSubView, companyId, currentSnapshotKey, trendsResult, snapshotMutation]);
-
   const objectives = oeData?.objectives ?? [];
-  const globalPercent = oeData?.globalPercent ?? 0;
 
   // Recopilar todos los procesos únicos para el heatmap
   const allProcesses = useMemo(() => {
@@ -211,77 +203,34 @@ function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [objectives]);
 
-  if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="animate-spin w-8 h-8 text-blue-500" /></div>;
+  if (activeSubView === "heatmap" && isLoading) return <div className="flex justify-center py-16"><Loader2 className="animate-spin w-8 h-8 text-blue-500" /></div>;
 
   return (
     <div>
       <SubViewHeader
         title="Objetivos Estratégicos"
-        onBack={onBack}
+        onBack={() => void leaveOverview(onBack)}
         onExport={() => exportAsImage(ref, "objetivos-estrategicos.png", setExporting)}
         exporting={exporting}
       />
 
       {/* Sub-navegación */}
-      <div className="flex gap-2 mb-6">
-        {(["overview", "heatmap", "timeline"] as const).map((v) => (
+      <div className="flex flex-wrap gap-2 mb-6">
+        {(["overview", "heatmap", "timeline", "areas"] as const).map((v) => (
           <button
             key={v}
-            onClick={() => setActiveSubView(v)}
+            onClick={() => void leaveOverview(() => { setActiveSubView(v); navigate(getOEHref(companyId, v)); })}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
               activeSubView === v ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
-            {v === "overview" ? "Avance por OE" : v === "heatmap" ? "Contribución por Área" : "Línea de Tiempo"}
+            {v === "overview" ? "Avance por OE" : v === "heatmap" ? "Contribución por Área" : v === "timeline" ? "Línea de Tiempo" : "OTE por Área"}
           </button>
         ))}
       </div>
 
       <div ref={ref}>
-        {activeSubView === "overview" && (
-          <div className="space-y-4">
-            {/* KPI global */}
-            <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-blue-100 bg-blue-50">
-              <DonutKpi value={globalPercent} size={72} />
-              <div>
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Avance Total en Objetivos Estratégicos</p>
-                <p className="text-3xl font-bold text-slate-800">{globalPercent}%</p>
-                <p className="text-sm text-slate-500">{oeData?.totalOTE ?? 0} OTE en {objectives.length} Objetivos Estratégicos</p>
-              </div>
-            </div>
-
-            {/* Barras por OE */}
-            {objectives.length === 0 ? (
-              <div className="text-center py-12 text-slate-400">No hay Objetivos Estratégicos registrados</div>
-            ) : (
-              <div className="space-y-3">
-                {objectives.map((oe, idx) => {
-                  const color = getColor(oe.percent);
-                  return (
-                    <div key={oe.id} className="p-4 rounded-xl border border-slate-200 bg-white">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-md flex-shrink-0" style={{ backgroundColor: color + "20", color }}>
-                            OE {idx + 1}
-                          </span>
-                          <span className="text-sm font-semibold text-slate-700 truncate">{oe.name}</span>
-                        </div>
-                        <span className="text-lg font-bold flex-shrink-0 ml-3" style={{ color }}>{oe.percent}%</span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-3">
-                        <div
-                          className="h-3 rounded-full transition-all duration-500"
-                          style={{ width: `${oe.percent}%`, backgroundColor: color }}
-                        />
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1">{oe.oteCount} OTE · {getStatus(oe.percent)}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+        {activeSubView === "overview" && <StrategicMeasurementOverview overviewRef={measurementRef} companyId={companyId} />}
 
         {activeSubView === "heatmap" && (
           <div>
@@ -349,98 +298,8 @@ function OEView({ companyId, onBack }: { companyId: number; onBack: () => void }
           </div>
         )}
 
-        {activeSubView === "timeline" && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-slate-500">
-                Evolución mensual del % de cumplimiento de los Objetivos Estratégicos. Un gráfico por cada OE.
-              </p>
-              <span className="text-xs text-slate-400 ml-4 flex-shrink-0">
-                {snapshotMutation.isPending ? "Guardando mes actual…" : "Registro mensual automático"}
-              </span>
-            </div>
-            {objectives.length === 0 ? (
-              <div className="text-center py-12 text-slate-400">
-                <TrendingUp size={40} className="mx-auto mb-3 opacity-30" />
-                <p>No hay Objetivos Estratégicos registrados.</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {objectives.map((oe: any, idx: number) => {
-                  const color = getColor(oe.percent);
-
-                  // Construir datos históricos usando trendData.
-                  // Cada snapshot puede tener oePercents[oeName] con el % de ese OE en ese mes.
-                  // Si no hay datos históricos, usar solo el punto actual.
-                  let chartData: { label: string; avance: number; meta: number }[];
-
-                  if (trendData.length > 0) {
-                    chartData = trendData.map((snap: any) => {
-                      // Buscar el % de este OE en el snapshot por nombre exacto o parcial
-                      let avance = snap.otePercent; // fallback: % global
-                      if (snap.oePercents && typeof snap.oePercents === "object") {
-                        const oeKey = Object.keys(snap.oePercents).find((k: string) => {
-                          const kl = k.toLowerCase().trim();
-                          const nl = (oe.name || "").toLowerCase().trim();
-                          return kl === nl || kl.includes(nl.slice(0, 20)) || nl.includes(kl.slice(0, 20));
-                        });
-                        if (oeKey !== undefined) avance = snap.oePercents[oeKey];
-                      }
-                      return { label: snap.label, avance, meta: 100 };
-                    });
-                    // Agregar el punto actual si el último snapshot no es del mes en curso
-                    const now = new Date();
-                    const currentLabel = now.toLocaleDateString("es-EC", { month: "short", year: "numeric" });
-                    const lastSnap = trendData[trendData.length - 1];
-                    const isCurrentMonthSaved = lastSnap && lastSnap.year === now.getFullYear() && lastSnap.month === (now.getMonth() + 1);
-                    if (!isCurrentMonthSaved) {
-                      chartData.push({ label: currentLabel, avance: oe.percent, meta: 100 });
-                    }
-                  } else {
-                    chartData = [
-                      { label: new Date().toLocaleDateString("es-EC", { month: "short", year: "numeric" }), avance: oe.percent, meta: 100 },
-                    ];
-                  }
-
-                  return (
-                    <div key={oe.id} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                      {/* Cabecera del OE */}
-                      <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: color + "12" }}>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-md" style={{ backgroundColor: color + "25", color }}>
-                            OE {idx + 1}
-                          </span>
-                          <span className="text-sm font-semibold text-slate-700">{oe.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold" style={{ color }}>{oe.percent}%</span>
-                          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: color + "20", color }}>
-                            {getStatus(oe.percent)}
-                          </span>
-                        </div>
-                      </div>
-                      {/* Gráfico de línea */}
-                      <div className="px-4 pt-3 pb-2">
-                        <p className="text-xs text-slate-400 mb-2">{oe.oteCount} OTE contribuyen a este objetivo · {chartData.length} punto{chartData.length !== 1 ? "s" : ""} histórico{chartData.length !== 1 ? "s" : ""}</p>
-                        <ResponsiveContainer width="100%" height={140}>
-                          <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={{ stroke: "#e2e8f0" }} />
-                            <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} width={36} />
-                            <Tooltip formatter={(v: any, name: string) => [`${Number(v).toFixed(1)}%`, name === "meta" ? "Meta" : "Avance actual"]} />
-                            <ReferenceLine y={100} stroke="#94a3b8" strokeDasharray="4 2" label={{ value: "Meta 100%", position: "right", fontSize: 9, fill: "#94a3b8" }} />
-                            <Line type="monotone" dataKey="meta" name="Meta" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="5 3" dot={false} />
-                            <Line type="monotone" dataKey="avance" name="Avance" stroke={color} strokeWidth={2.5} dot={{ r: 5, fill: color, strokeWidth: 2, stroke: "#fff" }} activeDot={{ r: 7 }} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+        {activeSubView === "timeline" && <StrategicMeasurementTimeline companyId={companyId} />}
+        {activeSubView === "areas" && <OTEByArea companyId={companyId} />}
       </div>
     </div>
   );
@@ -475,6 +334,7 @@ function OTGView({ companyId, onBack }: { companyId: number; onBack: () => void 
         onExport={() => exportAsImage(ref, "objetivos-gestion.png", setExporting)}
         exporting={exporting}
       />
+      <PerformanceAreaTabs companyId={companyId} view="otg" />
       <div ref={ref}>
         {/* KPI global */}
         <div className="grid grid-cols-3 gap-4 mb-6">
@@ -579,6 +439,7 @@ function GPIView({ companyId, onBack }: { companyId: number; onBack: () => void 
         onExport={() => exportAsImage(ref, "partes-interesadas.png", setExporting)}
         exporting={exporting}
       />
+      <PerformanceAreaTabs companyId={companyId} view="gpi" />
       <div ref={ref}>
         {/* KPI global */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -746,6 +607,7 @@ function SGIView({ companyId, onBack }: { companyId: number; onBack: () => void 
         onExport={() => exportAsImage(ref, "sistemas-gestion.png", setExporting)}
         exporting={exporting}
       />
+      <PerformanceAreaTabs companyId={companyId} view="sgi" />
       <div ref={ref}>
         {/* KPI global */}
         <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-sky-100 bg-sky-50 mb-6">
@@ -819,6 +681,7 @@ function StaffPerformanceView({ companyId, onBack }: { companyId: number; onBack
         onExport={() => exportAsImage(ref, "desempeno-de-personal.png", setExporting)}
         exporting={exporting}
       />
+      <PerformanceAreaTabs companyId={companyId} view="staff" />
       <div ref={ref} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] gap-6">
           <Card className="border-2 border-rose-100 bg-gradient-to-br from-rose-50 via-white to-white overflow-hidden">
@@ -888,14 +751,24 @@ type ActiveView = null | "oe" | "otg" | "gpi" | "sgi" | "staff";
 
 export default function StrategicTrends() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const { isManagerLogin, managerCompanyId } = useManagerAuth();
   const { session: processLeaderSession } = useProcessLeaderAuth();
-  const [activeView, setActiveView] = useState<ActiveView>(null);
+  const requestedView = new URLSearchParams(search).get("view");
+  const routeView: ActiveView = requestedView === "oe" || isPerformanceAreaView(requestedView) ? requestedView : null;
+  const [activeView, setActiveView] = useState<ActiveView>(routeView);
+  useEffect(() => { setActiveView(routeView); }, [routeView]);
+  const areaMode = new URLSearchParams(search).get("tab") === "areas" && isPerformanceAreaView(activeView);
 
   const companyId = useMemo<number>(
     () => getCompanyId(isManagerLogin, managerCompanyId, processLeaderSession),
     [isManagerLogin, managerCompanyId, processLeaderSession]
   );
+
+  const setView = (view: ActiveView) => {
+    setActiveView(view);
+    setLocation(view === "oe" ? getOEHref(companyId) : view ? getPerformanceHref(companyId, view, "overview") : `/strategic-trends?companyId=${companyId}`);
+  };
 
   return (
     <DashboardLayout>
@@ -907,7 +780,7 @@ export default function StrategicTrends() {
             size="sm"
             onClick={() => {
               if (activeView) {
-                setActiveView(null);
+                setView(null);
               } else {
                 // Volver al dashboard del rol
                 const savedDashboard = localStorage.getItem("axisBackDashboard");
@@ -950,7 +823,7 @@ export default function StrategicTrends() {
               description="% avance total, por OE individual, contribución por área (heatmap) y línea de desarrollo en el tiempo."
               color="#3b82f6"
               badge="OE"
-              onClick={() => setActiveView("oe")}
+              onClick={() => setView("oe")}
             />
             <AccessCard
               icon={<BarChart2 size={24} />}
@@ -958,7 +831,7 @@ export default function StrategicTrends() {
               description="Resumen del avance general de OTG por área, con gráfico circular de cumplimiento por proceso."
               color="#8b5cf6"
               badge="OTG"
-              onClick={() => setActiveView("otg")}
+              onClick={() => setView("otg")}
             />
             <AccessCard
               icon={<Users size={24} />}
@@ -966,7 +839,7 @@ export default function StrategicTrends() {
               description="Panel de comunicación, radar de gestión y resumen de implementación por proceso."
               color="#0d9488"
               badge="GPI"
-              onClick={() => setActiveView("gpi")}
+              onClick={() => setView("gpi")}
             />
             <AccessCard
               icon={<Shield size={24} />}
@@ -974,7 +847,7 @@ export default function StrategicTrends() {
               description="% cumplimiento de Programas, Auditorías, Inspecciones y Cumplimientos."
               color="#0ea5e9"
               badge="SGI"
-              onClick={() => setActiveView("sgi")}
+              onClick={() => setView("sgi")}
             />
             <AccessCard
               icon={<Users size={24} />}
@@ -982,16 +855,17 @@ export default function StrategicTrends() {
               description="Promedio global de Nómina y comparación del desempeño total entre las áreas evaluadas."
               color="#e11d48"
               badge="PERSONAL"
-              onClick={() => setActiveView("staff")}
+              onClick={() => setView("staff")}
             />
           </div>
         )}
 
-        {activeView === "oe" && <OEView companyId={companyId} onBack={() => setActiveView(null)} />}
-        {activeView === "otg" && <OTGView companyId={companyId} onBack={() => setActiveView(null)} />}
-        {activeView === "gpi" && <GPIView companyId={companyId} onBack={() => setActiveView(null)} />}
-        {activeView === "sgi" && <SGIView companyId={companyId} onBack={() => setActiveView(null)} />}
-        {activeView === "staff" && <StaffPerformanceView companyId={companyId} onBack={() => setActiveView(null)} />}
+        {areaMode && isPerformanceAreaView(activeView) && <PerformanceAreasView companyId={companyId} view={activeView} onBack={() => setView(null)} />}
+        {activeView === "oe" && <OEView companyId={companyId} onBack={() => setView(null)} />}
+        {activeView === "otg" && !areaMode && <OTGView companyId={companyId} onBack={() => setView(null)} />}
+        {activeView === "gpi" && !areaMode && <GPIView companyId={companyId} onBack={() => setView(null)} />}
+        {activeView === "sgi" && !areaMode && <SGIView companyId={companyId} onBack={() => setView(null)} />}
+        {activeView === "staff" && !areaMode && <StaffPerformanceView companyId={companyId} onBack={() => setView(null)} />}
       </div>
     </DashboardLayout>
   );
