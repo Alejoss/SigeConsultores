@@ -66,94 +66,110 @@ const stages = [
   },
 ];
 
+export function ManagementSituations() {
+  return (
+    <section className="p-situations" id="inicio" aria-labelledby="situations-title">
+      <div className="p-context-inner">
+        <div className="p-situations-heading">
+          <p className="p-eyebrow">EL RETO NO ES TENER MÁS CARPETAS</p>
+          <h1 id="situations-title">¿Te suena familiar?</h1>
+          <p>
+            La gestión debería ayudarte a decidir y mejorar.
+            <br />
+            No convertirse en otro trabajo por mantener.
+          </p>
+        </div>
+        <div className="p-situation-grid">
+          {situations.map(item => (
+            <article key={item.title} className="p-situation">
+              <item.icon size={24} strokeWidth={1.6} aria-hidden="true" />
+              <div>
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+        <a className="p-situations-link" href="#autoevaluacion">
+          Descubre tus oportunidades de mejora{" "}
+          <ArrowRight size={17} aria-hidden="true" />
+        </a>
+        <p className="p-situations-bridge">
+          No se trata de trabajar más, sino de conectar la estrategia, los
+          sistemas de gestión y el trabajo de cada área.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+export function ManagementFlow() {
+  return (
+    <section
+      className="p-flow"
+      id="como-funciona"
+      aria-labelledby="flow-title"
+    >
+      <div className="p-context-inner">
+        <div className="p-section-heading">
+          <p className="p-eyebrow p-eyebrow-dark">
+            SISTEMAS DE GESTIÓN ALINEADOS A LA ESTRATEGIA
+          </p>
+          <h2 id="flow-title">
+            Del rumbo compartido
+            <br />
+            <span>a los resultados.</span>
+          </h2>
+          <p>
+            La estrategia no se queda en una declaración: se convierte en
+            gestión dentro de cada área.
+          </p>
+        </div>
+        <ol
+          className="p-flow-stages"
+          aria-label="Estrategia, procesos y resultados"
+        >
+          {stages.map(stage => (
+            <li
+              key={stage.number}
+              className={`p-flow-stage p-flow-stage-${stage.number}`}
+            >
+              <div className="p-flow-stage-top">
+                <stage.icon size={24} strokeWidth={1.6} aria-hidden="true" />
+                <span>{stage.number}</span>
+              </div>
+              <h3>{stage.title}</h3>
+              <p>{stage.subtitle}</p>
+              <ul>
+                {stage.items.map(item => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+              {stage.number !== "03" && (
+                <span className="p-flow-arrow" aria-hidden="true">
+                  <ArrowRight size={20} />
+                </span>
+              )}
+            </li>
+          ))}
+        </ol>
+        <p className="p-flow-feedback">
+          <CornerUpLeft size={19} aria-hidden="true" />
+          <span>
+            Los resultados permiten revisar y mejorar tanto los procesos como
+            la estrategia.
+          </span>
+        </p>
+      </div>
+    </section>
+  );
+}
+
 export default function ManagementContext() {
   return (
     <>
-      <section className="p-situations" aria-labelledby="situations-title">
-        <div className="p-context-inner">
-          <div className="p-situations-heading">
-            <p className="p-eyebrow">EL RETO NO ES TENER MÁS CARPETAS</p>
-            <h2 id="situations-title">¿Te suena familiar?</h2>
-            <p>
-              La gestión debería ayudarte a decidir y mejorar.
-              <br />
-              No convertirse en otro trabajo por mantener.
-            </p>
-          </div>
-          <div className="p-situation-grid">
-            {situations.map(item => (
-              <article key={item.title} className="p-situation">
-                <item.icon size={24} strokeWidth={1.6} aria-hidden="true" />
-                <div>
-                  <h3>{item.title}</h3>
-                  <p>{item.body}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-          <a className="p-situations-link" href="#autoevaluacion">
-            Descubre tus oportunidades de mejora{" "}
-            <ArrowRight size={17} aria-hidden="true" />
-          </a>
-        </div>
-      </section>
-      <section
-        className="p-flow"
-        id="como-funciona"
-        aria-labelledby="flow-title"
-      >
-        <div className="p-context-inner">
-          <div className="p-section-heading">
-            <p className="p-eyebrow p-eyebrow-dark">
-              SISTEMAS DE GESTIÓN ALINEADOS A LA ESTRATEGIA
-            </p>
-            <h2 id="flow-title">
-              Del rumbo compartido
-              <br />
-              <span>a los resultados.</span>
-            </h2>
-            <p>
-              La estrategia no se queda en una declaración: se convierte en
-              gestión dentro de cada área.
-            </p>
-          </div>
-          <ol
-            className="p-flow-stages"
-            aria-label="Estrategia, procesos y resultados"
-          >
-            {stages.map(stage => (
-              <li
-                key={stage.number}
-                className={`p-flow-stage p-flow-stage-${stage.number}`}
-              >
-                <div className="p-flow-stage-top">
-                  <stage.icon size={24} strokeWidth={1.6} aria-hidden="true" />
-                  <span>{stage.number}</span>
-                </div>
-                <h3>{stage.title}</h3>
-                <p>{stage.subtitle}</p>
-                <ul>
-                  {stage.items.map(item => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-                {stage.number !== "03" && (
-                  <span className="p-flow-arrow" aria-hidden="true">
-                    <ArrowRight size={20} />
-                  </span>
-                )}
-              </li>
-            ))}
-          </ol>
-          <p className="p-flow-feedback">
-            <CornerUpLeft size={19} aria-hidden="true" />
-            <span>
-              Los resultados permiten revisar y mejorar tanto los procesos como
-              la estrategia.
-            </span>
-          </p>
-        </div>
-      </section>
+      <ManagementSituations />
+      <ManagementFlow />
     </>
   );
 }

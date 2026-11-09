@@ -143,14 +143,14 @@
   display: inline-block;
   flex-shrink: 0;
 }
-.p-hero h1 {
+.p-hero #p-title {
   font-size: clamp(49px, 5.8vw, 78px);
   font-weight: 800;
   letter-spacing: -3.2px;
   line-height: 1.08;
   margin: 0 0 30px;
 }
-.p-hero h1 span {
+.p-hero #p-title span {
   color: var(--green);
 }
 .p-lead {
@@ -159,6 +159,13 @@
   font-weight: 450;
   max-width: 585px;
   color: #e1ebee;
+  margin: 0 0 21px;
+}
+.p-service-intro {
+  font-size: 14px;
+  line-height: 1.85;
+  color: #d1e6b7;
+  max-width: 585px;
   margin: 0 0 21px;
 }
 .p-sublead {
@@ -600,7 +607,7 @@
     grid-template-columns: 1.25fr 0.85fr;
     gap: 28px;
   }
-  .p-hero h1 {
+  .p-hero #p-title {
     font-size: 55px;
     letter-spacing: -2.6px;
   }
@@ -685,7 +692,7 @@
     margin-bottom: 21px;
     gap: 8px;
   }
-  .p-hero h1 {
+  .p-hero #p-title {
     font-size: 52px;
     letter-spacing: -2.3px;
     margin-bottom: 23px;
@@ -694,6 +701,11 @@
     font-size: 15px;
     line-height: 1.8;
     margin-bottom: 16px;
+  }
+  .p-service-intro {
+    font-size: 12px;
+    line-height: 1.8;
+    margin-bottom: 18px;
   }
   .p-sublead {
     font-size: 12px;
@@ -845,7 +857,7 @@
   }
 }
 @media (max-width: 360px) {
-  .p-hero h1 {
+  .p-hero #p-title {
     font-size: 45px;
   }
   .p-hero-actions {
