@@ -50,4 +50,5 @@ export const integrationTestFiles = [
   "server/__tests__/onlineCourses.integration.test.ts",
   "server/__tests__/onlineCourseManagementAccess.integration.test.ts",
   "server/__tests__/strategicObjectiveMeasurement.integration.test.ts",
+  "server/__tests__/processMapImageDocument.integration.test.ts",
 ] as const;

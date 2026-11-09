@@ -14,6 +14,7 @@ const alias = {
 };
 
 const clientDomTests = [
+  "client/src/components/__tests__/ProcessMapFileActions.test.tsx",
   "client/src/pages/__tests__/ManagerLogin.test.ts",
   "client/src/pages/__tests__/ProcessStakeholderCriticalityManagerFix.test.tsx",
   "client/__tests__/clipboard.test.ts",

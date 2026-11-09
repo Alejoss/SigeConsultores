@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import ProcessMapFileActions from "@/components/ProcessMapFileActions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +44,6 @@ export default function ProcessMap() {
   const [newProcessType, setNewProcessType] = useState<ProcessType>("misional");
   const [mapImage, setMapImage] = useState<string | null>(null);
   const [mapImageFileName, setMapImageFileName] = useState<string | null>(null);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [editingProcessId, setEditingProcessId] = useState<number | null>(null);
   const [editingProcessName, setEditingProcessName] = useState("");
@@ -115,13 +115,14 @@ export default function ProcessMap() {
     data: mapImageData,
     refetch: refetchMapImage,
     isLoading: isLoadingMapImage,
+    isError: mapImageLoadError,
   } = trpc.processMap.getMapImage.useQuery(
     { companyId: companyId ?? 0 },
     { enabled: companyId !== null }
   );
 
   useEffect(() => {
-    if (!companyId || isLoadingMapImage) return;
+    if (!companyId || isLoadingMapImage || mapImageLoadError) return;
     if (mapImageData?.fileUrl) {
       setMapImage(mapImageData.fileUrl);
       setMapImageFileName(mapImageData.fileName);
@@ -129,7 +130,7 @@ export default function ProcessMap() {
       setMapImage(null);
       setMapImageFileName(null);
     }
-  }, [mapImageData, companyId, isLoadingMapImage]);
+  }, [mapImageData, companyId, isLoadingMapImage, mapImageLoadError]);
 
   const uploadMapImageMutation = trpc.processMap.uploadMapImage.useMutation({
     onSuccess: (result) => {
@@ -376,26 +377,21 @@ export default function ProcessMap() {
     return /\.pdf$/i.test(fileName);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !companyId) return;
-
-    setIsUploadingImage(true);
+  const handleImageUpload = async (file: File) => {
+    if (!companyId) return;
+    let arrayBuffer: ArrayBuffer;
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      await uploadMapImageMutation.mutateAsync({
-        companyId,
-        fileName: file.name,
-        fileData: Array.from(uint8Array),
-        fileType: file.type || "application/octet-stream",
-      });
-    } catch {
-      // Error toast handled by mutation
-    } finally {
-      setIsUploadingImage(false);
-      e.target.value = "";
+      arrayBuffer = await file.arrayBuffer();
+    } catch (error) {
+      toast.error("No se pudo leer el archivo. El mapa actual se conserva.");
+      throw error;
     }
+    await uploadMapImageMutation.mutateAsync({
+      companyId,
+      fileName: file.name,
+      fileData: Array.from(new Uint8Array(arrayBuffer)),
+      fileType: file.type || "application/octet-stream",
+    });
   };
 
   const handleDownloadImage = () => {
@@ -455,72 +451,27 @@ export default function ProcessMap() {
             </Button>
         </div>
 
-        {/* Acciones del archivo del Mapa de Procesos */}
-        <div className="border border-purple-200 bg-purple-50 rounded-xl px-4 py-3">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap">
-              {!isProcessLeader && (
-                <>
-                  <input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    onChange={handleImageUpload}
-                    disabled={isUploadingImage}
-                    className="hidden"
-                    id="map-image-input"
-                  />
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    disabled={isUploadingImage || uploadMapImageMutation.isPending}
-                    className="gap-1.5 border-purple-300 text-purple-700 hover:bg-purple-100"
-                  >
-                    <label htmlFor="map-image-input" className="cursor-pointer">
-                      <Upload size={14} />
-                      {isUploadingImage ? "Subiendo..." : mapImage ? "Reemplazar Mapa" : "Subir Mapa"}
-                    </label>
-                  </Button>
-                  <span className="text-xs text-slate-500">PDF, PNG o JPG</span>
-                </>
-              )}
-              {mapImage && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
-                  <CheckCircle size={13} />
-                  Mapa cargado
-                </span>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (mapImage && isPdf(mapImageFileName)) {
-                    window.open(mapImage, "_blank", "noopener,noreferrer");
-                  } else {
-                    setShowMap(!showMap);
-                  }
-                }}
-                disabled={!mapImage}
-                className="gap-1.5 border-purple-300 text-purple-700 hover:bg-purple-100 disabled:opacity-40"
-              >
-                {(!isPdf(mapImageFileName) && showMap) ? <EyeOff size={14} /> : <Eye size={14} />}
-                {(!isPdf(mapImageFileName) && showMap) ? "Ocultar Mapa" : "Ver Mapa"}
-              </Button>
-            </div>
-            {!isProcessLeader && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDeleteMapImage}
-                disabled={!mapImage || deleteMapImageMutation.isPending}
-                className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-40"
-              >
-                <Trash2 size={14} />
-                Eliminar Mapa
-              </Button>
-            )}
-          </div>
-        </div>
+        {/* Consultas a la izquierda; reemplazo y eliminación confirmados a la derecha. */}
+        <ProcessMapFileActions
+          key={companyId}
+          mapUrl={mapImage}
+          fileName={mapImageFileName}
+          readOnly={isProcessLeader}
+          loading={isLoadingMapImage}
+          loadError={mapImageLoadError}
+          pending={uploadMapImageMutation.isPending || deleteMapImageMutation.isPending}
+          visible={showMap}
+          onView={() => {
+            if (mapImage && isPdf(mapImageFileName)) {
+              window.open(mapImage, "_blank", "noopener,noreferrer");
+            } else {
+              setShowMap(!showMap);
+            }
+          }}
+          onUpload={handleImageUpload}
+          onDelete={handleDeleteMapImage}
+          onRetry={() => { void refetchMapImage(); }}
+        />
 
         {/* Visor expandible — fuera del div compacto para evitar error React DOM */}
         {showMap && mapImage && (
