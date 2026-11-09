@@ -6,6 +6,7 @@ import { policies, policyObjectives, processTacticalObjectives } from "../../dri
 import { and, desc, eq, or } from "drizzle-orm";
 import { updateProcessTacticalObjective } from "../db";
 import { assertProcessAccessById, assertProcessTacticalObjectiveAccess } from "../_core/companyPermissions";
+import { calculateObjectiveResultMetrics } from "../../shared/objectiveResultMetrics";
 
 const objectiveNarrativeFields = {
   situacionInicial: z.string().max(10_000).optional(),
@@ -495,6 +496,17 @@ export const processTacticalObjectivesRouter = router({
             porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
           }
 
+          // Metadata de lectura: el resultado real no se recorta ni se persiste.
+          // Los porcentajes legacy anteriores siguen intactos para sus agregados.
+          const isChecklist = trackingType === 'mensual_checklist';
+          const resultMetrics = calculateObjectiveResultMetrics({
+            baseline: isChecklist ? 0 : Number(puntoPartida),
+            goal: isChecklist ? 12 : Number(metaLlegada),
+            currentValue: Number(avanceMeta),
+            numericComparison: !isChecklist,
+            ...(isChecklist ? { goalProgressOverride: (Number(avanceMeta) / 12) * 100 } : {}),
+          });
+
           const resultKeys = (planningData.resultKeys || []).map((rk: any) => {
             const ci = Number(rk.condicionInicial) || 0;
             const m = Number(rk.meta) || 0;
@@ -508,7 +520,28 @@ export const processTacticalObjectivesRouter = router({
             const ooMonthlyValues: number[] = Array(12).fill(0).map((_, i) => Number(rawOoMonthly[i] || 0));
             const rawOoChecklist: boolean[] = rk.ooChecklistValues || [];
             const ooChecklistValues: boolean[] = Array(12).fill(false).map((_, i) => Boolean(rawOoChecklist[i] || false));
-            return { ...rk, porcentajeAlcanzado, ooMonthlyValues, ooChecklistValues };
+            const ooTrackingType = rk.ooTrackingType || 'puntual';
+            let currentValue = ca;
+            if (ooTrackingType === 'mensual_sumatoria') {
+              currentValue = ooMonthlyValues.reduce((sum, value) => sum + (value || 0), 0);
+            } else if (ooTrackingType === 'mensual_promedio') {
+              const nonZero = ooMonthlyValues.filter(value => value !== 0);
+              currentValue = nonZero.length > 0 ? nonZero.reduce((sum, value) => sum + value, 0) / nonZero.length : 0;
+            } else if (ooTrackingType === 'mensual_checklist') {
+              currentValue = ooChecklistValues.filter(Boolean).length;
+            }
+            const ooIsChecklist = ooTrackingType === 'mensual_checklist';
+            const resultMetrics = calculateObjectiveResultMetrics({
+              baseline: ooIsChecklist ? 0 : ci,
+              goal: ooIsChecklist ? 12 : m,
+              currentValue,
+              numericComparison: !ooIsChecklist,
+              ...(ooIsChecklist ? { goalProgressOverride: (currentValue / 12) * 100 } : {}),
+            });
+            return {
+              ...rk, porcentajeAlcanzado, ooMonthlyValues, ooChecklistValues,
+              resultMetrics, porcentajeAlcanzadoRaw: resultMetrics.goalProgress,
+            };
           });
           
           return {
@@ -531,6 +564,8 @@ export const processTacticalObjectivesRouter = router({
             unidadMedida,
             avanceMeta,
             porcentajeMetaAlcanzado,
+            resultMetrics,
+            porcentajeMetaAlcanzadoRaw: resultMetrics.goalProgress,
             trackingType,
             monthlyValues,
             checklistValues,
@@ -559,6 +594,8 @@ export const processTacticalObjectivesRouter = router({
             unidadMedida: '',
             avanceMeta: 0,
             porcentajeMetaAlcanzado: 0,
+            resultMetrics: calculateObjectiveResultMetrics({ baseline: 0, goal: 0, currentValue: 0 }),
+            porcentajeMetaAlcanzadoRaw: null,
           };
         }
       });

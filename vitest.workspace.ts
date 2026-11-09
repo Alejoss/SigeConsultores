@@ -21,6 +21,8 @@ const clientDomTests = [
   "client/src/components/strategic-measurement/StrategicMeasurement.test.tsx",
   "client/src/hooks/__tests__/useStrategicAutosave.test.tsx",
   "client/src/components/__tests__/ProcessQuickNavigation.test.tsx",
+  "client/src/components/__tests__/ObjectiveResultSummary.test.tsx",
+  "client/src/components/__tests__/PercentagePointPresentation.test.tsx",
 ];
 
 /** Component specs pending alignment with current UI (were not executed before Vitest client project). */

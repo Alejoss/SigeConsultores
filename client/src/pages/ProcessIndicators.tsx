@@ -7,8 +7,10 @@ import { getCompanyIdFromSession, getProcessIdFromSession } from "@/lib/sessionS
 import { getOEHref, getOEReturnTab, getProcessQuickHref, positiveScopeId, selectNavigationProcess } from "@/lib/processQuickNavigation";
 import { getPerformanceHref, getPerformanceReturnView } from "@/lib/performanceAreaNavigation";
 import { toast } from "sonner";
-import { PieChart, Pie, Cell, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis as RadarAngleAxis, Tooltip } from "recharts";
+import { ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis as RadarAngleAxis, Tooltip } from "recharts";
 import { calculateStakeholderActionProgress, latestStakeholderActionRows } from "@shared/stakeholderActionProgress";
+import { ObjectiveResultSummary } from "@/components/ObjectiveResultSummary";
+import { calculateObjectiveResultMetrics, formatObjectivePercent } from "@shared/objectiveResultMetrics";
 
 // ─── Mapa de etiquetas para tipo de seguimiento ───────────────────────────────
 const TRACKING_LABELS: Record<string, string> = {
@@ -17,42 +19,6 @@ const TRACKING_LABELS: Record<string, string> = {
   mensual_promedio: "Mensual Promedio (12 meses)",
   mensual_checklist: "Mensual Check List",
 };
-
-// ─── Gráfico circular de cumplimiento ────────────────────────────────────────
-function CircularProgress({ value, size = 80 }: { value: number; size?: number }) {
-  const color = value >= 80 ? "#22c55e" : value >= 60 ? "#f59e0b" : "#ef4444";
-  const innerR = Math.round(size * 0.27);
-  const outerR = Math.round(size * 0.38);
-  const data = [
-    { value: Math.max(0, Math.min(100, value)) },
-    { value: Math.max(0, 100 - Math.min(100, value)) },
-  ];
-  return (
-    <div className="relative mx-auto" style={{ width: size, height: size }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            innerRadius={innerR}
-            outerRadius={outerR}
-            startAngle={90}
-            endAngle={-270}
-            dataKey="value"
-            strokeWidth={0}
-          >
-            <Cell fill={color} />
-            <Cell fill="rgba(255,255,255,0.15)" />
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="font-bold text-white" style={{ fontSize: size * 0.18 }}>{value}%</span>
-      </div>
-    </div>
-  );
-}
 
 // ─── Paleta de colores (inspirada en el PowerPoint de Agrogana) ───────────────
 const C = {
@@ -108,7 +74,14 @@ function OTECard({ ote, index }: { ote: any; index: number }) {
 
   // Sanitización defensiva: asegurar que los valores numéricos sean siempre números
   // (en producción pueden llegar como strings si el usuario escribió texto en el campo)
-  const pctMeta = Math.round(parseFloat(String(ote.porcentajeMetaAlcanzado)) || 0);
+  const isChecklist = ote.trackingType === "mensual_checklist";
+  const resultMetrics = ote.resultMetrics ?? calculateObjectiveResultMetrics({
+    baseline: isChecklist ? 0 : Number(ote.puntoPartida),
+    goal: isChecklist ? 12 : Number(ote.metaLlegada),
+    currentValue: Number(ote.avanceMeta),
+    numericComparison: !isChecklist,
+    ...(isChecklist ? { goalProgressOverride: Number(ote.porcentajeMetaAlcanzado) } : {}),
+  });
   const pctOO = Math.round(parseFloat(String(ote.pctOO)) || 0);
   const tasksAvg = ote.tasksGlobalAvg !== null && ote.tasksGlobalAvg !== undefined
     ? Math.round(parseFloat(String(ote.tasksGlobalAvg)) || 0)
@@ -151,7 +124,7 @@ function OTECard({ ote, index }: { ote: any; index: number }) {
           <div className="grid grid-cols-4 gap-1">
             {MESES.map((mes, i) => {
               const key = String(i + 1);
-              const val = cv[key] ?? cv[mes] ?? cv[mes.toLowerCase()] ?? null;
+              const val = Array.isArray(cv) ? cv[i] : cv[key] ?? cv[mes] ?? cv[mes.toLowerCase()] ?? null;
               const checked = val === true || val === 1 || val === "1" || val === "true";
               return (
                 <div key={mes} className="text-center">
@@ -197,76 +170,78 @@ function OTECard({ ote, index }: { ote: any; index: number }) {
         )}
       </div>
 
-      {/* Panel principal: % cumplimiento + OO */}
-      <div className="grid grid-cols-5 gap-0">
-        {/* Columna izquierda: indicadores */}
-        <div className="col-span-2 p-4 text-white" style={{ backgroundColor: C.darkGreen }}>
-          <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: C.lightGreenText }}>
-            % Meta Alcanzada (OTE)
-          </p>
-          {/* % grande */}
-          <p className="text-6xl font-extrabold mb-1 leading-none">{pctMeta}%</p>
-          <p className="text-xs mb-2" style={{ color: C.lightGreenBg }}>
-            Punto partida: {ote.puntoPartida} → Meta: {ote.metaLlegada} {ote.unidadMedida}
-          </p>
+      {/* Dos lecturas separadas: resultado del OTE y ejecución del plan. */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-0">
+        <div className="min-w-0 md:col-span-2 p-4 text-white break-words" style={{ backgroundColor: C.darkGreen }}>
+          <ObjectiveResultSummary
+            title="Resultado del OTE"
+            metrics={resultMetrics}
+            unit={isChecklist ? "meses" : ote.unidadMedida}
+            variant="dark"
+          />
+          {ote.trackingType && (
+            <div className="mt-3 pt-2 border-t" style={{ borderColor: "#1B7A3D" }}>
+              <p className="text-xs font-semibold" style={{ color: C.lightGreenText }}>Método de medición del OTE</p>
+              <p className="text-xs mt-0.5" style={{ color: C.lightGreenBg }}>
+                {TRACKING_LABELS[ote.trackingType] || ote.trackingType}
+              </p>
+              {renderTrackingData()}
+            </div>
+          )}
 
-          {/* Gráfico circular más grande */}
-          <div className="my-2 flex justify-center">
-            <CircularProgress value={pctMeta} size={96} />
-          </div>
-
-          <div className="border-t pt-3 space-y-2" style={{ borderColor: "#1B7A3D" }}>
+          <section className="mt-4 border-t pt-3 space-y-2" style={{ borderColor: "#1B7A3D" }} aria-label="Ejecución del plan (OO y tareas)">
+            <h3 className="text-sm font-bold" style={{ color: C.lightGreenText }}>Ejecución del plan (OO y tareas)</h3>
             <div>
-              <p className="text-xs font-semibold" style={{ color: C.lightGreenText }}>Avance Obj. Operativos</p>
+              <p className="text-xs font-semibold" style={{ color: C.lightGreenText }}>Avance ponderado hacia las metas OO</p>
               <p className="text-2xl font-bold">{ote.hasOO ? `${pctOO}%` : <span className="text-sm text-gray-300">Sin OO</span>}</p>
             </div>
             <div>
-              <p className="text-xs font-semibold" style={{ color: C.lightGreenText }}>Avance Tareas</p>
-              {ote.tasksGlobalAvg !== null
+              <p className="text-xs font-semibold" style={{ color: C.lightGreenText }}>Avance ponderado de tareas completadas</p>
+              {tasksAvg !== null
                 ? <p className="text-2xl font-bold">{tasksAvg}%</p>
                 : <p className="text-sm" style={{ color: C.grayGreen }}>Sin tareas</p>
               }
             </div>
-            {/* Método de medición + datos de seguimiento */}
-            {ote.trackingType && (
-              <div className="pt-2 border-t" style={{ borderColor: "#1B7A3D" }}>
-                <p className="text-xs font-semibold" style={{ color: C.lightGreenText }}>Método de medición</p>
-                <p className="text-xs mt-0.5" style={{ color: C.lightGreenBg }}>
-                  {TRACKING_LABELS[ote.trackingType] || ote.trackingType}
-                </p>
-                {renderTrackingData()}
-              </div>
-            )}
-          </div>
+            <p className="text-xs leading-relaxed" style={{ color: C.lightGreenBg }}>
+              Completar tareas no equivale a lograr el resultado numérico del OTE.
+            </p>
+          </section>
         </div>
 
         {/* Columna derecha: Objetivos Operativos */}
-        <div className="col-span-3 p-4 bg-white">
+        <div className="min-w-0 md:col-span-3 p-4 bg-white break-words">
           {!ote.hasOO ? (
             <p className="text-sm text-gray-400 italic">No hay Objetivos Operativos definidos</p>
           ) : (
             <>
               <p className="text-xs font-bold uppercase mb-2" style={{ color: C.darkGreen }}>Objetivos Operativos</p>
               <div className="space-y-2">
-                {ote.objetivosOperativos.slice(0, expanded ? undefined : 3).map((oo: any) => (
+                {ote.objetivosOperativos.slice(0, expanded ? undefined : 3).map((oo: any) => {
+                  const metrics = oo.resultMetrics;
+                  const resultProgress = metrics ? metrics.goalProgress : oo.porcentajeAlcanzado;
+                  const checklistOO = oo.ooTrackingType === "mensual_checklist";
+                  return (
                   <div key={oo.id} className="rounded-lg p-2" style={{ backgroundColor: C.veryLightGreen }}>
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs font-medium text-gray-700 flex-1 leading-snug">{oo.description}</p>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${pctBadge(oo.porcentajeAlcanzado)}`}>
-                        {oo.porcentajeAlcanzado}%
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <p className="text-xs font-medium text-gray-700 flex-1 min-w-0 leading-snug">{oo.description}</p>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${pctBadge(resultProgress)}`}>
+                        {checklistOO ? "Cumplimiento mensual OO" : "Avance a meta OO"}: {formatObjectivePercent(resultProgress)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 mt-1">
+                    {metrics && <div className="mt-2">
+                      <ObjectiveResultSummary title="Resultado del OO" metrics={metrics} unit={checklistOO ? "meses" : oo.unidadMedida} compact />
+                    </div>}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
                       <span className="text-xs" style={{ color: C.textSecondary }}>Pond. {oo.ponderacion}%</span>
                       {oo.hasTasks ? (
                         <span className="text-xs" style={{ color: C.textSecondary }}>
-                          Tareas: {oo.tasksAverage !== null ? `${Math.round(oo.tasksAverage)}%` : "Sin tareas"}
+                          Avance de tareas completadas: {oo.tasksAverage !== null ? `${Math.round(oo.tasksAverage)}%` : "Sin tareas"}
                         </span>
                       ) : (
                         <span className="text-xs italic text-gray-400">Sin tareas</span>
                       )}
                     </div>
-                    <ProgressBar value={oo.porcentajeAlcanzado} />
+                    {!metrics && <ProgressBar value={oo.porcentajeAlcanzado} />}
 
                     {/* Tareas del OO */}
                     {oo.hasTasks && oo.tasks.length > 0 && (
@@ -275,14 +250,15 @@ function OTECard({ ote, index }: { ote: any; index: number }) {
                           <div key={t.id} className="flex items-center justify-between gap-2">
                             <p className="text-xs text-gray-600 flex-1 leading-snug">{t.description}</p>
                             <span className={`text-xs font-semibold shrink-0 ${pctColor(t.percentageCompleted)}`}>
-                              {t.percentageCompleted}%
+                              Completada: {t.percentageCompleted}%
                             </span>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
                 {ote.objetivosOperativos.length > 3 && (
                   <button
                     onClick={() => setExpanded(!expanded)}
@@ -638,9 +614,9 @@ export default function ProcessIndicators() {
             {activePanel === "ote" && !isLoading && (
               <>
                 {/* Resumen global */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                   <div className="rounded-xl p-4 text-center" style={{ backgroundColor: C.veryLightGreen }}>
-                    <p className="text-xs font-semibold mb-1" style={{ color: C.textSecondary }}>% Meta Alcanzada OTE</p>
+                    <p className="text-xs font-semibold mb-1 break-words" style={{ color: C.textSecondary }}>Avance ponderado hacia las metas de los OTE</p>
                     <p className={`text-3xl font-bold ${pctColor(oteValue)}`}>{oteValue}%</p>
                     <p className={`text-xs mt-1 font-semibold ${pctBadge(oteValue).split(" ")[1]}`}>{pctLabel(oteValue)}</p>
                   </div>
@@ -813,7 +789,7 @@ export default function ProcessIndicators() {
       id: "ote" as PanelType,
       title: "OTE",
       subtitle: "Objetivos Tácticos Estratégicos",
-      description: "% de meta alcanzada por objetivos tácticos y operativos",
+      description: "Avance ponderado hacia las metas de los OTE",
       icon: <Target size={32} style={{ color: C.medGreen }} />,
       value: oteValue,
       extra: `${oteData?.oteRows?.length ?? 0} objetivo(s)`,

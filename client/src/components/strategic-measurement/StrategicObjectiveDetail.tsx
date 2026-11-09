@@ -8,6 +8,7 @@ import { useStrategicAutosave } from "@/hooks/useStrategicAutosave";
 import { emptyStrategicMeasurementConfig, isStrategicMeasurementConfigured, type StrategicMeasuredObjective, type StrategicMeasurementConfig, type StrategicMeasurement } from "@shared/strategicObjectiveMeasurement";
 import { configToDraft, draftToConfig, configDraftError, isCalendarDate, localToday, StrategicConfigFields, StrategicDefinitionFields, type StrategicConfigDraft, type StrategicDefinitionDraft } from "./StrategicMeasurementFields";
 import { StrategicSaveState } from "./StrategicSaveState";
+import { calculateObjectiveResultMetrics, formatObjectivePercent, formatObjectiveValue, objectiveGoalStatusLabel, objectiveTrendLabel, objectiveVariationExplanation, objectiveChangePresentation } from "@shared/objectiveResultMetrics";
 
 export type StrategicObjectiveDetailHandle = { flush: () => Promise<boolean> };
 type SaveRegistry = MutableRefObject<Partial<Record<"definition" | "config" | "measurement", () => Promise<boolean>>>>;
@@ -112,7 +113,7 @@ function MeasurementCapture({ companyId, objective, measurements, onSaved, regis
     <fieldset disabled={!configured} className="space-y-4 disabled:opacity-60">
       <div className="grid gap-4 md:grid-cols-2">
         <label className="block text-sm font-medium space-y-1.5"><span>Fecha de medición *</span><Input type="date" max={localToday()} value={draft.measurementDate} onChange={e => change("measurementDate", e.target.value)} /></label>
-        <label className="block text-sm font-medium space-y-1.5"><span>Valor real *{objective.measurementConfig?.unit ? ` (${objective.measurementConfig.unit})` : ""}</span><Input type="number" step="any" value={draft.value} onChange={e => change("value", e.target.value)} /></label>
+        <label className="block text-sm font-medium space-y-1.5"><span>Valor actual del indicador *{objective.measurementConfig?.unit ? ` (${objective.measurementConfig.unit})` : ""}</span><Input type="number" step="any" value={draft.value} onChange={e => change("value", e.target.value)} /></label>
       </div>
       <label className="block text-sm font-medium space-y-1.5"><span>Observación</span><Textarea value={draft.observation} onChange={e => change("observation", e.target.value)} /></label>
       <label className="block text-sm font-medium space-y-1.5"><span>Evidencia / Referencia</span><Textarea placeholder="Enlace, documento de referencia o explicación de la evidencia" value={draft.evidence} onChange={e => change("evidence", e.target.value)} /></label>
@@ -122,14 +123,44 @@ function MeasurementCapture({ companyId, objective, measurements, onSaved, regis
   </section>;
 }
 
+function StrategicObjectiveResultPanel({ objective }: { objective: StrategicMeasuredObjective }) {
+  const metrics = calculateObjectiveResultMetrics({
+    baseline: objective.measurementConfig?.baseline,
+    goal: objective.measurementConfig?.goal,
+    currentValue: objective.latestMeasurement?.value,
+    ...(objective.measurementStatus !== "measured" ? { goalProgressOverride: null } : {}),
+  });
+  const numeric = (value: number | null) => `${formatObjectiveValue(value)}${value !== null && objective.measurementConfig?.unit ? ` ${objective.measurementConfig.unit}` : ""}`;
+  const change = objectiveChangePresentation(metrics, objective.measurementConfig?.unit);
+  const rows = [
+    { label: "Punto de partida", value: numeric(metrics.baseline) },
+    { label: "Resultado actual", value: numeric(metrics.currentValue), current: true },
+    { label: "Meta", value: numeric(metrics.goal) },
+    { label: change.label, value: change.value, relativeValue: change.relativeValue },
+    { label: "Avance hacia la meta", value: formatObjectivePercent(metrics.goalProgress) },
+  ];
+  return <section className="space-y-3 rounded-xl border border-blue-100 bg-blue-50/40 p-4" aria-label="Resultado del indicador del OE">
+    <h3 className="font-semibold text-slate-800">Resultado del indicador del OE</h3>
+    {!objective.latestMeasurement && <p className="text-sm text-slate-500">{strategicMeasurementLabel(objective)}. No se asigna cero por falta de datos.</p>}
+    <table className="w-full text-sm text-left" aria-label="Doble lectura del indicador">
+      <tbody>{rows.map(row => <tr key={row.label} className="border-b border-blue-100 last:border-0"><th scope="row" className="py-2 pr-4 font-medium text-slate-600">{row.label}</th><td className={`py-2 break-words font-semibold text-slate-800 ${row.current ? "text-2xl" : "text-sm"}`}>{row.value}{row.relativeValue !== undefined && row.relativeValue !== null && <span className="mt-1 block text-xs font-normal text-slate-500">Variación relativa: {row.relativeValue}</span>}</td></tr>)}</tbody>
+    </table>
+    <p className="text-xs text-slate-600">{objectiveTrendLabel(metrics)} · {objectiveGoalStatusLabel(metrics)}</p>
+    <p className="text-xs text-slate-500">{change.isPercentage && metrics.variationPercent !== null ? "El cambio se expresa en puntos porcentuales; la variación relativa compara el cambio con el valor inicial." : objectiveVariationExplanation(metrics)}</p>
+    {!change.isPercentage && metrics.absoluteChange !== null && (metrics.variationUnavailable === "zero_baseline" || metrics.variationUnavailable === "negative_baseline") && <p className="text-xs text-slate-600">Cambio absoluto: {metrics.absoluteChange > 0 ? "+" : ""}{numeric(metrics.absoluteChange)}</p>}
+    <p className="text-xs text-slate-500">El avance compara el resultado actual con el tramo entre inicio y meta. La lectura individual conserva valores negativos y superiores a 100 %; no es la variación respecto al inicio.</p>
+  </section>;
+}
+
 export function StrategicMeasurementHistory({ measurements, unit }: { measurements: StrategicMeasurement[]; unit: string }) {
   const rows = [...measurements].sort((a, b) => b.measurementDate.localeCompare(a.measurementDate) || b.id - a.id);
   return <section className="space-y-3 border-t pt-5">
     <h3 className="font-semibold text-slate-800">Historial de mediciones reales</h3>
-    {rows.length === 0 ? <p className="text-sm text-slate-500">Sin mediciones. No se asigna 0% por falta de datos.</p> : <div className="overflow-x-auto"><table className="w-full text-sm text-left">
-      <thead><tr className="border-b text-slate-500"><th className="p-2">Fecha</th><th className="p-2">Valor real</th><th className="p-2">Avance</th><th className="p-2">Observación</th><th className="p-2">Evidencia / Referencia</th></tr></thead>
-      <tbody>{rows.map(row => <tr key={row.id} className="border-b"><td className="p-2 whitespace-nowrap">{row.measurementDate}</td><td className="p-2">{row.value} {unit}</td><td className="p-2">{row.percent}%</td><td className="p-2 whitespace-pre-wrap break-words">{row.observation || "—"}</td><td className="p-2 whitespace-pre-wrap break-words">{row.evidence || "—"}</td></tr>)}</tbody>
+    {rows.length === 0 ? <p className="text-sm text-slate-500">Sin mediciones. No se asigna 0 % por falta de datos.</p> : <div className="overflow-x-auto"><table className="w-full text-sm text-left" aria-label="Historial de mediciones reales">
+      <thead><tr className="border-b text-slate-500"><th className="p-2">Fecha</th><th className="p-2">Valor real</th><th className="p-2">Avance registrado</th><th className="p-2">Observación</th><th className="p-2">Evidencia / Referencia</th></tr></thead>
+      <tbody>{rows.map(row => <tr key={row.id} className="border-b"><td className="p-2 whitespace-nowrap">{row.measurementDate}</td><td className="p-2">{formatObjectiveValue(row.value)} {unit}</td><td className="p-2">{formatObjectivePercent(row.percent)}</td><td className="p-2 whitespace-pre-wrap break-words">{row.observation || "—"}</td><td className="p-2 whitespace-pre-wrap break-words">{row.evidence || "—"}</td></tr>)}</tbody>
     </table></div>}
+    {rows.length > 0 && <p className="text-xs text-slate-500">El avance registrado conserva el porcentaje histórico original, acotado entre 0 % y 100 %. No se recalcula con la definición actual ni representa la variación respecto al inicio.</p>}
   </section>;
 }
 
@@ -155,9 +186,10 @@ export function StrategicObjectiveDetail({ companyId, objectiveId, canManage, mo
   if (query.error || !query.data) return <div className="p-4 text-red-700" role="alert">No se pudo cargar el detalle. <Button variant="outline" onClick={() => void query.refetch()}>Reintentar</Button></div>;
   const { objective, measurements } = query.data;
   return <div className="w-full space-y-5 rounded-xl border border-blue-200 bg-white p-5" key={objectiveId}>
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-bold text-lg text-slate-800">{objective.name}</h2><p className="text-sm text-slate-500">{strategicMeasurementLabel(objective)}{objective.latestMeasurement ? ` · Última medición: ${objective.latestMeasurement.measurementDate}` : ""}</p></div>{onClose && <Button variant="outline" disabled={closing} onClick={async () => { if (await flush()) onClose(); }}>{closing ? "Guardando…" : "Cerrar"}</Button>}</div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-bold text-lg text-slate-800">{objective.name}</h2>{mode === "measurement" && objective.latestMeasurement && <p className="text-sm text-slate-500">Última medición: {objective.latestMeasurement.measurementDate}{objective.measurementStatus === "pending_configuration" ? " · Pendiente de configuración" : ""}</p>}</div>{onClose && <Button variant="outline" disabled={closing} onClick={async () => { if (await flush()) onClose(); }}>{closing ? "Guardando…" : "Cerrar"}</Button>}</div>
     <p className="text-xs text-slate-500">{mode === "definition" ? "Aquí se define el objetivo y su indicador. Las mediciones y su historial se consultan en Desempeño → Objetivos Estratégicos." : "La definición y el indicador vienen de Estrategia y aquí son solo de lectura. En Desempeño se registran los resultados reales."}</p>
     {canManage && <p className="text-xs text-slate-500">{mode === "definition" ? "Autoguardado activo para la definición y el indicador." : "Autoguardado activo solo para las mediciones: fecha, valor real, observación y evidencia."}</p>}
+    {mode === "measurement" && <StrategicObjectiveResultPanel objective={objective} />}
     <DefinitionEditor registry={registry} objective={objective} canManage={canManage && mode === "definition"} onSaved={saved} />
     <ConfigEditor registry={registry} companyId={companyId} objective={objective} canManage={canManage && mode === "definition"} onSaved={saved} />
     {mode === "measurement" && canManage && <MeasurementCapture registry={registry} companyId={companyId} objective={objective} measurements={measurements} onSaved={saved} />}
