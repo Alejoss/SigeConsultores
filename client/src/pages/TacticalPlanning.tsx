@@ -12,6 +12,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AutosavingObjectiveNarratives } from "@/components/ObjectiveNarrativeFields";
 import { ProcessQuickNavigation } from "@/components/ProcessQuickNavigation";
 import { objectiveNarrativeAutosaveQueue, objectivePlanningSaveSignature, OBJECTIVE_NARRATIVE_KEYS, type ObjectiveNarratives } from "@/lib/objectiveNarratives";
+import { ObjectiveResultSummary } from "@/components/ObjectiveResultSummary";
+import { calculateObjectiveResultMetrics, type ObjectiveResultMetrics } from "@shared/objectiveResultMetrics";
 
 // ─── Tipos de seguimiento disponibles ────────────────────────────────────────
 // 'puntual'            → un valor directo; % = (condicionActual - ci) / (meta - ci) * 100
@@ -80,11 +82,12 @@ const MONTHS = ['Ene','Feb','Mar','Abr','Mayo','Jun','Jul','Agos','Sep','Oct','N
  * Input numérico sin estado local — usa ref para el DOM.
  * Actualiza el padre en onChange (tiempo real) y en onBlur (normalización).
  */
-function NumericInput({ value, onChange, className, placeholder }: {
+function NumericInput({ value, onChange, className, placeholder, ariaLabel }: {
   value: number;
   onChange: (val: number) => void;
   className?: string;
   placeholder?: string;
+  ariaLabel?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const isFocused = useRef(false);
@@ -103,6 +106,7 @@ function NumericInput({ value, onChange, className, placeholder }: {
       step="0.01"
       defaultValue={value}
       placeholder={placeholder}
+      aria-label={ariaLabel}
       className={`flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${className || ''}`}
       onFocus={() => { isFocused.current = true; }}
       onChange={(e) => {
@@ -145,15 +149,13 @@ const AutoExpandingTextarea = ({ value, onChange, placeholder, className = "" }:
 
 // ─── Helpers de cálculo ───────────────────────────────────────────────────────
 
-/** Calcula el % alcanzado dado condición inicial, meta y condición actual */
-function calcPct(ci: number, meta: number, ca: number): number {
-  if (meta === ci) return 0;
-  const p = ((ca - ci) / (meta - ci)) * 100;
-  return Math.max(-100, Math.min(100, p));
+/** Avance individual sin recortes; inicio igual a meta no tiene porcentaje calculable. */
+export function calcPct(ci: number, meta: number, ca: number): number | null {
+  return calculateObjectiveResultMetrics({ baseline: ci, goal: meta, currentValue: ca }).goalProgress;
 }
 
 /** Dado un ResultKey, devuelve { condicionActual, porcentajeAlcanzado } según su tipo de seguimiento */
-function calcOOMetrics(rk: ResultKey): { condicionActual: number; porcentajeAlcanzado: number } {
+export function calcOOMetrics(rk: ResultKey): { condicionActual: number; porcentajeAlcanzado: number | null } {
   const ci = rk.condicionInicial || 0;
   const meta = rk.meta || 0;
   const type = rk.ooTrackingType || 'puntual';
@@ -187,7 +189,7 @@ function calcOOMetrics(rk: ResultKey): { condicionActual: number; porcentajeAlca
 }
 
 /** Dado un TacticalPlanning, devuelve { avanceMeta, porcentajeMetaAlcanzado } según su tipo de seguimiento */
-function calcOTMetrics(p: TacticalPlanning): { avanceMeta: number; porcentajeMetaAlcanzado: number } {
+export function calcOTMetrics(p: TacticalPlanning): { avanceMeta: number; porcentajeMetaAlcanzado: number | null } {
   const pp = p.puntoPartida || 0;
   const meta = p.metaLlegada || 0;
   const type = p.trackingType || 'puntual';
@@ -218,6 +220,40 @@ function calcOTMetrics(p: TacticalPlanning): { avanceMeta: number; porcentajeMet
   }
 
   return { avanceMeta: p.avanceMeta || 0, porcentajeMetaAlcanzado: p.porcentajeMetaAlcanzado || 0 };
+}
+
+export function getOTResultMetrics(planning: TacticalPlanning): ObjectiveResultMetrics {
+  const { avanceMeta, porcentajeMetaAlcanzado } = calcOTMetrics(planning);
+  const checklist = planning.trackingType === 'mensual_checklist';
+  return calculateObjectiveResultMetrics({
+    // Checklist compares completed months against 12, not a numeric baseline.
+    baseline: checklist ? null : planning.puntoPartida ?? 0,
+    goal: checklist ? 12 : planning.metaLlegada ?? 0,
+    currentValue: avanceMeta,
+    numericComparison: !checklist,
+    goalProgressOverride: checklist ? porcentajeMetaAlcanzado : undefined,
+  });
+}
+
+export function getOOResultMetrics(resultKey: ResultKey): ObjectiveResultMetrics {
+  const { condicionActual, porcentajeAlcanzado } = calcOOMetrics(resultKey);
+  const checklist = resultKey.ooTrackingType === 'mensual_checklist';
+  return calculateObjectiveResultMetrics({
+    baseline: checklist ? null : resultKey.condicionInicial ?? 0,
+    goal: checklist ? 12 : resultKey.meta ?? 0,
+    currentValue: condicionActual,
+    numericComparison: !checklist,
+    goalProgressOverride: checklist ? porcentajeAlcanzado : undefined,
+  });
+}
+
+/** Legacy totals cap each contribution at -100..100; individual readings stay raw. */
+function legacyAggregateProgress(progress: number | null, baseline: number, goal: number, currentValue: number, checklist: boolean): number {
+  // Retain the old unrounded numeric contribution until the aggregate's final
+  // Math.round; the shared helper rounds individual readings to two decimals.
+  const contribution = checklist ? progress ?? 0
+    : goal === baseline ? 0 : ((currentValue - baseline) / (goal - baseline)) * 100;
+  return Math.max(-100, Math.min(100, contribution));
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -305,7 +341,8 @@ export default function TacticalPlanning() {
     try {
       const planningsToSave = latestPlannings.map(p => {
         const metrics = calcOTMetrics(p);
-        return { ...p, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado };
+        // Keep the persisted numeric shape; the readable result shows null as N/A.
+        return { ...p, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado ?? 0 };
       });
       localStorage.setItem(`tactical_planning_${latestProcessId}`, JSON.stringify(planningsToSave));
       const results = await Promise.allSettled(planningsToSave.map(planning =>
@@ -359,11 +396,7 @@ export default function TacticalPlanning() {
         const puntoPartida = typeof obj.puntoPartida === 'string' ? parseFloat(obj.puntoPartida) : (obj.puntoPartida || 0);
         const metaLlegada = typeof obj.metaLlegada === 'string' ? parseFloat(obj.metaLlegada) : (obj.metaLlegada || 0);
         const avanceMeta = typeof obj.avanceMeta === 'string' ? parseFloat(obj.avanceMeta) : (obj.avanceMeta || 0);
-        let porcentajeMetaAlcanzado = 0;
-        if (metaLlegada !== puntoPartida) {
-          porcentajeMetaAlcanzado = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
-          porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
-        }
+        const porcentajeMetaAlcanzado = calcPct(puntoPartida, metaLlegada, avanceMeta) ?? 0;
         return {
           id: `planning_${obj.id}`,
           objectiveId: obj.id,
@@ -464,7 +497,7 @@ export default function TacticalPlanning() {
       try {
         const planningsToSave = currentPlannings.map(p => {
           const metrics = calcOTMetrics(p);
-          return { ...p, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado };
+          return { ...p, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado ?? 0 };
         });
         localStorage.setItem(`tactical_planning_${currentProcessId}`, JSON.stringify(planningsToSave));
       } catch (e) {
@@ -484,7 +517,7 @@ export default function TacticalPlanning() {
       if (recalcFields.includes(field)) {
         const metrics = calcOTMetrics(updated);
         updated.avanceMeta = metrics.avanceMeta;
-        updated.porcentajeMetaAlcanzado = metrics.porcentajeMetaAlcanzado;
+        updated.porcentajeMetaAlcanzado = metrics.porcentajeMetaAlcanzado ?? 0;
       }
       return updated;
     }));
@@ -527,7 +560,7 @@ export default function TacticalPlanning() {
           if (recalcFields.includes(field)) {
             const metrics = calcOOMetrics(updated);
             updated.condicionActual = metrics.condicionActual;
-            updated.porcentajeAlcanzado = metrics.porcentajeAlcanzado;
+            updated.porcentajeAlcanzado = metrics.porcentajeAlcanzado ?? 0;
           }
           return updated;
         }),
@@ -629,8 +662,8 @@ export default function TacticalPlanning() {
     planning.resultKeys.forEach(rk => {
       const ponderacion = rk.ponderacion || 0;
       // Recalcular en tiempo real para que el indicador siempre sea correcto
-      const { porcentajeAlcanzado } = calcOOMetrics(rk);
-      totalWeightedCompletion += (porcentajeAlcanzado * ponderacion) / 100;
+      const { porcentajeAlcanzado, condicionActual } = calcOOMetrics(rk);
+      totalWeightedCompletion += (legacyAggregateProgress(porcentajeAlcanzado, rk.condicionInicial || 0, rk.meta || 0, condicionActual, rk.ooTrackingType === 'mensual_checklist') * ponderacion) / 100;
       totalPonderacion += ponderacion;
     });
     if (totalPonderacion === 0) {
@@ -653,10 +686,10 @@ export default function TacticalPlanning() {
     let totalTareasWeighted = 0, totalTareasPond = 0;
     plannings.forEach(planning => {
       const ponderacion = planning.ponderacion || 0;
-      const { porcentajeMetaAlcanzado } = calcOTMetrics(planning);
+      const { porcentajeMetaAlcanzado, avanceMeta } = calcOTMetrics(planning);
       const avanceOO = calculateObjectiveCompletion(planning);
       const avanceTareas = calculateOTTasksAverage(planning);
-      totalMetaAlcanzada += porcentajeMetaAlcanzado * (ponderacion / 100);
+      totalMetaAlcanzada += legacyAggregateProgress(porcentajeMetaAlcanzado, planning.puntoPartida || 0, planning.metaLlegada || 0, avanceMeta, planning.trackingType === 'mensual_checklist') * (ponderacion / 100);
       totalAlcanzadoPorOO += avanceOO * (ponderacion / 100);
       if (avanceTareas !== null) {
         totalTareasWeighted += avanceTareas * (ponderacion || 1);
@@ -752,17 +785,12 @@ export default function TacticalPlanning() {
         </div>
 
         {type === 'puntual' && (
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Avance de la Meta</label>
-              <NumericInput value={planning.avanceMeta || 0}
-                onChange={(val) => updatePlanning(planning.id, 'avanceMeta', val)}
-                placeholder="Avance actual" className="border-gray-300" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">% Meta alcanzada</label>
-              <p className="text-2xl font-bold text-blue-600">{calcOTMetrics(planning).porcentajeMetaAlcanzado.toFixed(0)}%</p>
-            </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Valor actual del indicador</label>
+            <NumericInput value={planning.avanceMeta || 0}
+              onChange={(val) => updatePlanning(planning.id, 'avanceMeta', val)}
+              ariaLabel="Valor actual del indicador OTE"
+              placeholder="Avance actual" className="border-gray-300" />
           </div>
         )}
 
@@ -785,20 +813,7 @@ export default function TacticalPlanning() {
                 );
               })}
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Total acumulado (Condición Actual)</label>
-                <div className="p-2 bg-green-50 border border-green-300 rounded-lg text-center">
-                  <span className="text-xl font-bold text-green-700">
-                    {((planning.monthlyValues || Array(12).fill(0)).reduce((s: number, v: number) => s + (v || 0), 0)).toFixed(2)}{planning.unidadMedida ? ` ${planning.unidadMedida}` : ''}
-                  </span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">% Meta alcanzada</label>
-                <p className="text-2xl font-bold text-blue-600">{calcOTMetrics(planning).porcentajeMetaAlcanzado.toFixed(0)}%</p>
-              </div>
-            </div>
+            <p className="text-xs text-gray-600">Valor actual del indicador: suma de los valores mensuales.</p>
           </div>
         )}
 
@@ -823,20 +838,7 @@ export default function TacticalPlanning() {
                 );
               })}
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Promedio (Condición Actual)</label>
-                <div className="p-2 bg-green-50 border border-green-300 rounded-lg text-center">
-                  <span className="text-xl font-bold text-green-700">
-                    {(() => { const vals = planning.monthlyValues || Array(12).fill(0); const nz = vals.filter(v => v !== 0); return nz.length > 0 ? (nz.reduce((s, v) => s + v, 0) / nz.length).toFixed(2) : '0.00'; })()}{planning.unidadMedida ? ` ${planning.unidadMedida}` : ''}
-                  </span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">% Meta alcanzada</label>
-                <p className="text-2xl font-bold text-blue-600">{calcOTMetrics(planning).porcentajeMetaAlcanzado.toFixed(0)}%</p>
-              </div>
-            </div>
+            <p className="text-xs text-gray-600">Valor actual del indicador: promedio de los valores mensuales distintos de cero.</p>
           </div>
         )}
 
@@ -861,22 +863,14 @@ export default function TacticalPlanning() {
                 );
               })}
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Meses cumplidos</label>
-                <div className="p-2 bg-green-50 border border-green-300 rounded-lg text-center">
-                  <span className="text-xl font-bold text-green-700">
-                    {(planning.checklistValues || Array(12).fill(false)).filter(Boolean).length} / 12
-                  </span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">% Meta alcanzada</label>
-                <p className="text-2xl font-bold text-blue-600">{calcOTMetrics(planning).porcentajeMetaAlcanzado.toFixed(0)}%</p>
-              </div>
-            </div>
+            <p className="text-sm font-semibold text-gray-600">Meses cumplidos: {(planning.checklistValues || Array(12).fill(false)).filter(Boolean).length} / 12</p>
           </div>
         )}
+        <div className="rounded-lg border border-blue-200 bg-white p-3">
+          <ObjectiveResultSummary metrics={getOTResultMetrics(planning)}
+            unit={type === 'mensual_checklist' ? 'meses' : planning.unidadMedida}
+            title="Resultado OTE" compact />
+        </div>
       </div>
     );
   };
@@ -907,9 +901,10 @@ export default function TacticalPlanning() {
 
         {type === 'puntual' && (
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Condición Actual</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Valor actual del indicador</label>
             <NumericInput value={resultKey.condicionActual || 0}
               onChange={(val) => updateResultKey(planning.id, resultKey.id, 'condicionActual', val)}
+              ariaLabel="Valor actual del indicador OO"
               placeholder="Condición actual" className="border-gray-300" />
           </div>
         )}
@@ -933,10 +928,7 @@ export default function TacticalPlanning() {
                 );
               })}
             </div>
-            <div className="p-2 bg-green-50 border border-green-300 rounded-lg text-center">
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Total acumulado (Condición Actual)</label>
-              <span className="text-xl font-bold text-green-700">{calcOOMetrics(resultKey).condicionActual.toFixed(2)}</span>
-            </div>
+            <p className="text-xs text-gray-600">Valor actual del indicador: suma de los valores mensuales.</p>
           </div>
         )}
 
@@ -959,10 +951,7 @@ export default function TacticalPlanning() {
                 );
               })}
             </div>
-            <div className="p-2 bg-green-50 border border-green-300 rounded-lg text-center">
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Promedio (Condición Actual)</label>
-              <span className="text-xl font-bold text-green-700">{calcOOMetrics(resultKey).condicionActual.toFixed(2)}</span>
-            </div>
+            <p className="text-xs text-gray-600">Valor actual del indicador: promedio de los valores mensuales distintos de cero.</p>
           </div>
         )}
 
@@ -995,12 +984,10 @@ export default function TacticalPlanning() {
           </div>
         )}
 
-        {/* % Alcanzado — siempre visible y reactivo */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">% Alcanzado</label>
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
-            <span className="text-2xl font-bold text-blue-600">{calcOOMetrics(resultKey).porcentajeAlcanzado.toFixed(2)}%</span>
-          </div>
+        <div className="rounded-lg border border-blue-200 bg-white p-3">
+          <ObjectiveResultSummary metrics={getOOResultMetrics(resultKey)}
+            unit={type === 'mensual_checklist' ? 'meses' : undefined}
+            title="Resultado OO" compact />
         </div>
       </div>
     );
@@ -1046,8 +1033,9 @@ export default function TacticalPlanning() {
           <CardContent>
             <div className="grid grid-cols-3 gap-6">
               <div className="text-center p-4 bg-white rounded-lg border-2 border-blue-300">
-                <p className="text-sm font-semibold text-gray-600 mb-2">% Meta alcanzada por Objetivos Tácticos</p>
+                <p className="text-sm font-semibold text-gray-600 mb-2">Avance ponderado hacia las metas de los OTE</p>
                 {plannings.length === 0 ? <p className="text-4xl font-bold text-gray-400">...</p> : <p className="text-4xl font-bold text-blue-600">{indicators.metaAlcanzada}%</p>}
+                <p className="mt-2 text-xs text-gray-500">Conserva la ponderación y el límite de −100 a 100 % por OTE del indicador general; no es un promedio de variaciones.</p>
               </div>
               <div className="text-center p-4 bg-white rounded-lg border-2 border-green-300">
                 <p className="text-sm font-semibold text-gray-600 mb-2">Avance Objetivos Operativos</p>
@@ -1084,23 +1072,28 @@ export default function TacticalPlanning() {
             >
               <CardHeader className="cursor-pointer" onClick={() => toggleVisibleExpansion(planning.id)}>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 flex-1">
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
                     <ChevronDown size={20} className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <CardTitle className="text-lg text-green-900">{planning.objectiveName}</CardTitle>
                       <p className="text-sm text-gray-600 mt-1">Ponderación: {planning.ponderacion || 0}%</p>
                     </div>
                   </div>
-                  <div className="text-right space-y-3">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-600">% Meta alcanzada</p>
-                      <p className="text-2xl font-bold text-blue-600">{calcOTMetrics(planning).porcentajeMetaAlcanzado.toFixed(0)}%</p>
-                    </div>
-                    <div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 mt-4">
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <ObjectiveResultSummary metrics={getOTResultMetrics(planning)}
+                      unit={planning.trackingType === 'mensual_checklist' ? 'meses' : planning.unidadMedida}
+                      title="Resultado OTE" compact />
+                  </div>
+                  <div className="rounded-lg border border-green-200 bg-green-50 p-4 space-y-3" role="group" aria-label="Ejecución del plan">
+                    <h3 className="text-sm font-bold text-green-900">Ejecución del plan</h3>
+                    <div className="flex flex-wrap justify-between items-baseline gap-2">
                       <p className="text-sm font-semibold text-gray-600">Avance Objetivos Operativos</p>
                       <p className="text-2xl font-bold text-green-600">{calculateObjectiveCompletion(planning)}%</p>
                     </div>
-                    <div>
+                    <p className="text-xs text-gray-500">Agregado ponderado de los OO con la regla actual (−100 a 100 % por OO); si no tienen ponderación, usa las tareas.</p>
+                    <div className="flex flex-wrap justify-between items-baseline gap-2">
                       <p className="text-sm font-semibold text-gray-600">Avance de Tareas</p>
                       {calculateOTTasksAverage(planning) !== null
                         ? <p className="text-2xl font-bold text-blue-600">{calculateOTTasksAverage(planning)!.toFixed(0)}%</p>
@@ -1133,9 +1126,10 @@ export default function TacticalPlanning() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Meta del Objetivo</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Meta del Objetivo (texto histórico)</label>
                     <Input type="text" value={planning.goal} onChange={(e) => updatePlanning(planning.id, 'goal', e.target.value)}
                       placeholder="Ingrese la meta del objetivo" className="border-gray-300" />
+                    <p className="mt-1 text-xs text-gray-500">Se conserva este texto; el avance hacia la meta se calcula con «Meta o Punto de Llegada».</p>
                   </div>
 
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">

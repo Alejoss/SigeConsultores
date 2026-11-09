@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import type { StrategicMeasuredObjective } from "@shared/strategicObjectiveMeasurement";
 import { StrategicMeasurementHistory, strategicMeasurementLabel } from "./StrategicObjectiveDetail";
+import { formatObjectivePercent } from "@shared/objectiveResultMetrics";
 
 function ObjectiveTimeline({ companyId, objective, index }: { companyId: number; objective: StrategicMeasuredObjective; index: number }) {
   const query = trpc.strategicObjectives.getMeasurementDetail.useQuery({ companyId, objectiveId: objective.id });
@@ -18,10 +19,10 @@ function ObjectiveTimeline({ companyId, objective, index }: { companyId: number;
       <LineChart data={chartData} margin={{ top: 12, right: 20, left: 0, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
         <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-        <YAxis domain={[0, 100]} tickFormatter={(value: number) => `${value}%`} tick={{ fontSize: 11 }} />
-        <Tooltip formatter={(value: number) => [`${value}%`, "Avance real"]} />
+        <YAxis domain={[0, 100]} tickFormatter={(value: number) => formatObjectivePercent(value)} tick={{ fontSize: 11 }} />
+        <Tooltip formatter={(value: number) => [formatObjectivePercent(value), "Avance registrado"]} />
         <ReferenceLine y={100} stroke="#94a3b8" strokeDasharray="4 2" />
-        <Line type="linear" dataKey="percent" stroke="#2563eb" strokeWidth={2} dot={{ r: 4 }} name="Avance real" />
+        <Line type="linear" dataKey="percent" stroke="#2563eb" strokeWidth={2} dot={{ r: 4 }} name="Avance registrado" />
       </LineChart>
     </ResponsiveContainer></div>}
     <StrategicMeasurementHistory measurements={measurements} unit={query.data.objective.measurementConfig?.unit ?? ""} />
@@ -32,7 +33,7 @@ export function StrategicMeasurementTimeline({ companyId }: { companyId: number 
   if (query.isLoading) return <div className="py-12 flex justify-center"><Loader2 className="animate-spin" /></div>;
   if (query.error || !query.data) return <p role="alert">No se pudieron cargar los objetivos. <Button variant="outline" onClick={() => void query.refetch()}>Reintentar</Button></p>;
   return <div className="space-y-5">
-    <p className="text-sm text-slate-500">Evolución de las mediciones reales de cada OE. No usa snapshots históricos de OTE, no empareja por nombre y no genera registros al consultar.</p>
+    <p className="text-sm text-slate-500">Evolución del avance registrado de cada OE. Conserva los porcentajes históricos, que estaban acotados entre 0 % y 100 %; no se recalculan ni se crean registros al consultar. La lectura actual de resultado, variación y avance se encuentra en Avance por OE.</p>
     {query.data.objectives.length === 0 ? <p className="py-10 text-center text-slate-500">No hay Objetivos Estratégicos registrados.</p> : query.data.objectives.map((objective, index) => <ObjectiveTimeline key={objective.id} companyId={companyId} objective={objective} index={index} />)}
   </div>;
 }

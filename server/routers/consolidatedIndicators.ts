@@ -7,6 +7,7 @@ import { eq, inArray } from "drizzle-orm";
 import { calculateActivityProgress } from "../lib/processActivities";
 import { calculateOtgProgress } from "../lib/otgProgress";
 import { calculateStakeholderActionProgress } from "@shared/stakeholderActionProgress";
+import { calculateObjectiveResultMetrics } from "../../shared/objectiveResultMetrics";
 
 // ─── Helpers de cálculo (replicados del frontend) ────────────────────────────
 
@@ -147,6 +148,7 @@ export const consolidatedIndicatorsRouter = router({
               const metaLlegada = parseFloat(pd.metaLlegada) || 0;
               const avanceMeta = parseFloat(pd.avanceMeta) || 0;
               const trackingTypeOTE = pd.trackingType || 'puntual';
+              let currentResultValue = avanceMeta;
 
               // % Meta Alcanzada del OTE — replicar exactamente la lógica de calcOTMetrics del frontend
               let porcentajeMetaAlcanzado = 0;
@@ -156,10 +158,12 @@ export const consolidatedIndicatorsRouter = router({
                   ? pd.checklistValues
                   : Array(12).fill(false);
                 const cumplidos = clVals.filter(Boolean).length;
+                currentResultValue = cumplidos;
                 porcentajeMetaAlcanzado = Math.round((cumplidos / 12) * 100);
               } else if (trackingTypeOTE === 'mensual_sumatoria') {
                 const mvVals: number[] = Array.isArray(pd.monthlyValues) ? pd.monthlyValues : Array(12).fill(0);
                 const suma = mvVals.reduce((s: number, v: number) => s + (v || 0), 0);
+                currentResultValue = suma;
                 if (metaLlegada !== puntoPartida) {
                   porcentajeMetaAlcanzado = ((suma - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
                   porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
@@ -168,6 +172,7 @@ export const consolidatedIndicatorsRouter = router({
                 const mvVals: number[] = Array.isArray(pd.monthlyValues) ? pd.monthlyValues : Array(12).fill(0);
                 const nonZero = mvVals.filter((v: number) => v !== 0);
                 const promedio = nonZero.length > 0 ? nonZero.reduce((s: number, v: number) => s + v, 0) / nonZero.length : 0;
+                currentResultValue = promedio;
                 if (metaLlegada !== puntoPartida) {
                   porcentajeMetaAlcanzado = ((promedio - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
                   porcentajeMetaAlcanzado = Math.max(-100, Math.min(100, porcentajeMetaAlcanzado));
@@ -181,12 +186,43 @@ export const consolidatedIndicatorsRouter = router({
               }
               totalPonderado += porcentajeMetaAlcanzado * (ponderacion / 100);
 
+              // Resultado de lectura, independiente de los porcentajes legacy del agregado.
+              const isChecklistOTE = trackingTypeOTE === 'mensual_checklist';
+              const resultMetrics = calculateObjectiveResultMetrics({
+                baseline: isChecklistOTE ? 0 : puntoPartida,
+                goal: isChecklistOTE ? 12 : metaLlegada,
+                currentValue: Number(currentResultValue),
+                numericComparison: !isChecklistOTE,
+                ...(isChecklistOTE ? { goalProgressOverride: (currentResultValue / 12) * 100 } : {}),
+              });
+
               // Construir detalle de Objetivos Operativos y Tareas
               const resultKeys: any[] = Array.isArray(pd.resultKeys) ? pd.resultKeys : [];
               const ooList = resultKeys.map((rk: any) => {
                 const tasks: any[] = Array.isArray(rk.tasks) ? rk.tasks : [];
                 const pctOO = Math.round(calcOOPercent(rk));
                 const tasksAvg = calcTasksAverage(tasks);
+
+                const ooTrackingType = rk.ooTrackingType || 'puntual';
+                const ooMonthlyValues: number[] = Array.isArray(rk.ooMonthlyValues) ? rk.ooMonthlyValues : Array(12).fill(0);
+                const ooChecklistValues: boolean[] = Array.isArray(rk.ooChecklistValues) ? rk.ooChecklistValues : Array(12).fill(false);
+                let currentValue = parseFloat(rk.condicionActual) || 0;
+                if (ooTrackingType === 'mensual_sumatoria') {
+                  currentValue = ooMonthlyValues.reduce((sum, value) => sum + (value || 0), 0);
+                } else if (ooTrackingType === 'mensual_promedio') {
+                  const nonZero = ooMonthlyValues.filter(value => value !== 0);
+                  currentValue = nonZero.length > 0 ? nonZero.reduce((sum, value) => sum + value, 0) / nonZero.length : 0;
+                } else if (ooTrackingType === 'mensual_checklist') {
+                  currentValue = ooChecklistValues.filter(Boolean).length;
+                }
+                const isChecklistOO = ooTrackingType === 'mensual_checklist';
+                const resultMetrics = calculateObjectiveResultMetrics({
+                  baseline: isChecklistOO ? 0 : parseFloat(rk.condicionInicial) || 0,
+                  goal: isChecklistOO ? 12 : parseFloat(rk.meta) || 0,
+                  currentValue: Number(currentValue),
+                  numericComparison: !isChecklistOO,
+                  ...(isChecklistOO ? { goalProgressOverride: (currentValue / 12) * 100 } : {}),
+                });
 
                 return {
                   id: rk.id || String(Math.random()),
@@ -196,6 +232,10 @@ export const consolidatedIndicatorsRouter = router({
                   meta: rk.meta || 0,
                   condicionActual: rk.condicionActual || 0,
                   porcentajeAlcanzado: pctOO,
+                  porcentajeAlcanzadoRaw: resultMetrics.goalProgress,
+                  resultMetrics,
+                  ooTrackingType,
+                  unidadMedida: rk.unidadMedida || "",
                   responsible: rk.responsible || "",
                   endDate: rk.endDate || "",
                   hasTasks: tasks.length > 0,
@@ -246,6 +286,8 @@ export const consolidatedIndicatorsRouter = router({
                 monthlyValues: pd.monthlyValues || {},
                 checklistValues: pd.checklistValues || {},
                 porcentajeMetaAlcanzado: Math.round(porcentajeMetaAlcanzado),
+                porcentajeMetaAlcanzadoRaw: resultMetrics.goalProgress,
+                resultMetrics,
                 pctOO: Math.round(pctOO),
                 tasksGlobalAvg: tasksGlobalAvg !== null ? Math.round(tasksGlobalAvg) : null,
                 hasOO: ooList.length > 0,
