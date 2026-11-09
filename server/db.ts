@@ -1467,7 +1467,7 @@ export const PROCESS_MAP_IMAGE_DOC_NAME = "Mapa de Procesos - Imagen";
 
 export async function getProcessMapImageDocument(companyId: number) {
   const db = await getDb();
-  if (!db) return null;
+  if (!db) throw new Error("Database not available");
 
   const companyProcesses = await db
     .select({ id: processes.id })
@@ -1491,6 +1491,64 @@ export async function getProcessMapImageDocument(companyId: number) {
     .limit(1);
 
   return rows[0] ?? null;
+}
+
+/** Replace the map only after its new file is uploaded; return the old file after commit. */
+export async function replaceProcessMapImageDocument(
+  companyId: number,
+  fileUrl: string,
+  fileKey: string,
+  fileSizeBytes = 0
+): Promise<{ id: number; fileKey: string | null } | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.transaction(async (tx) => {
+    // Serialize replacements even when this company has no map document yet.
+    const company = await tx.select({ id: companies.id }).from(companies)
+      .where(eq(companies.id, companyId)).limit(1).for("update");
+    if (!company[0]) throw new Error("Company not found");
+
+    const companyProcesses = await tx.select({ id: processes.id, name: processes.name })
+      .from(processes).where(eq(processes.companyId, companyId));
+    const processIds = companyProcesses.map((process) => process.id);
+    const existing = processIds.length > 0
+      ? (await tx.select().from(documents).where(and(
+          inArray(documents.processId, processIds),
+          eq(documents.documentName, PROCESS_MAP_IMAGE_DOC_NAME),
+          eq(documents.documentType, "Varios")
+        )).orderBy(desc(documents.updatedAt)).limit(1))[0]
+      : undefined;
+
+    if (existing) {
+      await tx.update(documents).set({
+        fileUrl, fileKey, fileSizeBytes, status: "Vigente", updatedAt: new Date(),
+      }).where(eq(documents.id, existing.id));
+      return { id: existing.id, fileKey: existing.fileKey ?? null };
+    }
+
+    let processId = companyProcesses.find((process) => process.name === "Documentos Generales")?.id;
+    if (processId === undefined) {
+      const result = await tx.insert(processes).values({
+        companyId,
+        name: "Documentos Generales",
+        processType: "soporte",
+        description: "Proceso virtual para almacenar documentos a nivel de empresa",
+      });
+      processId = Number(result[0].insertId);
+    }
+
+    await tx.insert(documents).values({
+      processId,
+      documentName: PROCESS_MAP_IMAGE_DOC_NAME,
+      documentType: "Varios",
+      status: "Vigente",
+      fileUrl,
+      fileKey,
+      fileSizeBytes,
+    });
+    return null;
+  });
 }
 
 export async function deleteProcessMapImageDocument(companyId: number): Promise<{ id: number; fileKey: string | null } | null> {

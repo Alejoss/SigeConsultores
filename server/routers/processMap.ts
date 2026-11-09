@@ -6,8 +6,7 @@ import {
   getDb,
   getProcessMapImageDocument,
   deleteProcessMapImageDocument,
-  createCompanyDocument,
-  PROCESS_MAP_IMAGE_DOC_NAME,
+  replaceProcessMapImageDocument,
 } from "../db";
 import { processes, accounts, accountRoles } from "../../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
@@ -213,7 +212,8 @@ export const processMapRouter = router({
       assertCompanyReadAccess(ctx, input.companyId);
       try {
         const doc = await getProcessMapImageDocument(input.companyId);
-        if (!doc?.fileKey) return null;
+        if (!doc) return null;
+        if (!doc.fileKey) throw new Error("Process map document has no file key");
 
         const { url } = await storageGet(doc.fileKey);
         const storedFileName = fileNameFromStorageKey(doc.fileKey);
@@ -225,7 +225,11 @@ export const processMapRouter = router({
         };
       } catch (error) {
         console.error("[ProcessMap] Error getting map image:", error);
-        return null;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Error al consultar el archivo del mapa de procesos",
+          cause: error,
+        });
       }
     }),
 
@@ -240,6 +244,8 @@ export const processMapRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       assertMapManagementAccess(ctx, input.companyId);
+      let newFileKey: string | undefined;
+      let committed = false;
       try {
         const mimeType = resolveProcessMapMime(input.fileName, input.fileType);
         if (!PROCESS_MAP_ALLOWED_TYPES.has(mimeType)) {
@@ -249,33 +255,37 @@ export const processMapRouter = router({
           });
         }
 
-        const existing = await deleteProcessMapImageDocument(input.companyId);
+        const fileBuffer = Buffer.from(input.fileData);
+        newFileKey = `process-map/${input.companyId}/${randomUUID()}-${input.fileName}`;
+        const { url } = await storagePut(newFileKey, fileBuffer, mimeType);
+
+        const existing = await replaceProcessMapImageDocument(
+          input.companyId, url, newFileKey, fileBuffer.length
+        );
+        committed = true;
+
+        // The DB now points to the new file; old-file cleanup must not fail the upload.
         if (existing?.fileKey) {
           await storageDelete(existing.fileKey).catch((err) =>
             console.warn("[ProcessMap] S3 delete old image failed (non-fatal):", err)
           );
         }
 
-        const fileBuffer = Buffer.from(input.fileData);
-        const fileKey = `process-map/${input.companyId}/${randomUUID()}-${input.fileName}`;
-        const { url } = await storagePut(fileKey, fileBuffer, mimeType);
-
-        await createCompanyDocument(
-          input.companyId,
-          PROCESS_MAP_IMAGE_DOC_NAME,
-          "Varios",
-          "Vigente",
-          url,
-          fileKey
-        );
-
         return { success: true, fileName: input.fileName, fileUrl: url };
       } catch (error) {
+        // storagePut may write the object and then fail while signing its URL.
+        // A failed transaction leaves the old document intact; discard only the new key.
+        if (newFileKey && !committed) {
+          await storageDelete(newFileKey).catch((err) =>
+            console.warn("[ProcessMap] S3 delete uncommitted image failed (non-fatal):", err)
+          );
+        }
         console.error("[ProcessMap] Error uploading map image:", error);
         if (error instanceof TRPCError) throw error;
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Error al cargar la imagen del mapa de procesos",
+          cause: error,
         });
       }
     }),
