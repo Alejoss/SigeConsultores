@@ -16,12 +16,12 @@ import {
   Workflow,
 } from "lucide-react";
 import ManagementAssessment from "./ManagementAssessment";
-import ManagementContext from "./ManagementContext";
+import { ManagementFlow, ManagementSituations } from "./ManagementContext";
 import "./presentation.css";
 
 const media = {
   logo: "/presentacion/media/logo.png",
-  video: "/presentacion/media/presentacion.mp4",
+  video: "/presentacion/media/presentacion-20261108.mp4",
   poster: "/presentacion/media/poster.jpg",
 };
 export const whatsappUrl =
@@ -107,22 +107,28 @@ export default function Home() {
         </nav>
       </header>
       <main id="contenido">
-        <section className="p-hero" id="inicio" aria-labelledby="p-title">
+        <ManagementSituations />
+        <section className="p-hero" id="solucion" aria-labelledby="p-title">
           <div className="p-orbit" aria-hidden="true" />
           <div className="p-hero-grid">
             <div className="p-hero-copy">
               <p className="p-eyebrow">
                 <span /> SISTEMA INTEGRADO DE GESTIÓN EMPRESARIAL
               </p>
-              <h1 id="p-title">
+              <h2 id="p-title">
                 La estrategia
                 <br />
                 hecha <span>gestión.</span>
-              </h1>
+              </h2>
               <p className="p-lead">
                 Sistemas de gestión trabajando para la empresa.
                 <br className="p-desktop-break" /> No la empresa trabajando para
                 los sistemas de gestión.
+              </p>
+              <p className="p-service-intro">
+                Para lograrlo, ISGE 360 combina asesoría personalizada y una
+                plataforma que facilita la gestión de tus sistemas, alineados
+                con la estrategia de tu empresa.
               </p>
               <p className="p-sublead">
                 Una plataforma. Una dirección compartida.
@@ -138,7 +144,7 @@ export default function Home() {
                   type="button"
                   onClick={playVideo}
                 >
-                  <Play size={17} aria-hidden="true" /> Ver presentación · 30 s
+                  <Play size={17} aria-hidden="true" /> Ver presentación · 40 s
                 </button>
                 <a className="p-button p-button-green" href="#autoevaluacion">
                   Autoevaluación · 1 minuto{" "}
@@ -152,7 +158,7 @@ export default function Home() {
             </div>
             <div className="p-video-column" id="video">
               <div className="p-video-top">
-                <span>ISGE 360 EN 30 SEGUNDOS</span>
+                <span>ISGE 360 EN 40 SEGUNDOS</span>
                 <span className="p-video-dot" />
               </div>
               <div className="p-video-frame">
@@ -169,7 +175,7 @@ export default function Home() {
                   <source src={media.video} type="video/mp4" />
                   <track
                     kind="captions"
-                    src={`${import.meta.env.BASE_URL}presentation-es.vtt`}
+                    src={`${import.meta.env.BASE_URL}presentation-es.vtt?v=20261108`}
                     srcLang="es"
                     label="Español"
                   />
@@ -181,7 +187,7 @@ export default function Home() {
                     type="button"
                     className="p-play"
                     onClick={playVideo}
-                    aria-label="Reproducir presentación de 30 segundos"
+                    aria-label="Reproducir presentación de 40 segundos"
                   >
                     <Play size={26} fill="currentColor" aria-hidden="true" />
                   </button>
@@ -212,7 +218,7 @@ export default function Home() {
             <ArrowDown size={18} aria-hidden="true" />
           </a>
         </section>
-        <ManagementContext />
+        <ManagementFlow />
         <section
           className="p-roles"
           id="responsabilidades"
