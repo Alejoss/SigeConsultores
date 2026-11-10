@@ -11,6 +11,7 @@ import { ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis as Ra
 import { calculateStakeholderActionProgress, latestStakeholderActionRows } from "@shared/stakeholderActionProgress";
 import { ObjectiveResultSummary } from "@/components/ObjectiveResultSummary";
 import { calculateObjectiveResultMetrics, formatObjectivePercent } from "@shared/objectiveResultMetrics";
+import { calculateOtgResultMetrics } from "@shared/otgResultMetrics";
 
 // ─── Mapa de etiquetas para tipo de seguimiento ───────────────────────────────
 const TRACKING_LABELS: Record<string, string> = {
@@ -279,19 +280,21 @@ function OTECard({ ote, index }: { ote: any; index: number }) {
 
 // ─── Componente: Card de OTG individual ──────────────────────────────────────
 function OTGCard({ otg, index }: { otg: any; index: number }) {
+  const resultMetrics = otg.resultMetrics ?? calculateOtgResultMetrics(otg);
+  const tareas: any[] = Array.isArray(otg.tareas) ? otg.tareas : [];
   return (
     <div className="rounded-xl border overflow-hidden shadow-sm mb-4" style={{ borderColor: "#D6EADD" }}>
       {/* Cabecera */}
-      <div className="px-4 py-2 flex items-center justify-between" style={{ backgroundColor: C.veryLightGreen }}>
-        <span className="text-xs font-bold uppercase tracking-wide" style={{ color: C.medGreen }}>
+      <div className="px-4 py-2 flex flex-wrap items-center justify-between gap-2 min-w-0" style={{ backgroundColor: C.veryLightGreen }}>
+        <span className="text-xs font-bold uppercase tracking-wide min-w-0 break-words" style={{ color: C.medGreen }}>
           Objetivo Táctico de Gestión · OTG {index + 1}
         </span>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${otg.comunicado ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
             {otg.comunicado ? "Comunicado" : "No comunicado"}
           </span>
           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${otg.objetivoLogrado ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-            {otg.objetivoLogrado ? "Logrado" : "En proceso"}
+            {otg.objetivoLogrado ? "Plan completado" : "Plan en proceso"}
           </span>
         </div>
       </div>
@@ -299,33 +302,40 @@ function OTGCard({ otg, index }: { otg: any; index: number }) {
       {/* Enunciado */}
       <div className="px-4 py-3 bg-white">
         <p className="text-xs font-bold mb-0.5" style={{ color: C.medGreen }}>OTG {index + 1}</p>
-        <p className="font-semibold text-gray-800 text-sm leading-snug">{otg.name}</p>
+        <p className="font-semibold text-gray-800 text-sm leading-snug break-words">{otg.name}</p>
       </div>
 
-      {/* Panel: % + tareas */}
-      <div className="grid grid-cols-5 gap-0">
-        <div className="col-span-2 p-4 text-white" style={{ backgroundColor: C.darkGreen }}>
-          <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: C.lightGreenText }}>
-            % Cumplimiento OTG
-          </p>
-          <p className="text-4xl font-bold">{otg.pctOTG}%</p>
-          <ProgressBar value={otg.pctOTG} />
-          <p className="text-xs mt-2" style={{ color: C.lightGreenBg }}>
-            {otg.tareas.length > 0 ? `${otg.tareas.length} tarea(s)` : "Sin tareas"}
-          </p>
+      {/* Resultado OTG y ejecución del plan son dos lecturas independientes. */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-0">
+        <div className="min-w-0 md:col-span-2 p-4 text-white break-words" style={{ backgroundColor: C.darkGreen }}>
+          <ObjectiveResultSummary title="Resultado del OTG" metrics={resultMetrics} unit={otg.unidadMedida} variant="dark" />
+          <section className="mt-4 border-t pt-3 space-y-2" style={{ borderColor: "#1B7A3D" }} aria-label="Ejecución del plan (tareas)">
+            <h3 className="text-sm font-bold" style={{ color: C.lightGreenText }}>Ejecución del plan (tareas)</h3>
+            <p className="text-xs font-semibold" style={{ color: C.lightGreenText }}>
+              {tareas.length > 0 ? "Avance ponderado de tareas completadas" : "Porcentaje histórico registrado"}
+            </p>
+            <p className="text-2xl font-bold">{otg.pctOTG}%</p>
+            <ProgressBar value={otg.pctOTG} />
+            <p className="text-xs" style={{ color: C.lightGreenBg }}>
+              {tareas.length > 0 ? `${tareas.length} tarea(s)` : "Sin tareas actuales"}
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: C.lightGreenBg }}>
+              Completar tareas no equivale a lograr el resultado numérico del OTG.
+            </p>
+          </section>
         </div>
 
-        <div className="col-span-3 p-4 bg-white">
-          {otg.tareas.length === 0 ? (
-            <p className="text-sm text-gray-400 italic">No hay tareas definidas</p>
+        <div className="min-w-0 md:col-span-3 p-4 bg-white break-words">
+          {tareas.length === 0 ? (
+            <p className="text-sm text-gray-400 italic">Sin tareas actuales</p>
           ) : (
             <>
               <p className="text-xs font-bold uppercase mb-2" style={{ color: C.darkGreen }}>Tareas</p>
               <div className="space-y-2">
-                {otg.tareas.map((t: any) => (
+                {tareas.map((t: any) => (
                   <div key={t.id} className="rounded-lg p-2" style={{ backgroundColor: C.veryLightGreen }}>
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs font-medium text-gray-700 flex-1 leading-snug">{t.description}</p>
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <p className="text-xs font-medium text-gray-700 flex-1 min-w-0 leading-snug break-words">{t.description}</p>
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${pctBadge(t.porcentajeAlcanzado)}`}>
                         {t.porcentajeAlcanzado}%
                       </span>
@@ -506,7 +516,7 @@ export default function ProcessIndicators() {
   const salidasData = indicatorsData?.find((d: any) => d.id === "control_salidas");
 
   const oteValue = oteData?.value ?? 0;
-  // El porcentaje OTG procede del avance real de tareas; "Logrado" sólo es un estado informativo.
+  // Agregado legacy de ejecución del plan OTG; el resultado numérico individual se mide aparte.
   const otgValue = otgData?.compliance ?? 0;
   const partesValue: number | null = partesData?.value ?? null;
   const cumplimientosValue = cumplimientosData?.value ?? 0;
@@ -597,7 +607,7 @@ export default function ProcessIndicators() {
           </div>
 
           {/* Contenido exportable */}
-          <div ref={exportRef} className="bg-white rounded-2xl p-6 shadow-sm">
+          <div ref={exportRef} className={`bg-white rounded-2xl shadow-sm ${activePanel === "otg" ? "p-3 sm:p-6" : "p-6"}`}>
             {/* Título del panel */}
             <div className="mb-5 pb-3 border-b" style={{ borderColor: C.lightGreenBg }}>
               <h3 className="text-lg font-bold" style={{ color: C.darkGreen }} translate="no">{panelTitle[activePanel]}</h3>
@@ -645,9 +655,9 @@ export default function ProcessIndicators() {
             {/* OTG */}
             {activePanel === "otg" && !isLoading && (
               <>
-                <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                   <div className="rounded-xl p-4 text-center" style={{ backgroundColor: C.veryLightGreen }}>
-                    <p className="text-xs font-semibold mb-1" style={{ color: C.textSecondary }}>OTG Logrados</p>
+                    <p className="text-xs font-semibold mb-1" style={{ color: C.textSecondary }}>Planes completados</p>
                     <p className="text-3xl font-bold" style={{ color: C.darkGreen }}>{otgData?.value ?? 0}</p>
                   </div>
                   <div className="rounded-xl p-4 text-center" style={{ backgroundColor: C.veryLightGreen }}>
@@ -798,10 +808,10 @@ export default function ProcessIndicators() {
       id: "otg" as PanelType,
       title: "OTG",
       subtitle: "Objetivos Tácticos de Gestión",
-      description: "% cumplimiento de objetivos de gestión y sus tareas",
+      description: "Cumplimiento del plan OTG",
       icon: <Settings size={32} style={{ color: C.medGreen }} />,
       value: otgValue,
-      extra: `${otgData?.otgRows?.length ?? 0} objetivo(s)`,
+      extra: `${otgData?.otgRows?.length ?? 0} objetivo(s) · El resultado individual se mide aparte.`,
     },
     {
       id: "partes" as PanelType,
