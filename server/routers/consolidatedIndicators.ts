@@ -8,6 +8,7 @@ import { calculateActivityProgress } from "../lib/processActivities";
 import { calculateOtgProgress } from "../lib/otgProgress";
 import { calculateStakeholderActionProgress } from "@shared/stakeholderActionProgress";
 import { calculateObjectiveResultMetrics } from "../../shared/objectiveResultMetrics";
+import { calculateOtgResultMetrics } from "../../shared/otgResultMetrics";
 
 // ─── Helpers de cálculo (replicados del frontend) ────────────────────────────
 
@@ -102,19 +103,22 @@ export const consolidatedIndicatorsRouter = router({
                 otgRows = matrixRows.map((row: any) => {
                   const acciones: any[] = Array.isArray(row.acciones) ? row.acciones : [];
                   const pctOTGRedondeado = calculateOtgProgress(row);
-                  // Un OTG sólo está logrado si tiene tareas y todas alcanzan el 100 % real.
+                  // Boolean legacy de plan completado; no afirma que se alcanzó el resultado OTG.
                   const objetivoLogrado = acciones.length > 0 && pctOTGRedondeado >= 100;
                   return {
                     id: row.id || String(Math.random()),
                     name: row.accionATomar || row.name || "OTG sin nombre",
                     pctOTG: pctOTGRedondeado,
+                    // Resultado numérico de lectura, independiente de tareas y porcentajes guardados.
+                    resultMetrics: calculateOtgResultMetrics(row),
+                    unidadMedida: typeof row.unidadMedida === "string" ? row.unidadMedida : "",
                     comunicado: row.comunicado === "SI",
                     objetivoLogrado,
                     tareas: acciones.map((a: any) => ({
                       id: a.id || String(Math.random()),
                       description: a.accion || a.description || "Sin descripción",
                       ponderacion: a.ponderacion || 0,
-                      porcentajeAlcanzado: Math.round(parseFloat(a.alcanzado) || 0),
+                      porcentajeAlcanzado: calculateOtgProgress({ acciones: [a] }),
                     })),
                   };
                 });

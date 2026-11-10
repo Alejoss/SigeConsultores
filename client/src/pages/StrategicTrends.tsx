@@ -329,25 +329,26 @@ function OTGView({ companyId, onBack }: { companyId: number; onBack: () => void 
   return (
     <div>
       <SubViewHeader
-        title="Objetivos Tácticos de Gestión"
-        onBack={onBack}
-        onExport={() => exportAsImage(ref, "objetivos-gestion.png", setExporting)}
-        exporting={exporting}
+              title="Objetivos Tácticos de Gestión"
+              onBack={onBack}
+              onExport={() => exportAsImage(ref, "objetivos-gestion.png", setExporting)}
+              exporting={exporting}
       />
       <PerformanceAreaTabs companyId={companyId} view="otg" />
       <div ref={ref}>
+        <p className="text-sm text-slate-500 mb-4">El resumen por área muestra el cumplimiento del plan. Consulta el resultado actual, su variación y el avance hacia la meta en «OTG por Área».</p>
         {/* KPI global */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="p-4 rounded-xl bg-purple-50 border border-purple-100 text-center">
             <p className="text-xs text-purple-600 font-semibold uppercase tracking-wide">Total OTG</p>
             <p className="text-3xl font-bold text-slate-800">{totalOTG}</p>
           </div>
           <div className="p-4 rounded-xl bg-green-50 border border-green-100 text-center">
-            <p className="text-xs text-green-600 font-semibold uppercase tracking-wide">OTG Logrados</p>
+            <p className="text-xs text-green-600 font-semibold uppercase tracking-wide">OTG marcados como logrados</p>
             <p className="text-3xl font-bold text-green-700">{totalLogrados}</p>
           </div>
           <div className="p-4 rounded-xl border-2 text-center" style={{ borderColor: getColor(globalPct) + "40", backgroundColor: getColor(globalPct) + "10" }}>
-            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: getColor(globalPct) }}>% Logrado</p>
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: getColor(globalPct) }}>Proporción marcada como lograda</p>
             <p className="text-3xl font-bold" style={{ color: getColor(globalPct) }}>{globalPct}%</p>
           </div>
         </div>
@@ -359,9 +360,10 @@ function OTGView({ companyId, onBack }: { companyId: number; onBack: () => void 
             {(otgData as any[]).map((proc: any) => (
               <div key={proc.processId} className="p-4 rounded-xl border border-slate-200 bg-white flex flex-col items-center gap-3">
                 <DonutKpi value={proc.percent} size={88} />
+                <p className="text-xs font-semibold text-slate-500">Cumplimiento del plan OTG</p>
                 <div className="text-center">
                   <p className="text-sm font-bold text-slate-800 leading-tight">{proc.processName}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{proc.logrados}/{proc.totalOTG} OTG logrados</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{proc.logrados}/{proc.totalOTG} OTG marcados como logrados</p>
                   <p className="text-xs text-slate-400">{proc.comunicados} comunicados</p>
                 </div>
                 <span
@@ -377,7 +379,7 @@ function OTGView({ companyId, onBack }: { companyId: number; onBack: () => void 
 
         {otgData.length > 0 && (
           <div className="mt-6">
-            <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-3">Comparativa por área</p>
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-3">Cumplimiento del plan por área</p>
             <ResponsiveContainer width="100%" height={Math.max(160, otgData.length * 36)}>
               <BarChart
                 data={(otgData as any[]).map((p: any) => ({ name: p.processName.length > 18 ? p.processName.slice(0, 16) + "…" : p.processName, value: p.percent }))}
@@ -387,7 +389,7 @@ function OTGView({ companyId, onBack }: { companyId: number; onBack: () => void 
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                 <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false} axisLine={false} width={110} />
-                <Tooltip formatter={(v: any) => [`${v}%`, "% Avance OTG"]} />
+                <Tooltip formatter={(v: any) => [`${v}%`, "Cumplimiento del plan OTG"]} />
                 <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
                   {(otgData as any[]).map((p: any, i: number) => (
                     <Cell key={i} fill={getColor(p.percent)} />

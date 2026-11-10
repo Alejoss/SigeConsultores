@@ -22,6 +22,9 @@ import { AutosavingObjectiveNarratives } from '@/components/ObjectiveNarrativeFi
 import { ProcessQuickNavigation, waitForNavigationMutations } from '@/components/ProcessQuickNavigation';
 import { getCompanyIdFromSession } from '@/lib/sessionScope';
 import { editedObjectiveNarratives, OBJECTIVE_NARRATIVE_KEYS, type ObjectiveNarratives } from '@/lib/objectiveNarratives';
+import { ObjectiveResultSummary } from '@/components/ObjectiveResultSummary';
+import { calculateOtgResultMetrics } from '@shared/otgResultMetrics';
+import { formatObjectivePercent } from '@shared/objectiveResultMetrics';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 /** Calcula el % alcanzado del OTG en función del valor alcanzado y la meta */
@@ -801,8 +804,8 @@ export default function ProcessRiskMatrix() {
 
       {/* Indicadores */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card><CardContent className="pt-4"><p className="text-sm text-slate-600">% Alcanzado OTG</p><p className="text-2xl font-bold text-blue-600">{(indicadores as any).pctAlcanzadoOTG ?? 0}%</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-sm text-slate-600">% Alcanzado en Tareas</p><p className="text-2xl font-bold text-green-600">{(indicadores as any).pctAlcanzadoTareas ?? 0}%</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-slate-600 break-words">Avance hacia las metas OTG (normalizado)</p><p className="text-2xl font-bold text-blue-600">{(indicadores as any).pctAlcanzadoOTG ?? 0}%</p><p className="text-xs text-slate-500 mt-1">Promedio de los avances OTG normalizados entre 0 y 100%; no es la variación del indicador.</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-slate-600">Avance de ejecución de tareas OTG</p><p className="text-2xl font-bold text-green-600">{(indicadores as any).pctAlcanzadoTareas ?? 0}%</p><p className="text-xs text-slate-500 mt-1">Completar tareas no equivale a lograr el resultado numérico del OTG.</p></CardContent></Card>
         <Card><CardContent className="pt-4"><p className="text-sm text-slate-600">% Comunicado</p><p className="text-2xl font-bold text-purple-600">{indicadores.porcentajeComunicado}%</p></CardContent></Card>
       </div>
 
@@ -840,6 +843,8 @@ export default function ProcessRiskMatrix() {
         {rows.map((row) => {
           const isExpanded = expandedRows.has(row.id);
           const pctOTG = calcularPorcentajeOTG(row.acciones || []);
+          // Read-only business metrics; never attach them to rows or historical percentages.
+          const resultMetrics = calculateOtgResultMetrics(row);
           const isDA = row.foda === 'Debilidad' || row.foda === 'Amenaza';
 
           return (
@@ -869,7 +874,7 @@ export default function ProcessRiskMatrix() {
 
                   {/* Área clickable para expandir/colapsar */}
                   <div
-                    className="flex-1 cursor-pointer hover:bg-slate-50 rounded p-2 transition-colors"
+                    className="flex-1 min-w-0 cursor-pointer hover:bg-slate-50 rounded p-2 transition-colors"
                     onClick={() => toggleRowExpanded(row.id)}
                   >
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-sm items-center">
@@ -884,15 +889,18 @@ export default function ProcessRiskMatrix() {
                         }`}>{row.foda}</span>
                       </div>
                       <div className="text-slate-600 text-xs font-semibold">{row.sistemaGestion}</div>
-                      <div className="flex items-center gap-2 justify-end">
+                      <div className="flex flex-wrap items-center gap-2 md:justify-end min-w-0">
                         <span className={`font-semibold text-xs ${row.mejoraImplementada === 'SI' ? 'text-green-600' : 'text-red-600'}`}>
                           {row.mejoraImplementada === 'SI' ? '✓ SI' : '✗ NO'}
                         </span>
-                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded" title="% Alcanzado OTG">OTG: {(row as any).porcentajeAlcanzadoOTG ?? 0}%</span>
-                        <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded" title="% Alcanzado en Tareas">Tareas: {pctOTG}%</span>
+                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded break-words" title="Avance hacia la meta OTG (sin recorte)">OTG: {formatObjectivePercent(resultMetrics.goalProgress)}</span>
+                        <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded" title="Avance de ejecución de tareas OTG">Tareas: {pctOTG}%</span>
                         {isExpanded ? <ChevronUp size={18} className="text-slate-500" /> : <ChevronDown size={18} className="text-slate-500" />}
                       </div>
                     </div>
+                    {!isExpanded && <div className="min-w-0 mt-3 border-t border-slate-100 pt-3">
+                      <ObjectiveResultSummary metrics={resultMetrics} unit={row.unidadMedida || ''} title="Resultado del OTG" compact />
+                    </div>}
                   </div>
                 </div>
               </CardHeader>
@@ -1005,7 +1013,7 @@ export default function ProcessRiskMatrix() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-slate-600">Punto de Llegada</label>
+                        <label className="text-xs font-semibold text-slate-600">Meta (punto de llegada)</label>
                         <input
                           type="number" step="any"
                           value={(row as any).puntoLlegada ?? ''}
@@ -1036,27 +1044,20 @@ export default function ProcessRiskMatrix() {
                       </div>
                     </div>
 
-                    {/* Alcanzado + % Alcanzado — NUEVO */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                      <div>
-                        <label className="text-xs font-semibold text-slate-600">Alcanzado</label>
+                    {/* Captura intacta; el resumen deriva el resultado sin alterar el guardado. */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+                      <div className="min-w-0">
+                        <label className="text-xs font-semibold text-slate-600">Resultado actual</label>
                         <input
                           type="number" step="any"
                           value={(row as any).alcanzado ?? ''}
                           onChange={(e) => updateRow(row.id, 'alcanzado' as any, parseFloat(e.target.value) || 0)}
                           className="w-full border rounded p-2 text-sm mt-1"
-                          placeholder="Valor alcanzado"
+                          placeholder="Valor del resultado actual"
                         />
                       </div>
-                      <div>
-                        <label className="text-xs font-semibold text-slate-600">% Alcanzado</label>
-                        <div className={`w-full border rounded p-2 text-sm font-bold mt-1 text-center ${
-                          ((row as any).porcentajeAlcanzadoOTG ?? 0) >= 100 ? 'bg-green-100 text-green-700 border-green-300' :
-                          ((row as any).porcentajeAlcanzadoOTG ?? 0) >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                          'bg-slate-50 text-slate-700'
-                        }`}>
-                          {(row as any).porcentajeAlcanzadoOTG ?? calcularPorcentajeAlcanzado((row as any).alcanzado, (row as any).puntoPartida, (row as any).puntoLlegada)}%
-                        </div>
+                      <div className="lg:col-span-2 min-w-0 border border-slate-200 rounded-lg p-3 sm:p-4 bg-slate-50">
+                        <ObjectiveResultSummary metrics={resultMetrics} unit={row.unidadMedida || ''} title="Resultado del OTG" />
                       </div>
                     </div>
 
@@ -1104,7 +1105,7 @@ export default function ProcessRiskMatrix() {
                         </button>
                         {(row.acciones || []).length > 0 && (
                           <div className="text-right text-sm font-semibold text-blue-700 bg-blue-50 p-2 rounded">
-                            % Cumplimiento OTG: <span className="text-lg">{calcularPorcentajeOTG(row.acciones || [])}%</span>
+                            Avance de ejecución de tareas OTG: <span className="text-lg">{calcularPorcentajeOTG(row.acciones || [])}%</span>
                           </div>
                         )}
                       </div>
@@ -1157,7 +1158,7 @@ export default function ProcessRiskMatrix() {
                           </button>
                           {(row.acciones || []).length > 0 && (
                             <div className="text-right text-sm font-semibold text-blue-700 bg-blue-50 p-2 rounded">
-                              % Cumplimiento OTG: <span className="text-lg">{calcularPorcentajeOTG(row.acciones || [])}%</span>
+                              Avance de ejecución de tareas OTG: <span className="text-lg">{calcularPorcentajeOTG(row.acciones || [])}%</span>
                             </div>
                           )}
                         </div>
