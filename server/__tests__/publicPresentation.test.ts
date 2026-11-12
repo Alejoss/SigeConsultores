@@ -87,14 +87,22 @@ describe("Public commercial presentation (static only)", () => {
     expect(count(source, new RegExp(approvedPromise, "g"))).toBe(1);
   });
 
-  it("keeps the four management pains and the strategy-to-results flow", () => {
+  it("keeps the three opening situations and the strategy-to-results flow", () => {
     const source = readSource("ManagementContext.tsx");
-    for (const pain of [
-      "Una carpeta por cada norma",
-      "Auditorías a última hora",
-      "Objetivos sin seguimiento visible",
-      "Información dispersa para decidir",
-    ]) expect(source).toContain(pain);
+    const situationsStart = source.indexOf("export function ManagementSituations");
+    const flowStart = source.indexOf("export function ManagementFlow");
+    const situations = source.slice(situationsStart, flowStart);
+    for (const copy of [
+      "¿Diriges tu empresa o pasas demasiado tiempo tratando de averiguar qué está pasando en ella?",
+      "¿Te identificas con alguna de estas situaciones?",
+      "Objetivos sin seguimiento",
+      "¿Sabes cuánto está avanzando realmente tu empresa?",
+      "¿Los Sistemas de Gestión trabajan para tu empresa o tu empresa trabaja para ellos?",
+      "Sistemas de gestión desconectados de la estrategia de la empresa",
+      "Información dispersa",
+      "Demasiados reportes para saber cómo está la empresa.",
+    ]) expect(source).toContain(copy);
+    expect(situations).not.toMatch(/href\s*=|#autoevaluacion|<img\b/);
     for (const stage of ["Estrategia", "Procesos", "Resultados"])
       expect(source).toContain(stage);
     expect(count(source, /<section\s+className="p-situations"/g)).toBe(1);

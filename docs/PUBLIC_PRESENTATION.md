@@ -8,7 +8,7 @@ Destino definitivo: **https://isge360.com/presentacion**. Express redirige esta 
 
 La página pública mostrará, en este orden:
 
-1. **Situaciones habituales**, inmediatamente después del logo y antes del hero, con el encabezado «¿Te suena familiar?» y cuatro dolores de gestión.
+1. **Situaciones habituales**, inmediatamente después del logo y antes del hero, con el encabezado «¿Diriges tu empresa o pasas demasiado tiempo tratando de averiguar qué está pasando en ella?», el subtítulo «¿Te identificas con alguna de estas situaciones?» y tres situaciones de gestión. Este bloque no repite el logo o el texto de marca, ni incluye un enlace a la autoevaluación.
 2. **Transición aprobada:** «No se trata de trabajar más, sino de conectar la estrategia, los sistemas de gestión y el trabajo de cada área.»
 3. **Hero ya existente**, con el lema, el video de 40 segundos y sus controles internos.
 4. **Frase aprobada tras `p-lead`:** «Para lograrlo, ISGE 360 combina asesoría personalizada y una plataforma que facilita la gestión de tus sistemas, alineados con la estrategia de tu empresa.»

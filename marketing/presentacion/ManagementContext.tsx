@@ -3,34 +3,28 @@ import {
   ClipboardCheck,
   Compass,
   CornerUpLeft,
-  FolderOpen,
-  Gauge,
+  ChartNoAxesCombined,
+  Network,
   Target,
-  TimerReset,
   Workflow,
 } from "lucide-react";
 import "./management-context.css";
 
 const situations = [
   {
-    icon: FolderOpen,
-    title: "Una carpeta por cada norma",
-    body: "SSO, Ambiente, BASC e ISO, cada uno por su lado. La información no se conecta.",
-  },
-  {
-    icon: TimerReset,
-    title: "Auditorías a última hora",
-    body: "Evidencias que hay que reunir a la carrera, una y otra vez.",
-  },
-  {
     icon: Target,
-    title: "Objetivos sin seguimiento visible",
-    body: "Hay planes y buenas intenciones, pero cuesta saber cuánto se ha avanzado.",
+    title: "Objetivos sin seguimiento",
+    body: "¿Sabes cuánto está avanzando realmente tu empresa?",
   },
   {
-    icon: Gauge,
-    title: "Información dispersa para decidir",
-    body: "Para saber cómo vamos, hay que pedir y reunir reportes.",
+    icon: Network,
+    title: "¿Los Sistemas de Gestión trabajan para tu empresa o tu empresa trabaja para ellos?",
+    body: "Sistemas de gestión desconectados de la estrategia de la empresa",
+  },
+  {
+    icon: ChartNoAxesCombined,
+    title: "Información dispersa",
+    body: "Demasiados reportes para saber cómo está la empresa.",
   },
 ];
 const stages = [
@@ -71,29 +65,24 @@ export function ManagementSituations() {
     <section className="p-situations" id="inicio" aria-labelledby="situations-title">
       <div className="p-context-inner">
         <div className="p-situations-heading">
-          <p className="p-eyebrow">EL RETO NO ES TENER MÁS CARPETAS</p>
-          <h1 id="situations-title">¿Te suena familiar?</h1>
-          <p>
-            La gestión debería ayudarte a decidir y mejorar.
-            <br />
-            No convertirse en otro trabajo por mantener.
-          </p>
+          <h1 id="situations-title">
+            ¿Diriges tu empresa o pasas demasiado tiempo tratando de averiguar qué está pasando en ella?
+          </h1>
+          <p>¿Te identificas con alguna de estas situaciones?</p>
         </div>
         <div className="p-situation-grid">
           {situations.map(item => (
             <article key={item.title} className="p-situation">
-              <item.icon size={24} strokeWidth={1.6} aria-hidden="true" />
+              <span className="p-situation-icon" aria-hidden="true">
+                <item.icon size={27} strokeWidth={1.8} />
+              </span>
               <div>
-                <h3>{item.title}</h3>
+                <h2>{item.title}</h2>
                 <p>{item.body}</p>
               </div>
             </article>
           ))}
         </div>
-        <a className="p-situations-link" href="#autoevaluacion">
-          Descubre tus oportunidades de mejora{" "}
-          <ArrowRight size={17} aria-hidden="true" />
-        </a>
         <p className="p-situations-bridge">
           No se trata de trabajar más, sino de conectar la estrategia, los
           sistemas de gestión y el trabajo de cada área.
