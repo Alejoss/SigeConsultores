@@ -18,8 +18,8 @@ const situations = [
   },
   {
     icon: Network,
-    title: "¿Los Sistemas de Gestión trabajan para tu empresa o tu empresa trabaja para ellos?",
-    body: "Sistemas de gestión desconectados de la estrategia de la empresa",
+    title: "Sistemas de gestión desconectados de la estrategia de la empresa",
+    body: "¿Los Sistemas de Gestión trabajan para tu empresa o tu empresa trabaja para ellos?",
   },
   {
     icon: ChartNoAxesCombined,
