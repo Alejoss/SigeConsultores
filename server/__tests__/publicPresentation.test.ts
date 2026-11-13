@@ -111,6 +111,13 @@ describe("Public commercial presentation (static only)", () => {
     expect(source).toMatch(/export\s+(?:function|const)\s+ManagementFlow/);
   });
 
+  it("shows the disconnected-systems statement as title and the reflective question below", () => {
+    const source = readSource("ManagementContext.tsx");
+    expect(source).toContain('title: "Sistemas de gestión desconectados de la estrategia de la empresa"');
+    expect(source).toContain('body: "¿Los Sistemas de Gestión trabajan para tu empresa o tu empresa trabaja para ellos?"');
+    expect(source).not.toContain('title: "¿Los Sistemas de Gestión trabajan para tu empresa o tu empresa trabaja para ellos?"');
+  });
+
   it("keeps the assessment after services and before contact, with internal-only hero actions", () => {
     const source = readSource("Home.tsx");
     expect(source.indexOf('id="servicios"')).toBeLessThan(source.indexOf("<ManagementAssessment />"));
