@@ -3,6 +3,8 @@
  * Run with: pnpm test:integration
  */
 export const integrationTestFiles = [
+  "server/__tests__/fodaPolicyLinks.integration.test.ts",
+  "server/__tests__/fodaExistingDataPreservation.integration.test.ts",
   "server/__tests__/consolidatedIndicators.test.ts",
   "server/__tests__/linkedCommitments.integration.test.ts",
   "server/__tests__/meetings.integration.test.ts",
