@@ -8,7 +8,8 @@ import { calculateActivityProgress } from "../lib/processActivities";
 import { calculateOtgProgress } from "../lib/otgProgress";
 import { calculateStakeholderActionProgress } from "@shared/stakeholderActionProgress";
 import { calculateObjectiveResultMetrics } from "../../shared/objectiveResultMetrics";
-import { calculateOtgResultMetrics } from "../../shared/otgResultMetrics";
+import { calculateOtgResultMetrics, otgNumericValue } from "../../shared/otgResultMetrics";
+import { calculateTolerableMargin, calculateTolerableObjectiveResult } from "../../shared/tolerableMargin";
 
 // ─── Helpers de cálculo (replicados del frontend) ────────────────────────────
 
@@ -18,11 +19,14 @@ function calcPct(ci: number, meta: number, ca: number): number {
   return Math.max(-100, Math.min(100, p));
 }
 
-function calcOOPercent(rk: any): number {
+function calcOOPercent(rk: any): number | null {
   const type = rk.ooTrackingType || 'puntual';
   const ci = parseFloat(rk.condicionInicial) || 0;
   const meta = parseFloat(rk.meta) || 0;
 
+  if (type === 'margen_tolerable') {
+    return calculateTolerableMargin(rk.ooTolerance).compliancePercent;
+  }
   if (type === 'puntual') {
     return calcPct(ci, meta, parseFloat(rk.condicionActual) || 0);
   }
@@ -52,6 +56,30 @@ function calcTasksAverage(tasks: any[]): number | null {
     return tasks.reduce((s: number, t: any) => s + (t.percentageCompleted || 0), 0) / tasks.length;
   }
   return tasks.reduce((s: number, t: any) => s + (t.percentageCompleted || 0) * (t.weighting || 0), 0) / totalWeighting;
+}
+
+/** Extend the canonical legacy plan calculation only for opted-in margin actions. */
+function readOtgPlanProgress(row: any): number | null {
+  const actions: any[] = Array.isArray(row.acciones) ? row.acciones : [];
+  if (!actions.some(action => action.tipoSeguimiento === 'margen_tolerable')) {
+    // A new result without a plan must not fall through to the legacy linear result formula.
+    if (actions.length === 0 && row.resultTrackingType === 'margen_tolerable'
+      && otgNumericValue(row.porcentajeCumplimiento) === null
+      && otgNumericValue(row.porcentajeAlcanzadoOTG) === null) return null;
+    return calculateOtgProgress(row);
+  }
+  const weighted = actions.map(action => ({
+    percentage: action.tipoSeguimiento === 'margen_tolerable'
+      ? calculateTolerableMargin(action.tolerance).compliancePercent
+      : calculateOtgProgress({ acciones: [action] }),
+    weight: Math.max(0, otgNumericValue(action.ponderacion) ?? 0),
+  }));
+  // Never describe an unmeasured margin action as a completed plan.
+  if (weighted.some(action => action.percentage === null)) return null;
+  const totalWeight = weighted.reduce((sum, action) => sum + action.weight, 0);
+  return totalWeight > 0
+    ? weighted.reduce((sum, action) => sum + action.percentage! * action.weight / totalWeight, 0)
+    : weighted.reduce((sum, action) => sum + action.percentage!, 0) / weighted.length;
 }
 
 export const consolidatedIndicatorsRouter = router({
@@ -102,9 +130,9 @@ export const consolidatedIndicatorsRouter = router({
                 // registros históricos que guardaban el porcentaje en la fila.
                 otgRows = matrixRows.map((row: any) => {
                   const acciones: any[] = Array.isArray(row.acciones) ? row.acciones : [];
-                  const pctOTGRedondeado = calculateOtgProgress(row);
+                  const pctOTGRedondeado = readOtgPlanProgress(row);
                   // Boolean legacy de plan completado; no afirma que se alcanzó el resultado OTG.
-                  const objetivoLogrado = acciones.length > 0 && pctOTGRedondeado >= 100;
+                  const objetivoLogrado = acciones.length > 0 && pctOTGRedondeado !== null && pctOTGRedondeado >= 100;
                   return {
                     id: row.id || String(Math.random()),
                     name: row.accionATomar || row.name || "OTG sin nombre",
@@ -118,12 +146,16 @@ export const consolidatedIndicatorsRouter = router({
                       id: a.id || String(Math.random()),
                       description: a.accion || a.description || "Sin descripción",
                       ponderacion: a.ponderacion || 0,
-                      porcentajeAlcanzado: calculateOtgProgress({ acciones: [a] }),
+                      porcentajeAlcanzado: a.tipoSeguimiento === 'margen_tolerable' ? calculateTolerableMargin(a.tolerance).compliancePercent : calculateOtgProgress({ acciones: [a] }),
+                      ...(a.tipoSeguimiento === 'margen_tolerable' ? {
+                        resultMetrics: calculateTolerableObjectiveResult(otgNumericValue(a.puntoPartidaAccion), a.tolerance),
+                        unidadMedida: a.unidadMedidaAccion || '',
+                      } : {}),
                     })),
                   };
                 });
                 matrizCumplimiento = otgRows.length > 0
-                  ? Math.round(otgRows.reduce((sum, otg) => sum + otg.pctOTG, 0) / otgRows.length)
+                  ? Math.round(otgRows.reduce((sum, otg) => sum + (otg.pctOTG ?? 0), 0) / otgRows.length)
                   : 0;
                 matrizAlcanzado = otgRows.filter((otg) => otg.objetivoLogrado).length;
               }
@@ -137,11 +169,12 @@ export const consolidatedIndicatorsRouter = router({
         const tacticalObjectives = await db.select().from(processTacticalObjectives)
           .where(eq(processTacticalObjectives.processId, input.processId));
 
-        let objetivosTacticosMetaAlcanzada = 0;
+        let objetivosTacticosMetaAlcanzada: number | null = 0;
         let oteRows: any[] = [];
 
         if (tacticalObjectives.length > 0) {
           let totalPonderado = 0;
+          let pendingMargin = false;
 
           for (const obj of tacticalObjectives) {
             if (!obj.planningData) continue;
@@ -156,7 +189,11 @@ export const consolidatedIndicatorsRouter = router({
 
               // % Meta Alcanzada del OTE — replicar exactamente la lógica de calcOTMetrics del frontend
               let porcentajeMetaAlcanzado = 0;
-              if (trackingTypeOTE === 'mensual_checklist') {
+              if (trackingTypeOTE === 'margen_tolerable') {
+                const margin = calculateTolerableMargin(pd.tolerance);
+                porcentajeMetaAlcanzado = margin.compliancePercent ?? 0;
+                if (margin.compliancePercent === null && ponderacion > 0) pendingMargin = true;
+              } else if (trackingTypeOTE === 'mensual_checklist') {
                 // Para checklist: % = meses_cumplidos / 12 * 100 (independiente de puntoPartida/metaLlegada)
                 const clVals: boolean[] = Array.isArray(pd.checklistValues)
                   ? pd.checklistValues
@@ -192,7 +229,9 @@ export const consolidatedIndicatorsRouter = router({
 
               // Resultado de lectura, independiente de los porcentajes legacy del agregado.
               const isChecklistOTE = trackingTypeOTE === 'mensual_checklist';
-              const resultMetrics = calculateObjectiveResultMetrics({
+              const resultMetrics = trackingTypeOTE === 'margen_tolerable'
+                ? calculateTolerableObjectiveResult(puntoPartida, pd.tolerance)
+                : calculateObjectiveResultMetrics({
                 baseline: isChecklistOTE ? 0 : puntoPartida,
                 goal: isChecklistOTE ? 12 : metaLlegada,
                 currentValue: Number(currentResultValue),
@@ -204,7 +243,8 @@ export const consolidatedIndicatorsRouter = router({
               const resultKeys: any[] = Array.isArray(pd.resultKeys) ? pd.resultKeys : [];
               const ooList = resultKeys.map((rk: any) => {
                 const tasks: any[] = Array.isArray(rk.tasks) ? rk.tasks : [];
-                const pctOO = Math.round(calcOOPercent(rk));
+                const ooProgress = calcOOPercent(rk);
+                const pctOO = rk.ooTrackingType === 'margen_tolerable' ? ooProgress : Math.round(ooProgress ?? 0);
                 const tasksAvg = calcTasksAverage(tasks);
 
                 const ooTrackingType = rk.ooTrackingType || 'puntual';
@@ -220,7 +260,9 @@ export const consolidatedIndicatorsRouter = router({
                   currentValue = ooChecklistValues.filter(Boolean).length;
                 }
                 const isChecklistOO = ooTrackingType === 'mensual_checklist';
-                const resultMetrics = calculateObjectiveResultMetrics({
+                const resultMetrics = ooTrackingType === 'margen_tolerable'
+                  ? calculateTolerableObjectiveResult(parseFloat(rk.condicionInicial) || 0, rk.ooTolerance)
+                  : calculateObjectiveResultMetrics({
                   baseline: isChecklistOO ? 0 : parseFloat(rk.condicionInicial) || 0,
                   goal: isChecklistOO ? 12 : parseFloat(rk.meta) || 0,
                   currentValue: Number(currentValue),
@@ -236,7 +278,7 @@ export const consolidatedIndicatorsRouter = router({
                   meta: rk.meta || 0,
                   condicionActual: rk.condicionActual || 0,
                   porcentajeAlcanzado: pctOO,
-                  porcentajeAlcanzadoRaw: resultMetrics.goalProgress,
+                  porcentajeAlcanzadoRaw: resultMetrics.tolerance ? resultMetrics.tolerance.compliancePercent : resultMetrics.goalProgress,
                   resultMetrics,
                   ooTrackingType,
                   unidadMedida: rk.unidadMedida || "",
@@ -259,9 +301,9 @@ export const consolidatedIndicatorsRouter = router({
               const totalOOPond = ooList.reduce((s: number, rk: any) => s + (rk.ponderacion || 0), 0);
               let pctOO = 0;
               if (totalOOPond > 0) {
-                pctOO = ooList.reduce((s: number, rk: any) => s + rk.porcentajeAlcanzado * (rk.ponderacion / totalOOPond), 0);
+                pctOO = ooList.reduce((s: number, rk: any) => s + (rk.porcentajeAlcanzado ?? 0) * (rk.ponderacion / totalOOPond), 0);
               } else if (ooList.length > 0) {
-                pctOO = ooList.reduce((s: number, rk: any) => s + rk.porcentajeAlcanzado, 0) / ooList.length;
+                pctOO = ooList.reduce((s: number, rk: any) => s + (rk.porcentajeAlcanzado ?? 0), 0) / ooList.length;
               }
 
               // % promedio ponderado de Tareas (solo OO que tienen tareas)
@@ -289,10 +331,11 @@ export const consolidatedIndicatorsRouter = router({
                 trackingType: pd.trackingType || "puntual",
                 monthlyValues: pd.monthlyValues || {},
                 checklistValues: pd.checklistValues || {},
-                porcentajeMetaAlcanzado: Math.round(porcentajeMetaAlcanzado),
+                porcentajeMetaAlcanzado: resultMetrics.tolerance ? resultMetrics.tolerance.compliancePercent : Math.round(porcentajeMetaAlcanzado),
                 porcentajeMetaAlcanzadoRaw: resultMetrics.goalProgress,
                 resultMetrics,
-                pctOO: Math.round(pctOO),
+                pctOO: ooList.some(oo => oo.resultMetrics.tolerance && oo.porcentajeAlcanzado === null) ? null : Math.round(pctOO),
+                hasMarginOO: ooList.some(oo => oo.ooTrackingType === 'margen_tolerable'),
                 tasksGlobalAvg: tasksGlobalAvg !== null ? Math.round(tasksGlobalAvg) : null,
                 hasOO: ooList.length > 0,
                 objetivosOperativos: ooList,
@@ -302,7 +345,7 @@ export const consolidatedIndicatorsRouter = router({
             }
           }
 
-          objetivosTacticosMetaAlcanzada = Math.round(totalPonderado);
+          objetivosTacticosMetaAlcanzada = pendingMargin ? null : Math.round(totalPonderado);
         }
 
         // ── Actividades del proceso ───────────────────────────────────────────

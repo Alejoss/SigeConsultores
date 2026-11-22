@@ -1,3 +1,5 @@
+import { calculateTolerableMargin, type TolerableMarginConfig } from '../../shared/tolerableMargin';
+
 type UnknownRecord = Record<string, unknown>;
 
 function asNumber(value: unknown): number | null {
@@ -17,6 +19,10 @@ function calcRangePercentage(start: number, target: number, current: number): nu
 
 function currentActionPercentage(action: UnknownRecord): number | null {
   const trackingType = String(action.tipoSeguimiento || "puntual");
+
+  if (trackingType === "margen_tolerable") {
+    return calculateTolerableMargin(action.tolerance as TolerableMarginConfig | undefined).compliancePercent;
+  }
 
   if (trackingType === "mensual_checklist") {
     const values = Array.isArray(action.checklistValues) ? action.checklistValues : [];
@@ -87,6 +93,9 @@ export function calculateOtgProgress(row: UnknownRecord): number {
 
   const savedTaskProgress = asNumber(row.porcentajeCumplimiento);
   if (savedTaskProgress !== null) return clampPercentage(savedTaskProgress);
+
+  // Un resultado por margen no representa ejecución de tareas; conserva el plan independiente.
+  if (row.resultTrackingType === "margen_tolerable") return 0;
 
   const savedObjectiveProgress = asNumber(row.porcentajeAlcanzadoOTG);
   if (savedObjectiveProgress !== null) return clampPercentage(savedObjectiveProgress);

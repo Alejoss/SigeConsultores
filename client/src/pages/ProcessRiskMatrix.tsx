@@ -25,6 +25,9 @@ import { editedObjectiveNarratives, OBJECTIVE_NARRATIVE_KEYS, type ObjectiveNarr
 import { ObjectiveResultSummary } from '@/components/ObjectiveResultSummary';
 import { calculateOtgResultMetrics } from '@shared/otgResultMetrics';
 import { formatObjectivePercent } from '@shared/objectiveResultMetrics';
+import { TolerableMarginFields } from '@/components/TolerableMarginFields';
+import { calculateTolerableMargin, calculateTolerableObjectiveResult, tolerableMarginStatusLabel } from '@shared/tolerableMargin';
+import { parseStoredFodaArray } from '@shared/fodaStoredJson';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 /** Calcula el % alcanzado del OTG en función del valor alcanzado y la meta */
@@ -226,7 +229,7 @@ function AccionOTGRow({
             className="w-full border rounded p-2 text-sm mt-1"
           />
         </div>
-        <div>
+        {accion.tipoSeguimiento !== 'margen_tolerable' && <div>
           <label className="text-xs font-semibold text-slate-600">Punto de Llegada (Meta)</label>
           <input
             ref={llegadaRef}
@@ -235,7 +238,7 @@ function AccionOTGRow({
             onBlur={(e) => { const v = parseFloat(e.target.value) || 0; if (llegadaRef.current) llegadaRef.current.value = String(v); update('puntoLlegadaAccion', v); }}
             className="w-full border rounded p-2 text-sm mt-1"
           />
-        </div>
+        </div>}
         <div>
           <label className="text-xs font-semibold text-slate-600">Unidad de Medida</label>
           <input
@@ -285,16 +288,21 @@ function AccionOTGRow({
         <label className="text-xs font-semibold text-slate-600">Tipo de Seguimiento</label>
         <select
           value={accion.tipoSeguimiento}
-          onChange={(e) => update('tipoSeguimiento', e.target.value as TrackingOTGType)}
+          onChange={(e) => onChange({ ...accion, tipoSeguimiento: e.target.value as TrackingOTGType, ...(e.target.value === 'margen_tolerable' && !accion.tolerance ? { tolerance: { recordingMode: 'puntual', currentValue: null } } : {}) })}
           className="w-full border rounded p-2 text-sm mt-1"
         >
           <option value="puntual">Puntual (valor directo)</option>
           <option value="mensual_sumatoria">Mensual Sumatoria (12 meses)</option>
           <option value="mensual_promedio">Mensual Promedio (12 meses)</option>
           <option value="mensual_checklist">Lista de Verificación Mensual</option>
+          <option value="margen_tolerable">Margen tolerable</option>
         </select>
       </div>
 
+      {accion.tipoSeguimiento === 'margen_tolerable' && <>
+        <TolerableMarginFields value={accion.tolerance} onChange={config => update('tolerance', config)} labelPrefix="Tarea OTG" />
+        <ObjectiveResultSummary metrics={calculateTolerableObjectiveResult(accion.puntoPartidaAccion, accion.tolerance)} unit={accion.unidadMedidaAccion || ''} title="Resultado de la tarea OTG" compact />
+      </>}
       {/* Campos según tipo */}
       {accion.tipoSeguimiento === 'puntual' && (
         <div>
@@ -371,7 +379,7 @@ function AccionOTGRow({
           Eliminar
         </button>
         <div className="text-sm font-semibold">
-          % Completado: <span className="text-blue-700 font-bold">{pct}%</span>
+          {accion.tipoSeguimiento === 'margen_tolerable' ? tolerableMarginStatusLabel(calculateTolerableMargin(accion.tolerance)) : <>% Completado: <span className="text-blue-700 font-bold">{formatObjectivePercent(pct)}</span></>}
         </div>
       </div>
     </div>
@@ -390,7 +398,6 @@ export default function ProcessRiskMatrix() {
   const hasFocusFodaRowIndex = focusParams.has('focusFodaRowIndex');
   const focusFodaRowIndex = Number(focusParams.get('focusFodaRowIndex'));
   const [processId, setProcessId] = useState<number | null>(null);
-  const [processName, setProcessName] = useState('');
   const [rows, setRows] = useState<MatrizFODARow[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
@@ -421,9 +428,16 @@ export default function ProcessRiskMatrix() {
   useEffect(() => {
     const queryProcessId = Number(new URLSearchParams(searchParams).get('processId'));
     const stored = queryProcessId || Number(localStorage.getItem('selectedProcessId'));
-    const storedName = localStorage.getItem('selectedProcessName');
-    if (stored > 0) { setProcessId(stored); setProcessName(storedName || 'Proceso'); }
+    if (stored > 0) setProcessId(stored);
   }, [searchParams]);
+
+  const { data: processData, isError: isProcessError } = trpc.processMap.get.useQuery(
+    { processId: processId || 0 },
+    { enabled: processId !== null }
+  );
+  const processName = processData?.id === processId
+    ? processData.name
+    : isProcessError ? 'Nombre no disponible' : 'Cargando nombre del proceso...';
 
   const { data: fodaData } = trpc.processFODA.get.useQuery(
     { processId: processId || 0, recordId: focusFodaRecordId || undefined },
@@ -436,10 +450,10 @@ export default function ProcessRiskMatrix() {
     fodaSyncDoneRef.current = true;
     try {
       const allFodaItems: Array<{ fodaElementId?: string; statement: string; type: FODAType; subprocess: string; policyObjectiveId?: number | null; policyObjective: string; policyObjectiveDescription?: string }> = [
-        ...JSON.parse(fodaData.strengths || '[]').map((i: any) => ({ ...i, type: 'Fortaleza' as FODAType })),
-        ...JSON.parse(fodaData.opportunities || '[]').map((i: any) => ({ ...i, type: 'Oportunidad' as FODAType })),
-        ...JSON.parse(fodaData.weaknesses || '[]').map((i: any) => ({ ...i, type: 'Debilidad' as FODAType })),
-        ...JSON.parse(fodaData.threats || '[]').map((i: any) => ({ ...i, type: 'Amenaza' as FODAType })),
+        ...parseStoredFodaArray(fodaData.strengths).map((i: any) => ({ ...i, type: 'Fortaleza' as FODAType })),
+        ...parseStoredFodaArray(fodaData.opportunities).map((i: any) => ({ ...i, type: 'Oportunidad' as FODAType })),
+        ...parseStoredFodaArray(fodaData.weaknesses).map((i: any) => ({ ...i, type: 'Debilidad' as FODAType })),
+        ...parseStoredFodaArray(fodaData.threats).map((i: any) => ({ ...i, type: 'Amenaza' as FODAType })),
       ];
       const fodaStatements = new Set(allFodaItems.map(i => i.statement).filter(Boolean));
       setRows(prev => {
@@ -475,10 +489,10 @@ export default function ProcessRiskMatrix() {
         const fodaLookup: Record<string, string> = {};
         try {
           const allFodaItems = [
-            ...JSON.parse(fodaData.strengths || '[]'),
-            ...JSON.parse(fodaData.opportunities || '[]'),
-            ...JSON.parse(fodaData.weaknesses || '[]'),
-            ...JSON.parse(fodaData.threats || '[]'),
+            ...parseStoredFodaArray(fodaData.strengths),
+            ...parseStoredFodaArray(fodaData.opportunities),
+            ...parseStoredFodaArray(fodaData.weaknesses),
+            ...parseStoredFodaArray(fodaData.threats),
           ];
           allFodaItems.forEach((item: any) => { if (item.statement && item.policyObjective) fodaLookup[item.statement] = item.policyObjective; });
         } catch (e) { console.error('Error building FODA lookup:', e); }
@@ -504,8 +518,10 @@ export default function ProcessRiskMatrix() {
                   acciones: accionesRecalculadas,
                   porcentajeCumplimiento: calcularPorcentajeOTG(accionesRecalculadas),
                   objetivoPolitica: row.objetivoPolitica || fodaLookup[row.elemento] || '',
-                  porcentajeAlcanzadoOTG: pct,
-                  mejoraImplementada: pct >= 100 ? 'SI' : 'NO',
+                  ...(row.resultTrackingType === 'margen_tolerable' ? {} : {
+                    porcentajeAlcanzadoOTG: pct,
+                    mejoraImplementada: pct >= 100 ? 'SI' : 'NO',
+                  }),
                 };
               });
             }
@@ -513,10 +529,10 @@ export default function ProcessRiskMatrix() {
         }
 
         if (newRows.length === 0) {
-          const strengths = JSON.parse(fodaData.strengths || '[]');
-          const opportunities = JSON.parse(fodaData.opportunities || '[]');
-          const weaknesses = JSON.parse(fodaData.weaknesses || '[]');
-          const threats = JSON.parse(fodaData.threats || '[]');
+          const strengths = parseStoredFodaArray(fodaData.strengths);
+          const opportunities = parseStoredFodaArray(fodaData.opportunities);
+          const weaknesses = parseStoredFodaArray(fodaData.weaknesses);
+          const threats = parseStoredFodaArray(fodaData.threats);
           let id = 1;
           const addRows = (items: any[], type: FODAType) => {
             items.forEach((item) => {
@@ -565,7 +581,7 @@ export default function ProcessRiskMatrix() {
     const totalPlanificado = rows.length;
     // % Alcanzado OTG: promedio del porcentajeAlcanzadoOTG de cada fila
     const pctAlcanzadoOTG = totalPlanificado > 0
-      ? Math.round(rows.reduce((sum, r) => sum + ((r as any).porcentajeAlcanzadoOTG ?? 0), 0) / totalPlanificado)
+      ? Math.round(rows.reduce((sum, r) => sum + (r.resultTrackingType === 'margen_tolerable' ? calculateTolerableMargin(r.tolerance).compliancePercent ?? 0 : (r as any).porcentajeAlcanzadoOTG ?? 0), 0) / totalPlanificado)
       : 0;
     // % Alcanzado en Tareas: promedio del porcentajeCumplimiento (acciones ponderadas) de cada fila
     const pctAlcanzadoTareas = totalPlanificado > 0
@@ -695,7 +711,7 @@ export default function ProcessRiskMatrix() {
         updated.diasRestantes = Math.ceil((finalDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       }
       // Recalcular mejoraImplementada automáticamente cuando cambia alcanzado/puntoLlegada/puntoPartida
-      if (field === 'alcanzado' || field === 'puntoLlegada' || field === 'puntoPartida') {
+      if (updated.resultTrackingType !== 'margen_tolerable' && (field === 'alcanzado' || field === 'puntoLlegada' || field === 'puntoPartida')) {
         const pct = calcularPorcentajeAlcanzado(
           field === 'alcanzado' ? value : (updated as any).alcanzado,
           field === 'puntoPartida' ? value : (updated as any).puntoPartida,
@@ -804,9 +820,9 @@ export default function ProcessRiskMatrix() {
 
       {/* Indicadores */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card><CardContent className="pt-4"><p className="text-sm text-slate-600 break-words">Avance hacia las metas OTG (normalizado)</p><p className="text-2xl font-bold text-blue-600">{(indicadores as any).pctAlcanzadoOTG ?? 0}%</p><p className="text-xs text-slate-500 mt-1">Promedio de los avances OTG normalizados entre 0 y 100%; no es la variación del indicador.</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-sm text-slate-600">Avance de ejecución de tareas OTG</p><p className="text-2xl font-bold text-green-600">{(indicadores as any).pctAlcanzadoTareas ?? 0}%</p><p className="text-xs text-slate-500 mt-1">Completar tareas no equivale a lograr el resultado numérico del OTG.</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-sm text-slate-600">% Comunicado</p><p className="text-2xl font-bold text-purple-600">{indicadores.porcentajeComunicado}%</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-slate-600 break-words">Avance hacia las metas OTG (normalizado)</p><p className="text-2xl font-bold text-blue-600">{formatObjectivePercent((indicadores as any).pctAlcanzadoOTG ?? 0)}</p><p className="text-xs text-slate-500 mt-1">Promedio normalizado del avance a meta; para margen tolerable usa las mediciones dentro de límites. No es la variación del indicador.</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-slate-600">Avance de ejecución de tareas OTG</p><p className="text-2xl font-bold text-green-600">{formatObjectivePercent((indicadores as any).pctAlcanzadoTareas ?? 0)}</p><p className="text-xs text-slate-500 mt-1">Completar tareas no equivale a lograr el resultado numérico del OTG.</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-slate-600">% Comunicado</p><p className="text-2xl font-bold text-purple-600">{formatObjectivePercent(indicadores.porcentajeComunicado)}</p></CardContent></Card>
       </div>
 
       {/* Indicadores por sistema */}
@@ -820,7 +836,7 @@ export default function ProcessRiskMatrix() {
                   <div key={sistema} className="p-3 border rounded-lg bg-slate-50">
                     <p className="text-xs font-semibold text-slate-700 mb-1">{sistema}</p>
                     <p className="text-lg font-bold text-blue-600">{datos.alcanzados}/{datos.total}</p>
-                    <p className={`text-sm font-bold ${datos.porcentaje >= 80 ? 'text-green-600' : datos.porcentaje >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>{datos.porcentaje}%</p>
+                    <p className={`text-sm font-bold ${datos.porcentaje >= 80 ? 'text-green-600' : datos.porcentaje >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>{formatObjectivePercent(datos.porcentaje)}</p>
                   </div>
                 ) : null
               )}
@@ -893,8 +909,8 @@ export default function ProcessRiskMatrix() {
                         <span className={`font-semibold text-xs ${row.mejoraImplementada === 'SI' ? 'text-green-600' : 'text-red-600'}`}>
                           {row.mejoraImplementada === 'SI' ? '✓ SI' : '✗ NO'}
                         </span>
-                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded break-words" title="Avance hacia la meta OTG (sin recorte)">OTG: {formatObjectivePercent(resultMetrics.goalProgress)}</span>
-                        <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded" title="Avance de ejecución de tareas OTG">Tareas: {pctOTG}%</span>
+                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded break-words" title="Resultado del OTG">{resultMetrics.tolerance ? tolerableMarginStatusLabel(resultMetrics.tolerance) : <>OTG: {formatObjectivePercent(resultMetrics.goalProgress)}</>}</span>
+                        <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded" title="Avance de ejecución de tareas OTG">Tareas: {formatObjectivePercent(pctOTG)}</span>
                         {isExpanded ? <ChevronUp size={18} className="text-slate-500" /> : <ChevronDown size={18} className="text-slate-500" />}
                       </div>
                     </div>
@@ -1000,6 +1016,13 @@ export default function ProcessRiskMatrix() {
                       />
                     </div>
 
+                    <div className="mt-4">
+                      <label className="block text-xs font-semibold text-slate-600" htmlFor={`result-tracking-${row.id}`}>Tipo de seguimiento del resultado OTG</label>
+                      <select id={`result-tracking-${row.id}`} className="mt-1 w-full rounded border p-2 text-sm" value={row.resultTrackingType || 'puntual'} onChange={e => updateRow(row.id, 'resultTrackingType', e.target.value)}>
+                        <option value="puntual">Puntual (valor directo)</option><option value="margen_tolerable">Margen tolerable</option>
+                      </select>
+                    </div>
+                    {row.resultTrackingType === 'margen_tolerable' && <div className="mt-4"><TolerableMarginFields value={row.tolerance} onChange={config => updateRow(row.id, 'tolerance', config)} labelPrefix="OTG" /></div>}
                     {/* Punto de Partida + Llegada + Unidad + Responsable */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
                       <div>
@@ -1012,7 +1035,7 @@ export default function ProcessRiskMatrix() {
                           placeholder="0"
                         />
                       </div>
-                      <div>
+                      {row.resultTrackingType !== 'margen_tolerable' && <div>
                         <label className="text-xs font-semibold text-slate-600">Meta (punto de llegada)</label>
                         <input
                           type="number" step="any"
@@ -1021,7 +1044,7 @@ export default function ProcessRiskMatrix() {
                           className="w-full border rounded p-2 text-sm mt-1"
                           placeholder="100"
                         />
-                      </div>
+                      </div>}
                       <div>
                         <label className="text-xs font-semibold text-slate-600">Unidad de Medida</label>
                         <input
@@ -1046,7 +1069,7 @@ export default function ProcessRiskMatrix() {
 
                     {/* Captura intacta; el resumen deriva el resultado sin alterar el guardado. */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
-                      <div className="min-w-0">
+                      {row.resultTrackingType !== 'margen_tolerable' && <div className="min-w-0">
                         <label className="text-xs font-semibold text-slate-600">Resultado actual</label>
                         <input
                           type="number" step="any"
@@ -1055,8 +1078,8 @@ export default function ProcessRiskMatrix() {
                           className="w-full border rounded p-2 text-sm mt-1"
                           placeholder="Valor del resultado actual"
                         />
-                      </div>
-                      <div className="lg:col-span-2 min-w-0 border border-slate-200 rounded-lg p-3 sm:p-4 bg-slate-50">
+                      </div>}
+                      <div className={`${row.resultTrackingType === 'margen_tolerable' ? 'lg:col-span-3' : 'lg:col-span-2'} min-w-0 border border-slate-200 rounded-lg p-3 sm:p-4 bg-slate-50`}>
                         <ObjectiveResultSummary metrics={resultMetrics} unit={row.unidadMedida || ''} title="Resultado del OTG" />
                       </div>
                     </div>
@@ -1105,7 +1128,7 @@ export default function ProcessRiskMatrix() {
                         </button>
                         {(row.acciones || []).length > 0 && (
                           <div className="text-right text-sm font-semibold text-blue-700 bg-blue-50 p-2 rounded">
-                            Avance de ejecución de tareas OTG: <span className="text-lg">{calcularPorcentajeOTG(row.acciones || [])}%</span>
+                            Avance de ejecución de tareas OTG: <span className="text-lg">{formatObjectivePercent(calcularPorcentajeOTG(row.acciones || []))}</span>
                           </div>
                         )}
                       </div>
@@ -1158,7 +1181,7 @@ export default function ProcessRiskMatrix() {
                           </button>
                           {(row.acciones || []).length > 0 && (
                             <div className="text-right text-sm font-semibold text-blue-700 bg-blue-50 p-2 rounded">
-                              Avance de ejecución de tareas OTG: <span className="text-lg">{calcularPorcentajeOTG(row.acciones || [])}%</span>
+                              Avance de ejecución de tareas OTG: <span className="text-lg">{formatObjectivePercent(calcularPorcentajeOTG(row.acciones || []))}</span>
                             </div>
                           )}
                         </div>

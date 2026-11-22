@@ -4,13 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ProcessFODA from "../ProcessFODA";
 
 const mocks = vi.hoisted(() => ({ data: null as any, isFetching: false, objectives: [] as any[], get: vi.fn(), list: vi.fn(),
+  processData: undefined as any, processError: false, getProcess: vi.fn(),
   save: vi.fn(), navigate: vi.fn(), error: vi.fn(),
   cache: { processFODA: { get: { invalidate: vi.fn() } } },
   subprocessMap: { subprocesos: JSON.stringify([{ subproceso: "Finanzas" }]) } }));
 vi.mock("wouter", () => ({ useLocation: () => ["/process-foda", mocks.navigate] }));
-vi.mock("@/lib/sessionScope", () => ({ getProcessIdFromSession: () => 21 }));
 vi.mock("@/lib/trpc", () => ({ trpc: {
   useUtils: () => mocks.cache,
+  processMap: { get: { useQuery: (...args: any[]) => {
+    mocks.getProcess(...args); return { data: mocks.processData, isError: mocks.processError };
+  } } },
   processFODA: {
     get: { useQuery: (...args: any[]) => {
       mocks.get(...args);
@@ -31,8 +34,11 @@ const historic = { id: 1, fodaElementId: "historical", policyObjectiveId: 999,
 const remoteFinding = { ...historic, id: 2, fodaElementId: "remote-finding", statement: "Hallazgo remoto B", description: "Conservar también B" };
 function seed(rows = [historic]) { mocks.data = { strengths: JSON.stringify(rows), opportunities: "[]", weaknesses: "[]", threats: "[]" }; }
 async function debounce() { await act(async () => { await vi.advanceTimersByTimeAsync(1600); }); }
+function processTitle() { return screen.getByText(/^Proceso:/, { selector: "p" }).textContent; }
 beforeEach(() => {
   vi.clearAllMocks(); vi.useFakeTimers(); localStorage.clear();
+  sessionStorage.clear(); window.history.replaceState({}, "", "/process-foda?processId=21&companyId=7");
+  mocks.processData = { id: 21, name: "Finanzas", companyId: 7 }; mocks.processError = false;
   localStorage.setItem("selectedPolicyId", "87654"); localStorage.setItem("selectedProcessName", "Finanzas");
   mocks.objectives = [{ id: 100, objective: "Objetivo vigente", description: "Nueva descripción" }];
   mocks.isFetching = false;
@@ -42,6 +48,65 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe("FODA: política del proceso y autoguardado seguro", () => {
+  it("abre 13 hallazgos con saltos heredados, conserva textos y solo guarda al editar", async () => {
+    const keys = ["strengths", "opportunities", "weaknesses", "threats"];
+    const counts = [4, 3, 2, 4];
+    const rows = counts.map((count, category) => Array.from({ length: count }, (_, index) => ({
+      ...historic, id: category * 10 + index, fodaElementId: `${category}-${index}`,
+      statement: `Hallazgo ficticio ${category}-${index}`, extraProperty: "Conservar dato desconocido",
+    })));
+    mocks.data = Object.fromEntries(keys.map((key, index) => [key, JSON.stringify(rows[index]).replace(/\\n/g, "\n")]));
+    const original = JSON.stringify(mocks.data);
+    render(<ProcessFODA />); await debounce();
+    expect(screen.getAllByLabelText("Enunciado")).toHaveLength(13);
+    expect(screen.getAllByLabelText("Objetivo Seleccionado").map(field => (field as HTMLTextAreaElement).value))
+      .toEqual(Array(13).fill(historic.selectedObjectiveContent));
+    expect(mocks.save).not.toHaveBeenCalled(); expect(JSON.stringify(mocks.data)).toBe(original);
+    const field = screen.getAllByLabelText("Enunciado")[0]; field.focus();
+    fireEvent.change(field, { target: { value: "Edición autorizada de un hallazgo" } }); await debounce();
+    expect(document.activeElement).toBe(field); expect(mocks.save).toHaveBeenCalledTimes(1);
+    const saved = mocks.save.mock.calls[0][0];
+    keys.forEach((key, index) => expect(JSON.parse(saved[key])).toEqual(rows[index].map((row, rowIndex) => ({
+      ...row, type: ["Fortaleza", "Oportunidad", "Debilidad", "Amenaza"][index],
+      ...(index === 0 && rowIndex === 0 ? { statement: "Edición autorizada de un hallazgo" } : {}),
+    }))));
+  });
+  it.each(['[{"statement":"Texto sin cierre"}', '[null]', '{"statement":"Objeto inesperado"}'])
+    ("bloquea el formulario ante un formato no recuperable sin guardar ni sustituir datos (%s)", async invalid => {
+      mocks.data = { ...mocks.data, opportunities: invalid };
+      const original = JSON.stringify(mocks.data); const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        render(<ProcessFODA />); await debounce();
+        expect(screen.getByRole("alert").textContent).toContain("No se pudo cargar el análisis FODA");
+        expect(screen.queryByLabelText("Enunciado")).toBeNull();
+        expect(mocks.save).not.toHaveBeenCalled(); expect(JSON.stringify(mocks.data)).toBe(original);
+      } finally { log.mockRestore(); }
+    });
+  it("muestra el proceso de la URL aunque el navegador recuerde otro nombre y guarda solo en el proceso abierto", async () => {
+    localStorage.setItem("selectedProcessId", "11"); localStorage.setItem("selectedProcessName", "Producción: Aliaga");
+    mocks.processData = { id: 21, name: "Postcosecha de revisión B", companyId: 7 };
+    render(<ProcessFODA />); await debounce();
+    expect(processTitle()).toBe("Proceso: Postcosecha de revisión B");
+    expect(screen.queryByText("Producción: Aliaga", { selector: "strong" })).toBeNull();
+    expect(mocks.getProcess).toHaveBeenCalledWith({ processId: 21 }, { enabled: true });
+    expect(mocks.get).toHaveBeenCalledWith({ processId: 21 }, expect.objectContaining({ enabled: true }));
+    expect(mocks.save).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Enunciado"), { target: { value: "Edición del proceso B" } }); await debounce();
+    expect(mocks.save.mock.calls[0][0].processId).toBe(21);
+  });
+  it.each([undefined, { id: 11, name: "Nombre de otro proceso" }])("no inventa el nombre desde localStorage si no hay respuesta del proceso abierto (%s)", async processData => {
+    mocks.processData = processData; localStorage.setItem("selectedProcessName", "Producción: Aliaga");
+    render(<ProcessFODA />); await debounce();
+    expect(processTitle()).toBe("Proceso: Cargando nombre del proceso...");
+    expect(processTitle()).not.toMatch(/Producción: Aliaga|Nombre de otro proceso/);
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+  it("un error del nombre no bloquea ni reescribe el FODA", async () => {
+    mocks.processData = undefined; mocks.processError = true;
+    render(<ProcessFODA />); await debounce();
+    expect(processTitle()).toBe("Proceso: Nombre no disponible");
+    expect(screen.getByLabelText("Enunciado")).toBeTruthy(); expect(mocks.save).not.toHaveBeenCalled();
+  });
   it("usa proceso autorizado aunque haya una política antigua recordada", () => {
     render(<ProcessFODA />);
     expect(mocks.list).toHaveBeenCalledWith({ processId: 21 }, expect.objectContaining({ refetchOnWindowFocus: "always" }));

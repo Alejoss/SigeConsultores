@@ -46,29 +46,29 @@ describe("ProcessIndicators OTG: numeric result and task execution remain separa
   it("reuses the five-field green result summary rather than the giant task percentage", () => {
     const view = mount();
     const result = within(screen.getByRole("group", { name: "Resultado del OTG" }));
-    for (const label of ["Punto de partida", "Resultado actual", "Meta", "Variación respecto al inicio", "Avance hacia la meta"]) {
+    for (const label of ["Punto de partida", "Resultado actual", "Meta", "Variación relativa", "Avance hacia la meta"]) {
       expect(result.getByText(label)).toBeTruthy();
     }
     expect(result.getByText("160 unidades")).toBeTruthy();
     expect(result.getByText("180 unidades")).toBeTruthy();
     expect(result.getByText("200 unidades")).toBeTruthy();
-    expect(result.getByText("+12,5 %")).toBeTruthy();
-    expect(result.getByText("50 %")).toBeTruthy();
+    expect(result.getByText("+12,50 %")).toBeTruthy();
+    expect(result.getByText("50,00 %")).toBeTruthy();
     expect(screen.queryByText("% Cumplimiento OTG")).toBeNull();
     expect(view.container.querySelector(".text-4xl")).toBeNull();
     expect(result.getByText("Resultado actual").parentElement!.querySelector(".text-2xl")).toBeTruthy();
     expect(result.getByText("Resultado del OTG").closest(".md\\:col-span-2")!.getAttribute("style")).toContain("background-color: rgb(20, 83, 45)");
   });
 
-  it("shows a completed plan and 100% task without asserting a numeric result reached at 40%", () => {
+  it("shows a completed plan and 100,00 % task without asserting a numeric result reached at 40,00 %", () => {
     seed(fixture({ resultMetrics: metrics(100, 200, 140) }));
     mount();
     const execution = within(screen.getByRole("region", { name: "Ejecución del plan (tareas)" }));
     expect(execution.getByText("Avance ponderado de tareas completadas")).toBeTruthy();
-    expect(execution.getByText("100%")).toBeTruthy();
+    expect(execution.getByText("100,00 %")).toBeTruthy();
     expect(execution.getByText("Completar tareas no equivale a lograr el resultado numérico del OTG.")).toBeTruthy();
     const result = within(screen.getByRole("group", { name: "Resultado del OTG" }));
-    expect(result.getByText("40 %")).toBeTruthy();
+    expect(result.getByText("40,00 %")).toBeTruthy();
     expect(result.getByText("En camino a la meta")).toBeTruthy();
     expect(screen.queryByText("Meta alcanzada")).toBeNull();
     expect(screen.queryByText("Logrado")).toBeNull();
@@ -76,8 +76,8 @@ describe("ProcessIndicators OTG: numeric result and task execution remain separa
     expect(screen.getByText("Planes completados")).toBeTruthy();
     expect(screen.getByText("Comunicado")).toBeTruthy();
     const task = within(screen.getByText("Preparar el informe").closest(".rounded-lg")!);
-    expect(task.getByText("100%")).toBeTruthy();
-    expect(task.getByText("Pond. 100%")).toBeTruthy();
+    expect(task.getByText("100,00 %")).toBeTruthy();
+    expect(task.getByText("Pond. 100,00 %")).toBeTruthy();
   });
 
   it("labels the legacy false boolean as a plan in process, keeping communication badges", () => {
@@ -85,20 +85,20 @@ describe("ProcessIndicators OTG: numeric result and task execution remain separa
     mount();
     expect(screen.getByText("Plan en proceso")).toBeTruthy();
     expect(screen.getByText("No comunicado")).toBeTruthy();
-    expect(within(screen.getByRole("region", { name: "Ejecución del plan (tareas)" })).getByText("25%")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Ejecución del plan (tareas)" })).getByText("25,00 %")).toBeTruthy();
   });
 
   it.each([
-    { current: 25, percentage: "150 %", signed: "+150 %", bounded: "100" },
-    { current: 29, percentage: "190 %", signed: "+190 %", bounded: "100" },
-    { current: 35, percentage: "250 %", signed: "+250 %", bounded: "100" },
-    { current: -5, percentage: "-150 %", signed: "-150 %", bounded: "0" },
+    { current: 25, percentage: "150,00 %", signed: "+150,00 %", bounded: "100" },
+    { current: 29, percentage: "190,00 %", signed: "+190,00 %", bounded: "100" },
+    { current: 35, percentage: "250,00 %", signed: "+250,00 %", bounded: "100" },
+    { current: -5, percentage: "-150,00 %", signed: "-150,00 %", bounded: "0" },
   ])("renders raw $percentage result while bounding only the visual bar", ({ current, percentage, signed, bounded }) => {
     seed(fixture({ resultMetrics: metrics(10, 20, current) }));
     mount();
     const result = within(screen.getByRole("group", { name: "Resultado del OTG" }));
     expect(within(result.getByText("Avance hacia la meta").parentElement!).getByText(percentage)).toBeTruthy();
-    expect(within(result.getByText("Variación respecto al inicio").parentElement!).getByText(signed)).toBeTruthy();
+    expect(within(result.getByText("Variación relativa").parentElement!).getByText(signed)).toBeTruthy();
     expect(result.getByRole("progressbar").getAttribute("aria-valuenow")).toBe(bounded);
     expect(result.getByRole("progressbar").getAttribute("aria-valuetext")).toContain(percentage);
   });
@@ -108,10 +108,10 @@ describe("ProcessIndicators OTG: numeric result and task execution remain separa
     mount();
     const result = within(screen.getByRole("group", { name: "Resultado del OTG" }));
     const change = within(result.getByText("Cambio respecto al inicio").parentElement!);
-    expect(change.getByText("+15 puntos porcentuales", { exact: false })).toBeTruthy();
-    expect(change.getByText("Variación relativa: +150 %")).toBeTruthy();
-    expect(result.getByText("25 %")).toBeTruthy();
-    expect(within(result.getByText("Avance hacia la meta").parentElement!).getByText("150 %")).toBeTruthy();
+    expect(change.getByText("+15,00 p.p.", { exact: false })).toBeTruthy();
+    expect(within(result.getByText("Variación relativa").parentElement!).getByText("+150,00 %")).toBeTruthy();
+    expect(result.getByText("25,00 %")).toBeTruthy();
+    expect(within(result.getByText("Avance hacia la meta").parentElement!).getByText("150,00 %")).toBeTruthy();
   });
 
   it.each([
@@ -122,11 +122,11 @@ describe("ProcessIndicators OTG: numeric result and task execution remain separa
     mount();
     const result = within(screen.getByRole("group", { name: "Resultado del OTG" }));
     expect(result.getByText(explanation)).toBeTruthy();
-    expect(result.getByText(/Cambio absoluto/)).toBeTruthy();
-    expect(result.getByText("50 %")).toBeTruthy();
+    expect(result.getByText("Cambio respecto al inicio")).toBeTruthy();
+    expect(result.getByText("50,00 %")).toBeTruthy();
   });
 
-  it("keeps missing result data missing even with 100% tasks and a completed plan", () => {
+  it("keeps missing result data missing even with 100,00 % tasks and a completed plan", () => {
     seed(fixture({ resultMetrics: calculateOtgResultMetrics({ puntoPartida: " ", puntoLlegada: null, alcanzado: undefined }) }));
     mount();
     const result = within(screen.getByRole("group", { name: "Resultado del OTG" }));
@@ -143,7 +143,7 @@ describe("ProcessIndicators OTG: numeric result and task execution remain separa
     const execution = within(screen.getByRole("region", { name: "Ejecución del plan (tareas)" }));
     expect(execution.getByText("Porcentaje histórico registrado")).toBeTruthy();
     expect(execution.getByText("Sin tareas actuales")).toBeTruthy();
-    expect(execution.getByText("56%")).toBeTruthy();
+    expect(execution.getByText("56,00 %")).toBeTruthy();
     expect(execution.queryByText("Avance ponderado de tareas completadas")).toBeNull();
     expect(screen.queryByText("Preparar el informe")).toBeNull();
     expect(screen.queryByText("Plan completado")).toBeNull();
@@ -155,7 +155,7 @@ describe("ProcessIndicators OTG: numeric result and task execution remain separa
     mount();
     const result = within(screen.getByRole("group", { name: "Resultado del OTG" }));
     expect(result.getByText("Sin avance calculable")).toBeTruthy();
-    expect(result.queryByText("82 %")).toBeNull();
+    expect(result.queryByText("82,00 %")).toBeNull();
     expect(result.queryByText("Meta alcanzada")).toBeNull();
   });
 
@@ -176,8 +176,8 @@ describe("ProcessIndicators OTG: numeric result and task execution remain separa
     seed(fixture(), 73);
     mount();
     const overview = within(screen.getByText("Cumplimiento del plan OTG").closest("button")!);
-    expect(overview.getByText("73%")).toBeTruthy();
+    expect(overview.getByText("73,00 %")).toBeTruthy();
     expect(overview.getByText(/El resultado individual se mide aparte/)).toBeTruthy();
-    expect(overview.queryByText("50 %")).toBeNull();
+    expect(overview.queryByText("50,00 %")).toBeNull();
   });
 });

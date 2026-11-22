@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { policies, policyObjectives, processFODA } from "../../drizzle/schema";
 import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { assertProcessAccessById } from "../_core/companyPermissions";
+import { parseStoredFodaArray } from "../../shared/fodaStoredJson";
 
 type FodaPayloadItem = Record<string, unknown>;
 
@@ -16,6 +17,18 @@ function parsePayloadArray(serialized: string, field: string): FodaPayloadItem[]
       throw new Error("invalid-item");
     }
     return parsed as FodaPayloadItem[];
+  } catch {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `El contenido de ${field} no tiene un formato válido.`,
+    });
+  }
+}
+
+/** La compatibilidad heredada se limita a las cuatro categorías ya almacenadas. */
+function parseStoredPayloadArray(serialized: string | null | undefined, field: string): FodaPayloadItem[] {
+  try {
+    return parseStoredFodaArray<FodaPayloadItem>(serialized);
   } catch {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -148,10 +161,10 @@ export const processFODARouter = router({
         .orderBy(desc(processFODA.updatedAt));
       const previous = existing[0];
       const [strengths, opportunities, weaknesses, threats] = await Promise.all([
-        normalizeObjectiveLinks(db, process.companyId, input.strengths || "[]", "fortalezas", "policyObjective", parsePayloadArray(previous?.strengths || "[]", "fortalezas existentes")),
-        normalizeObjectiveLinks(db, process.companyId, input.opportunities || "[]", "oportunidades", "policyObjective", parsePayloadArray(previous?.opportunities || "[]", "oportunidades existentes")),
-        normalizeObjectiveLinks(db, process.companyId, input.weaknesses || "[]", "debilidades", "policyObjective", parsePayloadArray(previous?.weaknesses || "[]", "debilidades existentes")),
-        normalizeObjectiveLinks(db, process.companyId, input.threats || "[]", "amenazas", "policyObjective", parsePayloadArray(previous?.threats || "[]", "amenazas existentes")),
+        normalizeObjectiveLinks(db, process.companyId, input.strengths || "[]", "fortalezas", "policyObjective", parseStoredPayloadArray(previous?.strengths, "fortalezas existentes")),
+        normalizeObjectiveLinks(db, process.companyId, input.opportunities || "[]", "oportunidades", "policyObjective", parseStoredPayloadArray(previous?.opportunities, "oportunidades existentes")),
+        normalizeObjectiveLinks(db, process.companyId, input.weaknesses || "[]", "debilidades", "policyObjective", parseStoredPayloadArray(previous?.weaknesses, "debilidades existentes")),
+        normalizeObjectiveLinks(db, process.companyId, input.threats || "[]", "amenazas", "policyObjective", parseStoredPayloadArray(previous?.threats, "amenazas existentes")),
       ]);
 
       if (existing.length > 0) {

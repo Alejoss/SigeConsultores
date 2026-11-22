@@ -50,15 +50,15 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("ProcessIndicators: result and plan execution are separate readings", () => {
-  it("renders the five OTE figures with current result primary, not a giant percentage or circle", () => {
+  it("renders the six OTE figures with current result primary, not a giant percentage or circle", () => {
     const view = mount();
     const result = within(screen.getByRole("group", { name: "Resultado del OTE" }));
-    for (const label of ["Punto de partida", "Resultado actual", "Meta", "Variación respecto al inicio", "Avance hacia la meta"]) {
+    for (const label of ["Punto de partida", "Resultado actual", "Meta", "Cambio respecto al inicio", "Variación relativa", "Avance hacia la meta"]) {
       expect(result.getByText(label)).toBeTruthy();
     }
     expect(result.getByText("180 unidades")).toBeTruthy();
-    expect(result.getByText("+12,5 %")).toBeTruthy();
-    expect(result.getByText("50 %")).toBeTruthy();
+    expect(result.getByText("+12,50 %")).toBeTruthy();
+    expect(result.getByText("50,00 %")).toBeTruthy();
     expect(result.queryByText("999 unidades")).toBeNull();
     expect(view.container.querySelector(".text-6xl")).toBeNull();
     expect(view.container.querySelector(".recharts-pie")).toBeNull();
@@ -67,19 +67,19 @@ describe("ProcessIndicators: result and plan execution are separate readings", (
     mount();
     const execution = within(screen.getByRole("region", { name: "Ejecución del plan (OO y tareas)" }));
     expect(execution.getByText("Avance ponderado hacia las metas OO")).toBeTruthy();
-    expect(execution.getByText("14%")).toBeTruthy();
+    expect(execution.getByText("14,00 %")).toBeTruthy();
     expect(execution.getByText("Avance ponderado de tareas completadas")).toBeTruthy();
-    expect(execution.getByText("100%")).toBeTruthy();
+    expect(execution.getByText("100,00 %")).toBeTruthy();
     expect(execution.getByText("Completar tareas no equivale a lograr el resultado numérico del OTE.")).toBeTruthy();
     const oo = within(screen.getByRole("group", { name: "Resultado del OO" }));
-    expect(oo.getByText("-10 %")).toBeTruthy();
-    expect(oo.getByText("50 %")).toBeTruthy();
-    expect(screen.getByText("Avance de tareas completadas: 100%")).toBeTruthy();
-    expect(screen.getByText("Completada: 100%")).toBeTruthy();
+    expect(oo.getByText("-10,00 %")).toBeTruthy();
+    expect(oo.getByText("50,00 %")).toBeTruthy();
+    expect(screen.getByText("Avance de tareas completadas: 100,00 %")).toBeTruthy();
+    expect(screen.getByText("Completada: 100,00 %")).toBeTruthy();
   });
   it.each([
-    { value: 25, progress: "150 %", bounded: "100" },
-    { value: -5, progress: "-150 %", bounded: "0" },
+    { value: 25, progress: "150,00 %", bounded: "100" },
+    { value: -5, progress: "-150,00 %", bounded: "0" },
   ])("renders $progress without clipping text while bounding the visual bar", ({ value, progress, bounded }) => {
     seed(fixture({ resultMetrics: metrics(10, 20, value), porcentajeMetaAlcanzado: value > 0 ? 100 : -100 }));
     mount();
@@ -96,7 +96,7 @@ describe("ProcessIndicators: result and plan execution are separate readings", (
     mount();
     const result = within(screen.getByRole("group", { name: "Resultado del OTE" }));
     expect(result.getByText(explanation)).toBeTruthy();
-    expect(result.getByText(/Cambio absoluto/)).toBeTruthy();
+    expect(result.getByText("Cambio respecto al inicio")).toBeTruthy();
   });
   it("uses checklist counts and explanation, displaying January at array index zero", () => {
     seed(fixture({
@@ -116,7 +116,7 @@ describe("ProcessIndicators: result and plan execution are separate readings", (
     seed(fixture(), 70);
     const view = mount();
     expect(screen.getByText("Avance ponderado hacia las metas de los OTE")).toBeTruthy();
-    expect(screen.getByText("70%")).toBeTruthy();
+    expect(screen.getByText("70,00 %")).toBeTruthy();
     expect(view.container.querySelector(".grid-cols-1.md\\:grid-cols-5")).toBeTruthy();
     expect(view.container.querySelector(".md\\:col-span-2.min-w-0, .min-w-0.md\\:col-span-2")).toBeTruthy();
     expect(view.container.querySelector(".md\\:col-span-3.min-w-0, .min-w-0.md\\:col-span-3")).toBeTruthy();
@@ -138,6 +138,6 @@ describe("ProcessIndicators: result and plan execution are separate readings", (
     seed(fixture(), 70);
     mount();
     const label = screen.getByText("Avance ponderado hacia las metas de los OTE");
-    expect(within(label.closest("button")!).getByText("70%")).toBeTruthy();
+    expect(within(label.closest("button")!).getByText("70,00 %")).toBeTruthy();
   });
 });
