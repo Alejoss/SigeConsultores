@@ -13,14 +13,17 @@ import { AutosavingObjectiveNarratives } from "@/components/ObjectiveNarrativeFi
 import { ProcessQuickNavigation } from "@/components/ProcessQuickNavigation";
 import { objectiveNarrativeAutosaveQueue, objectivePlanningSaveSignature, OBJECTIVE_NARRATIVE_KEYS, type ObjectiveNarratives } from "@/lib/objectiveNarratives";
 import { ObjectiveResultSummary } from "@/components/ObjectiveResultSummary";
-import { calculateObjectiveResultMetrics, type ObjectiveResultMetrics } from "@shared/objectiveResultMetrics";
+import { TolerableMarginFields } from "@/components/TolerableMarginFields";
+import { calculateObjectiveResultMetrics, formatObjectivePercent, type ObjectiveResultMetrics } from "@shared/objectiveResultMetrics";
+import { calculateTolerableMargin, calculateTolerableObjectiveResult, tolerableMarginStatusLabel, type TolerableMarginConfig } from "@shared/tolerableMargin";
 
 // ─── Tipos de seguimiento disponibles ────────────────────────────────────────
 // 'puntual'            → un valor directo; % = (condicionActual - ci) / (meta - ci) * 100
 // 'mensual_sumatoria'  → 12 celdas mensuales; condicionActual = suma de valores; % = (suma - ci) / (meta - ci) * 100
 // 'mensual_promedio'   → 12 celdas mensuales; condicionActual = promedio de valores ingresados
 // 'mensual_checklist'  → 12 celdas con ✓/vacío; condicionActual = meses cumplidos; % = cumplidos/12*100
-type TrackingType = 'puntual' | 'mensual_sumatoria' | 'mensual_promedio' | 'mensual_checklist';
+// 'margen_tolerable'   → límites incluidos; cumplimiento de las mediciones registradas, sin avance lineal
+type TrackingType = 'puntual' | 'mensual_sumatoria' | 'mensual_promedio' | 'mensual_checklist' | 'margen_tolerable';
 
 interface Task {
   id: string;
@@ -51,6 +54,7 @@ interface ResultKey {
   ooTrackingType?: TrackingType;
   ooMonthlyValues?: number[];      // 12 valores numéricos (mensual_sumatoria / mensual_promedio)
   ooChecklistValues?: boolean[];   // 12 booleanos (mensual_checklist)
+  ooTolerance?: TolerableMarginConfig;
 }
 
 interface TacticalPlanning extends ObjectiveNarratives {
@@ -74,6 +78,7 @@ interface TacticalPlanning extends ObjectiveNarratives {
   trackingType?: TrackingType;
   monthlyValues?: number[];
   checklistValues?: boolean[];
+  tolerance?: TolerableMarginConfig;
 }
 
 const MONTHS = ['Ene','Feb','Mar','Abr','Mayo','Jun','Jul','Agos','Sep','Oct','Nov','Dic'];
@@ -160,6 +165,11 @@ export function calcOOMetrics(rk: ResultKey): { condicionActual: number; porcent
   const meta = rk.meta || 0;
   const type = rk.ooTrackingType || 'puntual';
 
+  if (type === 'margen_tolerable') {
+    const metrics = calculateTolerableMargin(rk.ooTolerance);
+    return { condicionActual: metrics.currentValue ?? 0, porcentajeAlcanzado: metrics.compliancePercent };
+  }
+
   if (type === 'puntual') {
     const ca = rk.condicionActual || 0;
     return { condicionActual: ca, porcentajeAlcanzado: calcPct(ci, meta, ca) };
@@ -194,6 +204,11 @@ export function calcOTMetrics(p: TacticalPlanning): { avanceMeta: number; porcen
   const meta = p.metaLlegada || 0;
   const type = p.trackingType || 'puntual';
 
+  if (type === 'margen_tolerable') {
+    const metrics = calculateTolerableMargin(p.tolerance);
+    return { avanceMeta: metrics.currentValue ?? 0, porcentajeMetaAlcanzado: metrics.compliancePercent };
+  }
+
   if (type === 'puntual') {
     const am = p.avanceMeta || 0;
     return { avanceMeta: am, porcentajeMetaAlcanzado: calcPct(pp, meta, am) };
@@ -223,6 +238,9 @@ export function calcOTMetrics(p: TacticalPlanning): { avanceMeta: number; porcen
 }
 
 export function getOTResultMetrics(planning: TacticalPlanning): ObjectiveResultMetrics {
+  if (planning.trackingType === 'margen_tolerable') {
+    return calculateTolerableObjectiveResult(planning.puntoPartida, planning.tolerance);
+  }
   const { avanceMeta, porcentajeMetaAlcanzado } = calcOTMetrics(planning);
   const checklist = planning.trackingType === 'mensual_checklist';
   return calculateObjectiveResultMetrics({
@@ -236,6 +254,9 @@ export function getOTResultMetrics(planning: TacticalPlanning): ObjectiveResultM
 }
 
 export function getOOResultMetrics(resultKey: ResultKey): ObjectiveResultMetrics {
+  if (resultKey.ooTrackingType === 'margen_tolerable') {
+    return calculateTolerableObjectiveResult(resultKey.condicionInicial, resultKey.ooTolerance);
+  }
   const { condicionActual, porcentajeAlcanzado } = calcOOMetrics(resultKey);
   const checklist = resultKey.ooTrackingType === 'mensual_checklist';
   return calculateObjectiveResultMetrics({
@@ -254,6 +275,26 @@ function legacyAggregateProgress(progress: number | null, baseline: number, goal
   const contribution = checklist ? progress ?? 0
     : goal === baseline ? 0 : ((currentValue - baseline) / (goal - baseline)) * 100;
   return Math.max(-100, Math.min(100, contribution));
+}
+
+/** Only opt-in margins use compliance; preserve legacy unrounded linear contributions. */
+export function getOTAggregateProgress(planning: TacticalPlanning): number {
+  if (planning.trackingType === 'margen_tolerable') return calculateTolerableMargin(planning.tolerance).compliancePercent ?? 0;
+  const { porcentajeMetaAlcanzado, avanceMeta } = calcOTMetrics(planning);
+  return legacyAggregateProgress(porcentajeMetaAlcanzado, planning.puntoPartida || 0, planning.metaLlegada || 0, avanceMeta, planning.trackingType === 'mensual_checklist');
+}
+
+export function getOOAggregateProgress(resultKey: ResultKey): number {
+  if (resultKey.ooTrackingType === 'margen_tolerable') return calculateTolerableMargin(resultKey.ooTolerance).compliancePercent ?? 0;
+  const { porcentajeAlcanzado, condicionActual } = calcOOMetrics(resultKey);
+  return legacyAggregateProgress(porcentajeAlcanzado, resultKey.condicionInicial || 0, resultKey.meta || 0, condicionActual, resultKey.ooTrackingType === 'mensual_checklist');
+}
+
+/** The config is the source for margins; never copy its reading over historical progress. */
+export function preparePlanningForSave(planning: TacticalPlanning): TacticalPlanning {
+  if (planning.trackingType === 'margen_tolerable') return { ...planning };
+  const metrics = calcOTMetrics(planning);
+  return { ...planning, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado ?? 0 };
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -339,11 +380,7 @@ export default function TacticalPlanning() {
     setSaving(true);
     pendingSaveRef.current = false;
     try {
-      const planningsToSave = latestPlannings.map(p => {
-        const metrics = calcOTMetrics(p);
-        // Keep the persisted numeric shape; the readable result shows null as N/A.
-        return { ...p, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado ?? 0 };
-      });
+      const planningsToSave = latestPlannings.map(preparePlanningForSave);
       localStorage.setItem(`tactical_planning_${latestProcessId}`, JSON.stringify(planningsToSave));
       const results = await Promise.allSettled(planningsToSave.map(planning =>
         savePlanningMutation.mutateAsync({
@@ -358,6 +395,7 @@ export default function TacticalPlanning() {
           trackingType: (planning.trackingType || 'puntual') as any,
           monthlyValues: Array(12).fill(0).map((_, i) => Number((planning.monthlyValues || [])[i] || 0)),
           checklistValues: Array(12).fill(false).map((_, i) => Boolean((planning.checklistValues || [])[i] || false)),
+          tolerance: planning.tolerance,
         })
       ));
       const failures = results.filter(result => result.status === 'rejected');
@@ -495,10 +533,7 @@ export default function TacticalPlanning() {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       // Guardar en localStorage de forma síncrona (fetch async no garantizado al desmontar)
       try {
-        const planningsToSave = currentPlannings.map(p => {
-          const metrics = calcOTMetrics(p);
-          return { ...p, avanceMeta: metrics.avanceMeta, porcentajeMetaAlcanzado: metrics.porcentajeMetaAlcanzado ?? 0 };
-        });
+        const planningsToSave = currentPlannings.map(preparePlanningForSave);
         localStorage.setItem(`tactical_planning_${currentProcessId}`, JSON.stringify(planningsToSave));
       } catch (e) {
         // ignore
@@ -513,8 +548,12 @@ export default function TacticalPlanning() {
       if (p.id !== id) return p;
       const updated: TacticalPlanning = { ...p, [field]: value };
       // Recalcular métricas del OT cuando cambia cualquier campo relevante
-      const recalcFields = ['avanceMeta','puntoPartida','metaLlegada','trackingType','monthlyValues','checklistValues'];
-      if (recalcFields.includes(field)) {
+      const recalcFields = ['avanceMeta','puntoPartida','metaLlegada','trackingType','monthlyValues','checklistValues','tolerance'];
+      if (field === 'trackingType' && value === 'margen_tolerable' && !updated.tolerance) {
+        updated.tolerance = { currentValue: null };
+      }
+      // Switching/configuring a margin must not rewrite any historical numeric values.
+      if (recalcFields.includes(field) && updated.trackingType !== 'margen_tolerable') {
         const metrics = calcOTMetrics(updated);
         updated.avanceMeta = metrics.avanceMeta;
         updated.porcentajeMetaAlcanzado = metrics.porcentajeMetaAlcanzado ?? 0;
@@ -556,8 +595,11 @@ export default function TacticalPlanning() {
           if (rk.id !== resultKeyId) return rk;
           const updated: ResultKey = { ...rk, [field]: value };
           // Recalcular métricas del OO cuando cambia cualquier campo relevante
-          const recalcFields = ['condicionActual','condicionInicial','meta','ooTrackingType','ooMonthlyValues','ooChecklistValues'];
-          if (recalcFields.includes(field)) {
+          const recalcFields = ['condicionActual','condicionInicial','meta','ooTrackingType','ooMonthlyValues','ooChecklistValues','ooTolerance'];
+          if (field === 'ooTrackingType' && value === 'margen_tolerable' && !updated.ooTolerance) {
+            updated.ooTolerance = { currentValue: null };
+          }
+          if (recalcFields.includes(field) && updated.ooTrackingType !== 'margen_tolerable') {
             const metrics = calcOOMetrics(updated);
             updated.condicionActual = metrics.condicionActual;
             updated.porcentajeAlcanzado = metrics.porcentajeAlcanzado ?? 0;
@@ -655,15 +697,15 @@ export default function TacticalPlanning() {
     return rkConTareas.reduce((sum, rk) => sum + (calculateTasksAverage(rk) ?? 0) * (rk.ponderacion || 0), 0) / totalPonderacion;
   };
 
-  const calculateObjectiveCompletion = (planning: TacticalPlanning) => {
+  const calculateObjectiveCompletion = (planning: TacticalPlanning): number | null => {
+    if (planning.resultKeys.some(rk => rk.ooTrackingType === 'margen_tolerable' && calculateTolerableMargin(rk.ooTolerance).compliancePercent === null)) return null;
     if (planning.resultKeys.length === 0) return 0;
     let totalWeightedCompletion = 0;
     let totalPonderacion = 0;
     planning.resultKeys.forEach(rk => {
       const ponderacion = rk.ponderacion || 0;
       // Recalcular en tiempo real para que el indicador siempre sea correcto
-      const { porcentajeAlcanzado, condicionActual } = calcOOMetrics(rk);
-      totalWeightedCompletion += (legacyAggregateProgress(porcentajeAlcanzado, rk.condicionInicial || 0, rk.meta || 0, condicionActual, rk.ooTrackingType === 'mensual_checklist') * ponderacion) / 100;
+      totalWeightedCompletion += (getOOAggregateProgress(rk) * ponderacion) / 100;
       totalPonderacion += ponderacion;
     });
     if (totalPonderacion === 0) {
@@ -686,20 +728,19 @@ export default function TacticalPlanning() {
     let totalTareasWeighted = 0, totalTareasPond = 0;
     plannings.forEach(planning => {
       const ponderacion = planning.ponderacion || 0;
-      const { porcentajeMetaAlcanzado, avanceMeta } = calcOTMetrics(planning);
       const avanceOO = calculateObjectiveCompletion(planning);
       const avanceTareas = calculateOTTasksAverage(planning);
-      totalMetaAlcanzada += legacyAggregateProgress(porcentajeMetaAlcanzado, planning.puntoPartida || 0, planning.metaLlegada || 0, avanceMeta, planning.trackingType === 'mensual_checklist') * (ponderacion / 100);
-      totalAlcanzadoPorOO += avanceOO * (ponderacion / 100);
+      totalMetaAlcanzada += getOTAggregateProgress(planning) * (ponderacion / 100);
+      totalAlcanzadoPorOO += (avanceOO ?? 0) * (ponderacion / 100);
       if (avanceTareas !== null) {
         totalTareasWeighted += avanceTareas * (ponderacion || 1);
         totalTareasPond += (ponderacion || 1);
       }
     });
-    const metaAlcanzada = Math.round(totalMetaAlcanzada);
-    const alcanzadoPorOO = Math.round(totalAlcanzadoPorOO);
+    const metaAlcanzada = plannings.some(p => (p.ponderacion || 0) > 0 && p.trackingType === 'margen_tolerable' && calculateTolerableMargin(p.tolerance).compliancePercent === null) ? null : Math.round(totalMetaAlcanzada);
+    const alcanzadoPorOO = plannings.some(p => (p.ponderacion || 0) > 0 && calculateObjectiveCompletion(p) === null) ? null : Math.round(totalAlcanzadoPorOO);
     const alcanzadoPorTareas: number | null = totalTareasPond > 0 ? Math.round(totalTareasWeighted / totalTareasPond) : null;
-    return { metaAlcanzada, alcanzadoPorOO, alcanzadoPorTareas, isEfficient: alcanzadoPorOO < metaAlcanzada };
+    return { metaAlcanzada, alcanzadoPorOO, alcanzadoPorTareas, isEfficient: alcanzadoPorOO !== null && metaAlcanzada !== null && alcanzadoPorOO < metaAlcanzada };
   }, [plannings]);
 
   const flushBeforeNavigate = (): Promise<boolean> => {
@@ -781,8 +822,12 @@ export default function TacticalPlanning() {
             <option value="mensual_sumatoria">Mensual Sumatoria (12 meses)</option>
             <option value="mensual_promedio">Mensual Promedio (12 meses)</option>
             <option value="mensual_checklist">Mensual Check List</option>
+            <option value="margen_tolerable">Margen tolerable</option>
           </select>
         </div>
+
+        {type === 'margen_tolerable' && <TolerableMarginFields value={planning.tolerance}
+          onChange={config => updatePlanning(planning.id, 'tolerance', config)} labelPrefix="OTE" />}
 
         {type === 'puntual' && (
           <div>
@@ -896,8 +941,12 @@ export default function TacticalPlanning() {
             <option value="mensual_sumatoria">Mensual Sumatoria (12 meses)</option>
             <option value="mensual_promedio">Mensual Promedio (12 meses)</option>
             <option value="mensual_checklist">Mensual Check List</option>
+            <option value="margen_tolerable">Margen tolerable</option>
           </select>
         </div>
+
+        {type === 'margen_tolerable' && <TolerableMarginFields value={resultKey.ooTolerance}
+          onChange={config => updateResultKey(planning.id, resultKey.id, 'ooTolerance', config)} labelPrefix="OO" />}
 
         {type === 'puntual' && (
           <div>
@@ -1033,20 +1082,21 @@ export default function TacticalPlanning() {
           <CardContent>
             <div className="grid grid-cols-3 gap-6">
               <div className="text-center p-4 bg-white rounded-lg border-2 border-blue-300">
-                <p className="text-sm font-semibold text-gray-600 mb-2">Avance ponderado hacia las metas de los OTE</p>
-                {plannings.length === 0 ? <p className="text-4xl font-bold text-gray-400">...</p> : <p className="text-4xl font-bold text-blue-600">{indicators.metaAlcanzada}%</p>}
+                <p className="text-sm font-semibold text-gray-600 mb-2">{plannings.some(p => p.trackingType === 'margen_tolerable') ? "Cumplimiento ponderado de los OTE" : "Avance ponderado hacia las metas de los OTE"}</p>
+                {plannings.length === 0 ? <p className="text-4xl font-bold text-gray-400">...</p> : <p className="text-4xl font-bold text-blue-600">{formatObjectivePercent(indicators.metaAlcanzada)}</p>}
                 <p className="mt-2 text-xs text-gray-500">Conserva la ponderación y el límite de −100 a 100 % por OTE del indicador general; no es un promedio de variaciones.</p>
+                {plannings.some(p => p.trackingType === 'margen_tolerable') && <p className="mt-1 text-xs text-gray-500">Los OTE con margen tolerable aportan el porcentaje de mediciones dentro de sus límites, no avance lineal.</p>}
               </div>
               <div className="text-center p-4 bg-white rounded-lg border-2 border-green-300">
                 <p className="text-sm font-semibold text-gray-600 mb-2">Avance Objetivos Operativos</p>
-                {plannings.length === 0 ? <p className="text-4xl font-bold text-gray-400">...</p> : <p className="text-4xl font-bold text-green-600">{indicators.alcanzadoPorOO}%</p>}
+                {plannings.length === 0 ? <p className="text-4xl font-bold text-gray-400">...</p> : <p className="text-4xl font-bold text-green-600">{formatObjectivePercent(indicators.alcanzadoPorOO)}</p>}
               </div>
               <div className="text-center p-4 bg-white rounded-lg border-2 border-purple-300">
                 <p className="text-sm font-semibold text-gray-600 mb-2">Avance de Tareas</p>
                 {plannings.length === 0
                   ? <p className="text-4xl font-bold text-gray-400">...</p>
                   : indicators.alcanzadoPorTareas !== null
-                    ? <p className="text-4xl font-bold text-purple-600">{indicators.alcanzadoPorTareas}%</p>
+                    ? <p className="text-4xl font-bold text-purple-600">{formatObjectivePercent(indicators.alcanzadoPorTareas)}</p>
                     : <p className="text-sm font-semibold text-gray-400 mt-2">Sin tareas definidas</p>
                 }
               </div>
@@ -1076,7 +1126,8 @@ export default function TacticalPlanning() {
                     <ChevronDown size={20} className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     <div className="flex-1 min-w-0">
                       <CardTitle className="text-lg text-green-900">{planning.objectiveName}</CardTitle>
-                      <p className="text-sm text-gray-600 mt-1">Ponderación: {planning.ponderacion || 0}%</p>
+                      <p className="text-sm text-gray-600 mt-1">Ponderación: {formatObjectivePercent(planning.ponderacion || 0)}</p>
+                      {planning.trackingType === 'margen_tolerable' && <p className="mt-1 text-xs font-semibold text-green-900">Margen tolerable · {tolerableMarginStatusLabel(calculateTolerableMargin(planning.tolerance))}</p>}
                     </div>
                   </div>
                 </div>
@@ -1090,13 +1141,14 @@ export default function TacticalPlanning() {
                     <h3 className="text-sm font-bold text-green-900">Ejecución del plan</h3>
                     <div className="flex flex-wrap justify-between items-baseline gap-2">
                       <p className="text-sm font-semibold text-gray-600">Avance Objetivos Operativos</p>
-                      <p className="text-2xl font-bold text-green-600">{calculateObjectiveCompletion(planning)}%</p>
+                      <p className="text-2xl font-bold text-green-600">{formatObjectivePercent(calculateObjectiveCompletion(planning))}</p>
                     </div>
                     <p className="text-xs text-gray-500">Agregado ponderado de los OO con la regla actual (−100 a 100 % por OO); si no tienen ponderación, usa las tareas.</p>
+                    {planning.resultKeys.some(rk => rk.ooTrackingType === 'margen_tolerable') && <p className="text-xs text-gray-500">Los OO con margen tolerable aportan el porcentaje de mediciones dentro de sus límites, no avance lineal.</p>}
                     <div className="flex flex-wrap justify-between items-baseline gap-2">
                       <p className="text-sm font-semibold text-gray-600">Avance de Tareas</p>
                       {calculateOTTasksAverage(planning) !== null
-                        ? <p className="text-2xl font-bold text-blue-600">{calculateOTTasksAverage(planning)!.toFixed(0)}%</p>
+                        ? <p className="text-2xl font-bold text-blue-600">{formatObjectivePercent(calculateOTTasksAverage(planning))}</p>
                         : <p className="text-sm font-semibold text-gray-400">Sin tareas</p>
                       }
                     </div>
@@ -1129,7 +1181,7 @@ export default function TacticalPlanning() {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Meta del Objetivo (texto histórico)</label>
                     <Input type="text" value={planning.goal} onChange={(e) => updatePlanning(planning.id, 'goal', e.target.value)}
                       placeholder="Ingrese la meta del objetivo" className="border-gray-300" />
-                    <p className="mt-1 text-xs text-gray-500">Se conserva este texto; el avance hacia la meta se calcula con «Meta o Punto de Llegada».</p>
+                    <p className="mt-1 text-xs text-gray-500">{planning.trackingType === 'margen_tolerable' ? 'Se conserva este texto histórico; el margen se evalúa con los límites configurados.' : 'Se conserva este texto; el avance hacia la meta se calcula con «Meta o Punto de Llegada».'}</p>
                   </div>
 
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
@@ -1146,7 +1198,7 @@ export default function TacticalPlanning() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1">Ponderación (%)</label>
-                        <Input type="number" step="0.01" value={planning.ponderacion || 0} disabled className="border-gray-300 bg-gray-100" />
+                        <Input type="text" value={formatObjectivePercent(planning.ponderacion || 0)} disabled className="border-gray-300 bg-gray-100" />
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1">Punto de Partida</label>
@@ -1154,10 +1206,10 @@ export default function TacticalPlanning() {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
+                      {planning.trackingType !== 'margen_tolerable' && <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1">Meta o Punto de Llegada</label>
                         <Input type="number" step="0.01" value={planning.metaLlegada || 0} disabled className="border-gray-300 bg-gray-100" />
-                      </div>
+                      </div>}
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1">Unidad de Medida</label>
                         <Input type="text" value={planning.unidadMedida || ''} disabled className="border-gray-300 bg-gray-100" />
@@ -1192,7 +1244,7 @@ export default function TacticalPlanning() {
                             <div className="text-right">
                               <p className="text-xs font-semibold text-gray-600">Avance de Tareas</p>
                               {calculateTasksAverage(resultKey) !== null
-                                ? <p className="text-lg font-bold text-blue-600">{calculateTasksAverage(resultKey)!.toFixed(0)}%</p>
+                                ? <p className="text-lg font-bold text-blue-600">{formatObjectivePercent(calculateTasksAverage(resultKey))}</p>
                                 : <p className="text-sm font-semibold text-gray-400">Sin tareas</p>
                               }
                             </div>
@@ -1220,12 +1272,12 @@ export default function TacticalPlanning() {
                             </div>
                           </div>
 
-                          <div>
+                          {resultKey.ooTrackingType !== 'margen_tolerable' && <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-1">Meta</label>
                             <Input type="number" step="0.01" value={resultKey.meta || 0}
                               onChange={(e) => updateResultKey(planning.id, resultKey.id, 'meta', parseFloat(e.target.value) || 0)}
                               placeholder="Meta" className="border-gray-300" />
-                          </div>
+                          </div>}
 
                           {renderOOTrackingSection(planning, resultKey)}
 
@@ -1326,7 +1378,7 @@ export default function TacticalPlanning() {
                                     <div className="space-y-2 w-full">
                                       <div className="flex items-center justify-between">
                                         <span className="text-sm font-semibold text-gray-700">
-                                          % Completado: {task.monthlyProgress ? Math.round((task.monthlyProgress.filter(m => m).length / 12) * 100) : 0}% ({task.monthlyProgress?.filter(m => m).length || 0}/12 meses)
+                                          % Completado: {formatObjectivePercent(task.monthlyProgress ? (task.monthlyProgress.filter(m => m).length / 12) * 100 : 0)} ({task.monthlyProgress?.filter(m => m).length || 0}/12 meses)
                                         </span>
                                       </div>
                                       <div className="flex gap-1 flex-wrap">

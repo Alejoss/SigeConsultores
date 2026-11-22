@@ -12,6 +12,7 @@ import { calculateStakeholderActionProgress, latestStakeholderActionRows } from 
 import { ObjectiveResultSummary } from "@/components/ObjectiveResultSummary";
 import { calculateObjectiveResultMetrics, formatObjectivePercent } from "@shared/objectiveResultMetrics";
 import { calculateOtgResultMetrics } from "@shared/otgResultMetrics";
+import { calculateTolerableObjectiveResult, tolerableMarginStatusLabel } from "@shared/tolerableMargin";
 
 // ─── Mapa de etiquetas para tipo de seguimiento ───────────────────────────────
 const TRACKING_LABELS: Record<string, string> = {
@@ -19,6 +20,7 @@ const TRACKING_LABELS: Record<string, string> = {
   mensual_sumatoria: "Mensual Sumatoria (12 meses)",
   mensual_promedio: "Mensual Promedio (12 meses)",
   mensual_checklist: "Mensual Check List",
+  margen_tolerable: "Margen tolerable",
 };
 
 // ─── Paleta de colores (inspirada en el PowerPoint de Agrogana) ───────────────
@@ -76,22 +78,28 @@ function OTECard({ ote, index }: { ote: any; index: number }) {
   // Sanitización defensiva: asegurar que los valores numéricos sean siempre números
   // (en producción pueden llegar como strings si el usuario escribió texto en el campo)
   const isChecklist = ote.trackingType === "mensual_checklist";
-  const resultMetrics = ote.resultMetrics ?? calculateObjectiveResultMetrics({
+  const resultMetrics = ote.resultMetrics ?? (ote.trackingType === 'margen_tolerable' ? calculateTolerableObjectiveResult(Number(ote.puntoPartida), ote.tolerance) : calculateObjectiveResultMetrics({
     baseline: isChecklist ? 0 : Number(ote.puntoPartida),
     goal: isChecklist ? 12 : Number(ote.metaLlegada),
     currentValue: Number(ote.avanceMeta),
     numericComparison: !isChecklist,
     ...(isChecklist ? { goalProgressOverride: Number(ote.porcentajeMetaAlcanzado) } : {}),
-  });
-  const pctOO = Math.round(parseFloat(String(ote.pctOO)) || 0);
+  }));
+  const pctOO = ote.pctOO === null ? null : Number(ote.pctOO) || 0;
   const tasksAvg = ote.tasksGlobalAvg !== null && ote.tasksGlobalAvg !== undefined
-    ? Math.round(parseFloat(String(ote.tasksGlobalAvg)) || 0)
+    ? Number(ote.tasksGlobalAvg) || 0
     : null;
 
   // Datos de seguimiento según el método
   const renderTrackingData = () => {
     if (!ote.trackingType || ote.trackingType === "puntual") return null;
 
+    if (ote.trackingType === "margen_tolerable" && resultMetrics.tolerance?.recordingMode === 'mensual') {
+      return <div className="mt-3 grid grid-cols-4 gap-2">{MESES.map((month, i) => {
+        const sample = resultMetrics.tolerance.samples.find((sample: any) => sample.index === i);
+        return <div key={month} className="text-center text-xs"><p style={{color: C.lightGreenText}}>{month}</p><p className="font-bold text-white">{sample ? (/%|porcentaje/i.test(ote.unidadMedida || '') ? formatObjectivePercent(sample.value) : String(sample.value)) : '—'}</p><p className={sample?.within ? 'text-green-200' : 'text-red-200'}>{sample ? sample.within ? 'Dentro' : 'Fuera' : 'Sin registro'}</p></div>;
+      })}</div>;
+    }
     if (ote.trackingType === "mensual_sumatoria" || ote.trackingType === "mensual_promedio") {
       const mv = ote.monthlyValues;
       // monthlyValues puede ser array [v0..v11] (índice 0=Ene) o un objeto {"1":v,...}
@@ -107,7 +115,7 @@ function OTECard({ ote, index }: { ote: any; index: number }) {
                 <div key={mes} className="text-center">
                   <p className="text-xs" style={{ color: C.lightGreenText }}>{mes}</p>
                   <p className="text-xs font-bold text-white">
-                    {val !== null && val !== undefined && val !== "" ? Number(val).toLocaleString() : <span style={{ color: "rgba(255,255,255,0.3)" }}>—</span>}
+                    {val !== null && val !== undefined && val !== "" ? (/%|porcentaje/i.test(ote.unidadMedida || '') ? formatObjectivePercent(Number(val)) : Number(val).toLocaleString()) : <span style={{ color: "rgba(255,255,255,0.3)" }}>—</span>}
                   </p>
                 </div>
               );
@@ -158,7 +166,7 @@ function OTECard({ ote, index }: { ote: any; index: number }) {
           )}
         </div>
         <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: C.lightGreenBg, color: C.darkGreen }}>
-          Pond. {ote.ponderacion || 0}%
+          Pond. {formatObjectivePercent(Number(ote.ponderacion) || 0)}
         </span>
       </div>
 
@@ -193,13 +201,13 @@ function OTECard({ ote, index }: { ote: any; index: number }) {
           <section className="mt-4 border-t pt-3 space-y-2" style={{ borderColor: "#1B7A3D" }} aria-label="Ejecución del plan (OO y tareas)">
             <h3 className="text-sm font-bold" style={{ color: C.lightGreenText }}>Ejecución del plan (OO y tareas)</h3>
             <div>
-              <p className="text-xs font-semibold" style={{ color: C.lightGreenText }}>Avance ponderado hacia las metas OO</p>
-              <p className="text-2xl font-bold">{ote.hasOO ? `${pctOO}%` : <span className="text-sm text-gray-300">Sin OO</span>}</p>
+              <p className="text-xs font-semibold" style={{ color: C.lightGreenText }}>{ote.hasMarginOO ? "Cumplimiento ponderado de los OO" : "Avance ponderado hacia las metas OO"}</p>
+              <p className="text-2xl font-bold">{ote.hasOO ? formatObjectivePercent(pctOO) : <span className="text-sm text-gray-300">Sin OO</span>}</p>
             </div>
             <div>
               <p className="text-xs font-semibold" style={{ color: C.lightGreenText }}>Avance ponderado de tareas completadas</p>
               {tasksAvg !== null
-                ? <p className="text-2xl font-bold">{tasksAvg}%</p>
+                ? <p className="text-2xl font-bold">{formatObjectivePercent(tasksAvg)}</p>
                 : <p className="text-sm" style={{ color: C.grayGreen }}>Sin tareas</p>
               }
             </div>
@@ -219,24 +227,26 @@ function OTECard({ ote, index }: { ote: any; index: number }) {
               <div className="space-y-2">
                 {ote.objetivosOperativos.slice(0, expanded ? undefined : 3).map((oo: any) => {
                   const metrics = oo.resultMetrics;
-                  const resultProgress = metrics ? metrics.goalProgress : oo.porcentajeAlcanzado;
+                  const resultProgress = metrics?.tolerance ? metrics.tolerance.compliancePercent : metrics ? metrics.goalProgress : oo.porcentajeAlcanzado;
+                  const marginStatus = metrics?.tolerance?.status;
+                  const resultBadge = marginStatus ? pctBadge(marginStatus === 'inside' ? 100 : marginStatus === 'boundary' ? 70 : marginStatus === 'pending' ? null : 0) : pctBadge(resultProgress);
                   const checklistOO = oo.ooTrackingType === "mensual_checklist";
                   return (
                   <div key={oo.id} className="rounded-lg p-2" style={{ backgroundColor: C.veryLightGreen }}>
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <p className="text-xs font-medium text-gray-700 flex-1 min-w-0 leading-snug">{oo.description}</p>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${pctBadge(resultProgress)}`}>
-                        {checklistOO ? "Cumplimiento mensual OO" : "Avance a meta OO"}: {formatObjectivePercent(resultProgress)}
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${resultBadge}`}>
+                        {metrics?.tolerance ? tolerableMarginStatusLabel(metrics.tolerance) : <>{checklistOO ? "Cumplimiento mensual OO" : "Avance a meta OO"}: {formatObjectivePercent(resultProgress)}</>}
                       </span>
                     </div>
                     {metrics && <div className="mt-2">
                       <ObjectiveResultSummary title="Resultado del OO" metrics={metrics} unit={checklistOO ? "meses" : oo.unidadMedida} compact />
                     </div>}
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
-                      <span className="text-xs" style={{ color: C.textSecondary }}>Pond. {oo.ponderacion}%</span>
+                      <span className="text-xs" style={{ color: C.textSecondary }}>Pond. {formatObjectivePercent(Number(oo.ponderacion))}</span>
                       {oo.hasTasks ? (
                         <span className="text-xs" style={{ color: C.textSecondary }}>
-                          Avance de tareas completadas: {oo.tasksAverage !== null ? `${Math.round(oo.tasksAverage)}%` : "Sin tareas"}
+                          Avance de tareas completadas: {oo.tasksAverage !== null ? formatObjectivePercent(Number(oo.tasksAverage)) : "Sin tareas"}
                         </span>
                       ) : (
                         <span className="text-xs italic text-gray-400">Sin tareas</span>
@@ -251,7 +261,7 @@ function OTECard({ ote, index }: { ote: any; index: number }) {
                           <div key={t.id} className="flex items-center justify-between gap-2">
                             <p className="text-xs text-gray-600 flex-1 leading-snug">{t.description}</p>
                             <span className={`text-xs font-semibold shrink-0 ${pctColor(t.percentageCompleted)}`}>
-                              Completada: {t.percentageCompleted}%
+                              Completada: {formatObjectivePercent(Number(t.percentageCompleted))}
                             </span>
                           </div>
                         ))}
@@ -314,8 +324,8 @@ function OTGCard({ otg, index }: { otg: any; index: number }) {
             <p className="text-xs font-semibold" style={{ color: C.lightGreenText }}>
               {tareas.length > 0 ? "Avance ponderado de tareas completadas" : "Porcentaje histórico registrado"}
             </p>
-            <p className="text-2xl font-bold">{otg.pctOTG}%</p>
-            <ProgressBar value={otg.pctOTG} />
+            <p className="text-2xl font-bold">{otg.pctOTG === null ? "Sin medición del plan" : formatObjectivePercent(Number(otg.pctOTG))}</p>
+            {otg.pctOTG !== null && <ProgressBar value={otg.pctOTG} />}
             <p className="text-xs" style={{ color: C.lightGreenBg }}>
               {tareas.length > 0 ? `${tareas.length} tarea(s)` : "Sin tareas actuales"}
             </p>
@@ -337,11 +347,11 @@ function OTGCard({ otg, index }: { otg: any; index: number }) {
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <p className="text-xs font-medium text-gray-700 flex-1 min-w-0 leading-snug break-words">{t.description}</p>
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${pctBadge(t.porcentajeAlcanzado)}`}>
-                        {t.porcentajeAlcanzado}%
+                        {t.resultMetrics?.tolerance ? tolerableMarginStatusLabel(t.resultMetrics.tolerance) : formatObjectivePercent(Number(t.porcentajeAlcanzado))}
                       </span>
                     </div>
-                    <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>Pond. {t.ponderacion}%</p>
-                    <ProgressBar value={t.porcentajeAlcanzado} />
+                    <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>Pond. {formatObjectivePercent(Number(t.ponderacion))}</p>
+                    {t.resultMetrics ? <div className="mt-2"><ObjectiveResultSummary title="Resultado de la tarea OTG" metrics={t.resultMetrics} unit={t.unidadMedida} compact /></div> : <ProgressBar value={t.porcentajeAlcanzado} />}
                   </div>
                 ))}
               </div>
@@ -515,7 +525,7 @@ export default function ProcessIndicators() {
   const cumplimientosData = indicatorsData?.find((d: any) => d.id === "promedio_cumplimiento");
   const salidasData = indicatorsData?.find((d: any) => d.id === "control_salidas");
 
-  const oteValue = oteData?.value ?? 0;
+  const oteValue: number | null = oteData?.value === null ? null : Number(oteData?.value ?? 0);
   // Agregado legacy de ejecución del plan OTG; el resultado numérico individual se mide aparte.
   const otgValue = otgData?.compliance ?? 0;
   const partesValue: number | null = partesData?.value ?? null;
@@ -529,7 +539,8 @@ export default function ProcessIndicators() {
   const linkedCommitmentsValue = receivedCommitments.length > 0
     ? Math.round((completedLinkedCommitments / receivedCommitments.length) * 100)
     : 0;
-  const totalComponents = [oteValue, otgValue, cumplimientosValue];
+  const totalComponents: number[] = [otgValue, cumplimientosValue];
+  if (oteValue !== null) totalComponents.push(oteValue);
   if (partesValue !== null) totalComponents.push(partesValue);
   if (salidasValue !== null) totalComponents.push(salidasValue);
   if (receivedCommitments.length > 0) totalComponents.push(linkedCommitmentsValue);
@@ -626,8 +637,8 @@ export default function ProcessIndicators() {
                 {/* Resumen global */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                   <div className="rounded-xl p-4 text-center" style={{ backgroundColor: C.veryLightGreen }}>
-                    <p className="text-xs font-semibold mb-1 break-words" style={{ color: C.textSecondary }}>Avance ponderado hacia las metas de los OTE</p>
-                    <p className={`text-3xl font-bold ${pctColor(oteValue)}`}>{oteValue}%</p>
+                    <p className="text-xs font-semibold mb-1 break-words" style={{ color: C.textSecondary }}>{oteData?.oteRows?.some((o: any) => o.resultMetrics?.tolerance) ? "Cumplimiento ponderado de los OTE" : "Avance ponderado hacia las metas de los OTE"}</p>
+                    <p className={`text-3xl font-bold ${pctColor(oteValue)}`}>{formatObjectivePercent(oteValue)}</p>
                     <p className={`text-xs mt-1 font-semibold ${pctBadge(oteValue).split(" ")[1]}`}>{pctLabel(oteValue)}</p>
                   </div>
                   <div className="rounded-xl p-4 text-center" style={{ backgroundColor: C.veryLightGreen }}>
@@ -663,7 +674,7 @@ export default function ProcessIndicators() {
                   <div className="rounded-xl p-4 text-center" style={{ backgroundColor: C.veryLightGreen }}>
                     <p className="text-xs font-semibold mb-1" style={{ color: C.textSecondary }}>% Comunicados</p>
                     <p className={`text-3xl font-bold ${pctColor(indicatorsData?.find((d: any) => d.id === "comunicado")?.value ?? 0)}`}>
-                      {indicatorsData?.find((d: any) => d.id === "comunicado")?.value ?? 0}%
+                      {formatObjectivePercent(Number(indicatorsData?.find((d: any) => d.id === "comunicado")?.value ?? 0))}
                     </p>
                   </div>
                   <div className="rounded-xl p-4 text-center" style={{ backgroundColor: C.veryLightGreen }}>
@@ -917,7 +928,7 @@ export default function ProcessIndicators() {
                 <p className="text-xs text-gray-500 mb-4 leading-snug">{panel.description}</p>
                 <div className="flex items-end justify-between">
                   <div>
-                    <p className={`text-3xl font-bold ${pctColor(panel.value)}`}>{panel.value === null ? "—" : `${panel.value}%`}</p>
+                    <p className={`text-3xl font-bold ${pctColor(panel.value)}`}>{panel.value === null ? "—" : (panel.id === "ote" || panel.id === "otg") ? formatObjectivePercent(Number(panel.value)) : `${panel.value}%`}</p>
                     {panel.extra && <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>{panel.extra}</p>}
                   </div>
                   <span className="text-xs font-semibold group-hover:underline" style={{ color: C.medGreen }}>

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { exportFODAToPDF } from "@/lib/exportFODAToPDF";
 import { getProcessIdFromSession } from "@/lib/sessionScope";
 import { ActivePlanningCycleBadge } from "@/components/ActivePlanningCycleBadge";
+import { parseStoredFodaArray } from "@shared/fodaStoredJson";
 
 type FODAType = 'Fortaleza' | 'Oportunidad' | 'Debilidad' | 'Amenaza';
 
@@ -31,7 +32,6 @@ export default function ProcessFODA() {
     const id = getProcessIdFromSession();
     return id !== null && Number.isInteger(id) && id > 0 ? id : null;
   });
-  const [processName] = useState(() => localStorage.getItem("selectedProcessName") || "Proceso");
   const [isSaving, setIsSaving] = useState(false);
   const [isReturning, setIsReturning] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -57,6 +57,11 @@ export default function ProcessFODA() {
   const [subprocesses, setSubprocesses] = useState<string[]>([]);
 
   const utils = trpc.useUtils();
+  const { data: processData, isError: isProcessError } = trpc.processMap.get.useQuery(
+    { processId: processId || 0 },
+    { enabled: processId !== null }
+  );
+  const processName = processData?.id === processId ? processData.name : isProcessError ? "Nombre no disponible" : "Cargando nombre del proceso...";
   const { data: fodaData, isLoading, isFetching: isFodaFetching, isError: isFodaError } = trpc.processFODA.get.useQuery(
     { processId: processId || 0 },
     { enabled: processId !== null, staleTime: 0, refetchOnMount: "always" }
@@ -108,10 +113,7 @@ export default function ProcessFODA() {
       const loaded: FODAElement[] = [];
       const storedIds = new Map<number, unknown>();
       for (const group of groups) {
-        const parsed = JSON.parse(group.data || '[]');
-        if (!Array.isArray(parsed) || parsed.some(row => !row || typeof row !== 'object' || Array.isArray(row))) {
-          throw new Error("Formato FODA inválido");
-        }
+        const parsed = parseStoredFodaArray<FODAElement>(group.data);
         for (const row of parsed) {
           const uiId = loaded.length + 1;
           storedIds.set(uiId, row.id);

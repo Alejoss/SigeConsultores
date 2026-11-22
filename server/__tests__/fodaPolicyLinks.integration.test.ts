@@ -76,6 +76,34 @@ afterAll(async () => {
 });
 
 describe("FODA: referencias de política vigentes e históricas", () => {
+  it("lee categorías con LF heredados sin escribir y permite editar conservando vínculos históricos, textos y matriz", async () => {
+    const keys = ["strengths", "opportunities", "weaknesses", "threats"] as const;
+    const rows = [current(), { ...historical(), extraProperty: { preserve: "dato ficticio" } }];
+    const stored = JSON.stringify(rows).replace(/\\n/g, "\n");
+    await db.update(processFODA).set(Object.fromEntries(keys.map(key => [key, stored])))
+      .where(eq(processFODA.processId, processId));
+    const before = await read();
+    expect(await caller().get({ processId })).toEqual(before); expect(await read()).toEqual(before);
+    const next = [{ ...rows[0], description: "Edición autorizada ficticia" }, rows[1]];
+    await caller().upsert({ processId, ...Object.fromEntries(keys.map(key => [key, JSON.stringify(next)])) });
+    const after = await read();
+    for (const key of keys) expect(JSON.parse(after[key]!)).toEqual(next);
+    expect(after.matrixData).toBe(before.matrixData); expect(after.id).toBe(before.id);
+    expect(after.createdAt).toEqual(before.createdAt);
+  });
+  it("mantiene estricta la validación del contenido entrante aunque admita leer LF históricos", async () => {
+    const before = await read();
+    await expect(caller().upsert({ processId, strengths: JSON.stringify([current()]).replace(/\\n/g, "\n"),
+      opportunities: "[]", weaknesses: "[]", threats: "[]" })).rejects.toThrow("formato válido");
+    expect(await read()).toEqual(before);
+  });
+  it.each(['[{"text":"LF\nliteral",}]', '[null]', '{"text":"No es un arreglo"}'])
+    ("rechaza datos históricos no recuperables sin reemplazarlos ni escribir (%s)", async invalid => {
+      await db.update(processFODA).set({ threats: invalid }).where(eq(processFODA.processId, processId));
+      const before = await read();
+      await expect(save([current(), historical()])).rejects.toThrow("formato válido");
+      expect(await read()).toEqual(before);
+    });
   it("lista desde la empresa del proceso, sin cambios en el FODA", async () => {
     const before = await read();
     const list = await caller().listPolicyObjectives({ processId });

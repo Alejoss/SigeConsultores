@@ -55,7 +55,7 @@ describe("Strategic measurement UI", () => {
     expect((screen.getByLabelText("Meta (texto)") as HTMLInputElement).value).toBe("Meta textual intacta");
     expect(screen.queryByText("Sin medición")).toBeNull();
     expect(screen.queryByRole("table", { name: "Doble lectura del indicador" })).toBeNull();
-    expect(screen.queryByText("0%")).toBeNull();
+    expect(screen.queryByText("0,00 %")).toBeNull();
   });
   it("autosaves only edited definition fields and keeps draft/focus across remote refetch", async () => {
     const view = render(<StrategicObjectiveDetail companyId={1} objectiveId={12} canManage mode="definition" />);
@@ -168,7 +168,7 @@ describe("Strategic measurement UI", () => {
     expect(screen.queryByText("Resultado del indicador del OE")).toBeNull();
     expect(screen.queryByText(/Última medición/)).toBeNull();
     expect(screen.queryByText("50%")).toBeNull();
-    expect(screen.queryByText("50 %")).toBeNull();
+    expect(screen.queryByText("50,00 %")).toBeNull();
     expect(mocks.update).not.toHaveBeenCalled(); expect(mocks.config).not.toHaveBeenCalled(); expect(mocks.measurement).not.toHaveBeenCalled();
   });
   it("measurement mode disables every definition/config field even for a manager and enables only capture", async () => {
@@ -212,7 +212,7 @@ describe("Strategic measurement UI", () => {
     expect(screen.getByText("No disponible")).toBeTruthy(); expect(screen.getByText(/deben sumar exactamente 100%/)).toBeTruthy();
     expect(screen.getByText("Configurados: 1/1")).toBeTruthy(); expect(screen.getByText("Medidos: 0/1")).toBeTruthy();
     view.rerender(<StrategicGlobalMeasurement data={overview()} />);
-    expect(screen.getByText(/faltan mediciones reales/)).toBeTruthy(); expect(screen.queryByText("0%")).toBeNull();
+    expect(screen.getByText(/faltan mediciones reales/)).toBeTruthy(); expect(screen.queryByText("0,00 %")).toBeNull();
   });
   it("overview uses the new real measurement endpoint and expands full detail", () => {
     render(<StrategicMeasurementOverview companyId={1} />);
@@ -228,10 +228,10 @@ describe("Strategic measurement UI", () => {
     render(<StrategicMeasurementOverview companyId={1} />);
     const card = screen.getByRole("button", { name: /OE 1.*OE original/ });
     const summary = within(card).getByRole("group", { name: "Resultado de OE original" });
-    expect(within(summary).getByText("125 USD").tagName).toBe("STRONG");
-    expect(summary.textContent).toContain("Variación respecto al inicio: +25 %");
-    expect(summary.textContent).toContain("Avance hacia la meta: 50 %");
-    expect(card.textContent).toContain("Ponderación: 100 %");
+    expect(within(summary).getByText("125 USD").tagName).toBe("DD");
+    expect(summary.textContent).toContain("Variación relativa+25,00 %");
+    expect(summary.textContent).toContain("Avance hacia la meta50,00 %");
+    expect(card.textContent).toContain("Ponderación: 100,00 %");
     expect(card.textContent).toContain("Última medición: 2026-11-07");
     expect(card.textContent).toContain("Fecha límite: 2026-12-31");
     expect(screen.getByRole("region", { name: "Avance global ponderado hacia las metas de OE" }).textContent).toContain("No se promedian las variaciones");
@@ -243,37 +243,38 @@ describe("Strategic measurement UI", () => {
     mocks.detail = { objective: oe, measurements: [] };
     const view = render(<StrategicMeasurementOverview companyId={1} />);
     const summary = within(screen.getByRole("button", { name: /OE 1.*OE original/ })).getByRole("group");
-    expect(within(summary).getByText("+5 puntos porcentuales")).toBeTruthy();
-    expect(within(summary).getByText("Variación relativa: +100 %")).toBeTruthy();
-    expect(summary.textContent!.indexOf("+5 puntos porcentuales")).toBeLessThan(summary.textContent!.indexOf("Variación relativa:"));
+    expect(within(summary).getByText("+5,00 puntos porcentuales")).toBeTruthy();
+    expect(within(summary).getByText("Variación relativa")).toBeTruthy();
+    expect(within(summary).getByText("+100,00 %")).toBeTruthy();
+    expect(summary.textContent!.indexOf("+5,00 puntos porcentuales")).toBeLessThan(summary.textContent!.indexOf("Variación relativa"));
     view.unmount();
     render(<StrategicObjectiveDetail companyId={1} objectiveId={12} canManage={false} mode="measurement" />);
     const table = screen.getByRole("table", { name: "Doble lectura del indicador" });
     const change = within(table).getByRole("row", { name: /Cambio respecto al inicio/ });
-    expect(within(change).getByText("+5 puntos porcentuales")).toBeTruthy();
-    expect(within(change).getByText("Variación relativa: +100 %")).toBeTruthy();
-    expect(within(table).getByRole("row", { name: "Avance hacia la meta 50 %" })).toBeTruthy();
+    expect(within(change).getByText("+5,00 puntos porcentuales")).toBeTruthy();
+    expect(within(change).getByText("Variación relativa: +100,00 %")).toBeTruthy();
+    expect(within(table).getByRole("row", { name: "Avance hacia la meta 50,00 %" })).toBeTruthy();
     expect(mocks.measurement).not.toHaveBeenCalled();
   });
   it.each([
-    { baseline: 10, goal: 20, value: 25, legacy: 100, variation: "+150 %", progress: "150 %", status: "Meta superada", bounded: "100" },
-    { baseline: 10, goal: 20, value: 5, legacy: 0, variation: "-50 %", progress: "-50 %", status: "Por debajo del inicio", bounded: "0" },
-    { baseline: 20, goal: 10, value: 8, legacy: 100, variation: "-60 %", progress: "120 %", status: "Meta superada", bounded: "100" },
+    { baseline: 10, goal: 20, value: 25, legacy: 100, variation: "+150,00 %", progress: "150,00 %", status: "Meta superada", bounded: "100" },
+    { baseline: 10, goal: 20, value: 5, legacy: 0, variation: "-50,00 %", progress: "-50,00 %", status: "Por debajo del inicio", bounded: "0" },
+    { baseline: 20, goal: 10, value: 8, legacy: 100, variation: "-60,00 %", progress: "120,00 %", status: "Meta superada", bounded: "100" },
   ])("overview preserves individual percentages beyond the goal span: $progress", ({ baseline, goal, value, legacy, variation, progress, status, bounded }) => {
     const oe = measuredObjective(baseline, goal, value, legacy);
     mocks.overview = { ...overview(oe), globalPercent: legacy, measuredCount: 1, status: "complete" };
     render(<StrategicMeasurementOverview companyId={1} />);
     const summary = within(screen.getByRole("button", { name: /OE 1.*OE original/ })).getByRole("group");
-    expect(summary.textContent).toContain(`Variación respecto al inicio: ${variation}`);
-    expect(summary.textContent).toContain(`Avance hacia la meta: ${progress}`);
+    expect(summary.textContent).toContain(`Variación relativa${variation}`);
+    expect(summary.textContent).toContain(`Avance hacia la meta${progress}`);
     expect(summary.textContent).toContain(status);
     const bar = within(summary).getByRole("progressbar");
     expect(bar.getAttribute("aria-valuenow")).toBe(bounded);
     expect(bar.getAttribute("aria-valuetext")).toContain(progress);
     const global = screen.getByRole("region", { name: "Avance global ponderado hacia las metas de OE" });
-    expect(within(global).getByText(`${legacy} %`)).toBeTruthy();
+    expect(within(global).getByText(`${legacy},00 %`)).toBeTruthy();
   });
-  it("detail shows five persisted-result fields with Ecuadorian decimal formatting", () => {
+  it("detail keeps five persisted-result fields with Ecuadorian decimal formatting", () => {
     mocks.detail = { objective: measuredObjective(100, 200, 125.5, 25.5), measurements: [] };
     render(<StrategicObjectiveDetail companyId={1} objectiveId={12} canManage mode="measurement" />);
     const table = screen.getByRole("table", { name: "Doble lectura del indicador" });
@@ -281,12 +282,12 @@ describe("Strategic measurement UI", () => {
     expect(within(table).getByRole("row", { name: "Punto de partida 100 USD" })).toBeTruthy();
     expect(within(table).getByRole("row", { name: "Resultado actual 125,5 USD" })).toBeTruthy();
     expect(within(table).getByRole("row", { name: "Meta 200 USD" })).toBeTruthy();
-    expect(within(table).getByRole("row", { name: "Variación respecto al inicio +25,5 %" })).toBeTruthy();
-    expect(within(table).getByRole("row", { name: "Avance hacia la meta 25,5 %" })).toBeTruthy();
+        expect(within(table).getByRole("row", { name: "Variación respecto al inicio +25,50 %" })).toBeTruthy();
+    expect(within(table).getByRole("row", { name: "Avance hacia la meta 25,50 %" })).toBeTruthy();
   });
   it.each([
-    { baseline: 0, goal: 20, current: 5, explanation: "No calculable: inicio igual a cero.", absolute: "Cambio absoluto: +5 USD", progress: "25 %" },
-    { baseline: -10, goal: 10, current: 0, explanation: "No se expresa en porcentaje con un inicio negativo; consulta el cambio absoluto.", absolute: "Cambio absoluto: +10 USD", progress: "50 %" },
+    { baseline: 0, goal: 20, current: 5, explanation: "No calculable: inicio igual a cero.", absolute: "+5 USD", progress: "25,00 %" },
+    { baseline: -10, goal: 10, current: 0, explanation: "No se expresa en porcentaje con un inicio negativo; consulta el cambio absoluto.", absolute: "+10 USD", progress: "50,00 %" },
   ])("zero/negative baseline $baseline explains unavailable variation without hiding the actual result", ({ baseline, goal, current, explanation, absolute, progress }) => {
     const oe = measuredObjective(baseline, goal, current);
     mocks.detail = { objective: oe, measurements: [] }; mocks.overview = overview(oe);
@@ -295,13 +296,13 @@ describe("Strategic measurement UI", () => {
     expect(within(table).getByRole("row", { name: `Resultado actual ${current} USD` })).toBeTruthy();
     expect(within(table).getByRole("row", { name: "Variación respecto al inicio No calculable" })).toBeTruthy();
     expect(within(table).getByRole("row", { name: `Avance hacia la meta ${progress}` })).toBeTruthy();
-    expect(screen.getByText(explanation)).toBeTruthy(); expect(screen.getByText(absolute)).toBeTruthy();
+    expect(screen.getByText(explanation)).toBeTruthy(); expect(screen.getByText(`Cambio absoluto: ${absolute}`)).toBeTruthy();
     expect(screen.queryByLabelText("Valor actual del indicador * (USD)")).toBeNull();
     view.unmount(); render(<StrategicMeasurementOverview companyId={1} />);
     const summary = within(screen.getByRole("button", { name: /OE 1.*OE original/ })).getByRole("group");
     expect(within(summary).getByText(explanation)).toBeTruthy();
     expect(summary.textContent).toContain(absolute);
-    expect(summary.textContent).toContain(`Avance hacia la meta: ${progress}`);
+    expect(summary.textContent).toContain(`Avance hacia la meta${progress}`);
     expect(mocks.measurement).not.toHaveBeenCalled();
   });
   it.each(["pending_configuration", "unmeasured"] as const)("missing current value in %s remains missing, not a fictitious zero", measurementStatus => {
@@ -317,18 +318,18 @@ describe("Strategic measurement UI", () => {
     const table = screen.getByRole("table", { name: "Doble lectura del indicador" });
     expect(within(table).getByRole("row", { name: "Resultado actual —" })).toBeTruthy();
     expect(within(table).getByRole("row", { name: "Avance hacia la meta —" })).toBeTruthy();
-    expect(within(table).queryByText("0 %")).toBeNull(); expect(within(table).queryByText("0 USD")).toBeNull();
+    expect(within(table).queryByText("0,00 %")).toBeNull(); expect(within(table).queryByText("0 USD")).toBeNull();
   });
   it("detail keeps raw current progress distinct from the unchanged registered historical percentages", () => {
     const oe = measuredObjective(10, 20, 25, 100);
     mocks.detail = { objective: oe, measurements: [oe.latestMeasurement!, { id: 2, objectiveId: 12, measurementDate: "2026-11-06", value: 5, percent: 0, observation: "Legado sin recálculo", evidence: "Documento previo" }] };
     render(<StrategicObjectiveDetail companyId={1} objectiveId={12} canManage={false} mode="measurement" />);
     const current = screen.getByRole("table", { name: "Doble lectura del indicador" });
-    expect(within(current).getByRole("row", { name: "Avance hacia la meta 150 %" })).toBeTruthy();
+    expect(within(current).getByRole("row", { name: "Avance hacia la meta 150,00 %" })).toBeTruthy();
     const history = screen.getByRole("table", { name: "Historial de mediciones reales" });
     expect(within(history).getByRole("columnheader", { name: "Avance registrado" })).toBeTruthy();
-    expect(within(history).getByText("100 %")).toBeTruthy(); expect(within(history).getByText("0 %")).toBeTruthy();
-    expect(within(history).queryByText("150 %")).toBeNull(); expect(within(history).queryByText("-50 %")).toBeNull();
+    expect(within(history).getByText("100,00 %")).toBeTruthy(); expect(within(history).getByText("0,00 %")).toBeTruthy();
+    expect(within(history).queryByText("150,00 %")).toBeNull(); expect(within(history).queryByText("-50,00 %")).toBeNull();
     expect(screen.getByText(/No se recalcula con la definición actual/)).toBeTruthy();
     expect(within(history).getByText("Documento previo")).toBeTruthy();
     expect(mocks.measurement).not.toHaveBeenCalled();

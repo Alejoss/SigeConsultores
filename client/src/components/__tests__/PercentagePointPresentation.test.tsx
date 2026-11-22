@@ -30,19 +30,19 @@ describe("presentación de cambio en puntos porcentuales", () => {
     renderSummary(5, 15, 10, "%");
     const panel = result();
     expect(panel.getByText("Cambio respecto al inicio")).toBeTruthy();
-    expect(panel.getByText("+5 puntos porcentuales")).toBeTruthy();
-    expect(panel.getByText("Variación relativa: +100 %")).toBeTruthy();
+    expect(panel.getByText("+5,00 puntos porcentuales")).toBeTruthy();
+    expect(panel.getByText("+100,00 %")).toBeTruthy();
     const text = screen.getByRole("group", { name: "Resultado del objetivo" }).textContent ?? "";
-    expect(text.indexOf("+5 puntos porcentuales")).toBeLessThan(text.indexOf("Variación relativa: +100 %"));
+    expect(text.indexOf("+5,00 puntos porcentuales")).toBeLessThan(text.indexOf("+100,00 %"));
   });
 
   it("presenta un descenso porcentual sin invertir el signo del cambio", () => {
     renderSummary(20, 4, 16, "%");
     const panel = result();
     expect(panel.getByText("Cambio respecto al inicio")).toBeTruthy();
-    expect(panel.getByText("-4 puntos porcentuales")).toBeTruthy();
-    expect(panel.getByText("Variación relativa: -20 %")).toBeTruthy();
-    expect(panel.getByText("25 %")).toBeTruthy();
+    expect(panel.getByText("-4,00 puntos porcentuales")).toBeTruthy();
+    expect(panel.getByText("-20,00 %")).toBeTruthy();
+    expect(panel.getByText("25,00 %")).toBeTruthy();
     expect(panel.getByText("Mejora")).toBeTruthy();
   });
 
@@ -51,33 +51,33 @@ describe("presentación de cambio en puntos porcentuales", () => {
     (unit) => {
       renderSummary(5, 15, 10, unit);
       const panel = result();
-      expect(panel.getByText("+5 puntos porcentuales")).toBeTruthy();
-      expect(panel.getByText("Variación relativa: +100 %")).toBeTruthy();
+      expect(panel.getByText("+5,00 puntos porcentuales")).toBeTruthy();
+      expect(panel.getByText("+100,00 %")).toBeTruthy();
     },
   );
 
   it("conserva la matemática y usa variación relativa para una unidad no porcentual", () => {
     renderSummary(150, 210, 190, "tallos");
     const panel = result();
-    expect(panel.getByText("Variación respecto al inicio")).toBeTruthy();
+    expect(panel.getByText("Variación relativa")).toBeTruthy();
     expect(panel.getByText("+26,67 %")).toBeTruthy();
-    expect(panel.queryByText("+40 puntos porcentuales")).toBeNull();
+    expect(panel.queryByText("+40,00 puntos porcentuales")).toBeNull();
   });
 
   it("no muestra puntos porcentuales para una métrica de checklist no numérica", () => {
     renderSummary(0, 10, 5, "%", { numericComparison: false });
     const panel = result();
     expect(panel.getByText("No aplica")).toBeTruthy();
-    expect(panel.queryByText(/puntos porcentuales/)).toBeNull();
-    expect(panel.queryByText(/Variación relativa:/)).toBeNull();
+    expect(panel.queryByText(/^[+-]?\d+(?:,\d+)? puntos porcentuales$/)).toBeNull();
+    expect(panel.getByText("Variación relativa")).toBeTruthy();
   });
 
   it("no calcula porcentaje desde un inicio igual a cero, aunque el indicador sea porcentual", () => {
     renderSummary(0, 30, 30, "%");
     const panel = result();
     expect(panel.getByText("Cambio respecto al inicio")).toBeTruthy();
-    expect(panel.getByText("+30 puntos porcentuales")).toBeTruthy();
-    expect(panel.getByText("Variación relativa: No calculable")).toBeTruthy();
+    expect(panel.getByText("+30,00 puntos porcentuales")).toBeTruthy();
+    expect(panel.getByText("No calculable")).toBeTruthy();
     expect(panel.getByText(/inicio igual a cero/i)).toBeTruthy();
   });
 
@@ -85,8 +85,8 @@ describe("presentación de cambio en puntos porcentuales", () => {
     renderSummary(-5, 5, -2, "porcentaje");
     const panel = result();
     expect(panel.getByText("Cambio respecto al inicio")).toBeTruthy();
-    expect(panel.getByText("+3 puntos porcentuales")).toBeTruthy();
-    expect(panel.getByText("Variación relativa: No calculable")).toBeTruthy();
+    expect(panel.getByText("+3,00 puntos porcentuales")).toBeTruthy();
+    expect(panel.getByText("No calculable")).toBeTruthy();
     expect(panel.getByText(/inicio negativo/i)).toBeTruthy();
   });
 
@@ -96,23 +96,23 @@ describe("presentación de cambio en puntos porcentuales", () => {
     expect(panel.getByText("Resultado actual")).toBeTruthy();
     expect(panel.getAllByText("—").length).toBeGreaterThan(0);
     expect(panel.getByText("Sin medición registrada.")).toBeTruthy();
-    expect(panel.queryByText(/puntos porcentuales/)).toBeNull();
+    expect(panel.queryByText(/^[+-]?\d+(?:,\d+)? puntos porcentuales$/)).toBeNull();
   });
 
   it("distingue una medición actual cero de una medición ausente", () => {
     renderSummary(5, 15, 0, "%");
     const panel = result();
-    expect(panel.getByText("0 %")).toBeTruthy();
-    expect(panel.getByText("-5 puntos porcentuales")).toBeTruthy();
-    expect(panel.getByText("Variación relativa: -100 %")).toBeTruthy();
+    expect(panel.getByText("0,00 %")).toBeTruthy();
+    expect(panel.getByText("-5,00 puntos porcentuales")).toBeTruthy();
+    expect(panel.getByText("-100,00 %")).toBeTruthy();
   });
 
-  it.each([false, true])("mantiene el avance del 50%% en modo %s sin alterar la presentación dual", (compact) => {
+  it.each([false, true])("mantiene el avance del 50,00 %% en modo %s sin alterar la presentación dual", (compact) => {
     renderSummary(5, 15, 10, "%", { compact });
     const panel = result();
-    expect(panel.getByText("50 %")).toBeTruthy();
-    expect(panel.getByText("+5 puntos porcentuales")).toBeTruthy();
-    expect(panel.getByText("Variación relativa: +100 %")).toBeTruthy();
+    expect(panel.getByText("50,00 %")).toBeTruthy();
+    expect(panel.getByText("+5,00 puntos porcentuales")).toBeTruthy();
+    expect(panel.getByText("+100,00 %")).toBeTruthy();
     expect(panel.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("50");
   });
 });

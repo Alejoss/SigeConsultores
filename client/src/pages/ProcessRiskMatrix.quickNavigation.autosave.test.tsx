@@ -28,7 +28,7 @@ vi.mock('@/lib/trpc', async () => {
   const { useMutation } = await import('@tanstack/react-query');
   return {
     trpc: {
-      processMap: { get: { useQuery: () => ({ data: { companyId: mocks.companyId } }) } },
+      processMap: { get: { useQuery: () => ({ data: { id: 4101, name: 'Proceso sintético', companyId: mocks.companyId } }) } },
       processFODA: {
         get: { useQuery: (_input: unknown, options: { enabled: boolean }) => ({ data: options.enabled ? mocks.foda : undefined }) },
         saveMatrixData: { useMutation: (options: object = {}) => useMutation({ mutationFn: mocks.matrixSave, ...options }) },

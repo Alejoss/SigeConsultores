@@ -63,8 +63,8 @@ async function mount(plannings: ReturnType<typeof ote>[]) {
   return view;
 }
 function metricText(group: HTMLElement, label: string) {
-  const row = within(group).getByText(`${label}:`, { exact: false }).closest("p");
-  return row?.querySelector("strong")?.textContent;
+  const term = within(group).getByText(label, { exact: true });
+  return term.parentElement?.querySelector("dd")?.textContent;
 }
 function globalValue(label: string) {
   // The general indicator precedes the individual cards, which repeat these labels.
@@ -156,18 +156,18 @@ describe("TacticalPlanning result UI and unchanged execution", () => {
     await mount([planning]);
     const result = screen.getByRole("group", { name: "Resultado OTE" });
     expect(metricText(result, "Resultado actual")).toBe(`${formatObjectiveValue(140)} unidades`);
-    expect(metricText(result, "Variación respecto al inicio")).toBe(formatObjectivePercent(40, true));
+    expect(metricText(result, "Variación relativa")).toBe(formatObjectivePercent(40, true));
     expect(metricText(result, "Avance hacia la meta")).toBe(formatObjectivePercent(400));
     expect(within(result).getByText("Mejora")).toBeTruthy();
     const progress = within(result).getByRole("progressbar");
     expect(progress.getAttribute("aria-valuenow")).toBe("100");
     expect(progress.getAttribute("aria-valuetext")).toContain(formatObjectivePercent(400));
     const execution = screen.getByRole("group", { name: "Ejecución del plan" });
-    expect(within(execution).getByText("30%")).toBeTruthy();
-    expect(within(execution).getByText("50%")).toBeTruthy();
+    expect(within(execution).getByText("30,00 %")).toBeTruthy();
+    expect(within(execution).getByText("50,00 %")).toBeTruthy();
     expect(within(execution).queryByText(/Variación respecto/)).toBeNull();
-    expect(globalValue("Avance ponderado hacia las metas de los OTE")).toBe("100%");
-    expect(globalValue("Avance Objetivos Operativos")).toBe("30%");
+    expect(globalValue("Avance ponderado hacia las metas de los OTE")).toBe("100,00 %");
+    expect(globalValue("Avance Objetivos Operativos")).toBe("30,00 %");
     fireEvent.click(screen.getByText(planning.objectiveName));
     await advance(900);
     expect(screen.getByLabelText("Valor actual del indicador OTE")).toBeTruthy();
@@ -199,9 +199,9 @@ describe("TacticalPlanning result UI and unchanged execution", () => {
   ])("explains unavailable variation and absolute delta with baseline %s", async (baseline, goal, current, reason, delta) => {
     await mount([ote({ puntoPartida: baseline, metaLlegada: goal, avanceMeta: current })]);
     const result = screen.getByRole("group", { name: "Resultado OTE" });
-    expect(metricText(result, "Variación respecto al inicio")).toBe("No calculable");
+    expect(metricText(result, "Variación relativa")).toBe("No calculable");
     expect(within(result).getByText(reason as RegExp)).toBeTruthy();
-    expect(within(result).getByText(new RegExp(`Cambio absoluto: ${String(delta).replace("+", "\\+")}`))).toBeTruthy();
+    expect(metricText(result, "Cambio respecto al inicio")).toBe(delta);
     expect(result.textContent).not.toMatch(/NaN|Infinity/);
   });
 
@@ -211,13 +211,13 @@ describe("TacticalPlanning result UI and unchanged execution", () => {
     expect(metricText(result, "Avance hacia la meta")).toBe(formatObjectivePercent(null));
     expect(within(result).getByText("Sin avance calculable")).toBeTruthy();
     expect(result.textContent).not.toMatch(/NaN|Infinity/);
-    expect(globalValue("Avance ponderado hacia las metas de los OTE")).toBe("0%");
+    expect(globalValue("Avance ponderado hacia las metas de los OTE")).toBe("0,00 %");
   });
 
   it("labels falling values as improvement when a negative goal asks for a decrease", async () => {
     await mount([ote({ puntoPartida: 100, metaLlegada: -50, avanceMeta: -80 })]);
     const result = screen.getByRole("group", { name: "Resultado OTE" });
-    expect(metricText(result, "Variación respecto al inicio")).toBe(formatObjectivePercent(-180, true));
+    expect(metricText(result, "Variación relativa")).toBe(formatObjectivePercent(-180, true));
     expect(metricText(result, "Avance hacia la meta")).toBe(formatObjectivePercent(120));
     expect(within(result).getByText("Mejora")).toBeTruthy();
     expect(result.textContent).toContain("Meta superada");
@@ -264,8 +264,8 @@ describe("TacticalPlanning result UI and unchanged execution", () => {
     expect(metricText(result, "Avance hacia la meta")).toBe(formatObjectivePercent(-200));
     expect(within(result).getByRole("progressbar").getAttribute("aria-valuenow")).toBe("0");
     expect(within(result).getByText("Retroceso")).toBeTruthy();
-    expect(globalValue("Avance ponderado hacia las metas de los OTE")).toBe("-40%");
-    expect(globalValue("Avance Objetivos Operativos")).toBe("-12%");
+    expect(globalValue("Avance ponderado hacia las metas de los OTE")).toBe("-40,00 %");
+    expect(globalValue("Avance Objetivos Operativos")).toBe("-12,00 %");
   });
 
   it("keeps the legacy total's unrounded contribution until final rounding", async () => {
@@ -273,8 +273,8 @@ describe("TacticalPlanning result UI and unchanged execution", () => {
     await mount([ote({ puntoPartida: 0, metaLlegada: 100, avanceMeta: 0.834, ponderacion: 60,
       resultKeys: [oo({ condicionInicial: 0, meta: 100, condicionActual: 0.834, ponderacion: 60 })] })]);
     expect(metricText(screen.getByRole("group", { name: "Resultado OTE" }), "Avance hacia la meta")).toBe(formatObjectivePercent(0.83));
-    expect(globalValue("Avance ponderado hacia las metas de los OTE")).toBe("1%");
-    expect(within(screen.getByRole("group", { name: "Ejecución del plan" })).getByText("1%")).toBeTruthy();
+    expect(globalValue("Avance ponderado hacia las metas de los OTE")).toBe("1,00 %");
+    expect(within(screen.getByRole("group", { name: "Ejecución del plan" })).getByText("1,00 %")).toBeTruthy();
   });
 
   it("autosaves current values and keeps legacy goal, weights, tasks and monthly buffers intact", async () => {
@@ -304,7 +304,7 @@ describe("TacticalPlanning result UI and unchanged execution", () => {
     const planning = ote({ expanded: true, resultKeys: [oo({ condicionInicial: 0, meta: 10, condicionActual: 5 })] });
     await mount([planning]);
     let result = screen.getByRole("group", { name: "Resultado OO" });
-    expect(metricText(result, "Variación respecto al inicio")).toBe("No calculable");
+    expect(metricText(result, "Variación relativa")).toBe("No calculable");
     expect(within(result).getByText(/inicio igual a cero/)).toBeTruthy();
     const selectors = screen.getAllByRole("combobox");
     fireEvent.change(selectors[1], { target: { value: "mensual_checklist" } });
@@ -319,9 +319,32 @@ describe("TacticalPlanning result UI and unchanged execution", () => {
     const taskB = { id: "b", description: "", responsible: "", date: "", percentageCompleted: 80, weighting: 75 };
     await mount([ote({ resultKeys: [oo({ ponderacion: 0, tasks: [taskA, taskB] })] })]);
     const execution = screen.getByRole("group", { name: "Ejecución del plan" });
-    expect(within(execution).getByText("50%")).toBeTruthy(); // OO fallback = simple mean of task percentages.
-    expect(within(execution).getByText("65%")).toBeTruthy(); // Task section = weighted task mean.
-    expect(globalValue("Avance Objetivos Operativos")).toBe("50%");
-    expect(globalValue("Avance de Tareas")).toBe("65%");
+    expect(within(execution).getByText("50,00 %")).toBeTruthy(); // OO fallback = simple mean of task percentages.
+    expect(within(execution).getByText("65,00 %")).toBeTruthy(); // Task section = weighted task mean.
+    expect(globalValue("Avance Objetivos Operativos")).toBe("50,00 %");
+    expect(globalValue("Avance de Tareas")).toBe("65,00 %");
+  });
+
+  it("opting into a margin preserves historical OTE/OO numbers, text and monthly buffers", async () => {
+    const monthlyValues = [17, ...Array(11).fill(0)];
+    const planning = ote({ expanded: true, avanceMeta: 999, porcentajeMetaAlcanzado: 17, monthlyValues,
+      resultKeys: [oo({ condicionActual: 888, porcentajeAlcanzado: 13, ooMonthlyValues: monthlyValues })] });
+    await mount([planning]);
+    const selectors = screen.getAllByRole("combobox");
+    fireEvent.change(selectors[0], { target: { value: "margen_tolerable" } });
+    fireEvent.change(screen.getByLabelText("OTE · Límite inferior"), { target: { value: "-20" } });
+    fireEvent.change(screen.getByLabelText("OTE · Límite superior"), { target: { value: "20" } });
+    fireEvent.change(screen.getByLabelText("OTE · Resultado actual"), { target: { value: "0" } });
+    fireEvent.change(selectors[1], { target: { value: "margen_tolerable" } });
+    await advance(900);
+    expect(mocks.planning).toHaveBeenCalledWith(expect.objectContaining({
+      trackingType: "margen_tolerable", avanceMeta: 999,
+      puntoPartida: 100, metaLlegada: 110, goal: "Meta histórica intacta", monthlyValues,
+      tolerance: expect.objectContaining({ lowerLimit: -20, upperLimit: 20, currentValue: 0 }),
+      resultKeys: [expect.objectContaining({ ooTrackingType: "margen_tolerable", condicionActual: 888,
+        porcentajeAlcanzado: 13, condicionInicial: 100, meta: 110, ooMonthlyValues: monthlyValues })],
+    }));
+    expect(JSON.parse(localStorage.getItem("tactical_planning_21")!)[0].porcentajeMetaAlcanzado).toBe(17);
+    expect(mocks.narratives).not.toHaveBeenCalled();
   });
 });

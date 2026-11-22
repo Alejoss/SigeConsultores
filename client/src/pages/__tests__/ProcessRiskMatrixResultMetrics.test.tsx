@@ -10,6 +10,7 @@ import type { MatrizFODARow } from '@/types/matrizFODA';
 vi.stubGlobal('React', React);
 const mocks = vi.hoisted(() => ({
   data: null as any,
+  processData: undefined as any, processError: false, getProcess: vi.fn(), getFoda: vi.fn(),
   saveMatrix: vi.fn(),
   saveNarratives: vi.fn(),
   navigate: vi.fn(),
@@ -19,8 +20,10 @@ vi.mock('wouter', () => ({
   useSearch: () => '?processId=21',
 }));
 vi.mock('@/lib/sessionScope', () => ({ getCompanyIdFromSession: () => 7 }));
-vi.mock('@/lib/trpc', () => ({ trpc: { processFODA: {
-  get: { useQuery: () => ({ data: mocks.data }) },
+vi.mock('@/lib/trpc', () => ({ trpc: { processMap: {
+  get: { useQuery: (...args: any[]) => { mocks.getProcess(...args); return { data: mocks.processData, isError: mocks.processError }; } },
+}, processFODA: {
+  get: { useQuery: (...args: any[]) => { mocks.getFoda(...args); return { data: mocks.data }; } },
   saveMatrixData: { useMutation: () => ({ mutate: mocks.saveMatrix, mutateAsync: mocks.saveMatrix }) },
   saveObjectiveNarratives: { useMutation: () => ({ mutate: mocks.saveNarratives, mutateAsync: mocks.saveNarratives }) },
 } } }));
@@ -65,6 +68,7 @@ function detailValue(label: string, value: string) {
   const group = result();
   return within(group.getByText(label).parentElement!).getByText(value);
 }
+function processTitle() { return screen.getByText(/^Proceso:/, { selector: 'p' }).textContent; }
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -72,6 +76,7 @@ beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('selectedProcessId', '21');
   localStorage.setItem('selectedProcessName', 'Proceso ficticio');
+  mocks.processData = { id: 21, name: 'Proceso ficticio', companyId: 7 }; mocks.processError = false;
   seed();
 });
 afterEach(() => {
@@ -80,45 +85,78 @@ afterEach(() => {
 });
 
 describe('ProcessRiskMatrix: lectura numérica OTG independiente de tareas', () => {
-  it('muestra resumen compacto y avance real en encabezado: 150/190/250 => +26,67% y 40%', () => {
+  it('lee el vínculo de FODA con saltos heredados y mantiene la matriz y sus tareas sin regrabar', () => {
+    seed(fixture({ objetivoPolitica: '' }));
+    mocks.data.strengths = JSON.stringify([{ id: 7, statement: 'Elemento FODA de revisión',
+      policyObjective: 'Política histórica ficticia', selectedObjectiveContent: 'Objetivo\n\nDescripción' }]).replace(/\\n/g, '\n');
+    const original = JSON.stringify(mocks.data);
+    mount(); act(() => vi.advanceTimersByTime(2500)); expand();
+    expect(screen.getByDisplayValue('Política histórica ficticia')).toBeTruthy();
+    expect(detailValue('Resultado actual', '190 unidades')).toBeTruthy();
+    expect(mocks.saveMatrix).not.toHaveBeenCalled(); expect(mocks.saveNarratives).not.toHaveBeenCalled();
+    expect(JSON.stringify(mocks.data)).toBe(original);
+  });
+  it('resuelve el título por el proceso de la URL y nunca por el nombre recordado de otro proceso', () => {
+    localStorage.setItem('selectedProcessId', '11'); localStorage.setItem('selectedProcessName', 'Producción: Aliaga');
+    mocks.processData = { id: 21, name: 'Postcosecha de revisión B', companyId: 7 };
+    mount(); act(() => vi.advanceTimersByTime(2500));
+    expect(processTitle()).toBe('Proceso: Postcosecha de revisión B');
+    expect(screen.queryByText('Producción: Aliaga', { selector: 'strong' })).toBeNull();
+    expect(mocks.getProcess).toHaveBeenCalledWith({ processId: 21 }, { enabled: true });
+    expect(mocks.getFoda).toHaveBeenCalledWith({ processId: 21, recordId: undefined }, { enabled: true });
+    expect(mocks.saveMatrix).not.toHaveBeenCalled(); expect(mocks.saveNarratives).not.toHaveBeenCalled();
+  });
+  it.each([undefined, { id: 11, name: 'Otro proceso' }])('no presenta un nombre ajeno mientras espera el proceso abierto (%s)', processData => {
+    mocks.processData = processData; mount();
+    expect(processTitle()).toBe('Proceso: Cargando nombre del proceso...');
+    expect(screen.queryByText('Otro proceso', { selector: 'strong' })).toBeNull();
+  });
+  it('un error del nombre mantiene disponible la matriz histórica sin escribir', () => {
+    mocks.processData = undefined; mocks.processError = true; mount();
+    act(() => vi.advanceTimersByTime(2500));
+    expect(processTitle()).toBe('Proceso: Nombre no disponible');
+    expect(screen.getByText('OTG de revisión', { selector: 'div' })).toBeTruthy();
+    expect(mocks.saveMatrix).not.toHaveBeenCalled();
+  });
+  it('muestra resumen compacto y avance real en encabezado: 150/190/250 => +26,67 % y 40,00 %', () => {
     mount();
     const summary = result();
     expect(summary.getByText('190 unidades')).toBeTruthy();
-    expect(summary.getByText('Inicio: 150 unidades · Meta: 250 unidades')).toBeTruthy();
-    expect(summary.getByText('Variación respecto al inicio:')).toBeTruthy();
+    expect(summary.getByText('150 unidades')).toBeTruthy(); expect(summary.getByText('250 unidades')).toBeTruthy();
+    expect(summary.getByText('Variación relativa')).toBeTruthy();
     expect(summary.getByText('+26,67 %')).toBeTruthy();
-    expect(summary.getByText('40 %')).toBeTruthy();
-    expect(screen.getByText('OTG: 40 %')).toBeTruthy();
-    expect(screen.queryByText('OTG: 99%')).toBeNull();
-    expect(screen.getByText('Tareas: 0%')).toBeTruthy();
+    expect(summary.getByText('40,00 %')).toBeTruthy();
+    expect(screen.getByText('OTG: 40,00 %')).toBeTruthy();
+    expect(screen.queryByText('OTG: 99,00 %')).toBeNull();
+    expect(screen.getByText('Tareas: 0,00 %')).toBeTruthy();
     expand();
-    for (const label of ['Punto de partida', 'Resultado actual', 'Meta', 'Variación respecto al inicio', 'Avance hacia la meta']) {
+    for (const label of ['Punto de partida', 'Resultado actual', 'Meta', 'Variación relativa', 'Avance hacia la meta']) {
       expect(result().getByText(label)).toBeTruthy();
     }
     expect(detailValue('Resultado actual', '190 unidades')).toBeTruthy();
-    expect(detailValue('Variación respecto al inicio', '+26,67 %')).toBeTruthy();
-    expect(detailValue('Avance hacia la meta', '40 %')).toBeTruthy();
+    expect(detailValue('Variación relativa', '+26,67 %')).toBeTruthy();
+    expect(detailValue('Avance hacia la meta', '40,00 %')).toBeTruthy();
     expect(screen.getByText('Meta (punto de llegada)')).toBeTruthy();
     expect(screen.queryByText('% Alcanzado')).toBeNull();
     expect(screen.getByPlaceholderText('Valor del resultado actual').getAttribute('value')).toBe('190');
   });
 
-  it('prioriza +5 puntos porcentuales y presenta +100% relativo como lectura secundaria', () => {
+  it('prioriza +5,00 puntos porcentuales y presenta +100,00 % relativo con igual jerarquía visual', () => {
     seed(fixture({ puntoPartida: 5, alcanzado: 10, puntoLlegada: 15, unidadMedida: '%' }));
     mount();
-    expect(result().getByText('+5 puntos porcentuales')).toBeTruthy();
-    expect(result().getByText('Variación relativa: +100 %').className).toContain('text-xs');
-    expect(screen.getByText('OTG: 50 %')).toBeTruthy();
+    expect(result().getByText('+5,00 puntos porcentuales')).toBeTruthy();
+    expect(result().getByText('+100,00 %').className).toContain('font-semibold');
+    expect(screen.getByText('OTG: 50,00 %')).toBeTruthy();
     expand();
-    expect(detailValue('Cambio respecto al inicio', '+5 puntos porcentuales')).toBeTruthy();
-    expect(result().getByText('Variación relativa: +100 %').className).toContain('text-xs');
-    expect(detailValue('Avance hacia la meta', '50 %')).toBeTruthy();
-    expect(result().queryByText('Variación respecto al inicio')).toBeNull();
+    expect(detailValue('Cambio respecto al inicio', '+5,00 puntos porcentuales')).toBeTruthy();
+    expect(result().getByText('+100,00 %').className).toContain('font-semibold');
+    expect(detailValue('Avance hacia la meta', '50,00 %')).toBeTruthy();
+    expect(detailValue('Variación relativa', '+100,00 %')).toBeTruthy();
   });
 
   it.each([
-    { current: -5, raw: '-150 %', bounded: '0', aggregate: '0%' },
-    { current: 25, raw: '150 %', bounded: '100', aggregate: '100%' },
+    { current: -5, raw: '-150,00 %', bounded: '0', aggregate: '0,00 %' },
+    { current: 25, raw: '150,00 %', bounded: '100', aggregate: '100,00 %' },
   ])('mantiene $raw sin recortar en encabezado y detalle, y el total legacy acotado', ({ current, raw, bounded, aggregate }) => {
     seed(fixture({ puntoPartida: 10, puntoLlegada: 20, alcanzado: current }));
     mount();
@@ -142,8 +180,8 @@ describe('ProcessRiskMatrix: lectura numérica OTG independiente de tareas', () 
     expect(result().getByText(explanation)).toBeTruthy();
     expand();
     expect(result().getByText(explanation)).toBeTruthy();
-    expect(result().getByText(/Cambio absoluto:/)).toBeTruthy();
-    expect(detailValue('Avance hacia la meta', '50 %')).toBeTruthy();
+    expect(result().getByText('Cambio respecto al inicio')).toBeTruthy();
+    expect(detailValue('Avance hacia la meta', '50,00 %')).toBeTruthy();
     expect(result().queryByText(/No aplica al seguimiento por cumplimiento/)).toBeNull();
   });
 
@@ -164,7 +202,7 @@ describe('ProcessRiskMatrix: lectura numérica OTG independiente de tareas', () 
     mount();
     expand();
     expect(detailValue('Resultado actual', '190 unidades')).toBeTruthy();
-    expect(detailValue('Avance hacia la meta', '40 %')).toBeTruthy();
+    expect(detailValue('Avance hacia la meta', '40,00 %')).toBeTruthy();
     expect(mocks.data.matrixData).toBe(original);
   });
 
@@ -178,7 +216,7 @@ describe('ProcessRiskMatrix: lectura numérica OTG independiente de tareas', () 
       }],
     }));
     mount();
-    expect(screen.getByText('Tareas: 8%')).toBeTruthy();
+    expect(screen.getByText('Tareas: 8,00 %')).toBeTruthy();
     expand();
     expect(screen.getByText('Meses cumplidos:').textContent).toContain('1 / 12');
     const checklist = screen.getByText('Lista de Verificación Mensual', { selector: 'label' }).parentElement!;
@@ -197,7 +235,7 @@ describe('ProcessRiskMatrix: lectura numérica OTG independiente de tareas', () 
     ]) expect(screen.getByText(label)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Guardar' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Agregar nueva tarea' })).toBeTruthy();
-    expect(screen.getByText('Avance de ejecución de tareas OTG:').textContent).toContain('8%');
+    expect(screen.getByText('Avance de ejecución de tareas OTG:').textContent).toContain('8,00 %');
     expect(screen.getAllByText('Avance de ejecución de tareas OTG')).toHaveLength(1);
     expect(screen.getByText('Completar tareas no equivale a lograr el resultado numérico del OTG.')).toBeTruthy();
   });
@@ -219,15 +257,17 @@ describe('ProcessRiskMatrix: lectura numérica OTG independiente de tareas', () 
   });
 
   it('el editor conserva su guardado legacy sin persistir métricas derivadas', () => {
+    localStorage.setItem('selectedProcessId', '11'); localStorage.setItem('selectedProcessName', 'Producción: Aliaga');
     mount();
     expand();
     const current = screen.getByPlaceholderText('Valor del resultado actual');
     current.focus();
     fireEvent.change(current, { target: { value: '310' } });
     expect(document.activeElement).toBe(current);
-    expect(detailValue('Avance hacia la meta', '160 %')).toBeTruthy();
+    expect(detailValue('Avance hacia la meta', '160,00 %')).toBeTruthy();
     act(() => vi.advanceTimersByTime(1600));
     expect(mocks.saveMatrix).toHaveBeenCalledTimes(1);
+    expect(mocks.saveMatrix.mock.calls[0][0].processId).toBe(21);
     const saved = JSON.parse(mocks.saveMatrix.mock.calls[0][0].matrixData)[0];
     expect(saved.alcanzado).toBe(310);
     expect(saved.porcentajeAlcanzadoOTG).toBe(100);
@@ -240,7 +280,7 @@ describe('ProcessRiskMatrix: lectura numérica OTG independiente de tareas', () 
 
   it('el panel nuevo y encabezado tienen medidas mínimas para apilar y envolver en móvil', () => {
     const view = mount();
-    expect(screen.getByText('OTG: 40 %').parentElement!.className).toContain('flex-wrap');
+    expect(screen.getByText('OTG: 40,00 %').parentElement!.className).toContain('flex-wrap');
     expand();
     expect(view.container.querySelector('.grid-cols-1.lg\\:grid-cols-3')).toBeTruthy();
     expect(screen.getByRole('group', { name: 'Resultado del OTG' }).parentElement!.className).toContain('min-w-0');

@@ -11,7 +11,7 @@ describe('OTG business-result read adapter', () => {
   });
   it('presents percentage-point change first for percentage indicators', () => {
     const metrics=calculateOtgResultMetrics({ puntoPartida: 5, alcanzado: 10, puntoLlegada: 15 });
-    expect(objectiveChangePresentation(metrics,'%')).toMatchObject({ value: '+5 puntos porcentuales', relativeValue: '+100 %' });
+    expect(objectiveChangePresentation(metrics,'%')).toMatchObject({ value: '+5,00 puntos porcentuales', relativeValue: '+100,00 %' });
     expect(metrics.goalProgress).toBe(50);
   });
   it('allows loss below zero without clipping', () => {

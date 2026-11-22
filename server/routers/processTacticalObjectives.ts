@@ -7,6 +7,12 @@ import { and, desc, eq, or } from "drizzle-orm";
 import { updateProcessTacticalObjective } from "../db";
 import { assertProcessAccessById, assertProcessTacticalObjectiveAccess } from "../_core/companyPermissions";
 import { calculateObjectiveResultMetrics } from "../../shared/objectiveResultMetrics";
+import { calculateTolerableMargin, calculateTolerableObjectiveResult } from "../../shared/tolerableMargin";
+const tolerableMarginFields = z.object({
+  lowerLimit: z.number().finite().nullable().optional(), upperLimit: z.number().finite().nullable().optional(),
+  idealValue: z.number().finite().nullable().optional(), recordingMode: z.enum(['puntual', 'mensual']).optional(),
+  currentValue: z.number().finite().nullable().optional(), monthlyValues: z.array(z.number().finite().nullable()).max(12).optional(),
+});
 
 const objectiveNarrativeFields = {
   situacionInicial: z.string().max(10_000).optional(),
@@ -351,7 +357,8 @@ export const processTacticalObjectivesRouter = router({
       metaLlegada: z.number().optional(),
       unidadMedida: z.string().optional(),
       avanceMeta: z.number().optional(),
-      trackingType: z.enum(['puntual', 'mensual_sumatoria', 'mensual_promedio', 'mensual_checklist']).optional(),
+      trackingType: z.enum(['puntual', 'mensual_sumatoria', 'mensual_promedio', 'mensual_checklist', 'margen_tolerable']).optional(),
+      tolerance: tolerableMarginFields.optional(),
       monthlyValues: z.array(z.number()).optional(),
       checklistValues: z.array(z.boolean()).optional(),
       puntualSumValues: z.array(z.number()).optional(),
@@ -415,6 +422,7 @@ export const processTacticalObjectivesRouter = router({
           unidadMedida: input.unidadMedida !== undefined ? input.unidadMedida : (existingPlanningData.unidadMedida || ''),
           avanceMeta: input.avanceMeta !== undefined ? input.avanceMeta : (existingPlanningData.avanceMeta || 0),
           trackingType: input.trackingType !== undefined ? input.trackingType : (existingPlanningData.trackingType || 'puntual'),
+          ...(input.tolerance !== undefined ? { tolerance: input.tolerance } : {}),
           monthlyValues: input.monthlyValues !== undefined ? input.monthlyValues : (existingPlanningData.monthlyValues || []),
           checklistValues: input.checklistValues !== undefined ? input.checklistValues : (existingPlanningData.checklistValues || []),
           puntualSumValues: input.puntualSumValues !== undefined ? input.puntualSumValues : (existingPlanningData.puntualSumValues || []),
@@ -489,7 +497,10 @@ export const processTacticalObjectivesRouter = router({
           
           // Calculate porcentajeMetaAlcanzado correctly
           let porcentajeMetaAlcanzado = 0;
-          if (trackingType === 'mensual_checklist') {
+          if (trackingType === 'margen_tolerable') {
+            // Margin compliance belongs to resultMetrics, not the historical numeric buffer.
+            porcentajeMetaAlcanzado = planningData.porcentajeMetaAlcanzado ?? 0;
+          } else if (trackingType === 'mensual_checklist') {
             porcentajeMetaAlcanzado = Math.round((avanceMeta / 12) * 100);
           } else if (metaLlegada !== puntoPartida) {
             porcentajeMetaAlcanzado = ((avanceMeta - puntoPartida) / (metaLlegada - puntoPartida)) * 100;
@@ -499,7 +510,9 @@ export const processTacticalObjectivesRouter = router({
           // Metadata de lectura: el resultado real no se recorta ni se persiste.
           // Los porcentajes legacy anteriores siguen intactos para sus agregados.
           const isChecklist = trackingType === 'mensual_checklist';
-          const resultMetrics = calculateObjectiveResultMetrics({
+          const resultMetrics = trackingType === 'margen_tolerable'
+            ? calculateTolerableObjectiveResult(Number(puntoPartida), planningData.tolerance)
+            : calculateObjectiveResultMetrics({
             baseline: isChecklist ? 0 : Number(puntoPartida),
             goal: isChecklist ? 12 : Number(metaLlegada),
             currentValue: Number(avanceMeta),
@@ -531,7 +544,9 @@ export const processTacticalObjectivesRouter = router({
               currentValue = ooChecklistValues.filter(Boolean).length;
             }
             const ooIsChecklist = ooTrackingType === 'mensual_checklist';
-            const resultMetrics = calculateObjectiveResultMetrics({
+            const resultMetrics = ooTrackingType === 'margen_tolerable'
+              ? calculateTolerableObjectiveResult(ci, rk.ooTolerance)
+              : calculateObjectiveResultMetrics({
               baseline: ooIsChecklist ? 0 : ci,
               goal: ooIsChecklist ? 12 : m,
               currentValue,
@@ -567,6 +582,7 @@ export const processTacticalObjectivesRouter = router({
             resultMetrics,
             porcentajeMetaAlcanzadoRaw: resultMetrics.goalProgress,
             trackingType,
+            ...(planningData.tolerance !== undefined ? { tolerance: planningData.tolerance } : {}),
             monthlyValues,
             checklistValues,
             puntualSumValues: planningData.puntualSumValues || [],

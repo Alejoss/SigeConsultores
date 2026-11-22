@@ -1,3 +1,5 @@
+import { calculateTolerableMargin, type TolerableMarginConfig } from '@shared/tolerableMargin';
+
 export type FODAType = 'Fortaleza' | 'Oportunidad' | 'Debilidad' | 'Amenaza';
 export type FactorType = 'Humano' | 'Tecnológico' | 'Natural';
 export type SistemaGestionType = 'Calidad' | 'Ambiente' | 'SSO' | 'Seguridad Física' | 'Responsabilidad Social' | 'Otro';
@@ -68,7 +70,7 @@ export function describirImpacto(valor?: ImpactoType): string {
 }
 
 // ─── Tipos OTG ────────────────────────────────────────────────────────────────
-export type TrackingOTGType = 'puntual' | 'mensual_sumatoria' | 'mensual_promedio' | 'mensual_checklist';
+export type TrackingOTGType = 'puntual' | 'mensual_sumatoria' | 'mensual_promedio' | 'mensual_checklist' | 'margen_tolerable';
 export const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'Mayo', 'Jun', 'Jul', 'Agos', 'Sep', 'Oct', 'Nov', 'Dic'];
 export interface AccionOTG {
   id: string;
@@ -77,6 +79,7 @@ export interface AccionOTG {
   responsable: string;
   fechaImplementacion: string;
   tipoSeguimiento: TrackingOTGType;
+  tolerance?: TolerableMarginConfig;
   valorPuntual?: number;
   puntoPartidaAccion?: number;
   puntoLlegadaAccion?: number;
@@ -87,6 +90,8 @@ export interface AccionOTG {
 }
 export function calcularPorcentajeAccion(accion: AccionOTG): number {
   switch (accion.tipoSeguimiento) {
+    case 'margen_tolerable':
+      return calculateTolerableMargin(accion.tolerance).compliancePercent ?? 0;
     case 'puntual': {
       const llegada = accion.puntoLlegadaAccion ?? 0;
       if (llegada === 0) return 0;
@@ -181,6 +186,8 @@ export interface MatrizFODARow {
   responsableOTG?: string;
   alcanzado?: number;
   porcentajeAlcanzadoOTG?: number;
+  resultTrackingType?: 'puntual' | 'margen_tolerable';
+  tolerance?: TolerableMarginConfig;
   fechaPlanificacionMejora?: string;
   acciones?: AccionOTG[];
   porcentajeCumplimiento?: number;
