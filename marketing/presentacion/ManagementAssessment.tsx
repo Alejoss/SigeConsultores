@@ -56,7 +56,7 @@ export default function ManagementAssessment() {
               UNA PAUSA PARA MIRAR TU EMPRESA
             </p>
             <h2 id="assessment-title">
-              ¿Tu sistema trabaja para tu estrategia… <span>o al revés?</span>
+              ¿Tu gestión trabaja para tu estrategia… <span>o al revés?</span>
             </h2>
             <p>
               Seis preguntas para reconocer fortalezas y oportunidades de
