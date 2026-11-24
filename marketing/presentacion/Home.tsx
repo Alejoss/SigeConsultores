@@ -19,11 +19,7 @@ import ManagementAssessment from "./ManagementAssessment";
 import { ManagementFlow, ManagementSituations } from "./ManagementContext";
 import "./presentation.css";
 
-const media = {
-  logo: "/presentacion/media/logo.png",
-  video: "/presentacion/media/presentacion-20261108.mp4",
-  poster: "/presentacion/media/poster.jpg",
-};
+const media = { logo: "/presentacion/media/logo.png", video: "/presentacion/media/presentacion-20261124.mp4", poster: "/presentacion/media/poster.jpg" };
 export const whatsappUrl =
   "https://wa.me/593987298644?text=" +
   encodeURIComponent(
@@ -35,7 +31,7 @@ const roles = [
     icon: Compass,
     name: "Gerente General",
     title: "Define el rumbo. Visualiza el avance.",
-    body: "Conecta propósito, misión, visión, política y objetivos estratégicos con la gestión diaria. Consulta el avance de OTG, OTE, sistemas de gestión y cumplimientos.",
+    body: "Conecta propósito, misión, visión, política y objetivos estratégicos con la gestión diaria. Consulta el avance de los objetivos, los sistemas de gestión y el cumplimiento en un solo lugar.",
     tags: ["Estrategia", "Desempeño"],
   },
   {
@@ -49,10 +45,10 @@ const roles = [
   {
     n: "03",
     icon: Workflow,
-    name: "Jefes de Proceso",
+    name: "Jefes de Proceso / Responsables de área",
     title: "Organizan. Ejecutan. Mejoran.",
-    body: "Desde la estructura de su área, gestionan sus objetivos tácticos de gestión (OTG) y estratégicos (OTE), acciones, reuniones y control de salidas. Un cronograma reúne su planificación.",
-    tags: ["Procesos", "OTG y OTE", "Seguimiento"],
+    body: "Desde su área, gestionan objetivos de gestión y estratégicos, acciones y reuniones. Controlan y autorizan las salidas de sus procesos. Un cronograma reúne su planificación y seguimiento.",
+    tags: ["Objetivos y acciones", "Control de salidas", "Seguimiento"],
   },
 ];
 
@@ -92,7 +88,7 @@ export default function Home() {
           />
         </a>
         <nav aria-label="Navegación principal" className="p-nav">
-          <a className="p-nav-link" href="#responsabilidades">
+          <a className="p-nav-link" href="#solucion">
             La plataforma
           </a>
           <a className="p-nav-link" href="#servicios">
@@ -109,34 +105,18 @@ export default function Home() {
       <main id="contenido">
         <ManagementSituations />
         <section className="p-hero" id="solucion" aria-labelledby="p-title">
-          <div className="p-orbit" aria-hidden="true" />
           <div className="p-hero-grid">
             <div className="p-hero-copy">
-              <p className="p-eyebrow">
-                <span /> SISTEMA INTEGRADO DE GESTIÓN EMPRESARIAL
-              </p>
-              <h2 id="p-title">
-                La estrategia
-                <br />
-                hecha <span>gestión.</span>
-              </h2>
+              <p className="p-eyebrow p-eyebrow-dark">ISGE 360</p>
+              <h2 id="p-title">Plataforma de Gestión Empresarial Integral</h2>
               <p className="p-lead">
-                Sistemas de gestión trabajando para la empresa.
-                <br className="p-desktop-break" /> No la empresa trabajando para
-                los sistemas de gestión.
+                Conecta la estrategia de tu empresa con los objetivos, las
+                responsabilidades y el trabajo de cada área, y permite ver sus
+                resultados en un solo lugar.
               </p>
               <p className="p-service-intro">
-                Para lograrlo, ISGE 360 combina asesoría personalizada y una
-                plataforma que facilita la gestión de tus sistemas, alineados
-                con la estrategia de tu empresa.
-              </p>
-              <p className="p-sublead">
-                Una plataforma. Una dirección compartida.
-                <br />
-                Cada persona, con su responsabilidad.
-                <span className="p-service-promise">
-                  Plataforma + asesoría personalizada.
-                </span>
+                Integra también los sistemas de gestión al servicio de tu
+                empresa, con asesoría personalizada para llevarlo a la práctica.
               </p>
               <div className="p-hero-actions">
                 <button
@@ -146,17 +126,38 @@ export default function Home() {
                 >
                   <Play size={17} aria-hidden="true" /> Ver presentación · 40 s
                 </button>
-                <a className="p-button p-button-green" href="#autoevaluacion">
-                  Autoevaluación · 1 minuto{" "}
-                  <ChevronRight size={16} aria-hidden="true" />
-                </a>
               </div>
               <div className="p-no-login">
                 <Check size={15} aria-hidden="true" /> Conoce la plataforma sin
                 iniciar sesión.
               </div>
             </div>
-            <div className="p-video-column" id="video">
+          </div>
+        </section>
+        <ManagementFlow />
+        <section
+          className="p-video-section"
+          id="video"
+          aria-labelledby="p-video-title"
+        >
+          <div className="p-video-layout">
+            <div className="p-video-intro">
+              <p className="p-eyebrow">LA PLATAFORMA EN ACCIÓN</p>
+              <h2 id="p-video-title">
+                Una dirección compartida.
+                <br />
+                <span>Resultados a la vista.</span>
+              </h2>
+              <p>
+                Mira cómo se conectan la estrategia, la gestión y el trabajo de
+                cada área en ISGE 360.
+              </p>
+              <p className="p-video-demo-note">
+                Las secciones de la plataforma se presentan con un diseño
+                adaptado para celular. Los avances mostrados son ficticios.
+              </p>
+            </div>
+            <div className="p-video-column">
               <div className="p-video-top">
                 <span>ISGE 360 EN 40 SEGUNDOS</span>
                 <span className="p-video-dot" />
@@ -170,12 +171,12 @@ export default function Home() {
                   poster={media.poster}
                   onPlay={() => setStarted(true)}
                   onError={() => setVideoError(true)}
-                  aria-label="Presentación de ISGE 360 con pantallas reales de Masa Viva y contacto de Esteban Román"
+                  aria-label="Presentación de ISGE 360 con secciones de la plataforma adaptadas para celular, datos ficticios y contacto de Esteban Román"
                 >
                   <source src={media.video} type="video/mp4" />
                   <track
                     kind="captions"
-                    src={`${import.meta.env.BASE_URL}presentation-es.vtt?v=20261108`}
+                    src={`${import.meta.env.BASE_URL}presentation-es.vtt?v=20261124`}
                     srcLang="es"
                     label="Español"
                   />
@@ -194,8 +195,17 @@ export default function Home() {
                 )}
               </div>
               <p className="p-video-caption">
-                Pantallas reales · Masa Viva, empresa ficticia de demostración.
+                Secciones de ISGE 360 adaptadas para celular · datos de demostración.
               </p>
+              <a
+                className="p-video-download"
+                href={media.video}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Download size={14} aria-hidden="true" /> Descargar video
+              </a>
               {videoError && (
                 <p role="alert" className="p-video-error">
                   No se pudo iniciar el video.{" "}
@@ -213,12 +223,11 @@ export default function Home() {
           </div>
           <a className="p-hero-bottom" href="#responsabilidades">
             <span>
-              ESTRATEGIA <b>→</b> GESTIÓN <b>→</b> RESULTADOS
+              CADA ÁREA <b>→</b> UNA RESPONSABILIDAD
             </span>
             <ArrowDown size={18} aria-hidden="true" />
           </a>
         </section>
-        <ManagementFlow />
         <section
           className="p-roles"
           id="responsabilidades"

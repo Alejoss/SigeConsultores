@@ -1,8 +1,6 @@
 import {
-  ArrowRight,
   ClipboardCheck,
   Compass,
-  CornerUpLeft,
   ChartNoAxesCombined,
   Network,
   Target,
@@ -18,8 +16,8 @@ const situations = [
   },
   {
     icon: Network,
-    title: "Sistemas de gestión desconectados de la estrategia de la empresa",
-    body: "¿Los Sistemas de Gestión trabajan para tu empresa o tu empresa trabaja para ellos?",
+    title: "Áreas y sistemas desconectados de la estrategia",
+    body: "¿Cada área y cada sistema de gestión trabajan para los objetivos de tu empresa?",
   },
   {
     icon: ChartNoAxesCombined,
@@ -31,42 +29,39 @@ const stages = [
   {
     icon: Compass,
     number: "01",
-    title: "Estrategia",
-    subtitle: "Define el rumbo",
-    items: [
-      "Propósito, misión y visión",
-      "Valores y política",
-      "Objetivos estratégicos",
-    ],
+    label: "ESTRATEGIA",
+    title: "Direccionamiento",
+    body: "Define hacia dónde va la empresa y qué objetivos persigue.",
   },
   {
     icon: Workflow,
     number: "02",
-    title: "Procesos",
-    subtitle: "Convierten el rumbo en gestión",
-    items: [
-      "Organización de cada área",
-      "Objetivos tácticos de gestión (OTG) y estratégicos (OTE)",
-      "Gestión con partes interesadas",
-      "Control y liberación de salidas",
-    ],
+    label: "GESTIÓN",
+    title: "Operación",
+    body: "Gestiona los procesos para llevar la estrategia a la operación.",
   },
   {
     icon: ClipboardCheck,
     number: "03",
-    title: "Resultados",
-    subtitle: "Hacen visible lo que cambia",
-    items: ["Desempeño", "Cumplimiento", "Mejora continua"],
+    label: "CONTROL",
+    title: "Desempeño",
+    body: "Controla el desempeño y mide los resultados obtenidos.",
   },
 ];
 
 export function ManagementSituations() {
   return (
-    <section className="p-situations" id="inicio" aria-labelledby="situations-title">
+    <section
+      className="p-situations"
+      id="inicio"
+      aria-labelledby="situations-title"
+    >
       <div className="p-context-inner">
         <div className="p-situations-heading">
+          <p className="p-eyebrow p-situations-eyebrow">UNA PREGUNTA RÁPIDA</p>
           <h1 id="situations-title">
-            ¿Diriges tu empresa o pasas demasiado tiempo tratando de averiguar qué está pasando en ella?
+            ¿Diriges tu empresa o pasas demasiado tiempo tratando de averiguar
+            qué está pasando en ella?
           </h1>
           <p>¿Te identificas con alguna de estas situaciones?</p>
         </div>
@@ -74,7 +69,7 @@ export function ManagementSituations() {
           {situations.map(item => (
             <article key={item.title} className="p-situation">
               <span className="p-situation-icon" aria-hidden="true">
-                <item.icon size={27} strokeWidth={1.8} />
+                <item.icon size={25} strokeWidth={1.8} />
               </span>
               <div>
                 <h2>{item.title}</h2>
@@ -84,8 +79,8 @@ export function ManagementSituations() {
           ))}
         </div>
         <p className="p-situations-bridge">
-          No se trata de trabajar más, sino de conectar la estrategia, los
-          sistemas de gestión y el trabajo de cada área.
+          No se trata de trabajar más, sino de conectar la estrategia, la
+          gestión y el trabajo de cada área.
         </p>
       </div>
     </section>
@@ -97,57 +92,27 @@ export function ManagementFlow() {
     <section
       className="p-flow"
       id="como-funciona"
-      aria-labelledby="flow-title"
+      aria-label="Estrategia, gestión y control"
     >
       <div className="p-context-inner">
-        <div className="p-section-heading">
-          <p className="p-eyebrow p-eyebrow-dark">
-            SISTEMAS DE GESTIÓN ALINEADOS A LA ESTRATEGIA
-          </p>
-          <h2 id="flow-title">
-            Del rumbo compartido
-            <br />
-            <span>a los resultados.</span>
-          </h2>
-          <p>
-            La estrategia no se queda en una declaración: se convierte en
-            gestión dentro de cada área.
-          </p>
-        </div>
         <ol
           className="p-flow-stages"
-          aria-label="Estrategia, procesos y resultados"
+          aria-label="Tres dimensiones de la plataforma"
         >
           {stages.map(stage => (
             <li
               key={stage.number}
               className={`p-flow-stage p-flow-stage-${stage.number}`}
             >
-              <div className="p-flow-stage-top">
-                <stage.icon size={24} strokeWidth={1.6} aria-hidden="true" />
-                <span>{stage.number}</span>
-              </div>
+              <stage.icon size={29} strokeWidth={1.6} aria-hidden="true" />
+              <p className="p-flow-label">{stage.label}</p>
               <h3>{stage.title}</h3>
-              <p>{stage.subtitle}</p>
-              <ul>
-                {stage.items.map(item => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              {stage.number !== "03" && (
-                <span className="p-flow-arrow" aria-hidden="true">
-                  <ArrowRight size={20} />
-                </span>
-              )}
+              <p className="p-flow-description">{stage.body}</p>
             </li>
           ))}
         </ol>
         <p className="p-flow-feedback">
-          <CornerUpLeft size={19} aria-hidden="true" />
-          <span>
-            Los resultados permiten revisar y mejorar tanto los procesos como
-            la estrategia.
-          </span>
+          La estrategia se convierte en gestión y la gestión en resultados.
         </p>
       </div>
     </section>
