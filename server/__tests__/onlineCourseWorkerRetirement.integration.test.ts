@@ -92,6 +92,7 @@ function browser(initialCookie = "") {
 
 type Browser = ReturnType<typeof browser>;
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+type CompanyOverview = Awaited<ReturnType<ReturnType<Browser["caller"]>["companyOverview"]>>;
 
 /** Keep the entire mutable lifecycle in one test; other tests use a separate guard worker. */
 describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
@@ -141,6 +142,52 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
       .where(eq(courseWorkers.id, id));
     expect(row).toBeDefined();
     return row!;
+  }
+
+  function fixtureTracking<T extends CompanyOverview["workers"][number]>(
+    row: T,
+    expectedModuleIds = [publicModuleId, privateModuleId, visitModuleId]
+  ) {
+    // Only module keys from the shared foreign catalog may vary. Keep every
+    // worker property and every nested value of our modules, including lessons.
+    const modules = Object.fromEntries(
+      Object.entries(row.modules).filter(([id]) =>
+        [publicModuleId, privateModuleId, visitModuleId].includes(Number(id))
+      )
+    );
+    expect(Object.keys(modules).map(Number).sort((a, b) => a - b)).toEqual(
+      [...expectedModuleIds].sort((a, b) => a - b)
+    );
+    return { ...row, modules };
+  }
+
+  function fixtureCompanyOverview(overview: CompanyOverview, companyId: number) {
+    const expectedFieldIds = companyId === companyAId
+      ? [publicFieldId, privateFieldId]
+      : [publicFieldId];
+    const expectedModuleIds = companyId === companyAId
+      ? [publicModuleId, privateModuleId, visitModuleId]
+      : [publicModuleId];
+    const fields = overview.fields.filter(field =>
+      [publicFieldId, privateFieldId].includes(field.id)
+    );
+    expect(fields.map(field => field.id).sort((a, b) => a - b)).toEqual(
+      [...expectedFieldIds].sort((a, b) => a - b)
+    );
+    // Do not filter modules/lessons inside our fields: extra or missing fixture
+    // content must fail, as must leaked private content in company B.
+    expect(fields.flatMap(field => field.modules.map(module => module.id))
+      .sort((a, b) => a - b)).toEqual(
+      [...expectedModuleIds].sort((a, b) => a - b)
+    );
+    return {
+      ...overview,
+      fields,
+      // Map, never filter workers: counts, IDs, order and all non-catalog data
+      // remain part of the comparison, for active and retired workers alike.
+      workers: overview.workers.map(row => fixtureTracking(row, expectedModuleIds)),
+      retiredWorkers: overview.retiredWorkers.map(row => fixtureTracking(row, expectedModuleIds)),
+    };
   }
 
   function fixtureCsvRows(rows: (string | null)[][]) {
@@ -676,7 +723,29 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
     const certificatesBefore = await Promise.all(
       certificateInputs.map(input => worker.caller().certificate(input))
     );
+    // Deterministic foreign catalog churn, not a sleep/race with another suite.
+    // These fields are ours to clean up, but are NOT either lifecycle field.
+    const externalContent: { fieldId: number; moduleId: number; lessonId: number; name: string }[] = [];
+    async function addExternalContent(label: string) {
+      const name = `Campo ajeno sintético ${label} ${suffix}`;
+      const fieldId = (await admin.caller().createField({ name })).id;
+      fieldIds.push(fieldId);
+      const content = { fieldId, moduleId: 0, lessonId: 0, name };
+      externalContent.push(content);
+      content.moduleId = (await admin.caller().createModule({ fieldId, name: `Módulo ajeno ${label}` })).id;
+      content.lessonId = (await admin.caller().createLesson({
+        moduleId: content.moduleId,
+        file: lessonFile(`Capacitación ajena ${label}`),
+      })).id;
+      return content;
+    }
+    const externalBefore = await addExternalContent("antes");
     const overviewBefore = await managerA.caller().companyOverview();
+    const fixtureOverviewBefore = fixtureCompanyOverview(overviewBefore, companyAId);
+    expect(overviewBefore.workerCount).toBe(3);
+    expect(overviewBefore.retiredWorkers).toHaveLength(0);
+    expect(overviewBefore.fields.find(field => field.id === externalBefore.fieldId)
+      ?.modules.map(module => module.id)).toEqual([externalBefore.moduleId]);
     const trackingBefore = overviewBefore.workers.find(
       row => row.id === workerId
     )!;
@@ -694,11 +763,14 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
     expect(fixtureExportBefore).toHaveLength(9);
     expect(fixtureExportBefore.filter(row => row[0] === mainName)).toHaveLength(3);
     expect(exportBefore.rows.some(row => row[0] === mainName)).toBe(true);
+    expect(exportBefore.rows.filter(row => row[3] === externalBefore.name)).toHaveLength(3);
     const catalogBefore = await admin.caller().catalogOverview();
     const catalogCountBefore = catalogBefore.companies.find(
       row => row.id === companyAId
     )!.workers;
     const otherCompanyBefore = await managerB.caller().companyOverview();
+    const fixtureOtherCompanyBefore = fixtureCompanyOverview(otherCompanyBefore, companyBId);
+    expect(otherCompanyBefore.workers.map(row => row.id)).toEqual([otherWorkerId]);
     const otherExportBefore = await managerB.caller().exportCsv();
     const otherRowBefore = await workerRow(otherWorkerId);
     const otherHistoryBefore = await history(otherWorkerId);
@@ -722,6 +794,22 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
       name: mainName,
     });
 
+    const externalRetired = await addExternalContent("durante-retiro");
+    expect(externalContent).toHaveLength(2);
+    expect(externalContent.every(content => content.fieldId > 0 && content.moduleId > 0 && content.lessonId > 0)).toBe(true);
+    expect([publicFieldId, privateFieldId]).not.toContain(externalRetired.fieldId);
+    const addedOverview = await managerA.caller().companyOverview();
+    expect(addedOverview.fields.find(field => field.id === externalRetired.fieldId)
+      ?.modules.map(module => module.id)).toEqual([externalRetired.moduleId]);
+    expect(fixtureCompanyOverview(addedOverview, companyAId)).toEqual(fixtureOverviewBefore);
+    const otherAddedOverview = await managerB.caller().companyOverview();
+    expect(otherAddedOverview.workers[0].modules[externalRetired.moduleId]).toBeDefined();
+    expect(fixtureCompanyOverview(otherAddedOverview, companyBId)).toEqual(fixtureOtherCompanyBefore);
+    const addedExport = await managerA.caller().exportCsv();
+    expect(addedExport.rows.filter(row => row[3] === externalRetired.name)).toHaveLength(3);
+    expect(fixtureCsvRows(addedExport.rows)).toEqual(fixtureExportBefore);
+    expect(await admin.caller().removeContent({ kind: "campo", id: externalBefore.fieldId }))
+      .toEqual({ outcome: "deleted" });
     await managerA.caller().retireWorker(confirmation());
     const retired = await workerRow(workerId);
     expect(retired.retiredAt).toBeInstanceOf(Date);
@@ -737,7 +825,15 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
     await assertWorkerSessionsBlocked();
 
     const retiredOverview = await managerA.caller().companyOverview();
+    const fixtureRetiredOverview = fixtureCompanyOverview(retiredOverview, companyAId);
+    expect(fixtureRetiredOverview.fields).toEqual(fixtureOverviewBefore.fields);
+    expect(retiredOverview.fields.map(field => field.id)).not.toContain(externalBefore.fieldId);
+    expect(retiredOverview.fields.find(field => field.id === externalRetired.fieldId)
+      ?.modules.map(module => module.id)).toEqual([externalRetired.moduleId]);
     expect(retiredOverview.workerCount).toBe(overviewBefore.workerCount - 1);
+    expect(retiredOverview.workers.map(row => row.id)).toEqual(
+      overviewBefore.workers.map(row => row.id).filter(id => id !== workerId)
+    );
     expect(retiredOverview.workers.map(row => row.id)).not.toContain(workerId);
     expect(retiredOverview.workers.map(row => row.id)).toEqual(
       expect.arrayContaining([guardWorkerId, peerWorkerId])
@@ -749,7 +845,12 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
       row => row.id === workerId
     )!;
     expect(retiredTracking.retiredAt).toBeTruthy();
-    expect(retiredTracking).toMatchObject(trackingBefore);
+    expect(trackingBefore.modules[externalBefore.moduleId]).toBeDefined();
+    expect(retiredTracking.modules[externalBefore.moduleId]).toBeUndefined();
+    expect(trackingBefore.modules[externalRetired.moduleId]).toBeUndefined();
+    expect(retiredTracking.modules[externalRetired.moduleId]).toBeDefined();
+    const { retiredAt: _retiredAt, ...retiredActiveTracking } = retiredTracking;
+    expect(fixtureTracking(retiredActiveTracking)).toEqual(fixtureTracking(trackingBefore));
     const catalogRetired = await admin.caller().catalogOverview();
     expect(
       catalogRetired.companies.find(row => row.id === companyAId)?.workers
@@ -762,6 +863,9 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
       "seguimiento-detallado-capacitaciones.xlsx"
     );
     expect(retiredExport.headers).toEqual(exportBefore.headers);
+    expect(retiredExport.rows.filter(row => row[3] === externalBefore.name)).toHaveLength(0);
+    expect(retiredExport.rows.filter(row => row[3] === externalRetired.name)).toHaveLength(2);
+    expect(fixtureCsvRows(retiredExport.rows)).toHaveLength(6);
     expect(fixtureCsvRows(retiredExport.rows)).toEqual(
       fixtureExportBefore.filter(row => row[0] !== mainName)
     );
@@ -853,6 +957,16 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
       ).rejects.toMatchObject({ code: "BAD_REQUEST" });
       expect(await workerRow(workerId)).toEqual(afterReset);
     }
+    expect(await admin.caller().removeContent({ kind: "campo", id: externalRetired.fieldId }))
+      .toEqual({ outcome: "deleted" });
+    // Both synthetic trees are now gone, including their modules and lessons;
+    // cleanup is also safe if a preceding assertion aborts this lifecycle.
+    expect(await db.select().from(courseFields)
+      .where(inArray(courseFields.id, externalContent.map(content => content.fieldId)))).toEqual([]);
+    expect(await db.select().from(courseModules)
+      .where(inArray(courseModules.id, externalContent.map(content => content.moduleId)))).toEqual([]);
+    expect(await db.select().from(courseLessons)
+      .where(inArray(courseLessons.id, externalContent.map(content => content.lessonId)))).toEqual([]);
     await managerA.caller().reinstateWorker(confirmation());
     const reinstated = await workerRow(workerId);
     expect(reinstated).toMatchObject({
@@ -921,10 +1035,13 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
     ).toEqual(certificatesBefore);
     expect(await history(workerId)).toEqual(historyBefore);
     const restoredOverview = await managerA.caller().companyOverview();
+    const fixtureRestoredOverview = fixtureCompanyOverview(restoredOverview, companyAId);
+    expect(fixtureRestoredOverview).toEqual(fixtureOverviewBefore);
+    expect(restoredOverview.fields.map(field => field.id)).not.toContain(externalRetired.fieldId);
     expect(restoredOverview.workerCount).toBe(overviewBefore.workerCount);
-    expect(
-      restoredOverview.workers.find(row => row.id === workerId)
-    ).toMatchObject(trackingBefore);
+    const restoredTracking = restoredOverview.workers.find(row => row.id === workerId)!;
+    expect(restoredTracking.modules[externalRetired.moduleId]).toBeUndefined();
+    expect(fixtureTracking(restoredTracking)).toEqual(fixtureTracking(trackingBefore));
     expect(restoredOverview.retiredWorkers.map(row => row.id)).not.toContain(
       workerId
     );
@@ -950,8 +1067,8 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
       role: "worker",
       name: otherName,
     });
-    expect(await managerB.caller().companyOverview()).toEqual(
-      otherCompanyBefore
+    expect(fixtureCompanyOverview(await managerB.caller().companyOverview(), companyBId)).toEqual(
+      fixtureOtherCompanyBefore
     );
     const otherExportAfter = await managerB.caller().exportCsv();
     expect(otherExportAfter.filename).toBe(otherExportBefore.filename);
