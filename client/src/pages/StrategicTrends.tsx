@@ -128,7 +128,7 @@ function AccessCard({
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left p-6 rounded-2xl border-2 hover:shadow-lg transition-all duration-200 bg-white group focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+      className="relative w-full text-left p-6 rounded-2xl border-2 hover:shadow-lg transition-all duration-200 bg-white group focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-blue-500"
       style={{ borderColor: color + "30" }}
     >
       <div className="flex items-start gap-4">
@@ -141,10 +141,10 @@ function AccessCard({
               {badge}
             </span>
           )}
-          <h3 className="text-base font-bold text-slate-800 group-hover:text-slate-900">{title}</h3>
+          <h3 className={`text-base font-bold text-slate-800 group-hover:text-slate-900 break-words ${percentage !== null ? "max-sm:mt-14" : ""}`}>{title}</h3>
           <p className="text-sm text-slate-500 mt-1 leading-relaxed">{description}</p>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
+        <div className={`flex shrink-0 flex-col items-end gap-2 ${percentage !== null ? "max-sm:absolute max-sm:right-6 max-sm:top-6" : ""}`}>
           <PerformanceSummaryRing value={percentage} color={color} label={title} description={indicatorDescription} />
           <ChevronDown size={18} className="text-slate-400 group-hover:text-slate-600 flex-shrink-0 mt-1 rotate-[-90deg]" />
         </div>
@@ -708,7 +708,7 @@ function PerformanceAccessCards({ companyId, setView }: { companyId: number; set
   const sgi = useManagementOverviewSummary(companyId);
   const otgSummary = calculateOtgOverviewSummary(otg.data ?? []);
   const gpiSummary = calculateStakeholderOverviewSummary(gpi.data ?? []);
-  return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  return <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
     <AccessCard icon={<Target size={24} />} title="Objetivos Estratégicos"
       description="% avance total, por OE individual, contribución por área (heatmap) y línea de desarrollo en el tiempo."
       color="#3b82f6" badge="OE" onClick={() => setView("oe")}
@@ -760,7 +760,7 @@ export default function StrategicTrends() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="w-full max-w-5xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Button
