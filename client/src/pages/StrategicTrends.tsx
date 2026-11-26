@@ -15,7 +15,9 @@ import { trpc } from "@/lib/trpc";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
-import { calculateCompanyComplianceSummary } from "@/lib/companyComplianceProgress";
+import { PerformanceSummaryRing } from "@/components/PerformanceSummaryRing";
+import { useManagementOverviewSummary } from "@/hooks/useManagementOverviewSummary";
+import { availablePerformancePercent, calculateOtgOverviewSummary, calculateStakeholderOverviewSummary } from "@/lib/performanceOverviewSummary";
 import {
   BarChart,
   Bar,
@@ -110,6 +112,8 @@ function AccessCard({
   color,
   onClick,
   badge,
+  percentage = null,
+  indicatorDescription = "Indicador del resumen general",
 }: {
   icon: React.ReactNode;
   title: string;
@@ -117,11 +121,14 @@ function AccessCard({
   color: string;
   onClick: () => void;
   badge?: string;
+  percentage?: number | null;
+  indicatorDescription?: string;
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className="w-full text-left p-6 rounded-2xl border-2 hover:shadow-lg transition-all duration-200 bg-white group"
+      className="relative w-full text-left p-6 rounded-2xl border-2 hover:shadow-lg transition-all duration-200 bg-white group focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-blue-500"
       style={{ borderColor: color + "30" }}
     >
       <div className="flex items-start gap-4">
@@ -134,10 +141,13 @@ function AccessCard({
               {badge}
             </span>
           )}
-          <h3 className="text-base font-bold text-slate-800 group-hover:text-slate-900">{title}</h3>
+          <h3 className={`text-base font-bold text-slate-800 group-hover:text-slate-900 break-words ${percentage !== null ? "max-sm:mt-14" : ""}`}>{title}</h3>
           <p className="text-sm text-slate-500 mt-1 leading-relaxed">{description}</p>
         </div>
-        <ChevronDown size={18} className="text-slate-400 group-hover:text-slate-600 flex-shrink-0 mt-1 rotate-[-90deg]" />
+        <div className={`flex shrink-0 flex-col items-end gap-2 ${percentage !== null ? "max-sm:absolute max-sm:right-6 max-sm:top-6" : ""}`}>
+          <PerformanceSummaryRing value={percentage} color={color} label={title} description={indicatorDescription} />
+          <ChevronDown size={18} className="text-slate-400 group-hover:text-slate-600 flex-shrink-0 mt-1 rotate-[-90deg]" />
+        </div>
       </div>
     </button>
   );
@@ -319,12 +329,7 @@ function OTGView({ companyId, onBack }: { companyId: number; onBack: () => void 
 
   if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="animate-spin w-8 h-8 text-purple-500" /></div>;
 
-  const totalOTG = otgData.reduce((s: number, p: any) => s + p.totalOTG, 0);
-  const totalLogrados = otgData.reduce((s: number, p: any) => s + p.logrados, 0);
-  const globalPct = totalOTG > 0 ? Math.round((totalLogrados / totalOTG) * 100) : 0;
-  const avgPct = otgData.length > 0
-    ? Math.round(otgData.reduce((s: number, p: any) => s + p.percent, 0) / otgData.length)
-    : 0;
+  const { totalOTG, totalLogrados, globalPct } = calculateOtgOverviewSummary(otgData);
 
   return (
     <div>
@@ -418,11 +423,7 @@ function GPIView({ companyId, onBack }: { companyId: number; onBack: () => void 
 
   if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="animate-spin w-8 h-8 text-teal-500" /></div>;
 
-  const totalSt = (gpiData as any[]).reduce((s: number, p: any) => s + p.totalStakeholders, 0);
-  const totalImpl = (gpiData as any[]).reduce((s: number, p: any) => s + p.implemented, 0);
-  const globalPct = totalSt > 0 ? Math.round((totalImpl / totalSt) * 100) : 0;
-  const totalInternal = (gpiData as any[]).reduce((s: number, p: any) => s + p.internalCount, 0);
-  const totalExternal = (gpiData as any[]).reduce((s: number, p: any) => s + p.externalCount, 0);
+  const { totalSt, totalImpl, globalPct, totalInternal, totalExternal } = calculateStakeholderOverviewSummary(gpiData);
 
   // Datos para el radar global
   const radarData = [
@@ -544,62 +545,7 @@ function SGIView({ companyId, onBack }: { companyId: number; onBack: () => void 
   const ref = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
-  const { data: programs = [] } = trpc.managementPrograms.list.useQuery({ companyId }, { enabled: companyId > 0 });
-  const { data: audits = [] } = trpc.auditsInspections.listAudits.useQuery({ companyId }, { enabled: companyId > 0 });
-  const { data: inspections = [] } = trpc.auditsInspections.listInspections.useQuery({ companyId }, { enabled: companyId > 0 });
-  const { data: companyCompliances = [] } = trpc.companyCompliances.list.useQuery({ companyId }, { enabled: companyId > 0 });
-  const { data: companyTrainingsList = [] } = trpc.companyTrainings.list.useQuery({ companyId }, { enabled: companyId > 0 });
-
-  const programsCompliance = useMemo(() => {
-    if (!(programs as any[]).length) return 0;
-    const total = (programs as any[]).reduce((sum: number, p: any) => sum + (p.plannedActions > 0 ? Math.min(100, Math.round((p.completedActions / p.plannedActions) * 100)) : 0), 0);
-    return Math.round(total / (programs as any[]).length);
-  }, [programs]);
-
-  const auditsCompliance = useMemo(() => {
-    if (!(audits as any[]).length) return 0;
-    let count = 0;
-    const total = (audits as any[]).reduce((sum: number, a: any) => {
-      const findings = (a.findingsMajorNC || 0) + (a.findingsMinorNC || 0) + (a.findingsObservations || 0) + (a.findingsOM || 0);
-      if (findings === 0) return sum;
-      const closures = (a.closuresMajorNC || 0) + (a.closuresMinorNC || 0) + (a.closuresObservations || 0) + (a.closuresOM || 0);
-      count++;
-      return sum + Math.min(100, Math.round((closures / findings) * 100));
-    }, 0);
-    return count > 0 ? Math.round(total / count) : 0;
-  }, [audits]);
-
-  const inspectionsCompliance = useMemo(() => {
-    if (!(inspections as any[]).length) return 0;
-    let count = 0;
-    const total = (inspections as any[]).reduce((sum: number, i: any) => {
-      if (!i.findings || i.findings === 0) return sum;
-      count++;
-      return sum + Math.min(100, Math.round(((i.closures || 0) / i.findings) * 100));
-    }, 0);
-    return count > 0 ? Math.round(total / count) : 0;
-  }, [inspections]);
-
-  const avgCompliances = useMemo(() => {
-    return calculateCompanyComplianceSummary(companyCompliances).averageCompliance;
-  }, [companyCompliances]);
-
-  const avgTrainings = useMemo(() => {
-    const list = companyTrainingsList as any[];
-    if (!list.length) return 0;
-    const conducted = list.filter((t: any) => t.completed === "SI").length;
-    return Math.round((conducted / list.length) * 100);
-  }, [companyTrainingsList]);
-
-  const metrics = [
-    { label: "Programas", value: programsCompliance, count: (programs as any[]).length, color: "#3b82f6" },
-    { label: "Cumplimientos", value: avgCompliances, count: null, color: "#10b981" },
-    { label: "Auditorías", value: auditsCompliance, count: (audits as any[]).length, color: "#8b5cf6" },
-    { label: "Inspecciones", value: inspectionsCompliance, count: (inspections as any[]).length, color: "#f59e0b" },
-    { label: "Capacitaciones", value: avgTrainings, count: null, color: "#ec4899" },
-  ];
-
-  const avgTotal = Math.round(metrics.reduce((s, m) => s + m.value, 0) / metrics.length);
+  const { metrics, avgTotal } = useManagementOverviewSummary(companyId);
 
   return (
     <div>
@@ -751,6 +697,46 @@ function StaffPerformanceView({ companyId, onBack }: { companyId: number; onBack
 // ═══════════════════════════════════════════════════════════════════════════════
 type ActiveView = null | "oe" | "otg" | "gpi" | "sgi" | "staff";
 
+// Montado solo en portada; las claves tRPC son las mismas que en el detalle.
+function PerformanceAccessCards({ companyId, setView }: { companyId: number; setView: (view: ActiveView) => void }) {
+  const options = { enabled: companyId > 0, placeholderData: () => undefined };
+  const evaluationYear = useMemo(() => new Date().getFullYear(), []);
+  const oe = trpc.strategicObjectives.getMeasurementOverview.useQuery({ companyId }, options);
+  const otg = trpc.strategicTrends.getOtgByArea.useQuery({ companyId }, options);
+  const gpi = trpc.strategicTrends.getStakeholdersByArea.useQuery({ companyId }, options);
+  const staff = trpc.payroll.analytics.useQuery({ companyId, performanceYear: evaluationYear }, options);
+  const sgi = useManagementOverviewSummary(companyId);
+  const otgSummary = calculateOtgOverviewSummary(otg.data ?? []);
+  const gpiSummary = calculateStakeholderOverviewSummary(gpi.data ?? []);
+  return <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <AccessCard icon={<Target size={24} />} title="Objetivos Estratégicos"
+      description="% avance total, por OE individual, contribución por área (heatmap) y línea de desarrollo en el tiempo."
+      color="#3b82f6" badge="OE" onClick={() => setView("oe")}
+      percentage={availablePerformancePercent(oe, oe.data?.globalPercent, companyId > 0)}
+      indicatorDescription="Avance global ponderado hacia las metas de OE, independiente de los OTE" />
+    <AccessCard icon={<BarChart2 size={24} />} title="Objetivos de Gestión"
+      description="Resumen del avance general de OTG por área, con gráfico circular de cumplimiento por proceso."
+      color="#8b5cf6" badge="OTG" onClick={() => setView("otg")}
+      percentage={availablePerformancePercent(otg, otgSummary.globalPct, companyId > 0 && otgSummary.hasEvaluableData)}
+      indicatorDescription="Proporción de OTG marcados como logrados, igual al resumen general" />
+    <AccessCard icon={<Users size={24} />} title="Gestión con Partes Interesadas"
+      description="Panel de comunicación, radar de gestión y resumen de implementación por proceso."
+      color="#0d9488" badge="GPI" onClick={() => setView("gpi")}
+      percentage={availablePerformancePercent(gpi, gpiSummary.globalPct, companyId > 0 && gpiSummary.hasEvaluableData)}
+      indicatorDescription="Porcentaje implementado, igual al resumen general de Partes Interesadas" />
+    <AccessCard icon={<Shield size={24} />} title="Sistemas de Gestión"
+      description="% cumplimiento de Programas, Auditorías, Inspecciones y Cumplimientos."
+      color="#0ea5e9" badge="SGI" onClick={() => setView("sgi")}
+      percentage={availablePerformancePercent(sgi, sgi.avgTotal, companyId > 0 && sgi.hasEvaluableData)}
+      indicatorDescription="Promedio General Sistemas de Gestión, igual al detalle" />
+    <AccessCard icon={<Users size={24} />} title="Desempeño de personal"
+      description="Promedio global de Nómina y comparación del desempeño total entre las áreas evaluadas."
+      color="#e11d48" badge="PERSONAL" onClick={() => setView("staff")}
+      percentage={availablePerformancePercent(staff, staff.data?.averagePerformance, companyId > 0)}
+      indicatorDescription={`Promedio de desempeño de Nómina, evaluación ${evaluationYear}`} />
+  </div>;
+}
+
 export default function StrategicTrends() {
   const [, setLocation] = useLocation();
   const search = useSearch();
@@ -774,7 +760,7 @@ export default function StrategicTrends() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="w-full max-w-5xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Button
@@ -817,50 +803,7 @@ export default function StrategicTrends() {
         </div>
 
         {/* Contenido */}
-        {activeView === null && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <AccessCard
-              icon={<Target size={24} />}
-              title="Objetivos Estratégicos"
-              description="% avance total, por OE individual, contribución por área (heatmap) y línea de desarrollo en el tiempo."
-              color="#3b82f6"
-              badge="OE"
-              onClick={() => setView("oe")}
-            />
-            <AccessCard
-              icon={<BarChart2 size={24} />}
-              title="Objetivos de Gestión"
-              description="Resumen del avance general de OTG por área, con gráfico circular de cumplimiento por proceso."
-              color="#8b5cf6"
-              badge="OTG"
-              onClick={() => setView("otg")}
-            />
-            <AccessCard
-              icon={<Users size={24} />}
-              title="Gestión con Partes Interesadas"
-              description="Panel de comunicación, radar de gestión y resumen de implementación por proceso."
-              color="#0d9488"
-              badge="GPI"
-              onClick={() => setView("gpi")}
-            />
-            <AccessCard
-              icon={<Shield size={24} />}
-              title="Sistemas de Gestión"
-              description="% cumplimiento de Programas, Auditorías, Inspecciones y Cumplimientos."
-              color="#0ea5e9"
-              badge="SGI"
-              onClick={() => setView("sgi")}
-            />
-            <AccessCard
-              icon={<Users size={24} />}
-              title="Desempeño de personal"
-              description="Promedio global de Nómina y comparación del desempeño total entre las áreas evaluadas."
-              color="#e11d48"
-              badge="PERSONAL"
-              onClick={() => setView("staff")}
-            />
-          </div>
-        )}
+        {activeView === null && <PerformanceAccessCards companyId={companyId} setView={setView} />}
 
         {areaMode && isPerformanceAreaView(activeView) && <PerformanceAreasView companyId={companyId} view={activeView} onBack={() => setView(null)} />}
         {activeView === "oe" && <OEView companyId={companyId} onBack={() => setView(null)} />}

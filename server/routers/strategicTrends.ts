@@ -5,7 +5,7 @@ import { companyTrends, processes, processTacticalObjectives, criticalityMatrix,
 import { eq, asc } from "drizzle-orm";
 import { calculateCompanyStrategicSnapshot, saveCompanyStrategicSnapshot } from "../lib/strategicSnapshots";
 import { calculateOtgProgress } from "../lib/otgProgress";
-
+import { calculateStakeholderActionProgress } from "../../shared/stakeholderActionProgress";
 const MONTH_NAMES = [
   "Ene", "Feb", "Mar", "Abr", "May", "Jun",
   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
@@ -520,6 +520,8 @@ export const strategicTrendsRouter = router({
         percentImplemented: number;
         internalCount: number;
         externalCount: number;
+        /** Solo controla la visibilidad del indicador; no cambia su fórmula. */
+        plannedActions: number;
       }> = [];
 
       for (const proc of companyProcesses) {
@@ -551,6 +553,7 @@ export const strategicTrendsRouter = router({
           percentImplemented,
           internalCount,
           externalCount,
+          plannedActions: calculateStakeholderActionProgress(critRows).planned,
         });
       }
 

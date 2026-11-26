@@ -46,6 +46,7 @@ export const integrationTestFiles = [
   "server/__tests__/procedures.test.ts",
   "server/__tests__/tacticalObjectivesFixed.test.ts",
   "server/__tests__/strategicTrendsOtg.integration.test.ts",
+  "server/__tests__/strategicTrendsGpiVisibility.integration.test.ts",
   "server/__tests__/tacticalPolicyObjective.integration.test.ts",
   "server/__tests__/objectiveNarratives.integration.test.ts",
   "server/__tests__/policyObjectiveTraceability.integration.test.ts",
