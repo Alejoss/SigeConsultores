@@ -79,6 +79,21 @@ Los paneles **Catálogo** y **Empresa** muestran un basurero junto a cada campo,
 
 La migración `0097_course_content_archiving.sql` es aditiva: agrega `archivedAt` a `courseFields`, `courseModules` y `courseLessons`; no modifica registros existentes.
 
+## Retiro y reincorporación de trabajadores
+
+En **Seguimiento del personal**, el basurero de cada persona permite **Retirar de capacitaciones**. La confirmación identifica el nombre y la cédula exactos. El servidor verifica nuevamente esa identidad y la pertenencia del registro a la empresa; nunca retira personas en bloque por su nombre ni fusiona inscripciones repetidas automáticamente.
+
+- **Personal activo** es la vista inicial. Solo estas inscripciones cuentan en el panel y el catálogo, se exportan a Excel y participan en **Análisis de Avance**.
+- **Personal retirado** conserva la consulta del avance y las calificaciones. Desde ahí se puede **Reincorporar** el mismo registro, sin crear una persona nueva ni perder su historial.
+- El retiro marca `courseWorkers.retiredAt` y `retiredByAccountId`, y revoca únicamente las sesiones de trabajador de esa inscripción en esa empresa. Las nuevas solicitudes y el ingreso con su cédula se rechazan mientras esté retirado. Una petición que ya estaba ejecutándose no se cancela retroactivamente.
+- La cédula permanece reservada dentro de la empresa: volver a registrarse con el mismo identificador no reincorpora automáticamente. Cambiar o restablecer la clave tampoco reincorpora. La reincorporación no abre sesiones; el trabajador debe ingresar de nuevo.
+- Se conservan los resultados, intentos, visitas, excepciones de acceso y códigos de certificados con sus IDs originales. El trabajador recupera el acceso a sus certificados al reincorporarse.
+- Estas inscripciones son independientes de **Nómina**, `accounts`, roles y sesiones administrativas de ISGE 360. Retirar una inscripción no suspende a un gerente o Jefe de Proceso ni afecta otra inscripción con la misma cédula en otra empresa.
+
+Los procedimientos `onlineCourses.retireWorker` y `onlineCourses.reinstateWorker` usan la autorización del panel de empresa ya existente. El administrador general debe elegir una empresa; el gerente y el Jefe autorizado quedan limitados a la suya. Las operaciones y la apertura de sesiones de trabajador bloquean la misma fila dentro de una transacción para impedir que un ingreso simultáneo deje una sesión utilizable tras el retiro.
+
+La migración `0101_course_worker_retirement.sql` es aditiva: añade dos columnas opcionales; los registros existentes quedan activos (`NULL`). No contiene borrados, cambios de identificador ni modificaciones a datos de otros módulos.
+
 ## Pruebas
 
 - `server/__tests__/sessionCookie.test.ts`: dominio de la cookie y limpieza de la copia antigua.

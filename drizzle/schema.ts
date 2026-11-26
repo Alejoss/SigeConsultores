@@ -3098,6 +3098,9 @@ export const courseWorkers = mysqlTable(
     passwordSalt: varchar("passwordSalt", { length: 64 }).notNull(),
     passwordHash: varchar("passwordHash", { length: 128 }).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
+    // Retiro de esta inscripción únicamente; conserva su ID e historial de cursos.
+    retiredAt: timestamp("retiredAt"),
+    retiredByAccountId: int("retiredByAccountId"),
   },
   table => ({
     companyCedula: unique("course_workers_company_cedula").on(table.companyId, table.cedula),

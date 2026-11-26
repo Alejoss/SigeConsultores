@@ -5,6 +5,7 @@ import { courseDateTimeLocalValue, courseProgressPercent, formatCourseScore } fr
 import { trpc } from "@/lib/trpc";
 import { LoginForm, Shell } from "./PortalPage";
 import { CourseContentRemovalButton } from "./CourseContentRemovalButton";
+import { CourseWorkerStatusButton } from "./CourseWorkerStatusButton";
 import { ProgressAnalysisPanel } from "./ProgressAnalysisPanel";
 
 type ContentView =
@@ -20,7 +21,7 @@ function toLocal(iso: string | null): string {
   return courseDateTimeLocalValue(iso);
 }
 
-function dateLabel(iso: string | null | undefined): string {
+function dateLabel(iso: string | Date | null | undefined): string {
   if (!iso) return "—";
   const value = new Date(iso);
   return Number.isNaN(value.getTime()) ? "—" : value.toLocaleDateString("es-EC");
@@ -64,6 +65,8 @@ export default function CompanyPanelPage() {
   const createLesson = trpc.onlineCourses.createLesson.useMutation();
   const [code, setCodeValue] = useState("");
   const [query, setQuery] = useState("");
+  const [retiredQuery, setRetiredQuery] = useState("");
+  const [personnelStatus, setPersonnelStatus] = useState<"active" | "retired">("active");
   const [message, setMessage] = useState("");
   const [fieldName, setFieldName] = useState("");
   const [fieldId, setFieldId] = useState<number | null>(null);
@@ -75,9 +78,12 @@ export default function CompanyPanelPage() {
   const data = overview.data;
   const fields = data?.fields || [];
   const modules = useMemo(() => fields.flatMap(field => field.modules.map(moduleRow => ({ ...moduleRow, field: field.name, fieldId: field.id, own: field.own }))), [fields]);
-  const workers = (data?.workers || []).filter(worker => {
+  const activeWorkers = data?.workers || [];
+  const retiredWorkers = data?.retiredWorkers || [];
+  const searchQuery = personnelStatus === "active" ? query : retiredQuery;
+  const workers = (personnelStatus === "active" ? activeWorkers : retiredWorkers).filter(worker => {
     const haystack = `${worker.name} ${worker.cedula} ${worker.jobTitle} ${worker.workCenter}`.toLowerCase();
-    return haystack.includes(query.trim().toLowerCase());
+    return haystack.includes(searchQuery.trim().toLowerCase());
   });
   const selectedField = view.kind === "fields" ? null : fields.find(field => field.id === view.fieldId) || null;
   const selectedModule = view.kind === "lessons" ? selectedField?.modules.find(moduleRow => moduleRow.id === view.moduleId) || null : null;
@@ -105,6 +111,9 @@ export default function CompanyPanelPage() {
           setMessage("");
           setView({ kind: "fields" });
           setPersonnelView("tracking");
+          setPersonnelStatus("active");
+          setQuery("");
+          setRetiredQuery("");
           window.history.replaceState(null, "", id ? `?empresa=${id}` : window.location.pathname);
         }}
       >
@@ -140,7 +149,7 @@ export default function CompanyPanelPage() {
       {message && <p className="mb-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</p>}
 
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <article className="rounded-xl border bg-white p-4"><b className="block text-2xl">{data?.workerCount || 0}</b><span className="text-sm text-slate-500">Trabajadores</span></article>
+        <article className="rounded-xl border bg-white p-4"><b className="block text-2xl">{data?.workerCount || 0}</b><span className="text-sm text-slate-500">Trabajadores activos</span></article>
         <article className="rounded-xl border bg-white p-4"><b className="block text-2xl">{modules.length}</b><span className="text-sm text-slate-500">Módulos visibles</span></article>
         <article className="rounded-xl border bg-white p-4"><b className="block text-2xl">{data?.regCode || "—"}</b><span className="text-sm text-slate-500">Código de inscripción</span></article>
       </div>
@@ -150,7 +159,7 @@ export default function CompanyPanelPage() {
         <p className="mb-2 text-sm text-slate-500">Compártelo con tu personal para que cree su cuenta.</p>
         <div className="flex flex-wrap gap-2">
           <code className="rounded bg-slate-100 px-2 py-1">{data?.regCode || "—"}</code>
-          <input className="rounded-md border px-2 py-1" value={code} onChange={event => setCodeValue(event.target.value)} placeholder="nuevo código" />
+          <input className="min-w-0 max-w-full rounded-md border px-2 py-1" value={code} onChange={event => setCodeValue(event.target.value)} placeholder="nuevo código" />
           <button className="rounded-md bg-emerald-700 px-3 py-1 text-sm text-white" onClick={async () => {
             try { await setCode.mutateAsync({ companyId, codigo: code }); setCodeValue(""); await reload("Código actualizado"); }
             catch (error) { setMessage(errorText(error)); }
@@ -260,15 +269,22 @@ export default function CompanyPanelPage() {
               <h2 className="text-xl font-semibold">Seguimiento del personal</h2>
               <p className="text-sm text-slate-500">Abra una persona, después un campo y un módulo, para revisar las capacitaciones sin desplazarse horizontalmente.</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <input className="rounded-md border px-3 py-2" placeholder="Buscar por nombre, cédula, cargo o centro" value={query} onChange={event => setQuery(event.target.value)} />
-              <ExcelButton companyId={companyId} />
-              <button className="inline-flex items-center gap-2 rounded-md border border-emerald-200 px-3 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50" onClick={() => setPersonnelView("analysis")}><BarChart3 size={16} /> Análisis de Avance</button>
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+              <input className="w-full min-w-0 rounded-md border px-3 py-2 sm:w-80" aria-label={personnelStatus === "active" ? "Buscar personal activo" : "Buscar personal retirado"} placeholder="Buscar por nombre, cédula, cargo o centro" value={searchQuery} onChange={event => personnelStatus === "active" ? setQuery(event.target.value) : setRetiredQuery(event.target.value)} />
+              {personnelStatus === "active" && <>
+                <ExcelButton companyId={companyId} />
+                <button className="inline-flex items-center gap-2 rounded-md border border-emerald-200 px-3 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50" onClick={() => setPersonnelView("analysis")}><BarChart3 size={16} /> Análisis de Avance</button>
+              </>}
             </div>
           </div>
+          <div role="group" aria-label="Estado del personal" className="mb-3 flex flex-wrap gap-2">
+            <button type="button" aria-pressed={personnelStatus === "active"} className={`rounded-md px-3 py-2 text-sm font-medium ${personnelStatus === "active" ? "bg-emerald-700 text-white" : "border bg-white text-slate-600 hover:bg-slate-50"}`} onClick={() => setPersonnelStatus("active")}>Personal activo ({activeWorkers.length})</button>
+            <button type="button" aria-pressed={personnelStatus === "retired"} className={`rounded-md px-3 py-2 text-sm font-medium ${personnelStatus === "retired" ? "bg-emerald-700 text-white" : "border bg-white text-slate-600 hover:bg-slate-50"}`} onClick={() => setPersonnelStatus("retired")}>Personal retirado ({retiredWorkers.length})</button>
+          </div>
+          <p className="mb-3 text-xs text-slate-500">{personnelStatus === "retired" ? "Historial de solo lectura. El personal retirado no se incluye en Excel ni en Análisis de Avance." : "Excel y Análisis de Avance incluyen únicamente al personal activo."}</p>
           <div className="overflow-hidden rounded-xl border bg-white">
-            {!workers.length && <p className="p-5 text-sm text-slate-500">No se encontraron trabajadores.</p>}
-            {workers.map(worker => <PersonnelRow key={worker.id} worker={worker} fields={fields} companyId={companyId} setOverride={setOverride} reload={overview.refetch} setMessage={setMessage} resetPassword={resetPassword} />)}
+            {!workers.length && <p className="p-5 text-sm text-slate-500">{personnelStatus === "retired" ? "No se encontró personal retirado." : "No se encontraron trabajadores activos."}</p>}
+            {workers.map(worker => <PersonnelRow key={`${companyId ?? "mine"}-${personnelStatus}-${worker.id}`} worker={worker} retired={personnelStatus === "retired"} fields={fields} companyId={companyId} setOverride={setOverride} reload={overview.refetch} setMessage={setMessage} resetPassword={resetPassword} />)}
           </div>
         </section>
       )}
@@ -346,10 +362,12 @@ type WorkerRow = {
   jobTitle: string;
   workCenter: string;
   modules: Record<number, ModuleProgress>;
+  retiredAt?: string | Date | null;
 };
 
 type PersonnelRowProps = {
   worker: WorkerRow;
+  retired: boolean;
   fields: FieldRow[];
   companyId?: number;
   setOverride: ReturnType<typeof trpc.onlineCourses.setOverride.useMutation>;
@@ -358,11 +376,11 @@ type PersonnelRowProps = {
   resetPassword: ReturnType<typeof trpc.onlineCourses.resetWorkerPassword.useMutation>;
 };
 
-function PersonnelRow({ worker, fields, companyId, setOverride, reload, setMessage, resetPassword }: PersonnelRowProps) {
+function PersonnelRow({ worker, retired, fields, companyId, setOverride, reload, setMessage, resetPassword }: PersonnelRowProps) {
   const applicableFields = fields.map(field => {
     const modules = field.modules.filter(moduleRow => {
       const progress = worker.modules[moduleRow.id];
-      return progress?.availableNow && progress.total > 0;
+      return progress && progress.total > 0 && (retired || progress.availableNow);
     });
     const total = modules.reduce((sum, moduleRow) => sum + (worker.modules[moduleRow.id]?.total || 0), 0);
     const done = modules.reduce((sum, moduleRow) => sum + (worker.modules[moduleRow.id]?.done || 0), 0);
@@ -372,21 +390,25 @@ function PersonnelRow({ worker, fields, companyId, setOverride, reload, setMessa
   const personTotal = applicableFields.reduce((sum, field) => sum + field.total, 0);
 
   return (
-    <details className="border-b last:border-b-0">
-      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-4 hover:bg-slate-50">
-        <span className="flex min-w-0 items-center gap-3"><UserRound className="h-5 w-5 shrink-0 text-emerald-700" /><span><b className="block text-slate-900">{worker.name}</b><span className="text-xs text-slate-500">{worker.cedula} · {worker.jobTitle} · {worker.workCenter}</span></span></span>
-        <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-800">Avance: {percentageLabel(courseProgressPercent(personDone, personTotal))}</span>
+    <div className="relative border-b last:border-b-0">
+      <div className="absolute right-3 top-4">
+        <CourseWorkerStatusButton worker={worker} companyId={companyId} retired={retired} />
+      </div>
+      <details>
+      <summary className={`flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 py-4 pl-4 hover:bg-slate-50 ${retired ? "pr-36" : "pr-14"}`}>
+        <span className="flex min-w-0 items-center gap-3"><UserRound className="h-5 w-5 shrink-0 text-emerald-700" /><span className="min-w-0"><b className="block break-words text-slate-900">{worker.name}</b><span className="break-words text-xs text-slate-500">{worker.cedula} · {worker.jobTitle} · {worker.workCenter}</span>{retired && <span className="block text-xs text-slate-500">Retirado el {dateLabel(worker.retiredAt)}</span>}</span></span>
+        <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-800">{retired ? "Avance histórico" : "Avance"}: {percentageLabel(courseProgressPercent(personDone, personTotal))}</span>
       </summary>
       <div className="border-t bg-slate-50 px-4 py-4">
-        <div className="mb-3 flex flex-wrap gap-2">
+        {!retired && <div className="mb-3 flex flex-wrap gap-2">
           <button className="text-xs underline" onClick={async () => {
             const password = window.prompt("Nueva clave (mínimo 6 caracteres)");
             if (!password) return;
             try { await resetPassword.mutateAsync({ companyId, workerId: worker.id, password }); setMessage("Clave actualizada"); }
             catch (error) { setMessage(errorText(error)); }
           }}>Restablecer clave</button>
-        </div>
-        {!applicableFields.length && <p className="text-sm text-slate-500">Esta persona no tiene capacitaciones disponibles en este momento.</p>}
+        </div>}
+        {!applicableFields.length && <p className="text-sm text-slate-500">{retired ? "Esta persona no tiene historial de capacitaciones para mostrar." : "Esta persona no tiene capacitaciones disponibles en este momento."}</p>}
         <div className="space-y-2">
           {applicableFields.map(({ field, modules, progressPercent }) => (
             <details key={field.id} className="rounded-lg border bg-white">
@@ -397,14 +419,14 @@ function PersonnelRow({ worker, fields, companyId, setOverride, reload, setMessa
                   return <details key={moduleRow.id} className="rounded-md border bg-slate-50">
                     <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-3 py-2 hover:bg-white"><span className="font-medium">Módulo: {moduleRow.name}</span><span className="flex items-center gap-2"><span className="rounded-full bg-white px-2 py-1 text-xs font-semibold text-slate-700">{percentageLabel(progress.progressPercent)}</span><span className={`rounded-full px-2 py-1 text-xs font-medium ${statusClass(progress.status)}`}>{statusLabel(progress.status)}</span></span></summary>
                     <div className="border-t bg-white p-3">
-                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      {!retired && <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                         <label className="text-xs text-slate-600">Acceso individual<select className="ml-2 rounded border px-2 py-1 text-xs" value={progress.override || "auto"} onChange={async event => {
                           try {
                             await setOverride.mutateAsync({ companyId, workerId: worker.id, moduleId: moduleRow.id, value: event.target.value as "abrir" | "cerrar" | "auto" });
                             await reload();
                           } catch (error) { setMessage(errorText(error)); }
                         }}><option value="auto">Según la empresa</option><option value="abrir">Abrir solo a esta persona</option><option value="cerrar">Cerrar solo a esta persona</option></select></label>
-                      </div>
+                      </div>}
                       <div className="space-y-1">
                         {progress.lessons.map(lesson => <div key={lesson.id} className="grid gap-2 rounded border px-3 py-2 text-sm sm:grid-cols-[1fr_auto_auto] sm:items-center"><span>Capacitación {lesson.number}: {lesson.title}</span><span className={`w-fit rounded-full px-2 py-1 text-xs font-medium ${statusClass(lesson.status)}`}>{statusLabel(lesson.status)}</span><span className="text-xs text-slate-600">{lesson.scoreTenths == null ? "Sin calificación" : formatCourseScore(lesson.scoreTenths)} · {dateLabel(lesson.completedAt)}</span></div>)}
                       </div>
@@ -416,7 +438,8 @@ function PersonnelRow({ worker, fields, companyId, setOverride, reload, setMessa
           ))}
         </div>
       </div>
-    </details>
+      </details>
+    </div>
   );
 }
 
