@@ -7,10 +7,10 @@ import { useLocation, useSearch } from "wouter";
 import { ArrowLeft, Plus, Trash2, Save, Check, Download } from 'lucide-react';
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { exportSubprocessMapToPDF } from "@/lib/exportSubprocessMapToPDF";
 import { shouldHydrateRemoteSnapshot } from "@/lib/autosaveDraft";
+import { getCompanyIdFromSession, getProcessIdFromSession } from "@/lib/sessionScope";
 
 // Auto-expand textarea al escribir
 const autoExpandTextarea = (el: HTMLTextAreaElement | null) => {
@@ -65,34 +65,39 @@ function emptySubprocessMapData(): SubprocessMapData {
 }
 
 export default function SubprocessMap() {
-  const [, setLocation] = useLocation();
   const search = useSearch();
-  const { isManagerLogin } = useManagerAuth();
-  const { session: processLeaderSession } = useProcessLeaderAuth();
-  const isProcessLeader = processLeaderSession !== null;
-  const isManagerAccess = localStorage.getItem('managerCompanyId') !== null || isManagerLogin;
-  const [processId, setProcessId] = useState<number | null>(() => {
-    // For Process Leaders: Try to get from URL params first
-    if (isProcessLeader) {
-      const urlParams = new URLSearchParams(search);
-      const urlProcessId = urlParams.get('processId');
-      if (urlProcessId) return parseInt(urlProcessId);
-      // Will be set from session when it loads
-      return null;
-    }
-    // For Managers: Get from localStorage
-    const stored = localStorage.getItem("selectedProcessId");
-    return stored ? parseInt(stored) : null;
-  });
-  const [processName, setProcessName] = useState(() => {
-    // For Process Leaders: Will be set when session loads
-    if (isProcessLeader) {
-      return "Proceso";
-    }
-    // For Managers: Get from localStorage
-    return localStorage.getItem("selectedProcessName") || "Proceso";
-  });
-  const { isLoading: contextLoading } = useProcessLeaderAuth();
+  const { session, isLoading: contextLoading } = useProcessLeaderAuth();
+  const params = new URLSearchParams(search);
+  // The URL wins; a delayed authenticated leader session only supplies missing context.
+  const resolvedProcessId = params.get('processId')
+    ? getProcessIdFromSession()
+    : session?.processId ?? getProcessIdFromSession();
+  const resolvedCompanyId = params.get('companyId')
+    ? getCompanyIdFromSession()
+    : session?.companyId ?? getCompanyIdFromSession();
+  const processId = resolvedProcessId && Number.isInteger(resolvedProcessId) && resolvedProcessId > 0 ? resolvedProcessId : null;
+  const companyId = resolvedCompanyId && Number.isInteger(resolvedCompanyId) && resolvedCompanyId > 0 ? resolvedCompanyId : null;
+
+  // Remount only the existing editor on scope changes: never reuse or flush another area's draft.
+  return <SubprocessMapEditor key={`${companyId}:${processId}`} processId={processId} companyId={companyId} contextLoading={contextLoading} />;
+}
+
+function SubprocessMapEditor({ processId, companyId, contextLoading }: {
+  processId: number | null;
+  companyId: number | null;
+  contextLoading: boolean;
+}) {
+  const [, setLocation] = useLocation();
+  const { data: processData, isError: isProcessError, isLoading: isProcessLoading } = trpc.processMap.get.useQuery(
+    { processId: processId || 0 },
+    { enabled: !!processId && !contextLoading }
+  );
+  const authoritativeProcessName = !isProcessError && processId && processData?.id === processId
+    && (!companyId || processData.companyId === companyId) && processData.name?.trim()
+    ? processData.name : null;
+  const processName = authoritativeProcessName || (processId && !isProcessError && processData !== null
+    && (contextLoading || isProcessLoading || processData === undefined || processData.id !== processId)
+    ? "Cargando nombre del proceso..." : "Nombre no disponible");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -101,18 +106,17 @@ export default function SubprocessMap() {
   const hydratedProcessIdRef = useRef<number | null>(null);
   const saveInFlightRef = useRef(false);
   const queuedSaveRef = useRef<SubprocessMapData | null>(null);
+  const mountedRef = useRef(true);
 
-  // Update processId and processName when Process Leader session loads
+  // Cancel, do not flush, pending saves when leaving this process/company.
   useEffect(() => {
-    if (isProcessLeader && processLeaderSession && !contextLoading) {
-      if (processLeaderSession.processId) {
-        setProcessId(processLeaderSession.processId);
-      }
-      if (processLeaderSession.processName) {
-        setProcessName(processLeaderSession.processName);
-      }
-    }
-  }, [isProcessLeader, processLeaderSession, contextLoading]);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+      queuedSaveRef.current = null;
+    };
+  }, []);
   
   const [data, setData] = useState<SubprocessMapData>(emptySubprocessMapData);
   const dataRef = useRef(data);
@@ -122,9 +126,9 @@ export default function SubprocessMap() {
   }, [data]);
 
   // Fetch subprocess map data
-  const { data: subprocessMapData } = trpc.subprocessMap.get.useQuery(
+  const { data: subprocessMapData, isLoading: isMapLoading, isError: isMapError } = trpc.subprocessMap.get.useQuery(
     { processId: processId || 0 },
-    { enabled: !!processId && !contextLoading }
+    { enabled: !!processId && !contextLoading, placeholderData: undefined }
   );
 
   useEffect(() => {
@@ -138,8 +142,8 @@ export default function SubprocessMap() {
 
   // Load from database only once per process. Later responses must not replace a local draft.
   useEffect(() => {
-    // Wait for context to load for Process Leaders
-    if (isProcessLeader && contextLoading) {
+    // Do not expose an editable empty map while context/the initial snapshot is loading.
+    if (contextLoading || (processId && subprocessMapData === undefined && !isMapError)) {
       return;
     }
     
@@ -170,7 +174,7 @@ export default function SubprocessMap() {
       hydratedProcessIdRef.current = processId;
     }
     setIsLoading(false);
-  }, [subprocessMapData, processId, isProcessLeader, contextLoading]);
+  }, [subprocessMapData, processId, contextLoading, isMapError]);
 
   // Update subprocess map mutation
   const updateMutation = trpc.subprocessMap.upsert.useMutation();
@@ -232,7 +236,7 @@ export default function SubprocessMap() {
   };
 
   const sendSnapshot = (snapshot: SubprocessMapData) => {
-    if (!processId || !validateData(snapshot)) return;
+    if (!mountedRef.current || contextLoading || !processId || !validateData(snapshot)) return;
     if (saveInFlightRef.current) {
       queuedSaveRef.current = snapshot;
       return;
@@ -242,6 +246,7 @@ export default function SubprocessMap() {
     setIsSaving(true);
     updateMutation.mutate({ processId, ...buildSavePayload(snapshot) }, {
       onSuccess: () => {
+        if (!mountedRef.current) return;
         saveInFlightRef.current = false;
         setLastSaved(new Date());
         const nextSnapshot = queuedSaveRef.current;
@@ -250,6 +255,7 @@ export default function SubprocessMap() {
         else setIsSaving(false);
       },
       onError: (error) => {
+        if (!mountedRef.current) return;
         saveInFlightRef.current = false;
         queuedSaveRef.current = queuedSaveRef.current || snapshot;
         setIsSaving(false);
@@ -326,7 +332,7 @@ export default function SubprocessMap() {
     updateLocalData(newData);
   };
 
-  if (isLoading || (isProcessLeader && contextLoading)) {
+  if (isLoading || contextLoading || (!!processId && isMapLoading)) {
     return (
       <Card>
         <CardContent className="pt-6">
@@ -351,7 +357,7 @@ export default function SubprocessMap() {
         <div className="flex gap-2">
           <Button
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || !processId}
             className="gap-2 bg-blue-600 hover:bg-blue-700"
           >
             <Save size={16} />
@@ -359,6 +365,7 @@ export default function SubprocessMap() {
           </Button>
           <Button
             onClick={() => {
+              if (!authoritativeProcessName) return;
               const exportData = {
                 entrada: data.entrada.map(row => ({
                   entrada: row.solicita,
@@ -376,9 +383,10 @@ export default function SubprocessMap() {
                   salida: row.doc
                 }))
               };
-              exportSubprocessMapToPDF(exportData, processName);
+              exportSubprocessMapToPDF(exportData, authoritativeProcessName);
               toast.success('PDF exportado correctamente');
             }}
+            disabled={!authoritativeProcessName}
             className="gap-2 bg-green-600 hover:bg-green-700"
           >
             <Download size={16} />
@@ -387,8 +395,10 @@ export default function SubprocessMap() {
           <Button
             variant="outline"
             onClick={() => {
-              // Always go back to process characterization
-              setLocation("/process-characterization");
+              const params = new URLSearchParams();
+              if (processId) params.set('processId', String(processId));
+              if (companyId) params.set('companyId', String(companyId));
+              setLocation(`/process-characterization${params.size ? `?${params}` : ''}`);
             }}
             className="gap-2"
           >

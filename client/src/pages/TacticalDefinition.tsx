@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Loader, Download } from 'lucide-react';
 import { toast } from "sonner";
 import { exportTacticalObjectivesToPDF } from "@/lib/exportTacticalObjectivesToPDF";
@@ -12,6 +12,7 @@ import { trpc } from "@/lib/trpc";
 import { getCompanyIdFromSession, getProcessIdFromSession } from "@/lib/sessionScope";
 import { AutosavingObjectiveNarratives } from "@/components/ObjectiveNarrativeFields";
 import { editedObjectiveNarratives, OBJECTIVE_NARRATIVE_KEYS, type ObjectiveNarratives } from "@/lib/objectiveNarratives";
+import { positiveScopeId } from "@/lib/processQuickNavigation";
 
 interface TacticalObjectiveDefinition extends ObjectiveNarratives {
   id: string;
@@ -34,9 +35,30 @@ interface TacticalObjectiveDefinition extends ObjectiveNarratives {
 }
 
 export default function TacticalDefinition() {
+  useSearch();
+  const processId = positiveScopeId(getProcessIdFromSession());
+  const companyId = positiveScopeId(getCompanyIdFromSession());
+  // A query-only process/company change gets fresh drafts and refs, not the previous area's edits.
+  return <ScopedTacticalDefinition key={`${processId}:${companyId}`} processId={processId} companyId={companyId} />;
+}
+
+function ScopedTacticalDefinition({ processId, companyId }: { processId: number | null; companyId: number | null }) {
   const [, setLocation] = useLocation();
-  const [processId, setProcessId] = useState<number | null>(null);
-  const [companyId, setCompanyId] = useState<number | null>(null);
+  const process = trpc.processMap.get.useQuery(
+    { processId: processId || 0 },
+    { enabled: Boolean(processId), retry: false }
+  );
+  const currentProcess = !process.error && !process.isPlaceholderData && process.data?.id === processId
+    && (!companyId || process.data.companyId === companyId) ? process.data : null;
+  const processName = currentProcess?.name?.trim() || null;
+  const processLabel = processName || (processId
+    ? (process.isLoading || process.isPending ? "Cargando proceso..." : "Proceso no disponible")
+    : "Sin proceso seleccionado");
+  const context = new URLSearchParams();
+  if (processId) context.set("processId", String(processId));
+  const scopedCompanyId = companyId || currentProcess?.companyId;
+  if (scopedCompanyId) context.set("companyId", String(scopedCompanyId));
+  const backPath = context.size ? `/process-tactical-objectives?${context}` : "/process-tactical-objectives";
   const [objectives, setObjectives] = useState<TacticalObjectiveDefinition[]>([]);
   const [strategicObjectives, setStrategicObjectives] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
@@ -109,14 +131,6 @@ export default function TacticalDefinition() {
     },
   });
 
-  // Load initial data
-  useEffect(() => {
-    const pid = getProcessIdFromSession();
-    const cid = getCompanyIdFromSession();
-    if (pid) setProcessId(pid);
-    if (cid) setCompanyId(cid);
-  }, []);
-
   // Process strategic objectives data
   useEffect(() => {
     if (strategicObjectivesData) {
@@ -126,7 +140,8 @@ export default function TacticalDefinition() {
 
   // Process tactical objectives data - ONLY on initial load
   useEffect(() => {
-    if (tacticalObjectivesData && !initialLoadRef.current) {
+    if (tacticalObjectivesData && !initialLoadRef.current
+      && tacticalObjectivesData.every(obj => obj.processId === processId)) {
       initialLoadRef.current = true;
       if (tacticalObjectivesData.length > 0) {
         const converted = tacticalObjectivesData.map((obj: any) => ({
@@ -154,7 +169,7 @@ export default function TacticalDefinition() {
         setObjectives(converted);
       }
     }
-  }, [tacticalObjectivesData]);
+  }, [tacticalObjectivesData, processId]);
 
   // Mantener objectivesRef sincronizado con el estado objectives
   // Esto permite que autoSave siempre use los valores más recientes sin stale closure
@@ -321,11 +336,15 @@ export default function TacticalDefinition() {
   };
 
   const handleExport = () => {
+    if (!processName) {
+      toast.error("No se pudo verificar el nombre del proceso para exportar");
+      return;
+    }
     if (objectives.length === 0) {
       toast.error("No hay objetivos para exportar");
       return;
     }
-    exportTacticalObjectivesToPDF(objectives.map(obj => ({ ...obj, ...narrativeDraftsRef.current[obj.id] })), (processId || 0).toString());
+    exportTacticalObjectivesToPDF(objectives.map(obj => ({ ...obj, ...narrativeDraftsRef.current[obj.id] })), processName);
   };
 
   return (
@@ -335,24 +354,24 @@ export default function TacticalDefinition() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setLocation("/process-tactical-objectives")}
+              onClick={() => setLocation(backPath)}
               className="p-2 hover:bg-gray-200 rounded-lg"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <h1 className="text-3xl font-bold text-gray-900">OTE - DEFINICIÓN DE OBJETIVOS TÁCTICOS ESTRATÉGICOS</h1>
-            {processId && <p className="text-sm text-gray-600 mt-1">Proceso: {processId}</p>}
+            <p className="text-sm text-gray-600 mt-1">Proceso: {processLabel}</p>
           </div>
           <div className="flex gap-2">
             <Button 
-              onClick={() => setLocation("/process-tactical-objectives")} 
+              onClick={() => setLocation(backPath)}
               variant="outline" 
               size="sm"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               VOLVER
             </Button>
-            <Button onClick={handleExport} variant="default" size="sm">
+            <Button onClick={handleExport} disabled={!processName} variant="default" size="sm">
               <Download className="w-4 h-4 mr-2" />
               EXPORTAR OBJETIVOS
             </Button>
