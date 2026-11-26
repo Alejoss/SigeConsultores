@@ -332,17 +332,38 @@ async function visibleField(db: Db, companyId: number, fieldId: number) {
 
 async function openSession(db: Db, req: CookieReq, res: CookieRes, input: { role: CourseActor["role"]; accountId?: number | null; workerId?: number | null; companyId?: number | null }) {
   const token = randomBytes(24).toString("hex");
-  await db.delete(courseSessions).where(sql`${courseSessions.expiresAt} < NOW()`);
-  if (input.workerId) await db.delete(courseSessions).where(eq(courseSessions.workerId, input.workerId));
-  if (input.accountId) await db.delete(courseSessions).where(eq(courseSessions.accountId, input.accountId));
-  await db.insert(courseSessions).values({
+  const values = {
     tokenHash: hashToken(token),
     role: input.role,
     accountId: input.accountId ?? null,
     workerId: input.workerId ?? null,
     companyId: input.companyId ?? null,
     expiresAt: new Date(Date.now() + COURSE_SESSION_HOURS * 60 * 60 * 1000),
-  });
+  };
+  if (input.role === "worker") {
+    const { workerId, companyId } = input;
+    if (!workerId || !companyId) fail("UNAUTHORIZED", "Trabajador no encontrado.");
+    await db.transaction(async tx => {
+      // The same row lock is used by retirement: login/registration cannot
+      // insert a live worker session after retirement has committed.
+      const workers = await tx.select().from(courseWorkers)
+        .where(and(eq(courseWorkers.id, workerId), eq(courseWorkers.companyId, companyId)))
+        .limit(1).for("update");
+      if (!workers[0] || workers[0].retiredAt !== null) {
+        fail("FORBIDDEN", "Tu cuenta de capacitaciones está retirada. Contacta a tu empresa.");
+      }
+      await tx.delete(courseSessions).where(and(
+        eq(courseSessions.role, "worker"),
+        eq(courseSessions.workerId, workerId),
+        eq(courseSessions.companyId, companyId)
+      ));
+      await tx.insert(courseSessions).values(values);
+    });
+  } else {
+    await db.delete(courseSessions).where(sql`${courseSessions.expiresAt} < NOW()`);
+    if (input.accountId) await db.delete(courseSessions).where(eq(courseSessions.accountId, input.accountId));
+    await db.insert(courseSessions).values(values);
+  }
   writeSessionCookie(res, req, token, COURSE_SESSION_HOURS * 60 * 60);
 }
 
@@ -370,6 +391,25 @@ async function companyCourseAdminCompanyIds(db: Db, accountId: number): Promise<
     .from(companyOnlineCourseAccess)
     .where(and(eq(companyOnlineCourseAccess.accountId, accountId), eq(companyOnlineCourseAccess.accessLevel, "online_course_manager")));
   return Array.from(new Set([...managerCompanyIds, ...delegatedRows.map(row => row.companyId).filter(companyId => leaderCompanyIds.has(companyId))]));
+}
+
+/** Service callers must not be able to forge a company actor or reuse a revoked delegation. */
+async function assertCompanyCourseAdmin(db: Db, actor: CourseActor): Promise<void> {
+  if (actor.role !== "company_admin") fail("FORBIDDEN", "Solo el administrador de la empresa.");
+  const accountRows = await db.select({ status: accounts.status }).from(accounts)
+    .where(eq(accounts.id, actor.accountId)).limit(1);
+  if (accountRows[0]?.status !== "active") fail("FORBIDDEN", "No puedes administrar capacitaciones de esta empresa.");
+  if ((await staffRoles(db, actor.accountId)).some(role => role.slug === "platform_admin")) return;
+  if (!(await companyCourseAdminCompanyIds(db, actor.accountId)).includes(actor.companyId)) {
+    fail("FORBIDDEN", "No puedes administrar capacitaciones de esta empresa.");
+  }
+}
+
+async function assertActiveWorker(db: Db, actor: Extract<CourseActor, { role: "worker" }>) {
+  const workers = await db.select({ id: courseWorkers.id }).from(courseWorkers)
+    .where(and(eq(courseWorkers.id, actor.workerId), eq(courseWorkers.companyId, actor.companyId), isNull(courseWorkers.retiredAt)))
+    .limit(1);
+  if (!workers.length) fail("FORBIDDEN", "Tu cuenta de capacitaciones no está activa. Contacta a tu empresa.");
 }
 
 /** Stores a validated company selection; the permission is rechecked on every panel request. */
@@ -402,8 +442,10 @@ async function readCourseSessionActor(req: CookieReq): Promise<CourseActor | nul
     .limit(1);
   const session = sessions[0];
   if (!session) return null;
-  if (session.role === "worker" && session.workerId) {
-    const workers = await db.select().from(courseWorkers).where(eq(courseWorkers.id, session.workerId)).limit(1);
+  if (session.role === "worker" && session.workerId && session.companyId) {
+    const workers = await db.select().from(courseWorkers)
+      .where(and(eq(courseWorkers.id, session.workerId), eq(courseWorkers.companyId, session.companyId), isNull(courseWorkers.retiredAt)))
+      .limit(1);
     const worker = workers[0];
     if (!worker) return null;
     return {
@@ -523,6 +565,7 @@ export async function loginCourse(req: CookieReq, res: CookieRes, input: { ident
     recordFailure(key);
     fail("UNAUTHORIZED", "Cédula o clave incorrecta.");
   }
+  if (worker.retiredAt !== null) fail("FORBIDDEN", "Tu cuenta de capacitaciones está retirada. Contacta a tu empresa.");
   await openSession(db, req, res, { role: "worker", workerId: worker.id, companyId: worker.companyId });
   return { role: "worker" as const };
 }
@@ -544,10 +587,11 @@ export async function registerWorker(
   if (!settings.length) fail("FORBIDDEN", "El código de empresa no es válido.");
   const companyId = settings[0].companyId;
   const existing = await db
-    .select({ id: courseWorkers.id })
+    .select({ id: courseWorkers.id, retiredAt: courseWorkers.retiredAt })
     .from(courseWorkers)
     .where(and(eq(courseWorkers.companyId, companyId), sql`LOWER(${courseWorkers.cedula}) = ${cedula.toLowerCase()}`))
     .limit(1);
+  if (existing[0]?.retiredAt) fail("CONFLICT", "La cuenta con esa cédula está retirada. Contacta a tu empresa para reincorporarte.");
   if (existing.length) fail("CONFLICT", "Ya existe una cuenta con esa cédula en tu empresa. Inicia sesión.");
   const salt = randomBytes(8).toString("hex");
   let workerId = 0;
@@ -563,7 +607,13 @@ export async function registerWorker(
     });
     workerId = Number(inserted[0].insertId);
   } catch (error) {
-    if (isDuplicate(error)) fail("CONFLICT", "Ya existe una cuenta con esa cédula en tu empresa. Inicia sesión.");
+    if (isDuplicate(error)) {
+      const duplicate = await db.select({ retiredAt: courseWorkers.retiredAt }).from(courseWorkers)
+        .where(and(eq(courseWorkers.companyId, companyId), sql`LOWER(${courseWorkers.cedula}) = ${cedula.toLowerCase()}`))
+        .limit(1);
+      if (duplicate[0]?.retiredAt) fail("CONFLICT", "La cuenta con esa cédula está retirada. Contacta a tu empresa para reincorporarte.");
+      fail("CONFLICT", "Ya existe una cuenta con esa cédula en tu empresa. Inicia sesión.");
+    }
     throw error;
   }
   await openSession(db, req, res, { role: "worker", workerId, companyId });
@@ -585,7 +635,10 @@ export async function changeWorkerPassword(actor: CourseActor, input: { actual: 
   const key = `pw|${actor.workerId}`;
   if (limited(key)) fail("TOO_MANY_REQUESTS", "Demasiados intentos.");
   const db = await database();
-  const rows = await db.select().from(courseWorkers).where(eq(courseWorkers.id, actor.workerId)).limit(1);
+  await assertActiveWorker(db, actor);
+  const rows = await db.select().from(courseWorkers)
+    .where(and(eq(courseWorkers.id, actor.workerId), eq(courseWorkers.companyId, actor.companyId), isNull(courseWorkers.retiredAt)))
+    .limit(1);
   const worker = rows[0];
   if (!worker || !workerPasswordMatches(input.actual, worker.passwordSalt, worker.passwordHash)) {
     recordFailure(key);
@@ -596,7 +649,7 @@ export async function changeWorkerPassword(actor: CourseActor, input: { actual: 
   await db
     .update(courseWorkers)
     .set({ passwordSalt: salt, passwordHash: hashWorkerPassword(input.nueva, salt) })
-    .where(eq(courseWorkers.id, worker.id));
+    .where(and(eq(courseWorkers.id, worker.id), eq(courseWorkers.companyId, actor.companyId), isNull(courseWorkers.retiredAt)));
   return { ok: true };
 }
 
@@ -664,6 +717,7 @@ async function staffTree(actor: StaffActor) {
 export async function workerTree(actor: CourseActor) {
   if (actor.role !== "worker") return staffTree(actor);
   const db = await database();
+  await assertActiveWorker(db, actor);
   const fields = await db
     .select()
     .from(courseFields)
@@ -721,6 +775,7 @@ export async function searchLessons(actor: CourseActor, query: string) {
   const text = query.trim();
   if (text.length < 2) return { results: [] as { lessonId: number; title: string; moduleId: number; moduleName: string; fieldName: string }[] };
   const db = await database();
+  if (actor.role === "worker") await assertActiveWorker(db, actor);
   const needle = `%${text.replace(/[\\%_]/g, character => `\\${character}`)}%`;
   const rows = await db
     .select({
@@ -765,6 +820,7 @@ async function staffModule(actor: StaffActor, moduleId: number) {
 export async function workerModule(actor: CourseActor, moduleId: number) {
   if (actor.role !== "worker") return staffModule(actor, moduleId);
   const db = await database();
+  await assertActiveWorker(db, actor);
   const modules = await db.select().from(courseModules).where(and(eq(courseModules.id, moduleId), isNull(courseModules.archivedAt))).limit(1);
   const moduleRow = modules[0];
   if (!moduleRow) fail("NOT_FOUND", "Módulo no encontrado.");
@@ -814,6 +870,8 @@ export async function workerModule(actor: CourseActor, moduleId: number) {
 export async function evaluateLesson(actor: CourseActor, input: { lessonId: number; answers: string[] }) {
   if (actor.role !== "worker") return previewEvaluation(actor, input);
   const db = await database();
+  // Reject future calls; an evaluation already past this guard may still finish.
+  await assertActiveWorker(db, actor);
   const lessons = await db.select().from(courseLessons).where(and(eq(courseLessons.id, input.lessonId), isNull(courseLessons.archivedAt))).limit(1);
   const lesson = lessons[0];
   if (!lesson) fail("BAD_REQUEST", "Capacitación no válida.");
@@ -923,6 +981,7 @@ async function companyName(db: Db, companyId: number) {
 export async function certificateView(actor: CourseActor, kind: "capacitacion" | "modulo" | "campo", id: number) {
   if (actor.role !== "worker") fail("FORBIDDEN", "Certificado no disponible.");
   const db = await database();
+  await assertActiveWorker(db, actor);
   const company = await companyName(db, actor.companyId);
   if (kind === "capacitacion") {
     const results = await db
@@ -1041,6 +1100,7 @@ function parseOptionalDate(value: string | null | undefined): Date | null {
 export async function companyOverview(actor: CourseActor) {
   if (actor.role !== "company_admin") fail("FORBIDDEN", "Solo el administrador de la empresa.");
   const db = await database();
+  await assertCompanyCourseAdmin(db, actor);
   const company = await companyName(db, actor.companyId);
   const settings = await db.select().from(courseCompanySettings).where(eq(courseCompanySettings.companyId, actor.companyId)).limit(1);
   const fields = await db
@@ -1166,7 +1226,11 @@ export async function companyOverview(actor: CourseActor) {
       moduleCertificates,
     };
   });
-  return { companyName: company, regCode: settings[0]?.regCode || "", workerCount: workers.length, fields: fieldViews, workers: workerViews };
+  const retirementByWorker = new Map(workers.map(worker => [worker.id, asDate(worker.retiredAt)]));
+  const activeWorkers = workerViews.filter(worker => retirementByWorker.get(worker.id) === null);
+  const retiredWorkers = workerViews.filter(worker => retirementByWorker.get(worker.id) !== null)
+    .map(worker => ({ ...worker, retiredAt: retirementByWorker.get(worker.id) ?? null }));
+  return { companyName: company, regCode: settings[0]?.regCode || "", workerCount: activeWorkers.length, fields: fieldViews, workers: activeWorkers, retiredWorkers };
 }
 
 function csvCell(value: unknown): string {
@@ -1228,6 +1292,7 @@ export async function setModuleAccess(actor: CourseActor, input: { moduleId: num
 export async function setWorkerOverride(actor: CourseActor, input: { workerId: number; moduleId: number; value: "abrir" | "cerrar" | "auto" }) {
   if (actor.role !== "company_admin") fail("FORBIDDEN", "Solo el administrador de la empresa.");
   const db = await database();
+  await assertCompanyCourseAdmin(db, actor);
   const workers = await db
     .select({ id: courseWorkers.id })
     .from(courseWorkers)
@@ -1272,6 +1337,7 @@ export async function resetWorkerPassword(actor: CourseActor, input: { workerId:
   if (actor.role !== "company_admin") fail("FORBIDDEN", "Solo el administrador de la empresa.");
   if (input.password.length < 6) fail("BAD_REQUEST", "Clave no válida.");
   const db = await database();
+  await assertCompanyCourseAdmin(db, actor);
   const workers = await db
     .select({ id: courseWorkers.id })
     .from(courseWorkers)
@@ -1279,8 +1345,61 @@ export async function resetWorkerPassword(actor: CourseActor, input: { workerId:
     .limit(1);
   if (!workers.length) fail("BAD_REQUEST", "Trabajador no encontrado.");
   const salt = randomBytes(8).toString("hex");
-  await db.update(courseWorkers).set({ passwordSalt: salt, passwordHash: hashWorkerPassword(input.password, salt) }).where(eq(courseWorkers.id, input.workerId));
+  await db.update(courseWorkers).set({ passwordSalt: salt, passwordHash: hashWorkerPassword(input.password, salt) })
+    .where(and(eq(courseWorkers.id, input.workerId), eq(courseWorkers.companyId, actor.companyId)));
   return { ok: true };
+}
+
+type WorkerStatusInput = { workerId: number; confirmationCedula: string; confirmationName: string };
+
+/** Only course membership changes; no account, payroll or historical course row is removed. */
+async function setWorkerRetirement(actor: CourseActor, input: WorkerStatusInput, retire: boolean) {
+  if (actor.role !== "company_admin") fail("FORBIDDEN", "Solo el administrador de la empresa.");
+  if (!Number.isInteger(input.workerId) || input.workerId <= 0 ||
+      typeof input.confirmationCedula !== "string" || !input.confirmationCedula || input.confirmationCedula.length > 32 ||
+      typeof input.confirmationName !== "string" || !input.confirmationName || input.confirmationName.length > 100) {
+    fail("BAD_REQUEST", "Confirma la cédula y el nombre completo del trabajador.");
+  }
+  const db = await database();
+  await assertCompanyCourseAdmin(db, actor);
+  return db.transaction(async tx => {
+    const workers = await tx.select().from(courseWorkers)
+      .where(and(eq(courseWorkers.id, input.workerId), eq(courseWorkers.companyId, actor.companyId)))
+      .limit(1).for("update");
+    const worker = workers[0];
+    if (!worker) fail("FORBIDDEN", "Ese trabajador no pertenece a esta empresa.");
+    // Deliberately compare in JS: the database collation may ignore case/accents.
+    if (worker.cedula !== input.confirmationCedula || worker.name !== input.confirmationName) {
+      fail("BAD_REQUEST", "La cédula y el nombre de confirmación deben coincidir exactamente con los del trabajador.");
+    }
+    const retiredAt = retire ? worker.retiredAt ?? new Date() : null;
+    if (retire && worker.retiredAt === null) {
+      await tx.update(courseWorkers).set({ retiredAt, retiredByAccountId: actor.accountId })
+        .where(and(eq(courseWorkers.id, worker.id), eq(courseWorkers.companyId, actor.companyId)));
+    } else if (!retire) {
+      await tx.update(courseWorkers).set({ retiredAt: null, retiredByAccountId: null })
+        .where(and(eq(courseWorkers.id, worker.id), eq(courseWorkers.companyId, actor.companyId)));
+    }
+    if (retire) {
+      // Revokes only this worker's course sessions, including on idempotent retries.
+      // Never clear the requesting administrator's course/ISGE cookies or sessions.
+      await tx.delete(courseSessions).where(and(
+        eq(courseSessions.role, "worker"),
+        eq(courseSessions.workerId, worker.id),
+        eq(courseSessions.companyId, actor.companyId)
+      ));
+    }
+    return { ok: true, workerId: worker.id, retiredAt: asDate(retiredAt) };
+  });
+}
+
+export async function retireWorker(actor: CourseActor, input: WorkerStatusInput) {
+  return setWorkerRetirement(actor, input, true);
+}
+
+export async function reinstateWorker(actor: CourseActor, input: WorkerStatusInput) {
+  // Membership is restored with the same ID/history, but no session is opened.
+  return setWorkerRetirement(actor, input, false);
 }
 
 export async function createCourseField(actor: CourseActor, name: string) {
@@ -1453,8 +1572,14 @@ export async function removeCourseContent(actor: CourseActor, input: { kind: Cou
   return { outcome: archive ? "archived" : "deleted" } as const;
 }
 
-export async function catalogOverview() {
+export async function catalogOverview(actor: CourseActor) {
+  if (actor.role !== "platform_admin") fail("FORBIDDEN", "Solo el administrador general.");
   const db = await database();
+  const accountRows = await db.select({ status: accounts.status }).from(accounts)
+    .where(eq(accounts.id, actor.accountId)).limit(1);
+  if (accountRows[0]?.status !== "active" || !(await staffRoles(db, actor.accountId)).some(role => role.slug === "platform_admin")) {
+    fail("FORBIDDEN", "Solo el administrador general.");
+  }
   const fields = await db.select().from(courseFields).where(and(isNull(courseFields.companyId), isNull(courseFields.archivedAt))).orderBy(asc(courseFields.sortOrder), asc(courseFields.name));
   const counts = await lessonCounts(db);
   const fieldViews = [];
@@ -1483,6 +1608,7 @@ export async function catalogOverview() {
   const workerCounts = await db
     .select({ companyId: courseWorkers.companyId, n: sql<number>`count(*)` })
     .from(courseWorkers)
+    .where(isNull(courseWorkers.retiredAt))
     .groupBy(courseWorkers.companyId);
   const ownCounts = await db
     .select({ companyId: courseFields.companyId, n: sql<number>`count(*)` })

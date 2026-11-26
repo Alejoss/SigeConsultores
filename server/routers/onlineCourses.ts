@@ -17,6 +17,8 @@ import {
   logoutCourse,
   readCourseActor,
   registerWorker,
+  retireWorker,
+  reinstateWorker,
   resetWorkerPassword,
   searchLessons,
   setCompanyRegCode,
@@ -43,6 +45,13 @@ async function companyActorFrom(ctx: { req: Parameters<typeof readCourseActor>[0
 }
 
 const lessonFile = z.unknown();
+
+const workerStatusInput = z.object({
+  companyId: companyIdInput,
+  workerId: z.number().int().positive(),
+  confirmationCedula: z.string().min(1).max(32),
+  confirmationName: z.string().min(1).max(100),
+});
 
 export const onlineCoursesRouter = router({
   whoami: publicProcedure.query(async ({ ctx }) => {
@@ -128,6 +137,14 @@ export const onlineCoursesRouter = router({
     .input(z.object({ companyId: companyIdInput, workerId: z.number().int(), password: z.string() }))
     .mutation(async ({ ctx, input: { companyId, ...input } }) => resetWorkerPassword(await companyActorFrom(ctx, companyId), input)),
 
+  retireWorker: publicProcedure
+    .input(workerStatusInput)
+    .mutation(async ({ ctx, input: { companyId, ...input } }) => retireWorker(await companyActorFrom(ctx, companyId), input)),
+
+  reinstateWorker: publicProcedure
+    .input(workerStatusInput)
+    .mutation(async ({ ctx, input: { companyId, ...input } }) => reinstateWorker(await companyActorFrom(ctx, companyId), input)),
+
   exportCsv: publicProcedure
     .input(z.object({ companyId: companyIdInput }).optional())
     .query(async ({ ctx, input }) => exportCompanyCsv(await companyActorFrom(ctx, input?.companyId))),
@@ -153,6 +170,6 @@ export const onlineCoursesRouter = router({
     if (actor.role !== "platform_admin") {
       throw new TRPCError({ code: "FORBIDDEN", message: "Solo el administrador general." });
     }
-    return catalogOverview();
+    return catalogOverview(actor);
   }),
 });

@@ -27,6 +27,7 @@ const clientDomTests = [
   "client/src/components/__tests__/PercentagePointPresentation.test.tsx",
   "client/src/pages/__tests__/ProcessRiskMatrixResultMetrics.test.tsx",
   "client/src/pages/__tests__/ProcessIndicators.otgResultMetrics.test.tsx",
+  "client/src/pages/online-courses/*.test.tsx",
 ];
 
 /** Component specs pending alignment with current UI (were not executed before Vitest client project). */
