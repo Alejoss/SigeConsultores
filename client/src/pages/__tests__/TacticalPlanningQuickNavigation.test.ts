@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   error: vi.fn(),
   plannings: [] as any[],
   objectives: [] as any[],
-  process: { data: { companyId: 77 } as { companyId: number } | undefined, error: null as Error | null },
+  process: { data: { id: 21, companyId: 77, name: "Área ficticia actual" } as { id: number; companyId: number; name: string } | undefined, error: null as Error | null },
 }));
 vi.mock("wouter", () => ({ useLocation: () => ["/tactical-planning", mocks.navigate], useSearch: () => "" }));
 vi.mock("sonner", () => ({ toast: { error: mocks.error, success: vi.fn() } }));
@@ -52,7 +52,7 @@ async function advance(ms: number) {
 }
 async function mount(plannings = [fixture()]) {
   mocks.plannings = plannings;
-  mocks.objectives = plannings.map(item => ({ id: item.objectiveId }));
+  mocks.objectives = plannings.map(item => ({ id: item.objectiveId, processId: 21 }));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const view = render(React.createElement(QueryClientProvider, { client }, React.createElement(TacticalPlanning)));
   await advance(60);
@@ -82,7 +82,7 @@ describe("TacticalPlanning quick navigation and safe exit", () => {
     mocks.narratives.mockReset().mockResolvedValue(undefined);
     mocks.navigate.mockReset();
     mocks.error.mockReset();
-    mocks.process = { data: { companyId: 77 }, error: null };
+    mocks.process = { data: { id: 21, companyId: 77, name: "Área ficticia actual" }, error: null };
     localStorage.clear();
   });
   afterEach(async () => {
@@ -104,7 +104,7 @@ describe("TacticalPlanning quick navigation and safe exit", () => {
   });
 
   it("leaves the shared RBAC/company mismatch guard in control", async () => {
-    mocks.process = { data: { companyId: 88 }, error: null };
+    mocks.process = { data: { id: 21, companyId: 88, name: "Otra área ficticia" }, error: null };
     await mount();
     expect((screen.getByRole("button", { name: "Ir a Indicadores OTE" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: "Ir a Cronograma Consolidado" }) as HTMLButtonElement).disabled).toBe(true);
@@ -134,7 +134,7 @@ describe("TacticalPlanning quick navigation and safe exit", () => {
     expect(mocks.error).toHaveBeenCalled();
     await clickExit();
     expect(mocks.planning).toHaveBeenCalledTimes(4);
-    expect(mocks.navigate).toHaveBeenCalledWith("/process-tactical-objectives");
+    expect(mocks.navigate).toHaveBeenCalledWith("/process-tactical-objectives?processId=21&companyId=77");
   });
 
   it("flushes only edited narrative keys and never saves/replaces numeric planning for text", async () => {
@@ -157,7 +157,7 @@ describe("TacticalPlanning quick navigation and safe exit", () => {
     expect(mocks.narratives).toHaveBeenCalledTimes(1);
     await clickExit();
     expect(mocks.narratives).toHaveBeenCalledTimes(1);
-    expect(mocks.navigate).toHaveBeenCalledWith("/process-tactical-objectives");
+    expect(mocks.navigate).toHaveBeenCalledWith("/process-tactical-objectives?processId=21&companyId=77");
     expect(mocks.planning).not.toHaveBeenCalled();
   });
 
@@ -207,7 +207,7 @@ describe("TacticalPlanning quick navigation and safe exit", () => {
     expect(mocks.planning).toHaveBeenCalledTimes(1);
     await clickExit();
     expect(mocks.planning).toHaveBeenCalledTimes(2);
-    expect(mocks.navigate).toHaveBeenCalledWith("/process-tactical-objectives");
+    expect(mocks.navigate).toHaveBeenCalledWith("/process-tactical-objectives?processId=21&companyId=77");
   });
 
   it("drains a newer narrative edit after an older request without overlapping writes", async () => {
@@ -251,7 +251,7 @@ describe("TacticalPlanning quick navigation and safe exit", () => {
     await clickExit();
     expect(mocks.narratives).toHaveBeenCalledTimes(2);
     expect(mocks.narratives).toHaveBeenLastCalledWith({ objectiveId: planning.objectiveId, situacionInicial: "Texto de tarjeta colapsada" });
-    expect(mocks.navigate).toHaveBeenCalledWith("/process-tactical-objectives");
+    expect(mocks.navigate).toHaveBeenCalledWith("/process-tactical-objectives?processId=21&companyId=77");
     expect(mocks.planning).not.toHaveBeenCalled();
   });
 
@@ -266,6 +266,6 @@ describe("TacticalPlanning quick navigation and safe exit", () => {
     await clickExit();
     expect(mocks.planning).toHaveBeenCalledTimes(1);
     expect(mocks.planning).toHaveBeenCalledWith(expect.objectContaining({ goal: "Meta sin caché" }));
-    expect(mocks.navigate).toHaveBeenCalledWith("/process-tactical-objectives");
+    expect(mocks.navigate).toHaveBeenCalledWith("/process-tactical-objectives?processId=21&companyId=77");
   });
 });

@@ -6,7 +6,7 @@ import { ArrowLeft, Plus, Trash2, ChevronDown, Download } from 'lucide-react';
 import { toast } from "sonner";
 import { exportTacticalObjectivesToPDF } from "@/lib/exportTacticalObjectivesToPDF";
 import { trpc } from "@/lib/trpc";
-import { getProcessIdFromSession, getSessionScope } from "@/lib/sessionScope";
+import { getCompanyIdFromSession, getProcessIdFromSession } from "@/lib/sessionScope";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AutosavingObjectiveNarratives } from "@/components/ObjectiveNarrativeFields";
@@ -16,6 +16,7 @@ import { ObjectiveResultSummary } from "@/components/ObjectiveResultSummary";
 import { TolerableMarginFields } from "@/components/TolerableMarginFields";
 import { calculateObjectiveResultMetrics, formatObjectivePercent, type ObjectiveResultMetrics } from "@shared/objectiveResultMetrics";
 import { calculateTolerableMargin, calculateTolerableObjectiveResult, tolerableMarginStatusLabel, type TolerableMarginConfig } from "@shared/tolerableMargin";
+import { positiveScopeId } from "@/lib/processQuickNavigation";
 
 // ─── Tipos de seguimiento disponibles ────────────────────────────────────────
 // 'puntual'            → un valor directo; % = (condicionActual - ci) / (meta - ci) * 100
@@ -300,10 +301,32 @@ export function preparePlanningForSave(planning: TacticalPlanning): TacticalPlan
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function TacticalPlanning() {
+  useSearch();
+  const processId = positiveScopeId(getProcessIdFromSession());
+  const companyId = positiveScopeId(getCompanyIdFromSession());
+  // Reuse the existing unmount preservation, but never reuse drafts/loaded flags across areas.
+  return <ScopedTacticalPlanning key={`${processId}:${companyId}`} processId={processId} companyId={companyId} />;
+}
+
+function ScopedTacticalPlanning({ processId, companyId }: { processId: number | null; companyId: number | null }) {
   const [, setLocation] = useLocation();
   const searchParams = useSearch();
   const queryClient = useQueryClient();
-  const [processId, setProcessId] = useState<number | null>(null);
+  const process = trpc.processMap.get.useQuery(
+    { processId: processId || 0 },
+    { enabled: Boolean(processId), retry: false }
+  );
+  const currentProcess = !process.error && !process.isPlaceholderData && process.data?.id === processId
+    && (!companyId || process.data.companyId === companyId) ? process.data : null;
+  const processName = currentProcess?.name?.trim() || null;
+  const processLabel = processName || (processId
+    ? (process.isLoading || process.isPending ? "Cargando proceso..." : "Proceso no disponible")
+    : "Sin proceso seleccionado");
+  const context = new URLSearchParams();
+  if (processId) context.set("processId", String(processId));
+  const scopedCompanyId = companyId || currentProcess?.companyId;
+  if (scopedCompanyId) context.set("companyId", String(scopedCompanyId));
+  const backPath = context.size ? `/process-tactical-objectives?${context}` : "/process-tactical-objectives";
   const [plannings, setPlannings] = useState<TacticalPlanning[]>([]);
   const [saving, setSaving] = useState(false);
   const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
@@ -314,6 +337,7 @@ export default function TacticalPlanning() {
   const processIdRef = useRef<number | null>(null);
   const pendingSaveRef = useRef(false); // indica si hay cambios pendientes de guardar
   const initialLoadDoneRef = useRef(false); // indica si la carga inicial ya terminó
+  const initialLoadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusedTargetRef = useRef<string | null>(null);
   const [focusExpandedPlanningId, setFocusExpandedPlanningId] = useState<string | null>(null);
   const focusParams = useMemo(() => new URLSearchParams(searchParams), [searchParams]);
@@ -339,12 +363,12 @@ export default function TacticalPlanning() {
     },
   });
 
-  const { data: tacticalObjectivesData } = trpc.processTacticalObjectives.list.useQuery(
+  const { data: tacticalObjectivesData, isPlaceholderData: objectivesArePlaceholder } = trpc.processTacticalObjectives.list.useQuery(
     { processId: processId || 0 },
     { enabled: processId !== null }
   );
 
-  const { data: planningDataFromDB } = trpc.processTacticalObjectives.loadPlanningData.useQuery(
+  const { data: planningDataFromDB, isPlaceholderData: planningIsPlaceholder } = trpc.processTacticalObjectives.loadPlanningData.useQuery(
     { processId: processId || 0 },
     { enabled: processId !== null, staleTime: 0, gcTime: 0 }
   );
@@ -412,13 +436,11 @@ export default function TacticalPlanning() {
   };
 
   useEffect(() => {
-    const pid = getProcessIdFromSession();
-    if (pid) setProcessId(pid);
-  }, []);
-
-  useEffect(() => {
     if (!tacticalObjectivesData || tacticalObjectivesData.length === 0) return;
     if (planningDataFromDB === undefined) return;
+    if (objectivesArePlaceholder || planningIsPlaceholder) return;
+    if (!tacticalObjectivesData.every(obj => obj.processId === processId)) return;
+    if (planningDataFromDB?.some(planning => !tacticalObjectivesData.some(obj => obj.id === planning.objectiveId))) return;
 
     // Si ya cargamos, no sobrescribir el estado local con refetches en background
     // (evita que el refetch deshaga los cambios del usuario mientras edita)
@@ -461,8 +483,12 @@ export default function TacticalPlanning() {
       setPlannings(newPlannings);
     }
     // Marcar que la carga inicial terminó (en el siguiente tick para que el useEffect de plannings se ejecute primero)
-    setTimeout(() => { initialLoadDoneRef.current = true; pendingSaveRef.current = false; }, 50);
-  }, [tacticalObjectivesData, planningDataFromDB]);
+    initialLoadTimeoutRef.current = setTimeout(() => { initialLoadDoneRef.current = true; pendingSaveRef.current = false; }, 50);
+  }, [tacticalObjectivesData, planningDataFromDB, processId, objectivesArePlaceholder, planningIsPlaceholder]);
+
+  useEffect(() => () => {
+    if (initialLoadTimeoutRef.current) clearTimeout(initialLoadTimeoutRef.current);
+  }, []);
 
   // Expanding the card to reach narrative fields is view-only, not a numeric/planning edit.
   const planningSaveSignature = objectivePlanningSaveSignature(plannings);
@@ -796,7 +822,7 @@ export default function TacticalPlanning() {
     if (!(await flushBeforeNavigate())) return;
     // Mantener el destino de VOLVER y refrescar datos sólo después de guardar con éxito.
     queryClient.removeQueries();
-    setLocation('/process-tactical-objectives');
+    setLocation(backPath);
   };
 
   // ─── Render helpers ─────────────────────────────────────────────────────────
@@ -1050,7 +1076,7 @@ export default function TacticalPlanning() {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <div>
             <h1 className="text-4xl font-bold text-green-900 mb-2">OTE - PLANIFICACIÓN DE OBJETIVOS TÁCTICOS ESTRATÉGICOS</h1>
-            <p className="text-gray-600">Proceso: <span className="font-semibold">{getSessionScope().processName || ""}</span></p>
+            <p className="text-gray-600">Proceso: <span className="font-semibold">{processLabel}</span></p>
             <p className="text-sm text-green-600 mt-1">
               {saving ? "Guardando..." : "✓ Guardado automático"}
               {lastSaveTime && ` (Último: ${lastSaveTime})`}
@@ -1059,12 +1085,16 @@ export default function TacticalPlanning() {
           <div className="flex flex-wrap items-center gap-4">
             <ProcessQuickNavigation
               processId={processId}
-              companyId={getSessionScope().companyId}
+              companyId={scopedCompanyId}
               indicatorPanel="ote"
               beforeNavigate={flushBeforeNavigate}
             />
             {plannings.length > 0 && (
-              <Button onClick={() => { exportTacticalObjectivesToPDF(plannings.map(planning => ({ ...planning, ...narrativeDraftsRef.current[planning.objectiveId] })), getSessionScope().processName || 'Proceso'); toast.success('PDF exportado correctamente'); }}
+              <Button disabled={!processName} onClick={() => {
+                if (!processName) return;
+                exportTacticalObjectivesToPDF(plannings.map(planning => ({ ...planning, ...narrativeDraftsRef.current[planning.objectiveId] })), processName);
+                toast.success('PDF exportado correctamente');
+              }}
                 className="bg-green-600 hover:bg-green-700 flex items-center gap-2">
                 <Download size={20} /> Exportar a PDF
               </Button>

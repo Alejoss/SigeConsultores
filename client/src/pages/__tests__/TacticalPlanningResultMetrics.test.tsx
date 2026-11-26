@@ -21,7 +21,7 @@ vi.mock("@/lib/sessionScope", () => ({
 }));
 vi.mock("@/lib/trpc", () => ({
   trpc: {
-    processMap: { get: { useQuery: () => ({ data: { companyId: 77 } }) } },
+    processMap: { get: { useQuery: () => ({ data: { id: 21, companyId: 77, name: "Área de prueba actual" } }) } },
     processTacticalObjectives: {
       savePlanning: { useMutation: () => ({ mutateAsync: mocks.planning }) },
       saveNarratives: { useMutation: () => ({ mutateAsync: mocks.narratives }) },
@@ -56,7 +56,7 @@ async function advance(ms: number) {
 }
 async function mount(plannings: ReturnType<typeof ote>[]) {
   mocks.plannings = plannings;
-  mocks.objectives = plannings.map(item => ({ id: item.objectiveId }));
+  mocks.objectives = plannings.map(item => ({ id: item.objectiveId, processId: 21 }));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const view = render(React.createElement(QueryClientProvider, { client }, React.createElement(TacticalPlanning)));
   await advance(60);
