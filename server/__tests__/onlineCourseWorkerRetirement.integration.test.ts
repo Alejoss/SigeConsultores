@@ -143,6 +143,16 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
     return row!;
   }
 
+  function fixtureCsvRows(rows: (string | null)[][]) {
+    // Other suites can add/archive global fields while this lifecycle runs.
+    // Keep every cell and row for our unique fields, not the shared catalog.
+    return rows.filter(
+      row =>
+        row[3] === `Campo general retiro ${suffix}` ||
+        row[3] === `Campo privado retiro ${suffix}`
+    );
+  }
+
   async function history(id: number) {
     // Compare complete rows, including attempts, dates and certificate codes, not just counts.
     return {
@@ -680,6 +690,9 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
       status: "en_curso",
     });
     const exportBefore = await managerA.caller().exportCsv();
+    const fixtureExportBefore = fixtureCsvRows(exportBefore.rows);
+    expect(fixtureExportBefore).toHaveLength(9);
+    expect(fixtureExportBefore.filter(row => row[0] === mainName)).toHaveLength(3);
     expect(exportBefore.rows.some(row => row[0] === mainName)).toBe(true);
     const catalogBefore = await admin.caller().catalogOverview();
     const catalogCountBefore = catalogBefore.companies.find(
@@ -749,14 +762,19 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
       "seguimiento-detallado-capacitaciones.xlsx"
     );
     expect(retiredExport.headers).toEqual(exportBefore.headers);
-    expect(retiredExport.rows).toEqual(
-      exportBefore.rows.filter(row => row[0] !== mainName)
+    expect(fixtureCsvRows(retiredExport.rows)).toEqual(
+      fixtureExportBefore.filter(row => row[0] !== mainName)
     );
     expect(retiredExport.csv).not.toContain(mainName);
     expect(retiredExport.csv).not.toContain(sameCedula);
-    expect(
-      (await platformAdmin.caller().exportCsv({ companyId: companyAId })).rows
-    ).toEqual(retiredExport.rows);
+    const platformRetiredExport = await platformAdmin
+      .caller()
+      .exportCsv({ companyId: companyAId });
+    expect(fixtureCsvRows(platformRetiredExport.rows)).toEqual(
+      fixtureCsvRows(retiredExport.rows)
+    );
+    expect(platformRetiredExport.csv).not.toContain(mainName);
+    expect(platformRetiredExport.csv).not.toContain(sameCedula);
 
     const rejectedLogin = browser();
     await expect(
@@ -910,8 +928,8 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
     expect(restoredOverview.retiredWorkers.map(row => row.id)).not.toContain(
       workerId
     );
-    expect((await managerA.caller().exportCsv()).rows).toEqual(
-      exportBefore.rows
+    expect(fixtureCsvRows((await managerA.caller().exportCsv()).rows)).toEqual(
+      fixtureExportBefore
     );
     expect(
       (await admin.caller().catalogOverview()).companies.find(
@@ -935,7 +953,13 @@ describe("retiro seguro de trabajadores de cursos (MySQL local)", () => {
     expect(await managerB.caller().companyOverview()).toEqual(
       otherCompanyBefore
     );
-    expect(await managerB.caller().exportCsv()).toEqual(otherExportBefore);
+    const otherExportAfter = await managerB.caller().exportCsv();
+    expect(otherExportAfter.filename).toBe(otherExportBefore.filename);
+    expect(otherExportAfter.headers).toEqual(otherExportBefore.headers);
+    expect(fixtureCsvRows(otherExportBefore.rows)).toHaveLength(1);
+    expect(fixtureCsvRows(otherExportAfter.rows)).toEqual(
+      fixtureCsvRows(otherExportBefore.rows)
+    );
     const otherFreshLogin = browser();
     expect(
       await otherFreshLogin
