@@ -1,4 +1,5 @@
 import mysql from "mysql2/promise";
+import { hasAnnualWorkspaceMetadata } from "./annual-backfill-guard.mjs";
 
 /**
  * Corrige el vacío histórico originado antes de que la Línea de Tiempo guardara
@@ -27,6 +28,10 @@ const connection = await mysql.createConnection({
 });
 
 try {
+  if (await hasAnnualWorkspaceMetadata(connection, COMPANY_ID, YEAR)) {
+    console.log(`[StrategicTimelineBackfill] ${YEAR} usa espacios anuales; no se modifica el origen.`);
+    process.exit(0);
+  }
   const [existingRows] = await connection.execute(
     "SELECT id FROM companyTrends WHERE companyId = ? AND year = ? AND month = ? LIMIT 1",
     [COMPANY_ID, YEAR, TARGET_MONTH],

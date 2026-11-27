@@ -147,4 +147,16 @@ describe("alerta semanal de pendientes del proceso", () => {
     expect(html.match(/Preparar informe semanal/g)).toHaveLength(1);
     expect(html.match(/Corregir acción vencida/g)).toHaveLength(1);
   });
+
+  it("conserva el año de origen en la etiqueta del correo aunque agrupe el tipo de actividad", () => {
+    const sections = splitProcessWeeklyAlertActivities(
+      [activity("anterior", "2026-10-23", { badge: "OTE · 2026" })],
+      "Comercial",
+      referenceDate
+    );
+    const html = buildProcessLeaderEmailHtml("Pedro", "Empresa de prueba", "Comercial", sections,
+      "https://review.invalid/consolidated-schedule?managementYear=2027");
+    expect(html).toContain(">OTE · 2026</span>");
+    expect(html).not.toContain(">OTE</span>");
+  });
 });

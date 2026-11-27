@@ -1,3 +1,4 @@
+import { useAnnualWorkspace } from "@/contexts/AnnualWorkspaceContext";
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProcessMapFileActions from "@/components/ProcessMapFileActions";
@@ -17,6 +18,7 @@ import { getAxisBackPath } from "@/lib/sessionScope";
 type ProcessType = "estrategico" | "misional" | "soporte";
 
 export default function ProcessMap() {
+  const annual = useAnnualWorkspace();
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { user } = useAuth();
@@ -355,12 +357,14 @@ export default function ProcessMap() {
           <p className={`font-medium ${styles.title} truncate`}>{process.name}</p>
         )}
         <p className={`text-xs ${styles.subtitle}`}>{typeLabel}</p>
+        {annual.overview?.processes.find(item => item.id === process.id)?.status === "pending" && <p className="mt-1 text-xs font-medium text-amber-800">Pendiente de incorporación · {annual.year}</p>}
       </div>
       <Button
         size="sm"
         variant="ghost"
         onClick={() => handleAccessProcess(process.id)}
         aria-label={`Abrir ${process.name}`}
+        disabled={annual.overview?.processes.find(item => item.id === process.id)?.status === "pending"}
       >
         <ChevronRight className="h-4 w-4" />
       </Button>

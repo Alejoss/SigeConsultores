@@ -105,6 +105,7 @@ if [ ! -s "$BACKUP_FILE" ]; then
   echo "Database backup failed or is empty; deployment aborted." >&2
   exit 1
 fi
+gzip -t "$BACKUP_FILE"
 sha256sum "$BACKUP_FILE" | tee "${BACKUP_FILE}.sha256"
 echo "Pre-deployment backup verified."
 

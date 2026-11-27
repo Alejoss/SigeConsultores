@@ -29,6 +29,9 @@ const clientDomTests = [
   "client/src/pages/__tests__/ProcessIndicators.otgResultMetrics.test.tsx",
   "client/src/pages/__tests__/StrategicTrends.performanceRings.test.tsx",
   "client/src/pages/online-courses/*.test.tsx",
+  "client/src/pages/__tests__/AnnualWorkspaces.processContext.test.tsx",
+  "client/src/pages/__tests__/AnnualWorkspaceFrame.processContext.test.tsx",
+  "client/src/components/AnnualHistoricalPendingPanel.test.tsx",
   "client/src/pages/__tests__/*.processContext.test.tsx",
 ];
 

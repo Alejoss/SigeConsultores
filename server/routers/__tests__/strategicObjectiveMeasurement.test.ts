@@ -18,6 +18,9 @@ import {
   type StrategicMeasurementConfig,
 } from "../../../shared/strategicObjectiveMeasurement";
 
+// Annual request admission is covered by annual security integration; this unit uses a fake database.
+vi.mock("../../annual/requestScope", () => ({ runInAnnualRequestScope: async (_options: unknown, operation: () => unknown) => operation() }));
+
 const mocks = vi.hoisted(() => ({ getDb: vi.fn() }));
 vi.mock("../../db", () => ({ getDb: mocks.getDb }));
 

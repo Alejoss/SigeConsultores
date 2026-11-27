@@ -130,9 +130,9 @@ export const processStakeholderCriticalityRouter = router({
       if (!db) throw new Error("Database not available");
 
       const fileBuffer = Buffer.from(input.fileData);
-      const fileKey = `stakeholder-matrix/${input.processId}/${randomUUID()}-${input.fileName}`;
+      const requestedFileKey = `stakeholder-matrix/${input.processId}/${randomUUID()}-${input.fileName}`;
       const mimeType = input.mimeType || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-      const { url } = await storagePut(fileKey, fileBuffer, mimeType);
+      const { url, key: fileKey } = await storagePut(requestedFileKey, fileBuffer, mimeType);
 
       // Upsert: delete old record for this process if exists, then insert new
       await db.delete(processStakeholderMatrixFiles)

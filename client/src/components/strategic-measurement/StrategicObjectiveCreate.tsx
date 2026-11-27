@@ -1,3 +1,4 @@
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -11,6 +12,7 @@ export function StrategicObjectiveCreate({ companyId, orderIndex, onClose, onCre
   const [config, setConfig] = useState(() => configToDraft(emptyStrategicMeasurementConfig()));
   const mutation = trpc.strategicObjectives.create.useMutation();
   const [error, setError] = useState<string | null>(null);
+  useAnnualExitGuard(() => JSON.stringify(definition) === JSON.stringify(emptyDefinition) && JSON.stringify(config) === JSON.stringify(configToDraft(emptyStrategicMeasurementConfig())));
   async function create() {
     const measurementConfig = draftToConfig(config);
     if (!definition.name.trim()) { setError("Ingresa el nombre del objetivo."); return; }

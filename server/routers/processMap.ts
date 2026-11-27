@@ -257,7 +257,8 @@ export const processMapRouter = router({
 
         const fileBuffer = Buffer.from(input.fileData);
         newFileKey = `process-map/${input.companyId}/${randomUUID()}-${input.fileName}`;
-        const { url } = await storagePut(newFileKey, fileBuffer, mimeType);
+        const { url, key } = await storagePut(newFileKey, fileBuffer, mimeType);
+        newFileKey = key;
 
         const existing = await replaceProcessMapImageDocument(
           input.companyId, url, newFileKey, fileBuffer.length

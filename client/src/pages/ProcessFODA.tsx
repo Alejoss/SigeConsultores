@@ -1,3 +1,4 @@
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -215,6 +216,8 @@ export default function ProcessFODA() {
     }, 1500);
   };
 
+
+  useAnnualExitGuard(flushSave);
   const handleBack = async () => {
     if (returningRef.current) return;
     returningRef.current = true;

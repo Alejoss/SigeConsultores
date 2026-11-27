@@ -8,7 +8,12 @@ import {
   processes,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { router } from "../_core/trpc";
 import { payrollRouter } from "../routers/payroll";
+// Preserve the production tRPC path used by annual scope and ACL checks.
+const integrationRouter = router({
+  payroll: payrollRouter,
+});
 
 const testName = `Prueba descriptivos de cargo ${Date.now()}`;
 
@@ -33,7 +38,7 @@ const context = (
   }) as never;
 
 const managerCaller = () =>
-  payrollRouter.createCaller(
+  integrationRouter.createCaller(
     context({
       manager: {
         companyId,
@@ -41,10 +46,10 @@ const managerCaller = () =>
         managerEmail: "descriptivos.gerente@example.test",
       },
     })
-  );
+  ).payroll;
 
 const leaderCaller = () =>
-  payrollRouter.createCaller(
+  integrationRouter.createCaller(
     context({
       processLeader: {
         processLeaderId: 999001,
@@ -55,10 +60,10 @@ const leaderCaller = () =>
         companyName: testName,
       },
     })
-  );
+  ).payroll;
 
 const otherCompanyLeaderCaller = () =>
-  payrollRouter.createCaller(
+  integrationRouter.createCaller(
     context({
       processLeader: {
         processLeaderId: 999002,
@@ -69,7 +74,7 @@ const otherCompanyLeaderCaller = () =>
         companyName: "Empresa ajena de prueba",
       },
     })
-  );
+  ).payroll;
 
 beforeAll(async () => {
   db = (await getDb()) as NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -275,6 +280,6 @@ describe("Nómina: descriptivos de cargo consolidados", () => {
   it("rechaza consultar los descriptivos de otra empresa", async () => {
     await expect(
       otherCompanyLeaderCaller().jobDescriptions({ companyId })
-    ).rejects.toThrow("No tiene acceso a esta empresa");
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "La empresa del input no coincide con el espacio anual seleccionado." });
   });
 });

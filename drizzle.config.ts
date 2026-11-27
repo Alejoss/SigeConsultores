@@ -42,6 +42,9 @@ export default defineConfig({
   schema: "./drizzle/schema.ts",
   out: "./drizzle",
   dialect: "mysql",
+  // Annual CREATE TABLE LIKE namespaces are managed additively, not by push.
+  // A single negated glob excludes them even with drizzle-kit push --force.
+  tablesFilter: ["!aw_*"],
   dbCredentials: {
     url: connectionString,
   },

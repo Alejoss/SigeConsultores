@@ -1,3 +1,5 @@
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
+import { annualBusinessStorage } from "@/lib/annualWorkspace";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -405,7 +407,7 @@ function ScopedTacticalPlanning({ processId, companyId }: { processId: number | 
     pendingSaveRef.current = false;
     try {
       const planningsToSave = latestPlannings.map(preparePlanningForSave);
-      localStorage.setItem(`tactical_planning_${latestProcessId}`, JSON.stringify(planningsToSave));
+      annualBusinessStorage.setItem(`tactical_planning_${latestProcessId}`, JSON.stringify(planningsToSave));
       const results = await Promise.allSettled(planningsToSave.map(planning =>
         savePlanningMutation.mutateAsync({
           objectiveId: planning.objectiveId,
@@ -560,7 +562,7 @@ function ScopedTacticalPlanning({ processId, companyId }: { processId: number | 
       // Guardar en localStorage de forma síncrona (fetch async no garantizado al desmontar)
       try {
         const planningsToSave = currentPlannings.map(preparePlanningForSave);
-        localStorage.setItem(`tactical_planning_${currentProcessId}`, JSON.stringify(planningsToSave));
+        annualBusinessStorage.setItem(`tactical_planning_${currentProcessId}`, JSON.stringify(planningsToSave));
       } catch (e) {
         // ignore
       }
@@ -818,6 +820,8 @@ function ScopedTacticalPlanning({ processId, companyId }: { processId: number | 
     return navigationFlushRef.current;
   };
 
+
+  useAnnualExitGuard(flushBeforeNavigate);
   const handleBack = async () => {
     if (!(await flushBeforeNavigate())) return;
     // Mantener el destino de VOLVER y refrescar datos sólo después de guardar con éxito.

@@ -6,6 +6,7 @@ import { eq, asc } from "drizzle-orm";
 import { calculateCompanyStrategicSnapshot, saveCompanyStrategicSnapshot } from "../lib/strategicSnapshots";
 import { calculateOtgProgress } from "../lib/otgProgress";
 import { calculateStakeholderActionProgress } from "../../shared/stakeholderActionProgress";
+import { getAnnualScope } from "../annual/runtime";
 const MONTH_NAMES = [
   "Ene", "Feb", "Mar", "Abr", "May", "Jun",
   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
@@ -64,8 +65,13 @@ export const strategicTrendsRouter = router({
         .where(eq(companyTrends.companyId, input.companyId))
         .orderBy(asc(companyTrends.year), asc(companyTrends.month));
 
-      if (rows.length > 0) {
-        const data = rows.map((r) => {
+      const selectedYear = getAnnualScope()?.workspace.year;
+      const visibleRows = rows.filter(row =>
+        (selectedYear === undefined || row.year === selectedYear) &&
+        (!input.years || input.years.includes(row.year))
+      );
+      if (visibleRows.length > 0) {
+        const data = visibleRows.map((r) => {
           let oePercents: Record<string, number> = {};
           try { oePercents = JSON.parse((r as any).oePercentsJson || "{}"); } catch { /* skip */ }
           return {
@@ -82,6 +88,9 @@ export const strategicTrendsRouter = router({
           };
         });
         return { data, hasSavedData: true };
+      }
+      if (selectedYear !== undefined && input.years && !input.years.includes(selectedYear)) {
+        return { data: [], hasSavedData: false };
       }
 
       // Sin datos históricos: calcular el estado actual. El primer snapshot se guarda
@@ -115,6 +124,10 @@ export const strategicTrendsRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+      const workspace = getAnnualScope()?.workspace;
+      if (workspace && input.year !== workspace.year) {
+        throw new Error("El snapshot debe pertenecer al año de gestión seleccionado.");
+      }
 
       await db
         .insert(companyTrends)

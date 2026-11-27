@@ -1,3 +1,4 @@
+import { getSelectedManagementYear } from "@/lib/annualWorkspace";
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,7 +42,7 @@ export default function ProcessParticipants() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState(EMPTY_PARTICIPANT);
-  const [year, setYear] = useState(new Date().getFullYear());
+  const year = getSelectedManagementYear();
   const [expandedParticipantId, setExpandedParticipantId] = useState<number | null>(null);
   const [expandedRoleDetails, setExpandedRoleDetails] = useState<Set<number>>(() => new Set());
   const [expandedCompetencies, setExpandedCompetencies] = useState<Set<number>>(() => new Set());
@@ -300,7 +301,7 @@ export default function ProcessParticipants() {
           }} className="gap-2 bg-green-600 hover:bg-green-700"><Download size={16} />Exportar a PDF</Button></div>}
 
           <Card>
-            <CardHeader className="flex-row items-center justify-between gap-4"><div><CardTitle>Puestos de Trabajo registrados ({participants.length})</CardTitle><CardDescription>Gestiona los trabajadores y KPI de cada puesto. El año seleccionado define la evaluación mostrada.</CardDescription></div><div className="flex shrink-0 flex-col gap-1"><Label htmlFor="evaluation-year" className="text-xs text-slate-600">Año de evaluación</Label><select id="evaluation-year" value={year} onChange={(e) => setYear(Number(e.target.value))} className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium"><option value={year - 1}>{year - 1}</option><option value={year}>{year}</option><option value={year + 1}>{year + 1}</option></select></div></CardHeader>
+            <CardHeader className="flex-row items-center justify-between gap-4"><div><CardTitle>Puestos de Trabajo registrados ({participants.length})</CardTitle><CardDescription>Gestiona los trabajadores y KPI de cada puesto. El año seleccionado define la evaluación mostrada.</CardDescription></div><div className="flex shrink-0 flex-col gap-1"><Label htmlFor="evaluation-year" className="text-xs text-slate-600">Año de evaluación</Label><select id="evaluation-year" value={year} disabled className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium"><option value={year}>{year}</option></select></div></CardHeader>
             <CardContent>
               {participants.length === 0 ? <p className="text-center text-slate-500 py-8">No hay Puestos de Trabajo registrados aún</p> : (
                 <div className="space-y-4">

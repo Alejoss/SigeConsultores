@@ -196,8 +196,8 @@ export function registerMeetingUploadRoutes(app: Express) {
           });
         }
         const fileName = safeFileName(req.file.originalname);
-        const fileKey = `meetings/${companyId}/${meetingId}/files/${randomUUID()}-${fileName}`;
-        const { url } = await storagePut(fileKey, req.file.buffer, req.file.mimetype);
+        const requestedFileKey = `meetings/${companyId}/${meetingId}/files/${randomUUID()}-${fileName}`;
+        const { url, key: fileKey } = await storagePut(requestedFileKey, req.file.buffer, req.file.mimetype);
         const result = await db.insert(meetingFiles).values({
           meetingId,
           companyId,
@@ -308,8 +308,8 @@ export function registerMeetingUploadRoutes(app: Express) {
           });
         }
         const fileName = safeFileName(req.file.originalname);
-        const fileKey = `meetings/${companyId}/${agreement.meetingId}/agreements/${agreementId}/${randomUUID()}-${fileName}`;
-        const { url } = await storagePut(fileKey, req.file.buffer, req.file.mimetype);
+        const requestedFileKey = `meetings/${companyId}/${agreement.meetingId}/agreements/${agreementId}/${randomUUID()}-${fileName}`;
+        const { url, key: fileKey } = await storagePut(requestedFileKey, req.file.buffer, req.file.mimetype);
         const result = await db.insert(meetingAgreementEvidence).values({
           meetingAgreementId: agreementId,
           companyId,

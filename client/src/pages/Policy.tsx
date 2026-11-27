@@ -1,3 +1,6 @@
+import { useAnnualMutationWait } from "@/hooks/useAnnualMutationWait";
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
+import { annualBusinessStorage } from "@/lib/annualWorkspace";
 import { useState, useRef, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,7 +71,7 @@ export default function Policy() {
   
   // Check if this is being accessed by a manager
   const urlParams = new URLSearchParams(search);
-  const isManagerAccess = localStorage.getItem('managerCompanyId') !== null;
+  const isManagerAccess = annualBusinessStorage.getItem('managerCompanyId') !== null;
   
   const [companyId, setCompanyIdState] = useState<number | null>(() => {
     // If Process Leader, use their company ID from session
@@ -77,7 +80,7 @@ export default function Policy() {
     }
     return getCompanyIdFromLocationOrStorage();
   });
-  const [companyName] = useState(() => processLeaderSession?.companyName || localStorage.getItem("selectedCompanyName") || "Empresa");
+  const [companyName] = useState(() => processLeaderSession?.companyName || annualBusinessStorage.getItem("selectedCompanyName") || "Empresa");
   const managementAccessQuery = trpc.teamAccess.getMyCompanyManagementAccess.useQuery(
     { companyId: companyId || 0 },
     { enabled: isProcessLeader && companyId !== null }
@@ -125,6 +128,8 @@ export default function Policy() {
   const handleBack = () => {
     setLocation(getAxisBackPathForRole());
   };
+  const waitForMutations = useAnnualMutationWait();
+  const policyEdited = useRef(false);
   const [policy, setPolicy] = useState("");
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -139,6 +144,7 @@ export default function Policy() {
   // Update policy mutation
   const updateMutation = trpc.policies.upsert.useMutation({
     onSuccess: () => {
+      policyEdited.current = false;
       setLastSaved(new Date());
       setIsSaving(false);
       refetch();
@@ -151,6 +157,7 @@ export default function Policy() {
 
   // Guardado automático con debounce
   const autoSave = () => {
+    policyEdited.current = true;
     if (!canEditPolicy) return;
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current);
@@ -176,6 +183,13 @@ export default function Policy() {
     });
   };
 
+  useAnnualExitGuard(async () => {
+    if (!policyEdited.current) return true;
+    if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    autoSaveTimeoutRef.current = null;
+    if (!(await waitForMutations()) || !companyId || !canEditPolicy) return false;
+    try { await updateMutation.mutateAsync({ companyId, policyText: policy }); policyEdited.current = false; return true; } catch { return false; }
+  });
   const handleDownloadTemplate = () => {
     const element = document.createElement("a");
     const file = new Blob([POLICY_TEMPLATE], { type: "text/plain;charset=utf-8" });
@@ -188,6 +202,7 @@ export default function Policy() {
   };
 
   const handleLoadTemplate = () => {
+    policyEdited.current = true;
     setPolicy(POLICY_TEMPLATE);
     toast.success("Plantilla cargada en el editor");
   };
@@ -323,7 +338,7 @@ export default function Policy() {
                         toast.error("Primero guarda la Política antes de registrar sus objetivos.");
                         return;
                       }
-                      localStorage.setItem("selectedPolicyId", policyData.id.toString());
+                      annualBusinessStorage.setItem("selectedPolicyId", policyData.id.toString());
                       setLocation("/policy-objectives");
                     }}
                     disabled={!policyData?.id}

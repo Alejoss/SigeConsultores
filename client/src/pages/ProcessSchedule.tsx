@@ -1,3 +1,6 @@
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
+import { getSelectedManagementYear } from "@/lib/annualWorkspace";
+import { annualBusinessStorage } from "@/lib/annualWorkspace";
 'use client';
 
 import { useState, useEffect } from "react";
@@ -36,15 +39,15 @@ export default function ProcessSchedule() {
   const [processId, setProcessId] = useState<string | null>(null);
   const [processName, setProcessName] = useState("");
   const [tacticalObjectives, setTacticalObjectives] = useState<TacticalObjective[]>([]);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date(getSelectedManagementYear(), new Date().getMonth(), 1));
   const [data, setData] = useState<ScheduleData>({
     processId: "",
     activities: [],
   });
 
   useEffect(() => {
-    const stored = localStorage.getItem("selectedProcessId");
-    const storedCompanyId = localStorage.getItem("selectedCompanyId");
+    const stored = annualBusinessStorage.getItem("selectedProcessId");
+    const storedCompanyId = annualBusinessStorage.getItem("selectedCompanyId");
 
     if (stored && storedCompanyId) {
       setProcessId(stored);
@@ -52,7 +55,7 @@ export default function ProcessSchedule() {
       // Load process name
       const companyIdNum = parseInt(storedCompanyId);
       const key = `processes_${companyIdNum}`;
-      const processData = localStorage.getItem(key);
+      const processData = annualBusinessStorage.getItem(key);
 
       if (processData) {
         try {
@@ -68,7 +71,7 @@ export default function ProcessSchedule() {
 
       // Load schedule data
       const scheduleKey = `processSchedule_${stored}`;
-      const scheduleData = localStorage.getItem(scheduleKey);
+      const scheduleData = annualBusinessStorage.getItem(scheduleKey);
       if (scheduleData) {
         try {
           setData(JSON.parse(scheduleData));
@@ -89,7 +92,7 @@ export default function ProcessSchedule() {
 
   const loadTacticalObjectives = (processId: string) => {
     const key = `processTacticalObjectives_${processId}`;
-    const data = localStorage.getItem(key);
+    const data = annualBusinessStorage.getItem(key);
 
     if (data) {
       try {
@@ -111,10 +114,14 @@ export default function ProcessSchedule() {
   const handleSave = () => {
     if (!processId) return;
     const scheduleKey = `processSchedule_${processId}`;
-    localStorage.setItem(scheduleKey, JSON.stringify(data));
+    annualBusinessStorage.setItem(scheduleKey, JSON.stringify(data));
     alert("Cronograma guardado exitosamente");
   };
 
+  useAnnualExitGuard(() => {
+    if (!processId) return true;
+    try { annualBusinessStorage.setItem(`processSchedule_${processId}`, JSON.stringify(data)); return true; } catch { return false; }
+  });
   const addActivity = () => {
     try {
       const newData = { ...data };

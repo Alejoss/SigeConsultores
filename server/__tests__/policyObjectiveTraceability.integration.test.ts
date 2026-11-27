@@ -11,8 +11,14 @@ import {
   processTacticalObjectives,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { router } from "../_core/trpc";
 import { policyObjectivesRouter } from "../routers/policyObjectives";
 import { processFODARouter } from "../routers/processFODA";
+// Preserve the production tRPC path used by annual scope and ACL checks.
+const integrationRouter = router({
+  policyObjectives: policyObjectivesRouter,
+  processFODA: processFODARouter,
+});
 
 const suffix = `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -235,7 +241,7 @@ afterAll(async () => {
 
 describe("Trazabilidad de Objetivos de la Política", () => {
   it("presenta cobertura, evidencia FODA/OTG/OTE y KPI por proceso sin inferir pendientes como cero", async () => {
-    const caller = policyObjectivesRouter.createCaller(managerContext());
+    const caller = integrationRouter.createCaller(managerContext()).policyObjectives;
     const result = await caller.getTraceability({ companyId });
     const objective = result.find(
       item => item.objectiveId === policyObjectiveId
@@ -283,7 +289,7 @@ describe("Trazabilidad de Objetivos de la Política", () => {
   });
 
   it("requiere Gerencia y una justificación para confirmar que un objetivo no aplica", async () => {
-    const manager = policyObjectivesRouter.createCaller(managerContext());
+    const manager = integrationRouter.createCaller(managerContext()).policyObjectives;
     await expect(
       manager.setProcessApplicability({
         companyId,
@@ -314,7 +320,7 @@ describe("Trazabilidad de Objetivos de la Política", () => {
         "No participa en la entrega ni en la atención directa al cliente.",
     });
 
-    const leader = policyObjectivesRouter.createCaller(leaderContext());
+    const leader = integrationRouter.createCaller(leaderContext()).policyObjectives;
     await expect(
       leader.setProcessApplicability({
         companyId,
@@ -322,11 +328,11 @@ describe("Trazabilidad de Objetivos de la Política", () => {
         processId: peopleProcessId,
         action: "reconsider",
       })
-    ).rejects.toThrow("Solo Gerencia General o Administración");
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "No tienes acceso a este proceso" });
   });
 
   it("rechaza que un FODA vincule el objetivo de otra empresa", async () => {
-    const caller = processFODARouter.createCaller(leaderContext());
+    const caller = integrationRouter.createCaller(leaderContext()).processFODA;
     await expect(
       caller.upsert({
         processId: commercialProcessId,

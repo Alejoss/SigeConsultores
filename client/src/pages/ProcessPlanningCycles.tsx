@@ -1,3 +1,4 @@
+import { getSelectedManagementYear } from "@/lib/annualWorkspace";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, CalendarDays, CheckCircle2, CircleAlert, Clock3, History, Loader2, RefreshCw, RotateCcw, ShieldCheck, XCircle } from "lucide-react";
@@ -20,6 +21,8 @@ const TYPE_LABELS: Record<string, string> = {
   stakeholder_action: "Partes interesadas",
   compliance: "Cumplimiento",
   participant_kpi: "KPI de personal",
+  linked_commitment: "Compromisos vinculados",
+  output_release: "Control y liberación de salidas",
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -28,6 +31,8 @@ const TYPE_COLORS: Record<string, string> = {
   stakeholder_action: "border-sky-300 bg-sky-50 text-sky-800",
   compliance: "border-pink-300 bg-pink-50 text-pink-800",
   participant_kpi: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  linked_commitment: "border-teal-300 bg-teal-50 text-teal-800",
+  output_release: "border-orange-300 bg-orange-50 text-orange-800",
 };
 
 function formatPercent(value: unknown) {
@@ -47,7 +52,7 @@ export default function ProcessPlanningCycles() {
   const parameters = useMemo(() => new URLSearchParams(window.location.search), []);
   const companyId = Number(parameters.get("companyId") || localStorage.getItem("selectedCompanyId") || 0);
   const processId = Number(parameters.get("processId") || localStorage.getItem("selectedProcessId") || 0);
-  const [targetYear, setTargetYear] = useState(Number(parameters.get("targetYear") || new Date().getFullYear() + 1));
+  const [targetYear, setTargetYear] = useState(Number(parameters.get("targetYear") || getSelectedManagementYear() + 1));
   const [view, setView] = useState<"new" | "history">("new");
   const [deadlineValue, setDeadlineValue] = useState("");
   const [managerReviewNote, setManagerReviewNote] = useState("");
@@ -75,7 +80,7 @@ export default function ProcessPlanningCycles() {
     onSuccess: async (result) => {
       toast.success(result.created
         ? `Borrador preparado con ${result.itemCount} elementos para revisar.`
-        : "Ya existía un borrador para este ciclo.");
+        : "Preparación revisada. Consulte los elementos pendientes del proceso.");
       await refresh();
     },
     onError: (error) => toast.error(error.message),
@@ -110,7 +115,7 @@ export default function ProcessPlanningCycles() {
 
   const activateMutation = trpc.planningCycles.activateCompanyCycle.useMutation({
     onSuccess: async (result) => {
-      toast.success(`Ciclo empresarial activado con ${result.activatedCycles} proceso(s) preparado(s).`);
+      toast.success(`${result.activatedCycles} proceso(s) incorporado(s) al año ${targetYear}. El año anterior conserva su estado.`);
       await refresh();
     },
     onError: (error) => toast.error(error.message),
@@ -166,6 +171,7 @@ export default function ProcessPlanningCycles() {
           <AlertTitle className="text-emerald-900">Protección de la información actual</AlertTitle>
           <AlertDescription className="text-emerald-800">
             Este módulo trabaja con un borrador y un histórico separado. No elimina, reinicia ni modifica OTE, tareas, KPI, Nómina, Participantes o cronogramas existentes.
+            {" "}El cumplimiento de referencia pertenece al año de origen; no se copia como ejecución del año nuevo. Aprobar o incorporar procesos no cierra el año anterior.
           </AlertDescription>
         </Alert>
 
@@ -184,7 +190,7 @@ export default function ProcessPlanningCycles() {
               max={2100}
               className="h-8 w-24 bg-white text-center font-semibold"
               value={targetYear}
-              onChange={(event) => setTargetYear(Number(event.target.value) || new Date().getFullYear() + 1)}
+              onChange={(event) => setTargetYear(Number(event.target.value) || getSelectedManagementYear() + 1)}
             />
           </div>
         </div>
@@ -195,7 +201,7 @@ export default function ProcessPlanningCycles() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><History size={20} /> Historial del ciclo {targetYear - 1}</CardTitle>
-              <CardDescription>Una vez activado el ciclo nuevo, los elementos cerrados se preservan aquí como consulta de solo lectura.</CardDescription>
+              <CardDescription>Este panel conserva snapshots de transiciones anteriores que ya existían. Para consultar la información empresarial completa de cada año, usa el selector Año de gestión.</CardDescription>
             </CardHeader>
             <CardContent>
               {overview?.snapshots?.length ? (
@@ -210,7 +216,7 @@ export default function ProcessPlanningCycles() {
                         </div>
                         <div className="text-right text-sm">
                           <p className="font-bold text-blue-700">{formatPercent(snapshot.completionPercent)}</p>
-                          <p className="text-slate-500">{snapshot.migrationDecision === "migrate" ? "Migrado al ciclo siguiente" : snapshot.migrationDecision === "close" ? "Cerrado en este ciclo" : "Requiere revisión"}</p>
+                          <p className="text-slate-500">{snapshot.migrationDecision === "migrate" ? "Migrado al ciclo siguiente" : snapshot.migrationDecision === "close" ? "No migrado al ciclo siguiente" : "Requiere revisión"}</p>
                         </div>
                       </div>
                     </div>
@@ -218,7 +224,7 @@ export default function ProcessPlanningCycles() {
                 </div>
               ) : (
                 <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-slate-600">
-                  Aún no existen cierres históricos para este proceso. El historial aparecerá aquí cuando el nuevo ciclo sea activado.
+                  No hay snapshots de transiciones previas en este panel. Los datos de cada año se consultan desde el selector superior.
                 </div>
               )}
             </CardContent>
@@ -226,13 +232,13 @@ export default function ProcessPlanningCycles() {
         ) : !overview?.cycle ? (
           <Card className="overflow-hidden border-blue-200">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-sky-50">
-              <CardTitle className="text-xl text-blue-950">Preparar {targetYear} a partir del cierre de {targetYear - 1}</CardTitle>
+              <CardTitle className="text-xl text-blue-950">Preparar {targetYear} a partir de la información de {targetYear - 1}</CardTitle>
               <CardDescription>La plataforma reunirá los elementos de planificación del proceso para que usted decida, uno por uno, cuáles continúan.</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4"><p className="font-semibold text-yellow-900">Objetivos y tareas</p><p className="mt-1 text-sm text-yellow-800">OTE, objetivos operativos y planificación pendiente.</p></div>
-                <div className="rounded-lg border border-sky-200 bg-sky-50 p-4"><p className="font-semibold text-sky-900">Gestión y cumplimiento</p><p className="mt-1 text-sm text-sky-800">Acciones con partes interesadas y cumplimientos renovables.</p></div>
+                <div className="rounded-lg border border-sky-200 bg-sky-50 p-4"><p className="font-semibold text-sky-900">Gestión y cumplimiento</p><p className="mt-1 text-sm text-sky-800">Acciones con partes interesadas, cumplimientos renovables, compromisos vinculados y control y liberación de salidas.</p></div>
                 <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4"><p className="font-semibold text-emerald-900">KPI de personal</p><p className="mt-1 text-sm text-emerald-800">Se revisan como definición anual; los resultados nunca se copian.</p></div>
               </div>
               <Button className="mt-6 gap-2 bg-blue-800 hover:bg-blue-900" disabled={prepareMutation.isPending} onClick={() => prepareMutation.mutate({ companyId, processId, targetYear })}>
@@ -270,7 +276,16 @@ export default function ProcessPlanningCycles() {
             <Card>
               <CardHeader>
                 <CardTitle>Decisiones de transición</CardTitle>
-                <CardDescription>{isActiveCycle ? `Las decisiones de ${targetYear - 1} quedaron protegidas en el histórico después de activar el ciclo.` : "Elija el destino de cada elemento. La decisión se guarda de inmediato y puede cambiarse mientras el ciclo esté en revisión."}</CardDescription>
+                <CardDescription>{isActiveCycle ? `Las decisiones de ${targetYear - 1} se conservan como referencia de la transición, sin cerrar automáticamente el año anterior.` : "Elija el destino de cada elemento. La decisión se guarda de inmediato y puede cambiarse mientras el ciclo esté en revisión."}</CardDescription>
+                {["in_review", "ready"].includes(overview.cycle.status) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <Button variant="outline" size="sm" className="gap-2" disabled={prepareMutation.isPending} onClick={() => prepareMutation.mutate({ companyId, processId, targetYear })}>
+                      {prepareMutation.isPending ? <Loader2 className="animate-spin" size={15} /> : <RefreshCw size={15} />}
+                      Actualizar preparación
+                    </Button>
+                    <p className="text-xs text-slate-500">Busca elementos nuevos sin reemplazar decisiones previas. Si se añaden, el proceso deberá revisarse y aprobarse nuevamente.</p>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 {decisions.length ? decisions.map((decision) => (
@@ -279,7 +294,7 @@ export default function ProcessPlanningCycles() {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge className={TYPE_COLORS[decision.itemType] || ""}>{TYPE_LABELS[decision.itemType] || decision.itemType}</Badge>
-                          <span className="text-sm font-semibold text-blue-700">Cumplimiento al cierre: {formatPercent(decision.completionPercent)}</span>
+                          <span className="text-sm font-semibold text-blue-700">Cumplimiento de referencia: {formatPercent(decision.completionPercent)}</span>
                         </div>
                         <h3 className="mt-2 font-semibold text-slate-900">{decision.title}</h3>
                         {decision.description && <p className="mt-1 text-sm text-slate-600">{decision.description}</p>}
@@ -291,7 +306,7 @@ export default function ProcessPlanningCycles() {
                       </div>
                     </div>
                   </div>
-                )) : <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-slate-600">El proceso no tiene elementos anuales disponibles para este cierre.</div>}
+                )) : <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-slate-600">El proceso no tiene elementos anuales disponibles para esta transición.</div>}
               </CardContent>
             </Card>
 
@@ -299,13 +314,13 @@ export default function ProcessPlanningCycles() {
               <Card className="mt-6 border-violet-200 bg-violet-50/50">
                 <CardHeader><CardTitle className="text-violet-950">Revisión y aprobación gerencial</CardTitle><CardDescription>Revise el resumen anterior. Puede aprobar este proceso para la activación empresarial o devolverlo al Jefe de Proceso con una observación.</CardDescription></CardHeader>
                 <CardContent className="space-y-4">
-                  {managerApproved ? <Alert className="border-emerald-200 bg-emerald-50"><CheckCircle2 className="h-5 w-5 text-emerald-700" /><AlertTitle className="text-emerald-900">Proceso aprobado por Gerencia</AlertTitle><AlertDescription className="text-emerald-800">Este proceso se incluirá en la próxima activación empresarial del ciclo {targetYear}.</AlertDescription></Alert> : awaitingManagerReview ? <><div className="grid gap-3 md:grid-cols-3 text-sm"><div className="rounded-lg bg-white border p-3"><p className="text-slate-500">Migrar</p><p className="text-xl font-bold text-emerald-700">{decisions.filter((item) => item.decision === "migrate").length}</p></div><div className="rounded-lg bg-white border p-3"><p className="text-slate-500">Cerrar</p><p className="text-xl font-bold text-slate-700">{decisions.filter((item) => item.decision === "close").length}</p></div><div className="rounded-lg bg-white border p-3"><p className="text-slate-500">Revisar</p><p className="text-xl font-bold text-amber-700">{decisions.filter((item) => item.decision === "review").length}</p></div></div><div><Label htmlFor="manager-review-note">Observación para el Jefe de Proceso (opcional)</Label><Input id="manager-review-note" value={managerReviewNote} onChange={(event) => setManagerReviewNote(event.target.value)} placeholder="Escriba una observación o motivo de devolución" /></div><div className="flex flex-wrap gap-3"><Button className="bg-emerald-700 hover:bg-emerald-800" disabled={managerReviewMutation.isPending} onClick={() => managerReviewMutation.mutate({ companyId, cycleId: overview.cycle.id, decision: "approved", note: managerReviewNote || undefined })}><CheckCircle2 className="mr-2" size={16} /> Aprobar proceso</Button><Button variant="outline" className="border-amber-300 text-amber-800" disabled={managerReviewMutation.isPending} onClick={() => managerReviewMutation.mutate({ companyId, cycleId: overview.cycle.id, decision: "returned", note: managerReviewNote || undefined })}><RotateCcw className="mr-2" size={16} /> Devolver para ajuste</Button></div></> : managerApprovalStatus === "returned" ? <Alert className="border-amber-200 bg-amber-50"><CircleAlert className="h-5 w-5 text-amber-700" /><AlertTitle className="text-amber-900">Proceso devuelto al Jefe de Proceso</AlertTitle><AlertDescription className="text-amber-800">{overview.cycle.managerReviewNote || "El Jefe debe ajustar sus decisiones y marcar nuevamente el proceso como listo."}</AlertDescription></Alert> : <p className="text-sm text-slate-600">El proceso debe terminar su revisión antes de estar disponible para la aprobación gerencial.</p>}
+                  {managerApproved ? <Alert className="border-emerald-200 bg-emerald-50"><CheckCircle2 className="h-5 w-5 text-emerald-700" /><AlertTitle className="text-emerald-900">Proceso aprobado por Gerencia</AlertTitle><AlertDescription className="text-emerald-800">Este proceso se incluirá en la próxima activación empresarial del ciclo {targetYear}.</AlertDescription></Alert> : awaitingManagerReview ? <><div className="grid gap-3 md:grid-cols-3 text-sm"><div className="rounded-lg bg-white border p-3"><p className="text-slate-500">Migrar</p><p className="text-xl font-bold text-emerald-700">{decisions.filter((item) => item.decision === "migrate").length}</p></div><div className="rounded-lg bg-white border p-3"><p className="text-slate-500">No migrar</p><p className="text-xl font-bold text-slate-700">{decisions.filter((item) => item.decision === "close").length}</p></div><div className="rounded-lg bg-white border p-3"><p className="text-slate-500">Revisar</p><p className="text-xl font-bold text-amber-700">{decisions.filter((item) => item.decision === "review").length}</p></div></div><div><Label htmlFor="manager-review-note">Observación para el Jefe de Proceso (opcional)</Label><Input id="manager-review-note" value={managerReviewNote} onChange={(event) => setManagerReviewNote(event.target.value)} placeholder="Escriba una observación o motivo de devolución" /></div><div className="flex flex-wrap gap-3"><Button className="bg-emerald-700 hover:bg-emerald-800" disabled={managerReviewMutation.isPending} onClick={() => managerReviewMutation.mutate({ companyId, cycleId: overview.cycle.id, decision: "approved", note: managerReviewNote || undefined })}><CheckCircle2 className="mr-2" size={16} /> Aprobar proceso</Button><Button variant="outline" className="border-amber-300 text-amber-800" disabled={managerReviewMutation.isPending} onClick={() => managerReviewMutation.mutate({ companyId, cycleId: overview.cycle.id, decision: "returned", note: managerReviewNote || undefined })}><RotateCcw className="mr-2" size={16} /> Devolver para ajuste</Button></div></> : managerApprovalStatus === "returned" ? <Alert className="border-amber-200 bg-amber-50"><CircleAlert className="h-5 w-5 text-amber-700" /><AlertTitle className="text-amber-900">Proceso devuelto al Jefe de Proceso</AlertTitle><AlertDescription className="text-amber-800">{overview.cycle.managerReviewNote || "El Jefe debe ajustar sus decisiones y marcar nuevamente el proceso como listo."}</AlertDescription></Alert> : <p className="text-sm text-slate-600">El proceso debe terminar su revisión antes de estar disponible para la aprobación gerencial.</p>}
                 </CardContent>
               </Card>
             )}
 
             <div className="mt-6 flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50 p-5 md:flex-row md:items-center md:justify-between">
-              <div><p className="font-semibold text-blue-950">Finalizar la revisión del proceso</p><p className="text-sm text-blue-800">Solo se habilita cuando los {decisions.length} elementos tengan una decisión.</p></div>
+              <div><p className="font-semibold text-blue-950">Finalizar la revisión del proceso</p><p className="text-sm text-blue-800">{decisions.length ? `Solo se habilita cuando los ${decisions.length} elementos tengan una decisión.` : "Un proceso preparado sin elementos pendientes también puede marcarse listo."}</p></div>
               <Button disabled={!ready || readyMutation.isPending || overview?.cycle.status !== "in_review"} className="bg-blue-800 hover:bg-blue-900" onClick={() => overview?.cycle && readyMutation.mutate({ companyId, cycleId: overview.cycle.id })}>
                 {readyMutation.isPending && <Loader2 className="mr-2 animate-spin" size={16} />}
                 {isActiveCycle ? `Ciclo ${targetYear} activo` : managerApproved ? "Aprobado por Gerencia" : overview?.cycle.status === "ready" ? "Pendiente de aprobación gerencial" : "Marcar proceso como listo"}
@@ -318,7 +333,7 @@ export default function ProcessPlanningCycles() {
           <Card className="mt-8 border-violet-200">
             <CardHeader className="bg-violet-50">
               <CardTitle className="text-violet-950">Control gerencial del ciclo {targetYear}</CardTitle>
-              <CardDescription>Esta sección consolida la preparación de todos los procesos. La activación genera el histórico y crea el plan operativo del nuevo ciclo solo para los elementos aprobados con “Migrar”.</CardDescription>
+              <CardDescription>Gerencia crea primero el año desde Gestionar años. Después puede incorporar los procesos aprobados con sus decisiones de migración, sin cerrar el año anterior.</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -334,10 +349,10 @@ export default function ProcessPlanningCycles() {
                 ))}
               </div>
               <AlertDialog>
-                <AlertDialogTrigger asChild><Button className="mt-6 bg-violet-700 hover:bg-violet-800" disabled={activateMutation.isPending || managerQuery.data?.activation?.status === "active" || approvedProcessCount === 0}>Activar ciclo empresarial {targetYear}</Button></AlertDialogTrigger>
+                <AlertDialogTrigger asChild><Button className="mt-6 bg-violet-700 hover:bg-violet-800" disabled={activateMutation.isPending || approvedProcessCount === 0}>Incorporar procesos aprobados a {targetYear}</Button></AlertDialogTrigger>
                 <AlertDialogContent>
-                  <AlertDialogHeader><AlertDialogTitle>¿Activar el ciclo empresarial {targetYear}?</AlertDialogTitle><AlertDialogDescription>Se conservarán snapshots históricos y se activarán únicamente los procesos aprobados por Gerencia. Los procesos sin preparar, pendientes o devueltos permanecerán sin cambios.</AlertDialogDescription></AlertDialogHeader>
-                  <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => activateMutation.mutate({ companyId, targetYear })}>Activar de forma controlada</AlertDialogAction></AlertDialogFooter>
+                  <AlertDialogHeader><AlertDialogTitle>¿Incorporar los procesos aprobados a {targetYear}?</AlertDialogTitle><AlertDialogDescription>El año debe haberse creado previamente desde Gestionar años. Solo se incorporarán los procesos aprobados; los pendientes o devueltos permanecerán sin cambios. Esta acción no cierra el año anterior.</AlertDialogDescription></AlertDialogHeader>
+                  <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => activateMutation.mutate({ companyId, targetYear })}>Incorporar aprobados</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
             </CardContent>

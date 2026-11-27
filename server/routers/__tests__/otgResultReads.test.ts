@@ -5,6 +5,9 @@ import { consolidatedIndicatorsRouter } from "../consolidatedIndicators";
 import { calculateOtgProgress } from "../../lib/otgProgress";
 import type { TrpcContext } from "../../_core/context";
 
+// Annual request admission is covered by annual security integration; this unit uses a fake database.
+vi.mock("../../annual/requestScope", () => ({ runInAnnualRequestScope: async (_options: unknown, operation: () => unknown) => operation() }));
+
 const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
   assertProcessAccessById: vi.fn(),

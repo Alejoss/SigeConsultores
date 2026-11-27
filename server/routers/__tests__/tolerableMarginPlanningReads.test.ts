@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Annual request admission is covered by annual security integration; this unit uses a fake database.
+vi.mock("../../annual/requestScope", () => ({ runInAnnualRequestScope: async (_options: unknown, operation: () => unknown) => operation() }));
+
 const mocks = vi.hoisted(() => ({
   rows: [] as any[],
   processAccess: vi.fn(),

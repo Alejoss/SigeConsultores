@@ -1,3 +1,6 @@
+import { useAnnualMutationWait } from "@/hooks/useAnnualMutationWait";
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
+import { annualFetch } from "@/lib/annualNavigation";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -198,15 +201,28 @@ export default function ManagementSystems() {
     }
   }, [modal, listFilesMutation.data]);
 
+  const waitForMutations = useAnnualMutationWait();
+  const annualPendingFields = useRef<Record<number, Partial<Pick<ManagementSystemRow, "systemName" | "certification">>>>({});
+  useAnnualExitGuard(async () => {
+    Object.values(saveTimers.current).forEach(timer => clearTimeout(timer));
+    if (!(await waitForMutations())) return false;
+    for (const [id, patch] of Object.entries(annualPendingFields.current)) {
+      if (!companyId) return false;
+      try { await updateMutation.mutateAsync({ id: Number(id), companyId, ...patch }); delete annualPendingFields.current[Number(id)]; } catch { return false; }
+    }
+    return true;
+  });
   const handleFieldChange = useCallback(
     (id: number, field: "systemName" | "certification", value: string) => {
       if (!canManageCompany) return;
+      annualPendingFields.current[id] = { ...annualPendingFields.current[id], [field]: value };
       setRows(prev =>
         prev.map(r => (r.id === id ? { ...r, [field]: value } : r))
       );
       if (saveTimers.current[id]) clearTimeout(saveTimers.current[id]);
       saveTimers.current[id] = setTimeout(() => {
-        updateMutation.mutate({ id, companyId: companyId!, [field]: value });
+        const patch = annualPendingFields.current[id];
+        updateMutation.mutate({ id, companyId: companyId!, ...patch }, { onSuccess: () => { if (annualPendingFields.current[id] === patch) delete annualPendingFields.current[id]; } });
       }, 600);
     },
     [canManageCompany, companyId, updateMutation]
@@ -268,7 +284,7 @@ export default function ManagementSystems() {
       formData.append("companyId", String(companyId));
       formData.append("fileType", modal.fileType);
 
-      const response = await fetch("/api/upload/management-system-file", {
+      const response = await annualFetch("/api/upload/management-system-file", {
         method: "POST",
         body: formData,
       });

@@ -76,8 +76,8 @@ export function registerManagementSystemUploadRoutes(app: Express) {
           return res.status(404).json({ ok: false, error: "Sistema de gestión no encontrado" });
         }
 
-        const fileKey = `audits/${companyId}/management/${managementSystemId}/${fileType}/${randomUUID()}-${safeFileName(req.file.originalname)}`;
-        const { url } = await storagePut(fileKey, req.file.buffer, req.file.mimetype);
+        const requestedFileKey = `audits/${companyId}/management/${managementSystemId}/${fileType}/${randomUUID()}-${safeFileName(req.file.originalname)}`;
+        const { url, key: fileKey } = await storagePut(requestedFileKey, req.file.buffer, req.file.mimetype);
         const insertResult = await db.insert(managementSystemFiles).values({
           managementSystemId,
           companyId,

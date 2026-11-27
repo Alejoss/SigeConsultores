@@ -1,3 +1,4 @@
+import { getSelectedManagementYear } from "@/lib/annualWorkspace";
 import type { inferRouterOutputs } from "@trpc/server";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import type { AppRouter } from "../../../server/routers";
@@ -379,7 +380,7 @@ function StaffArea({
   companyId: number;
   processId: number;
 }) {
-  const year = new Date().getFullYear();
+  const year = getSelectedManagementYear();
   const characterization = trpc.processCharacterization.getByProcessId.useQuery(
     { processId },
     { retry: false, placeholderData: () => undefined }

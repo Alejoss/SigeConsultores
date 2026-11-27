@@ -13,10 +13,17 @@ import {
   programActions,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { router } from "../_core/trpc";
 import { getConsolidatedScheduleActivities } from "../lib/consolidatedScheduleActivities";
 import { linkedCommitmentsRouter } from "../routers/linkedCommitments";
 import { managementProgramsRouter } from "../routers/managementPrograms";
 import { companyCompliancesRouter } from "../routers/companyCompliances";
+// Preserve the production tRPC path used by annual scope and ACL checks.
+const integrationRouter = router({
+  linkedCommitments: linkedCommitmentsRouter,
+  companyCompliances: companyCompliancesRouter,
+  managementPrograms: managementProgramsRouter,
+});
 
 const testName = `Prueba compromisos vinculados ${Date.now()}`;
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -30,37 +37,37 @@ let programId = 0;
 let complianceId = 0;
 
 function managerCaller() {
-  return linkedCommitmentsRouter.createCaller({
+  return integrationRouter.createCaller({
     user: { role: "admin" },
     manager: null,
     processLeader: null,
     req: {} as never,
     res: {} as never,
-  } as never);
+  } as never).linkedCommitments;
 }
 
 function complianceManagerCaller() {
-  return companyCompliancesRouter.createCaller({
+  return integrationRouter.createCaller({
     user: { role: "admin" },
     manager: null,
     processLeader: null,
     req: {} as never,
     res: {} as never,
-  } as never);
+  } as never).companyCompliances;
 }
 
 function programManagerCaller() {
-  return managementProgramsRouter.createCaller({
+  return integrationRouter.createCaller({
     user: { role: "admin" },
     manager: null,
     processLeader: null,
     req: {} as never,
     res: {} as never,
-  } as never);
+  } as never).managementPrograms;
 }
 
 function leaderCaller(processId: number) {
-  return linkedCommitmentsRouter.createCaller({
+  return integrationRouter.createCaller({
     user: null,
     manager: null,
     processLeader: {
@@ -73,7 +80,7 @@ function leaderCaller(processId: number) {
     },
     req: {} as never,
     res: {} as never,
-  } as never);
+  } as never).linkedCommitments;
 }
 
 beforeAll(async () => {
@@ -274,7 +281,7 @@ describe("Compromisos vinculados: integración local", () => {
         companyId,
         processId: processTwoId,
       })
-    ).rejects.toThrow("solo puede gestionar los compromisos de su proceso");
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "No tienes acceso a este proceso" });
   });
 
   it("renueva una vigencia de checklist y usa la fecha de vencimiento más conservadora", async () => {

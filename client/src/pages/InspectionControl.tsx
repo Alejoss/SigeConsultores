@@ -11,6 +11,7 @@ import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { getCompanyIdFromLocationOrStorage } from "@/lib/utils";
 import { OperationalFindingsPanel } from "@/components/OperationalFindingsPanel";
 import { CompanyReadOnlyNotice, useCompanyManagementPermission } from "@/hooks/useCompanyManagementPermission";
+import { AnnualHistoricalPendingPanel } from "@/components/AnnualHistoricalPendingPanel";
 
 type InspectionRow = {
   id: number;
@@ -185,6 +186,8 @@ export default function InspectionControl() {
         </div>
 
         {!canManageCompany && <CompanyReadOnlyNotice />}
+
+        <AnnualHistoricalPendingPanel companyId={companyId} kind="inspection_finding" readOnly={!canManageCompany} />
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-slate-500"><Loader2 className="animate-spin" size={18} /> Cargando...</div>

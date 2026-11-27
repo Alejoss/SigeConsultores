@@ -774,8 +774,8 @@ export const managementProgramsRouter = router({
           /* El nuevo archivo conserva la referencia actualizada. */
         }
       }
-      const fileKey = `management-programs/${input.companyId}/${input.id}/planning/${randomUUID()}-${input.fileName}`;
-      const { url } = await storagePut(fileKey, fileBuffer, input.mimeType);
+      const requestedFileKey = `management-programs/${input.companyId}/${input.id}/planning/${randomUUID()}-${input.fileName}`;
+      const { url, key: fileKey } = await storagePut(requestedFileKey, fileBuffer, input.mimeType);
       await db
         .update(managementPrograms)
         .set({ planFileKey: fileKey, planFileName: input.fileName })
@@ -851,8 +851,8 @@ export const managementProgramsRouter = router({
 
       const fileBuffer = Buffer.from(input.fileData);
       assertValidProgramFile(input.mimeType, fileBuffer.length);
-      const fileKey = `management-programs/${input.companyId}/${input.programId}/documentation/${randomUUID()}-${input.fileName}`;
-      const { url } = await storagePut(fileKey, fileBuffer, input.mimeType);
+      const requestedFileKey = `management-programs/${input.companyId}/${input.programId}/documentation/${randomUUID()}-${input.fileName}`;
+      const { url, key: fileKey } = await storagePut(requestedFileKey, fileBuffer, input.mimeType);
       const insertResult = await db.insert(managementProgramFiles).values({
         programId: input.programId,
         companyId: input.companyId,

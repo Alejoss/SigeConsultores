@@ -1,3 +1,4 @@
+import { getSelectedManagementYear } from "@/lib/annualWorkspace";
 import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { CalendarCheck2, ChevronRight, ClipboardCheck, RotateCcw } from "lucide-react";
@@ -16,8 +17,8 @@ function statusLabel(process: any) {
 
 export function ManagerCycleActivationPanel({ companyId }: { companyId: number }) {
   const [, setLocation] = useLocation();
-  const activeCycle = trpc.planningCycles.activeYear.useQuery({ companyId }, { enabled: !!companyId });
-  const targetYear = activeCycle.data?.isActive ? activeCycle.data.year : new Date().getFullYear() + 1;
+  const selectedYear = getSelectedManagementYear(companyId);
+  const targetYear = Math.max(2027, selectedYear);
   const overview = trpc.planningCycles.managerOverview.useQuery({ companyId, targetYear }, { enabled: !!companyId });
 
   const counts = useMemo(() => {
@@ -33,7 +34,7 @@ export function ManagerCycleActivationPanel({ companyId }: { companyId: number }
     localStorage.setItem("selectedCompanyId", String(companyId));
     localStorage.setItem("selectedProcessId", String(process.id));
     localStorage.setItem("selectedProcessName", process.name);
-    setLocation(`/process-planning-cycles?processId=${process.id}&companyId=${companyId}`);
+    setLocation(`/process-planning-cycles?processId=${process.id}&companyId=${companyId}&targetYear=${targetYear}`);
   };
 
   return (
@@ -41,13 +42,13 @@ export function ManagerCycleActivationPanel({ companyId }: { companyId: number }
       <summary className="cursor-pointer flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 select-none list-none">
         <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
         <CalendarCheck2 className="w-4 h-4 text-violet-700" />
-        Activación de ciclo empresarial
+        Preparación e incorporación anual
         {counts.pending > 0 && <span className="ml-1 rounded-full bg-violet-600 px-2 py-0.5 text-xs text-white">{counts.pending} por revisar</span>}
       </summary>
       <Card className="mt-4 border-violet-200 bg-gradient-to-br from-violet-50 to-white">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg text-violet-950"><ClipboardCheck className="w-5 h-5" /> Revisión gerencial del ciclo {targetYear}</CardTitle>
-          <CardDescription>Revise y apruebe cada proceso antes de la activación empresarial única. Los Jefes preparan; el Gerente autoriza.</CardDescription>
+          <CardDescription>Los Jefes preparan y Gerencia aprueba. Después, cada proceso se incorpora gradualmente desde Gestionar años, sin cerrar el año anterior.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-3 mb-5">
@@ -63,7 +64,7 @@ export function ManagerCycleActivationPanel({ companyId }: { companyId: number }
                 return <div key={process.id} className="rounded-lg border bg-white p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-slate-900">{process.name}</p><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${status.className}`}>{status.text}</span></div>
-                    {summary && <p className="mt-1 text-xs text-slate-600">{summary.total} decisiones: {summary.migrate} migrar · {summary.close} cerrar · {summary.review} revisar</p>}
+                    {summary && <p className="mt-1 text-xs text-slate-600">{summary.total} decisiones: {summary.migrate} migrar · {summary.close} no migrar · {summary.review} revisar</p>}
                     {process.cycle?.managerReviewNote && <p className="mt-1 text-xs text-amber-700">Observación: {process.cycle.managerReviewNote}</p>}
                   </div>
                   {process.cycle?.status === "ready" && process.cycle?.managerApprovalStatus !== "approved" ? <Button size="sm" onClick={() => openReview(process)}>Revisar decisiones <ChevronRight className="w-4 h-4 ml-1" /></Button> : process.cycle?.managerApprovalStatus === "returned" ? <Button variant="outline" size="sm" onClick={() => openReview(process)}><RotateCcw className="w-4 h-4 mr-1" /> Ver devolución</Button> : null}

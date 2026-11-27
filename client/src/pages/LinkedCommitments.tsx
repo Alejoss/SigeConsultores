@@ -1,3 +1,4 @@
+import { annualFetch } from "@/lib/annualNavigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
@@ -14,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { AnnualHistoricalPendingPanel } from "@/components/AnnualHistoricalPendingPanel";
 import { ProcessQuickNavigation } from "@/components/ProcessQuickNavigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -373,7 +375,7 @@ export default function LinkedCommitments() {
       formData.append("file", file);
       formData.append("companyId", String(companyId));
       formData.append("linkedCommitmentId", String(commitment.id));
-      const response = await fetch("/api/upload/linked-commitment-evidence", {
+      const response = await annualFetch("/api/upload/linked-commitment-evidence", {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -454,6 +456,7 @@ export default function LinkedCommitments() {
           Seleccione un proceso desde el Mapa de Procesos para administrar sus
           compromisos.
         </div>
+        {companyId && <div className="mx-auto max-w-5xl px-4"><AnnualHistoricalPendingPanel companyId={companyId} /></div>}
       </DashboardLayout>
     );
   }
@@ -483,6 +486,8 @@ export default function LinkedCommitments() {
             </p>
           </div>
         </div>
+
+        <AnnualHistoricalPendingPanel companyId={companyId} processId={processId} />
 
         <section>
           <div className="mb-3 flex items-center gap-2">

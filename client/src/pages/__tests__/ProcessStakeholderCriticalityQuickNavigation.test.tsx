@@ -1,3 +1,4 @@
+import { annualBusinessStorage } from "@/lib/annualWorkspace";
 // @vitest-environment jsdom
 import React from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -217,7 +218,7 @@ describe("ProcessStakeholderCriticality: flush antes de navegación rápida", ()
     expect(screen.getByRole("status").textContent).toContain("Fallo A");
     expect(screen.getByRole("status").textContent).toContain("Fallo B");
     expect((screen.getByLabelText("Acción a tomar para Asociado A") as HTMLTextAreaElement).value).toBe("Cambio A");
-    expect(localStorage.getItem("criticalityData_990001")).toContain("Cambio B");
+    expect(annualBusinessStorage.getItem("criticalityData_990001")).toContain("Cambio B");
     await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
     expect(screen.getByRole("status").textContent).not.toContain("✓ Cambios guardados");
     expect(await flush()).toBe(true);

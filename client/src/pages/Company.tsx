@@ -65,7 +65,7 @@ export default function Company() {
   const handleSelectCompany = (company: Company) => {
     // Guardar empresa seleccionada en localStorage y navegar
     localStorage.setItem("selectedCompanyId", company.id.toString());
-    setLocation(isManagerAccess ? "/manager-dashboard" : "/dashboard");
+    window.location.assign(`${isManagerAccess ? "/manager-dashboard" : "/dashboard"}?companyId=${company.id}`);
   };
 
   const handleUpdateCompany = async (id: number) => {

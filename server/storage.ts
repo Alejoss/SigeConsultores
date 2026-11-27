@@ -8,6 +8,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { ENV } from "./_core/env";
+import { getAnnualScope, validateAnnualRequestInput, validateAnnualWriteAccess } from "./annual/runtime";
+import { annualUploadKey } from "./annual/fileScope";
 
 let _client: S3Client | null = null;
 let _publicClient: S3Client | null = null;
@@ -90,7 +92,9 @@ export async function storagePut(
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
-  const key = normalizeKey(relKey);
+  await validateAnnualRequestInput();
+  await validateAnnualWriteAccess();
+  const key = annualUploadKey(relKey, getAnnualScope()?.workspace);
   const body = typeof data === "string" ? Buffer.from(data, "utf-8") : data;
 
   if (useLocalFallback()) {
@@ -111,8 +115,21 @@ export async function storagePut(
     })
   );
 
-  const url = await getDownloadUrl(bucket, key);
-  return { key, url };
+  try {
+    const url = await getDownloadUrl(bucket, key);
+    return { key, url };
+  } catch (error) {
+    // Only annual keys are guaranteed to be newly generated and unreferenced.
+    // Never clean up a legacy key: it may still belong to a historical record.
+    if (key.startsWith("uploads/annual/")) {
+      try {
+        await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+      } catch {
+        console.warn("[Storage] No se pudo limpiar una carga anual nueva sin registrar.");
+      }
+    }
+    throw error;
+  }
 }
 
 /**
@@ -134,7 +151,18 @@ export async function storageGet(
  * Delete an object from S3.
  */
 export async function storageDelete(relKey: string): Promise<void> {
+  await validateAnnualRequestInput();
+  await validateAnnualWriteAccess();
   const key = normalizeKey(relKey);
+  const workspace = getAnnualScope()?.workspace;
+  if (workspace?.status === "closed") {
+    throw new Error(`El año ${workspace.year} está cerrado y es de solo lectura.`);
+  }
+  // Retention is global: a key shared with any historical year must survive
+  // even if deletion is requested without an annual context (e.g. a cleanup).
+  // If the registry cannot be read, abort deletion rather than risk evidence.
+  const { isFileRetained } = await import("./annual/store");
+  if (await isFileRetained(key)) return;
   if (useLocalFallback()) {
     try {
       await unlink(localStoragePath(key));

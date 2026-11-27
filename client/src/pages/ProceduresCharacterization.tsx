@@ -1,3 +1,4 @@
+import { annualFetch } from "@/lib/annualNavigation";
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -162,7 +163,7 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
   const uploadFile = async (file: File): Promise<{ url: string; key: string; fileSizeBytes: number }> => {
     const formData = new FormData();
     formData.append("file", file, file.name);
-    const response = await fetch("/api/upload/procedure-file", {
+    const response = await annualFetch("/api/upload/procedure-file", {
       method: "POST",
       body: formData,
       credentials: "include",

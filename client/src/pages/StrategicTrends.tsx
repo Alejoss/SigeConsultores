@@ -1,3 +1,5 @@
+import { useAnnualWorkspace } from "@/contexts/AnnualWorkspaceContext";
+import { getSelectedManagementYear } from "@/lib/annualWorkspace";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { StrategicMeasurementOverview } from "@/components/strategic-measurement/StrategicMeasurementOverview";
 import type { StrategicObjectiveDetailHandle } from "@/components/strategic-measurement/StrategicObjectiveDetail";
@@ -322,10 +324,13 @@ function OTGView({ companyId, onBack }: { companyId: number; onBack: () => void 
   const ref = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
-  const { data: otgData = [], isLoading } = trpc.strategicTrends.getOtgByArea.useQuery(
+  const { data: rawOtgData = [], isLoading } = trpc.strategicTrends.getOtgByArea.useQuery(
     { companyId },
     { enabled: companyId > 0 }
   );
+
+  const { overview } = useAnnualWorkspace();
+  const otgData = rawOtgData.filter(process => !overview || overview.processes.some(item => item.id === process.processId && item.status === "incorporated"));
 
   if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="animate-spin w-8 h-8 text-purple-500" /></div>;
 
@@ -354,7 +359,7 @@ function OTGView({ companyId, onBack }: { companyId: number; onBack: () => void 
           </div>
           <div className="p-4 rounded-xl border-2 text-center" style={{ borderColor: getColor(globalPct) + "40", backgroundColor: getColor(globalPct) + "10" }}>
             <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: getColor(globalPct) }}>Proporción marcada como lograda</p>
-            <p className="text-3xl font-bold" style={{ color: getColor(globalPct) }}>{globalPct}%</p>
+            <p className="text-3xl font-bold" style={{ color: getColor(globalPct) }}>{(totalOTG > 0) ? `${globalPct}%` : "Sin evaluación"}</p>
           </div>
         </div>
 
@@ -416,10 +421,13 @@ function GPIView({ companyId, onBack }: { companyId: number; onBack: () => void 
   const ref = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
-  const { data: gpiData = [], isLoading } = trpc.strategicTrends.getStakeholdersByArea.useQuery(
+  const { data: rawGpiData = [], isLoading } = trpc.strategicTrends.getStakeholdersByArea.useQuery(
     { companyId },
     { enabled: companyId > 0 }
   );
+
+  const { overview } = useAnnualWorkspace();
+  const gpiData = rawGpiData.filter(process => !overview || overview.processes.some(item => item.id === process.processId && item.status === "incorporated"));
 
   if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="animate-spin w-8 h-8 text-teal-500" /></div>;
 
@@ -460,7 +468,7 @@ function GPIView({ companyId, onBack }: { companyId: number; onBack: () => void 
           </div>
           <div className="p-4 rounded-xl border-2 text-center" style={{ borderColor: getColor(globalPct) + "40", backgroundColor: getColor(globalPct) + "10" }}>
             <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: getColor(globalPct) }}>% Implementado</p>
-            <p className="text-3xl font-bold" style={{ color: getColor(globalPct) }}>{globalPct}%</p>
+            <p className="text-3xl font-bold" style={{ color: getColor(globalPct) }}>{totalSt > 0 ? `${globalPct}%` : "Sin evaluación"}</p>
           </div>
         </div>
 
@@ -603,7 +611,7 @@ function SGIView({ companyId, onBack }: { companyId: number; onBack: () => void 
 function StaffPerformanceView({ companyId, onBack }: { companyId: number; onBack: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
-  const evaluationYear = useMemo(() => new Date().getFullYear(), []);
+  const evaluationYear = useMemo(() => getSelectedManagementYear(), []);
   const { data: payrollAnalytics, isLoading: isLoadingPayroll } = trpc.payroll.analytics.useQuery(
     { companyId, performanceYear: evaluationYear },
     { enabled: companyId > 0 },
@@ -617,7 +625,7 @@ function StaffPerformanceView({ companyId, onBack }: { companyId: number; onBack
     return <div className="flex justify-center py-16"><Loader2 className="animate-spin w-8 h-8 text-rose-500" /></div>;
   }
 
-  const globalPerformance = payrollAnalytics?.averagePerformance ?? 0;
+  const globalPerformance = payrollAnalytics?.averagePerformance;
   const areas = areaSummary?.areas ?? [];
   const evaluatedWorkers = areas.reduce((total, area) => total + area.evaluatedWorkers, 0);
 
@@ -635,7 +643,7 @@ function StaffPerformanceView({ companyId, onBack }: { companyId: number; onBack
           <Card className="border-2 border-rose-100 bg-gradient-to-br from-rose-50 via-white to-white overflow-hidden">
             <CardContent className="p-6 flex flex-col items-center text-center">
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-rose-600">Cumplimiento global</p>
-              <div className="my-4"><DonutKpi value={globalPerformance} size={178} /></div>
+              <div className="my-4">{globalPerformance == null ? <p className="text-xl text-slate-500">Sin evaluación</p> : <DonutKpi value={globalPerformance} size={178} />}</div>
               <h3 className="text-xl font-bold text-slate-800">Promedio de desempeño</h3>
               <p className="mt-1 text-sm text-slate-500">Valor actualizado desde Nómina con los KPI registrados en Participantes.</p>
               <div className="mt-5 grid grid-cols-2 w-full divide-x divide-rose-100 rounded-xl border border-rose-100 bg-white/80">
@@ -700,14 +708,16 @@ type ActiveView = null | "oe" | "otg" | "gpi" | "sgi" | "staff";
 // Montado solo en portada; las claves tRPC son las mismas que en el detalle.
 function PerformanceAccessCards({ companyId, setView }: { companyId: number; setView: (view: ActiveView) => void }) {
   const options = { enabled: companyId > 0, placeholderData: () => undefined };
-  const evaluationYear = useMemo(() => new Date().getFullYear(), []);
+  const evaluationYear = useMemo(() => getSelectedManagementYear(), []);
   const oe = trpc.strategicObjectives.getMeasurementOverview.useQuery({ companyId }, options);
   const otg = trpc.strategicTrends.getOtgByArea.useQuery({ companyId }, options);
   const gpi = trpc.strategicTrends.getStakeholdersByArea.useQuery({ companyId }, options);
   const staff = trpc.payroll.analytics.useQuery({ companyId, performanceYear: evaluationYear }, options);
   const sgi = useManagementOverviewSummary(companyId);
-  const otgSummary = calculateOtgOverviewSummary(otg.data ?? []);
-  const gpiSummary = calculateStakeholderOverviewSummary(gpi.data ?? []);
+  const { overview } = useAnnualWorkspace();
+  const incorporated = (process: { processId: number }) => !overview || overview.processes.some(item => item.id === process.processId && item.status === "incorporated");
+  const otgSummary = calculateOtgOverviewSummary((otg.data ?? []).filter(incorporated));
+  const gpiSummary = calculateStakeholderOverviewSummary((gpi.data ?? []).filter(incorporated));
   return <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
     <AccessCard icon={<Target size={24} />} title="Objetivos Estratégicos"
       description="% avance total, por OE individual, contribución por área (heatmap) y línea de desarrollo en el tiempo."

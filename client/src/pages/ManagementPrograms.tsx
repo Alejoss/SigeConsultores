@@ -1,5 +1,7 @@
+import { annualFetch } from "@/lib/annualNavigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { AnnualHistoricalPendingPanel } from "@/components/AnnualHistoricalPendingPanel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1043,7 +1045,7 @@ export default function ManagementPrograms() {
         formData.append("companyId", String(companyId));
         formData.append("programId", String(programId));
 
-        const response = await fetch(
+        const response = await annualFetch(
           "/api/upload/management-program-documentation",
           {
             method: "POST",
@@ -1162,6 +1164,7 @@ export default function ManagementPrograms() {
         </div>
 
         {!canManageCompany && <CompanyReadOnlyNotice />}
+        <AnnualHistoricalPendingPanel companyId={companyId} kind="program_action" readOnly={!canManageCompany} />
 
         {isLoading ? (
           <div className="flex justify-center p-8">

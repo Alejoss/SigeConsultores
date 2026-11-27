@@ -70,8 +70,8 @@ export const documentsRouter = router({
         const dbDocumentType = documentTypeMap[input.documentType || "Policy"] || "Politica";
 
         // Upload to S3
-        const fileKey = `documents/${input.companyId}/${randomUUID()}-${input.fileName}`;
-        const { url } = await storagePut(fileKey, fileBuffer, input.fileType);
+        const requestedFileKey = `documents/${input.companyId}/${randomUUID()}-${input.fileName}`;
+        const { url, key: fileKey } = await storagePut(requestedFileKey, fileBuffer, input.fileType);
 
         // Save to database
         await createCompanyDocument(

@@ -1,3 +1,4 @@
+import { annualBusinessStorage } from "@/lib/annualWorkspace";
 import { useState, useMemo, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -27,14 +28,14 @@ export default function FODA() {
 
   // Get companyId from localStorage FIRST
   const companyId = useMemo(() => {
-    const stored = localStorage.getItem("selectedCompanyId");
+    const stored = annualBusinessStorage.getItem("selectedCompanyId");
     return stored ? parseInt(stored) : 0;
   }, []);
 
   // Initialize enterpriseVersions with localStorage persistence
   const [enterpriseVersions, setEnterpriseVersions] = useState<Map<string, string>>(() => {
     if (!companyId) return new Map();
-    const stored = localStorage.getItem(`foda_enterprise_versions_${companyId}`);
+    const stored = annualBusinessStorage.getItem(`foda_enterprise_versions_${companyId}`);
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
@@ -50,7 +51,7 @@ export default function FODA() {
   useEffect(() => {
     if (!companyId) return;
     const toStore = Object.fromEntries(enterpriseVersions);
-    localStorage.setItem(`foda_enterprise_versions_${companyId}`, JSON.stringify(toStore));
+    annualBusinessStorage.setItem(`foda_enterprise_versions_${companyId}`, JSON.stringify(toStore));
   }, [enterpriseVersions, companyId]);
 
   // Check if user is a manager

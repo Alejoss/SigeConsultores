@@ -1,3 +1,5 @@
+import { useAnnualMutationWait } from "@/hooks/useAnnualMutationWait";
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +19,7 @@ import { getAxisBackPathForRole } from "@/lib/sessionScope";
 
 export default function CompanyInfo() {
   const [, setLocation] = useLocation();
+  const waitForMutations = useAnnualMutationWait();
   const search = useSearch();
   // Check if this is being accessed by a manager
   const urlParams = new URLSearchParams(search);
@@ -183,6 +186,18 @@ export default function CompanyInfo() {
     } as any);
   };
 
+  useAnnualExitGuard(async () => {
+    if (!isEditingRef.current) return true;
+    if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    autoSaveTimeoutRef.current = null;
+    if (!(await waitForMutations()) || !companyId || !canEditCompanyInfo) return false;
+    if (!isEditingRef.current) return true;
+    try {
+      await updateMutation.mutateAsync({ companyId, proposito, mision, vision, ...({ adminAlertEmail } as any) } as any);
+      isEditingRef.current = false;
+      return true;
+    } catch { return false; }
+  });
   if (!companyId) {
     // If Process Leader, show loading while session loads
     if (isProcessLeader === null) {

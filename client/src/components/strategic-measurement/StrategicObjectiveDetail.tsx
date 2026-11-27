@@ -1,3 +1,4 @@
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type MutableRefObject, type Ref } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ function DefinitionEditor({ objective, canManage, onSaved, registry }: { objecti
     onSaved();
   });
   useSaveRegistration(registry, "definition", autosave.flush);
+  useAnnualExitGuard(() => dirtyFields.current.size === 0 || Boolean(draft.name.trim() && (!draft.deadline || isCalendarDate(draft.deadline))));
   function change(next: StrategicDefinitionDraft) {
     for (const key of Object.keys(next) as (keyof StrategicDefinitionDraft)[]) {
       if (next[key] !== draft[key]) dirtyFields.current.add(key);
@@ -57,7 +59,10 @@ function ConfigEditor({ companyId, objective, canManage, onSaved, registry }: { 
   });
   useSaveRegistration(registry, "config", autosave.flush);
   const error = configDraftError(draft);
+  const edited = useRef(false);
+  useAnnualExitGuard(() => !edited.current || !configDraftError(draft));
   function change(next: StrategicConfigDraft) {
+    edited.current = true;
     setDraft(next);
     autosave.schedule(canManage && !configDraftError(next) ? draftToConfig(next) : null);
   }
@@ -89,6 +94,7 @@ function MeasurementCapture({ companyId, objective, measurements, onSaved, regis
     onSaved();
   });
   useSaveRegistration(registry, "measurement", autosave.flush);
+  useAnnualExitGuard(() => !touched || (configured && !measurementDraftError(draft)));
   function change(key: keyof MeasurementDraft, value: string) {
     let next = { ...draft, [key]: value };
     if (key === "measurementDate") {

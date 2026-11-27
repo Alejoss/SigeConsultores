@@ -72,8 +72,8 @@ export function registerManagementProgramUploadRoutes(app: Express) {
         if (!program) return res.status(404).json({ ok: false, error: "Programa no encontrado" });
 
         const originalName = safeFileName(req.file.originalname);
-        const fileKey = `management-programs/${companyId}/${programId}/documentation/${randomUUID()}-${originalName}`;
-        const { url } = await storagePut(fileKey, req.file.buffer, req.file.mimetype);
+        const requestedFileKey = `management-programs/${companyId}/${programId}/documentation/${randomUUID()}-${originalName}`;
+        const { url, key: fileKey } = await storagePut(requestedFileKey, req.file.buffer, req.file.mimetype);
         const insertResult = await db.insert(managementProgramFiles).values({
           programId,
           companyId,

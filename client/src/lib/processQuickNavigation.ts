@@ -1,3 +1,4 @@
+import { annualBusinessKey } from "./annualWorkspace";
 export type ProcessIndicatorPanel = "ote" | "otg" | "partes" | "cumplimientos" | "compromisos" | "salidas";
 export type OEReturnTab = "overview" | "heatmap" | "timeline" | "areas";
 export function positiveScopeId(value: unknown): number | null {
@@ -31,7 +32,7 @@ export function getProcessQuickHref(destination: "indicators" | "planning" | "sc
 }
 export type ScheduleViewState = { month: number; year: number; gantt: boolean };
 export function scheduleViewKey(processId: number, companyId?: number | null): string {
-  return `isge:schedule-view:${companyId || 0}:${processId}`;
+  return annualBusinessKey(`isge:schedule-view:${companyId || 0}:${processId}`);
 }
 export function readScheduleView(raw: string | null): ScheduleViewState | null {
   try {

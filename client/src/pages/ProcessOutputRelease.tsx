@@ -1,3 +1,6 @@
+import { useAnnualMutationWait } from "@/hooks/useAnnualMutationWait";
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
+import { annualFetch } from "@/lib/annualNavigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import {
@@ -142,6 +145,9 @@ function OutputControlCard({
   const draftRef = useRef(draft);
   const revisionRef = useRef(control.revision);
   const savingRef = useRef(false);
+  const annualFlushActive = useRef(false);
+  const saveFailed = useRef(false);
+  const waitForMutations = useAnnualMutationWait();
   const [saveState, setSaveState] = useState<"idle" | "waiting" | "saving">("idle");
   const update = trpc.processOutputRelease.upsert.useMutation();
   const updatePeriod = trpc.processOutputRelease.updatePeriod.useMutation({
@@ -179,6 +185,7 @@ function OutputControlCard({
     }
     pendingDraftRef.current = null;
     savingRef.current = true;
+    saveFailed.current = false;
     setSaveState("saving");
     const shouldRefreshSchedule =
       snapshot.isActive !== control.isActive ||
@@ -202,10 +209,12 @@ function OutputControlCard({
       setDraft(current => ({ ...current, revision: result.revision }));
       if (shouldRefreshSchedule) onRefresh();
     } catch (error) {
+      saveFailed.current = true;
+      pendingDraftRef.current = pendingDraftRef.current || snapshot;
       toast.error(error instanceof Error ? error.message : "No se pudieron guardar los cambios.");
     } finally {
       savingRef.current = false;
-      if (pendingDraftRef.current) {
+      if (pendingDraftRef.current && !saveFailed.current && !annualFlushActive.current) {
         saveTimerRef.current = window.setTimeout(() => {
           saveTimerRef.current = null;
           void flushPendingDraft();
@@ -216,6 +225,17 @@ function OutputControlCard({
     }
   };
 
+  useAnnualExitGuard(async () => {
+    annualFlushActive.current = true;
+    try {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+      if (!(await waitForMutations())) return false;
+      if (saveFailed.current) return false;
+      while (pendingDraftRef.current) { await flushPendingDraft(); if (saveFailed.current) return false; }
+      return true;
+    } finally { annualFlushActive.current = false; }
+  });
   const persist = (next: ControlDraft, immediately = false) => {
     pendingDraftRef.current = next;
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
@@ -461,7 +481,7 @@ export default function ProcessOutputRelease() {
       form.append("file", file);
       form.append("companyId", String(companyId));
       form.append("periodId", String(period.id));
-      const response = await fetch("/api/upload/output-release-evidence", { method: "POST", body: form, credentials: "include" });
+      const response = await annualFetch("/api/upload/output-release-evidence", { method: "POST", body: form, credentials: "include" });
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.ok) throw new Error(result?.error || "No se pudo subir la evidencia");
       toast.success("Evidencia subida correctamente", { id: loading });

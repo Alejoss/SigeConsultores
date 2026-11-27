@@ -1,3 +1,4 @@
+import { annualBusinessStorage } from "@/lib/annualWorkspace";
 // @vitest-environment jsdom
 import React from "react";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
@@ -294,7 +295,7 @@ describe("TacticalPlanning result UI and unchanged execution", () => {
     }));
     expect(mocks.narratives).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /^Guardar$/ })).toBeNull();
-    const cached = JSON.parse(localStorage.getItem("tactical_planning_21")!)[0];
+    const cached = JSON.parse(annualBusinessStorage.getItem("tactical_planning_21")!)[0];
     expect(cached.porcentajeMetaAlcanzado).toBe(500);
     expect(cached.goal).toBe(planning.goal);
     expect(cached.resultKeys[0].tasks).toEqual([task]);
@@ -344,7 +345,7 @@ describe("TacticalPlanning result UI and unchanged execution", () => {
       resultKeys: [expect.objectContaining({ ooTrackingType: "margen_tolerable", condicionActual: 888,
         porcentajeAlcanzado: 13, condicionInicial: 100, meta: 110, ooMonthlyValues: monthlyValues })],
     }));
-    expect(JSON.parse(localStorage.getItem("tactical_planning_21")!)[0].porcentajeMetaAlcanzado).toBe(17);
+    expect(JSON.parse(annualBusinessStorage.getItem("tactical_planning_21")!)[0].porcentajeMetaAlcanzado).toBe(17);
     expect(mocks.narratives).not.toHaveBeenCalled();
   });
 });

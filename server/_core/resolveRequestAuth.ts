@@ -3,7 +3,7 @@ import type { Request } from "express";
 import type { User } from "../../drizzle/schema";
 import { COOKIE_NAME } from "@shared/const";
 import { findActiveAuthSessionByPlainToken } from "../authSessionRepository";
-import { getDb } from "../db";
+import { getBaseDb } from "../db";
 import type { ManagerContext, ProcessLeaderContext } from "./context";
 import { getManagerContext, getPlatformUserShape, getProcessLeaderContext } from "../accountAuth";
 
@@ -30,7 +30,7 @@ export async function resolveAuthFromRequest(req: Request): Promise<{
     return { user: null, manager: null, processLeader: null };
   }
 
-  const db = await getDb();
+  const db = await getBaseDb();
   if (!db) {
     return { user: null, manager: null, processLeader: null };
   }

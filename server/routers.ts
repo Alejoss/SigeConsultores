@@ -136,6 +136,8 @@ import { courseRegCodesRouter } from "./routers/courseRegCodes";
 import { planningCyclesRouter } from "./routers/planningCycles";
 import { teamAccessRouter } from "./routers/teamAccess";
 import { changeManagementRouter } from "./routers/changeManagement";
+import { annualWorkspacesRouter } from "./routers/annualWorkspaces";
+import { annualHistoryRouter } from "./routers/annualHistory";
 import {
   assertCompanyTrainingManagementAccess,
   assertCompanyTrainingReadAccess,
@@ -282,7 +284,7 @@ export const appRouter = router({
 
   // Company Info (Propósito, Misión, Visión)
   companyInfo: router({
-    upsert: companyProcedure
+    upsert: companyManagementProcedure
       .input(
         z.object({
           companyId: z.number(),
@@ -988,6 +990,8 @@ export const appRouter = router({
   strategicTrends: strategicTrendsRouter,
   onlineCourses: onlineCoursesRouter,
   courseRegCodes: courseRegCodesRouter,
+  annualWorkspaces: annualWorkspacesRouter,
+  annualHistory: annualHistoryRouter,
 
   // Company Trainings (Capacitaciones a nivel empresa)
   companyTrainings: router({

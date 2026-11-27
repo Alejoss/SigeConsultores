@@ -14,6 +14,7 @@ import { createRequire } from "module";
 import { config } from "dotenv";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
+import { hasAnnualWorkspaceMetadata } from "./annual-backfill-guard.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: resolve(__dirname, "../.env.local") });
@@ -53,6 +54,11 @@ async function main() {
 
   const db = await mysql.createConnection(process.env.DATABASE_URL);
 
+  if (await hasAnnualWorkspaceMetadata(db)) {
+    console.log("[FileSizeBackfill] Hay espacios anuales registrados; no se alteran las tablas originales.");
+    await db.end();
+    return;
+  }
   let totalUpdated = 0;
   let totalSkipped = 0;
   let totalErrors = 0;

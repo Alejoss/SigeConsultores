@@ -8,7 +8,9 @@ import {
   processTacticalObjectives,
   strategicObjectives,
 } from "../../drizzle/schema";
-import { getDb } from "../db";
+import { getBaseDb, getDb } from "../db";
+import { getAnnualScope, runInAnnualScope } from "../annual/runtime";
+import { listWorkspaces } from "../annual/store";
 
 export interface StrategicSnapshot {
   year: number;
@@ -157,7 +159,7 @@ export async function calculateCompanyStrategicSnapshot(companyId: number, date 
   }
 
   return {
-    year: date.getFullYear(),
+    year: getAnnualScope()?.workspace.year ?? date.getFullYear(),
     month: date.getMonth() + 1,
     otePercent,
     otgPercent: 0,
@@ -206,7 +208,7 @@ export async function saveCompanyStrategicSnapshot(companyId: number, date = new
 }
 
 export async function saveSnapshotsForAllCompanies(date = new Date()): Promise<void> {
-  const db = await getDb();
+  const db = await getBaseDb();
   if (!db) {
     console.warn("[StrategicSnapshots] Base de datos no disponible, omitiendo snapshot mensual.");
     return;
@@ -215,7 +217,12 @@ export async function saveSnapshotsForAllCompanies(date = new Date()): Promise<v
   const allCompanies = await db.select({ id: companies.id }).from(companies);
   for (const company of allCompanies) {
     try {
-      await saveCompanyStrategicSnapshot(company.id, date);
+      // The clock chooses only the matching OPEN workspace. It never creates
+      // a future year or recalculates an older year's month using today's plan.
+      const workspaces = await listWorkspaces(company.id);
+      const workspace = workspaces.find(item => item.year === date.getFullYear() && item.status === "open");
+      if (!workspace) continue;
+      await runInAnnualScope(workspace, () => saveCompanyStrategicSnapshot(company.id, date));
       console.log(`[StrategicSnapshots] Snapshot guardado: empresa ${company.id}, ${date.getFullYear()}-${date.getMonth() + 1}.`);
     } catch (error) {
       console.error(`[StrategicSnapshots] Error al guardar snapshot para empresa ${company.id}:`, error);
