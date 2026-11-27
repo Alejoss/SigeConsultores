@@ -1,3 +1,5 @@
+import { useAnnualMutationWait } from "@/hooks/useAnnualMutationWait";
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,6 +101,7 @@ function SubprocessMapEditor({ processId, companyId, contextLoading }: {
     && (contextLoading || isProcessLoading || processData === undefined || processData.id !== processId)
     ? "Cargando nombre del proceso..." : "Nombre no disponible");
   const [isLoading, setIsLoading] = useState(true);
+  const waitForMutations = useAnnualMutationWait();
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -288,6 +291,15 @@ function SubprocessMapEditor({ processId, companyId, contextLoading }: {
     sendSnapshot(dataRef.current);
   };
 
+  useAnnualExitGuard(async () => {
+    if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    autoSaveTimeoutRef.current = null;
+    if (!(await waitForMutations())) return false;
+    if (!queuedSaveRef.current) return true;
+    const snapshot = queuedSaveRef.current;
+    if (!processId || !validateData(snapshot)) return false;
+    try { await updateMutation.mutateAsync({ processId, ...buildSavePayload(snapshot) }); queuedSaveRef.current = null; return true; } catch { return false; }
+  });
   const addRow = (section: "entrada" | "subprocesos" | "salida") => {
     const newData = {
       ...dataRef.current,

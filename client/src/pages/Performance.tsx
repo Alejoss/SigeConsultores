@@ -1,3 +1,4 @@
+import { useAnnualWorkspace } from "@/contexts/AnnualWorkspaceContext";
 import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,13 +41,16 @@ function IndicatorMini({ label, value }: { label: string; value: number }) {
 
 function StrategicObjectivesModule({ companyId }: { companyId: number }) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const { data: macroIndicators = [], isLoading } = trpc.macroIndicators.getMacroIndicators.useQuery(
+  const { data: rawMacroIndicators = [], isLoading } = trpc.macroIndicators.getMacroIndicators.useQuery(
     { companyId },
     { enabled: companyId > 0 }
   );
 
+  const { overview } = useAnnualWorkspace();
+  const macroIndicators = rawMacroIndicators.filter(process => !overview || overview.processes.some(item => item.id === process.processId && item.status === "incorporated"));
+
   const avgOTE = useMemo(() => {
-    if (!macroIndicators.length) return 0;
+    if (!macroIndicators.length) return null;
     const total = macroIndicators.reduce((sum: number, p: any) => sum + (p.objectivesPerformance || 0), 0);
     return Math.round(total / macroIndicators.length);
   }, [macroIndicators]);
@@ -59,8 +63,8 @@ function StrategicObjectivesModule({ companyId }: { companyId: number }) {
         <h3 className="text-lg font-bold text-slate-700">Objetivos Estratégicos (OTE)</h3>
         <div className="text-center bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
           <p className="text-xs text-blue-600 font-semibold">% Promedio OTE</p>
-          <p className={`text-2xl font-bold ${avgOTE >= 80 ? "text-green-600" : avgOTE >= 50 ? "text-yellow-600" : "text-red-600"}`}>
-            {avgOTE}%
+          <p className={`text-2xl font-bold ${(avgOTE ?? -1) >= 80 ? "text-green-600" : (avgOTE ?? -1) >= 50 ? "text-yellow-600" : "text-red-600"}`}>
+            {avgOTE === null ? "Sin evaluación" : `${avgOTE}%`}
           </p>
         </div>
       </div>
@@ -105,13 +109,16 @@ function StrategicObjectivesModule({ companyId }: { companyId: number }) {
 
 function ManagementByAreaModule({ companyId }: { companyId: number }) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const { data: macroIndicators = [], isLoading } = trpc.macroIndicators.getMacroIndicators.useQuery(
+  const { data: rawMacroIndicators = [], isLoading } = trpc.macroIndicators.getMacroIndicators.useQuery(
     { companyId },
     { enabled: companyId > 0 }
   );
 
+  const { overview } = useAnnualWorkspace();
+  const macroIndicators = rawMacroIndicators.filter(process => !overview || overview.processes.some(item => item.id === process.processId && item.status === "incorporated"));
+
   const avgGeneral = useMemo(() => {
-    if (!macroIndicators.length) return 0;
+    if (!macroIndicators.length) return null;
     const total = macroIndicators.reduce((sum: number, p: any) => {
       const otg = p.fodaPercentage || 0;
       const ote = p.objectivesPerformance || 0;
@@ -129,8 +136,8 @@ function ManagementByAreaModule({ companyId }: { companyId: number }) {
         <h3 className="text-lg font-bold text-slate-700">Gestión por Área</h3>
         <div className="text-center bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
           <p className="text-xs text-blue-600 font-semibold">% Promedio General</p>
-          <p className={`text-2xl font-bold ${avgGeneral >= 80 ? "text-green-600" : avgGeneral >= 50 ? "text-yellow-600" : "text-red-600"}`}>
-            {avgGeneral}%
+          <p className={`text-2xl font-bold ${(avgGeneral ?? -1) >= 80 ? "text-green-600" : (avgGeneral ?? -1) >= 50 ? "text-yellow-600" : "text-red-600"}`}>
+            {avgGeneral === null ? "Sin evaluación" : `${avgGeneral}%`}
           </p>
         </div>
       </div>
@@ -171,10 +178,13 @@ function ManagementByAreaModule({ companyId }: { companyId: number }) {
 }
 
 function ManagementSystemsModule({ companyId }: { companyId: number }) {
-  const { data: macroIndicators = [], isLoading: indicatorsLoading } = trpc.macroIndicators.getMacroIndicators.useQuery(
+  const { data: rawMacroIndicators = [], isLoading: indicatorsLoading } = trpc.macroIndicators.getMacroIndicators.useQuery(
     { companyId },
     { enabled: companyId > 0 }
   );
+
+  const { overview } = useAnnualWorkspace();
+  const macroIndicators = rawMacroIndicators.filter(process => !overview || overview.processes.some(item => item.id === process.processId && item.status === "incorporated"));
 
   const { data: programs = [], isLoading: programsLoading } = trpc.managementPrograms.list.useQuery(
     { companyId },
@@ -198,7 +208,7 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
 
   // % Programas: promedio de (completedActions / plannedActions) por programa
   const programsCompliance = useMemo(() => {
-    if (!programs.length) return 0;
+    if (!programs.length || !programs.some(program => program.plannedActions > 0)) return null;
     const total = programs.reduce((sum: number, p: any) => {
       return sum + (p.plannedActions > 0 ? Math.min(100, Math.round((p.completedActions / p.plannedActions) * 100)) : 0);
     }, 0);
@@ -207,7 +217,7 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
 
   // % Auditorías: promedio de (totalCierres / totalHallazgos) por auditoría
   const auditsCompliance = useMemo(() => {
-    if (!audits.length) return 0;
+    if (!audits.length) return null;
     let count = 0;
     const total = (audits as any[]).reduce((sum: number, a: any) => {
       const findings = (a.findingsMajorNC || 0) + (a.findingsMinorNC || 0) + (a.findingsObservations || 0) + (a.findingsOM || 0);
@@ -216,19 +226,19 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
       count++;
       return sum + Math.min(100, Math.round((closures / findings) * 100));
     }, 0);
-    return count > 0 ? Math.round(total / count) : 0;
+    return count > 0 ? Math.round(total / count) : null;
   }, [audits]);
 
   // % Inspecciones: promedio de (closures / findings) por inspección
   const inspectionsCompliance = useMemo(() => {
-    if (!inspections.length) return 0;
+    if (!inspections.length) return null;
     let count = 0;
     const total = (inspections as any[]).reduce((sum: number, i: any) => {
       if (!i.findings || i.findings === 0) return sum;
       count++;
       return sum + Math.min(100, Math.round(((i.closures || 0) / i.findings) * 100));
     }, 0);
-    return count > 0 ? Math.round(total / count) : 0;
+    return count > 0 ? Math.round(total / count) : null;
   }, [inspections]);
 
   // % Cumplimientos: mismo resumen corporativo de Sistemas de Gestión → Cumplimientos.
@@ -238,7 +248,7 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
 
   // % Capacitaciones: promedio de todos los procesos.
   const avgTrainings = useMemo(() => {
-    if (!macroIndicators.length) return 0;
+    if (!macroIndicators.length) return null;
     const total = macroIndicators.reduce((sum: number, p: any) => sum + (p.trainingsPercentage || 0), 0);
     return Math.round(total / macroIndicators.length);
   }, [macroIndicators]);
@@ -263,8 +273,8 @@ function ManagementSystemsModule({ companyId }: { companyId: number }) {
             <CardContent className="pt-4 pb-4 text-center">
               <p className="text-2xl mb-1">{m.icon}</p>
               <p className="text-sm text-slate-500 font-medium">{m.label}</p>
-              <p className={`text-3xl font-bold mt-2 ${m.value >= 80 ? "text-green-600" : m.value >= 50 ? "text-yellow-600" : "text-red-600"}`}>
-                {m.value}%
+              <p className={`text-3xl font-bold mt-2 ${(m.value ?? -1) >= 80 ? "text-green-600" : (m.value ?? -1) >= 50 ? "text-yellow-600" : "text-red-600"}`}>
+                {m.value === null ? "Sin evaluación" : `${m.value}%`}
               </p>
               {m.count !== null && (
                 <p className="text-xs text-slate-400 mt-1">{m.count} registros</p>

@@ -99,7 +99,7 @@ export default function Dashboard() {
                       className="w-full"
                       onClick={() => {
                         localStorage.setItem("selectedCompanyId", company.id.toString());
-                        setLocation("/company-info");
+                        window.location.assign(`/company-info?companyId=${company.id}`);
                       }}
                     >
                       Acceder

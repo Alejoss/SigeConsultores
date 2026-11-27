@@ -18,7 +18,12 @@ import {
   subprocessMaps,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { router } from "../_core/trpc";
 import { processCharacterizationCopyRouter } from "../routers/processCharacterizationCopy";
+// Preserve the production tRPC path used by annual scope and ACL checks.
+const integrationRouter = router({
+  processCharacterizationCopy: processCharacterizationCopyRouter,
+});
 
 const testName = `Prueba copia caracterización ${Date.now()}`;
 
@@ -37,17 +42,17 @@ let sourceParticipantId = 0;
 let sourceProcedureId = 0;
 
 function adminCaller() {
-  return processCharacterizationCopyRouter.createCaller({
+  return integrationRouter.createCaller({
     user: { role: "admin" },
     manager: null,
     processLeader: null,
     req: {} as never,
     res: {} as never,
-  } as never);
+  } as never).processCharacterizationCopy;
 }
 
 function leaderCaller() {
-  return processCharacterizationCopyRouter.createCaller({
+  return integrationRouter.createCaller({
     user: null,
     manager: null,
     processLeader: {
@@ -60,7 +65,7 @@ function leaderCaller() {
     },
     req: {} as never,
     res: {} as never,
-  } as never);
+  } as never).processCharacterizationCopy;
 }
 
 async function processCharacterizationId(processId: number) {
@@ -739,7 +744,7 @@ describe("Copia selectiva de Caracterización: integración local", () => {
         targetProcessIds: [targetRollbackProcessId],
         modules: ["participants"],
       })
-    ).rejects.toThrow("Sólo el Administrador o Gerente");
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: expect.stringContaining("Sólo el Administrador o Gerente") });
   });
 
   it("revierte el destino que falla dentro de una transacción y conserva el destino anterior ya confirmado", async () => {

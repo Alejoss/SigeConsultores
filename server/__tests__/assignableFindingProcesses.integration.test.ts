@@ -12,9 +12,16 @@ import {
   roles,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { router } from "../_core/trpc";
 import { linkedCommitmentsRouter } from "../routers/linkedCommitments";
 import { processMapRouter } from "../routers/processMap";
 import { teamAccessRouter } from "../routers/teamAccess";
+// Preserve the production tRPC path used by annual scope and ACL checks.
+const integrationRouter = router({
+  linkedCommitments: linkedCommitmentsRouter,
+  processMap: processMapRouter,
+  teamAccess: teamAccessRouter,
+});
 
 const testName = `Prueba selector de hallazgos ${Date.now()}`;
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -177,7 +184,7 @@ afterAll(async () => {
 
 describe("Selector de hallazgos por proceso: integración local", () => {
   it("mantiene al Jefe estándar sin acceso al selector ampliado", async () => {
-    const commitments = linkedCommitmentsRouter.createCaller(leaderContext());
+    const commitments = integrationRouter.createCaller(leaderContext()).linkedCommitments;
     await expect(
       commitments.listAssignableFindingProcesses({
         companyId,
@@ -188,15 +195,14 @@ describe("Selector de hallazgos por proceso: integración local", () => {
   });
 
   it("permite al Coordinador seleccionar procesos de su empresa sin abrir su Mapa de Procesos", async () => {
-    await teamAccessRouter
-      .createCaller(managerContext())
+    await integrationRouter.createCaller(managerContext()).teamAccess
       .setCompanyManagementAccess({
         companyId,
         accountId: leaderAccountId,
         accessLevel: "coordinator",
       });
 
-    const commitments = linkedCommitmentsRouter.createCaller(leaderContext());
+    const commitments = integrationRouter.createCaller(leaderContext()).linkedCommitments;
     const targets = await commitments.listAssignableFindingProcesses({
       companyId,
       sourceType: "inspection_finding",
@@ -210,17 +216,15 @@ describe("Selector de hallazgos por proceso: integración local", () => {
     );
     expect(targets.some(target => target.id === foreignProcessId)).toBe(false);
 
-    const processMap = processMapRouter.createCaller(leaderContext());
+    const processMap = integrationRouter.createCaller(leaderContext()).processMap;
     await expect(processMap.list({ companyId })).resolves.toEqual([
       expect.objectContaining({ id: ownProcessId }),
     ]);
-    await expect(processMap.get({ processId: otherProcessId })).rejects.toThrow(
-      "No tiene acceso al proceso solicitado"
-    );
+    await expect(processMap.get({ processId: otherProcessId })).rejects.toMatchObject({ code: "FORBIDDEN", message: "No tienes acceso a este proceso" });
   });
 
   it("valida el hallazgo y crea el compromiso para el proceso seleccionado", async () => {
-    const commitments = linkedCommitmentsRouter.createCaller(leaderContext());
+    const commitments = integrationRouter.createCaller(leaderContext()).linkedCommitments;
     await expect(
       commitments.listAssignableFindingProcesses({
         companyId,
@@ -234,12 +238,27 @@ describe("Selector de hallazgos por proceso: integración local", () => {
         companyId,
         sourceType: "inspection_finding",
         sourceId: findingId,
+        processIds: [otherProcessId, foreignProcessId],
+      })
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: "El proceso del input no pertenece a la empresa del espacio anual.",
+    });
+    await expect(db.select({ id: linkedCommitments.id }).from(linkedCommitments)
+      .where(and(eq(linkedCommitments.companyId, companyId), eq(linkedCommitments.sourceId, findingId))))
+      .resolves.toEqual([]);
+
+    await expect(
+      commitments.createLinks({
+        companyId,
+        sourceType: "inspection_finding",
+        sourceId: findingId,
         processIds: [otherProcessId],
       })
     ).resolves.toMatchObject({ created: 1 });
 
     const links = await db
-      .select({ processId: linkedCommitments.processId })
+      .select({ id: linkedCommitments.id, processId: linkedCommitments.processId, status: linkedCommitments.status })
       .from(linkedCommitments)
       .where(
         and(
@@ -248,9 +267,15 @@ describe("Selector de hallazgos por proceso: integración local", () => {
           eq(linkedCommitments.sourceId, findingId)
         )
       );
-    expect(links).toEqual([{ processId: otherProcessId }]);
+    expect(links).toEqual([{ id: expect.any(Number), processId: otherProcessId, status: "pending" }]);
     await expect(
       commitments.listByProcess({ companyId, processId: otherProcessId })
-    ).rejects.toThrow("solo puede gestionar los compromisos de su proceso");
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "No tienes acceso a este proceso" });
+    await expect(
+      commitments.updateProgress({ id: links[0].id, companyId, status: "completed" })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    const [unchanged] = await db.select({ status: linkedCommitments.status }).from(linkedCommitments)
+      .where(eq(linkedCommitments.id, links[0].id));
+    expect(unchanged.status).toBe("pending");
   });
 });

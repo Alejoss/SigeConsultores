@@ -18,6 +18,7 @@ import {
   trainingSchedules,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { router } from "../_core/trpc";
 import {
   assertCompanyManagementAccess,
   assertCompanyPersonnelManagementAccess,
@@ -30,6 +31,18 @@ import { processesRouter } from "../routers/processes";
 import { processRiskMatrixRouter } from "../routers/processRiskMatrix";
 import { teamAccessRouter } from "../routers/teamAccess";
 import { appRouter } from "../routers";
+// Preserve the production tRPC path used by annual scope and ACL checks.
+// companyInfoRouter/processesRouter retain their existing standalone contracts;
+// their differing inline appRouter wiring is documented, not weakened here.
+const integrationRouter = router({
+  managementPrograms: managementProgramsRouter,
+  companyInfo: companyInfoRouter,
+  policies: policiesRouter,
+  processCompliances: processActivitiesRouter,
+  processes: processesRouter,
+  processRiskMatrix: processRiskMatrixRouter,
+  teamAccess: teamAccessRouter,
+});
 
 const testName = `Prueba permisos Coordinador ${Date.now()}`;
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -56,7 +69,7 @@ function context(overrides: Partial<Record<"user" | "manager" | "processLeader",
 }
 
 function managerCaller() {
-  return teamAccessRouter.createCaller(
+  return integrationRouter.createCaller(
     context({
       manager: {
         companyId,
@@ -64,7 +77,7 @@ function managerCaller() {
         managerEmail: "gerente.coordinador@example.test",
       },
     })
-  );
+  ).teamAccess;
 }
 
 function leaderContext() {
@@ -198,7 +211,7 @@ describe("Coordinador de empresa: integración local", () => {
       assertCompanyManagementAccess(leaderContext(), companyId)
     ).rejects.toThrow("puede consultar el módulo");
 
-    const leaderPrograms = managementProgramsRouter.createCaller(leaderContext());
+    const leaderPrograms = integrationRouter.createCaller(leaderContext()).managementPrograms;
     await expect(
       leaderPrograms.create({
         companyId,
@@ -207,7 +220,7 @@ describe("Coordinador de empresa: integración local", () => {
       })
     ).rejects.toThrow("puede consultar el módulo");
 
-    const leaderCompanyInfo = companyInfoRouter.createCaller(leaderContext());
+    const leaderCompanyInfo = integrationRouter.createCaller(leaderContext()).companyInfo;
     await expect(
       leaderCompanyInfo.upsert({
         companyId,
@@ -215,7 +228,7 @@ describe("Coordinador de empresa: integración local", () => {
       })
     ).rejects.toThrow("puede consultar el módulo");
 
-    const leaderPolicies = policiesRouter.createCaller(leaderContext());
+    const leaderPolicies = integrationRouter.createCaller(leaderContext()).policies;
     await expect(
       leaderPolicies.upsert({
         companyId,
@@ -325,7 +338,7 @@ describe("Coordinador de empresa: integración local", () => {
   });
 
   it("permite al Coordinador editar un módulo corporativo sin abrir procesos ajenos", async () => {
-    const leaderPrograms = managementProgramsRouter.createCaller(leaderContext());
+    const leaderPrograms = integrationRouter.createCaller(leaderContext()).managementPrograms;
     const program = await leaderPrograms.create({
       companyId,
       programName: "Programa gestionado por Coordinador",
@@ -333,7 +346,7 @@ describe("Coordinador de empresa: integración local", () => {
     });
     expect(program?.programName).toBe("Programa gestionado por Coordinador");
 
-    const leaderCompanyInfo = companyInfoRouter.createCaller(leaderContext());
+    const leaderCompanyInfo = integrationRouter.createCaller(leaderContext()).companyInfo;
     await expect(
       leaderCompanyInfo.upsert({
         companyId,
@@ -341,7 +354,7 @@ describe("Coordinador de empresa: integración local", () => {
       })
     ).resolves.toEqual({ success: true });
 
-    const leaderPolicies = policiesRouter.createCaller(leaderContext());
+    const leaderPolicies = integrationRouter.createCaller(leaderContext()).policies;
     await expect(
       leaderPolicies.upsert({
         companyId,
@@ -417,10 +430,10 @@ describe("Coordinador de empresa: integración local", () => {
       trainings.trainingSchedules.delete({ companyId })
     ).resolves.toEqual({ success: true });
 
-    const activities = processActivitiesRouter.createCaller(leaderContext());
-    await expect(activities.list({ processId: otherProcessId })).rejects.toThrow("No tiene acceso");
+    const activities = integrationRouter.createCaller(leaderContext()).processCompliances;
+    await expect(activities.list({ processId: otherProcessId })).rejects.toMatchObject({ code: "FORBIDDEN", message: "No tienes acceso a este proceso" });
     await expect(
-      teamAccessRouter.createCaller(leaderContext()).setCompanyManagementAccess({
+      integrationRouter.createCaller(leaderContext()).teamAccess.setCompanyManagementAccess({
         companyId,
         accountId: leaderAccountId,
         accessLevel: "standard",
@@ -433,13 +446,13 @@ describe("Coordinador de empresa: integración local", () => {
       assertCompanyPersonnelManagementAccess(leaderContext(), companyId)
     ).toThrow("Solo el Gerente");
 
-    const riskCaller = processRiskMatrixRouter.createCaller(leaderContext());
+    const riskCaller = integrationRouter.createCaller(leaderContext()).processRiskMatrix;
     await expect(
       riskCaller.create({
         processId: otherProcessId,
         description: "Riesgo de otro proceso",
       })
-    ).rejects.toThrow("No tiene acceso");
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "No tienes acceso a este proceso" });
 
     await expect(
       riskCaller.create({
@@ -448,7 +461,7 @@ describe("Coordinador de empresa: integración local", () => {
       })
     ).resolves.toMatchObject({ success: true });
 
-    const alternateProcesses = processesRouter.createCaller(leaderContext());
+    const alternateProcesses = integrationRouter.createCaller(leaderContext()).processes;
     await expect(
       alternateProcesses.create({
         companyId,
@@ -476,7 +489,7 @@ describe("Coordinador de empresa: integración local", () => {
       assertCompanyManagementAccess(leaderContext(), companyId)
     ).rejects.toThrow("puede consultar el módulo");
 
-    const activities = processActivitiesRouter.createCaller(leaderContext());
+    const activities = integrationRouter.createCaller(leaderContext()).processCompliances;
     await expect(activities.list({ processId })).resolves.toEqual([]);
   });
 });

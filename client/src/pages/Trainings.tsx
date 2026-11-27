@@ -1,3 +1,8 @@
+import { groupTrainingOrigins } from "@/lib/annualWorkspace";
+import { useAnnualWorkspace } from "@/contexts/AnnualWorkspaceContext";
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
+import { getSelectedManagementYear } from "@/lib/annualWorkspace";
+import { annualFetch } from "@/lib/annualNavigation";
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -49,6 +54,7 @@ interface Training {
   attendancePercentage: number;
   createdAt: Date;
   updatedAt: Date;
+  sourceYear?: number | null;
 }
 
 interface FormData {
@@ -90,7 +96,7 @@ const TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> 
 
 // ─── Componente: Cronograma de Gantt ─────────────────────────────────────────
 function GanttPanel({ trainings, onClose }: { trainings: Training[]; onClose: () => void }) {
-  const currentYear = new Date().getFullYear();
+  const currentYear = getSelectedManagementYear();
   const [year, setYear] = useState(currentYear);
 
   // Años disponibles (de las fechas planificadas + año actual)
@@ -352,7 +358,7 @@ function TrainingBackupsPanel({ trainingId, companyId, canManageCompany, onClose
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/upload/procedure-file", {
+      const res = await annualFetch("/api/upload/procedure-file", {
         method: "POST",
         body: formData,
       });
@@ -493,7 +499,7 @@ function TrainingScheduleButton({ companyId, canManageCompany }: {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/upload/procedure-file", {
+      const res = await annualFetch("/api/upload/procedure-file", {
         method: "POST",
         body: formData,
       });
@@ -501,7 +507,7 @@ function TrainingScheduleButton({ companyId, canManageCompany }: {
       const data = await res.json();
       await upsertMutation.mutateAsync({
         companyId,
-        year: new Date().getFullYear(),
+        year: getSelectedManagementYear(companyId),
         fileName: file.name,
         fileUrl: data.url,
         fileKey: data.key || data.url,
@@ -608,7 +614,12 @@ export default function Trainings() {
     { enabled: companyId > 0 }
   );
 
-  const trainings = (trainingsData || []) as Training[];
+  const annual = useAnnualWorkspace();
+  const allTrainings = (trainingsData || []) as Training[];
+  const provenanceReady = annual.year === 2026 || Boolean(annual.overview);
+  const { current: trainings, historical } = groupTrainingOrigins(provenanceReady ? allTrainings : [], annual.overview?.trainingOrigins || {}, annual.year);
+  useAnnualExitGuard(() => JSON.stringify(formData) === JSON.stringify(emptyForm) && importRows.length === 0);
+
 
   const createMutation = trpc.companyTrainings.create.useMutation();
   const updateMutation = trpc.companyTrainings.update.useMutation();
@@ -950,137 +961,7 @@ export default function Trainings() {
     return dt.toLocaleDateString("es-ES");
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Capacitaciones</h1>
-          <div className="flex items-center gap-2">
-            {!isCheckingOnlineCourses && canManageOnlineCourses && (
-              <Button variant="outline" asChild>
-                <a href={courseEntryHref("/empresa", companyId)}>Capacitaciones On line</a>
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => {
-              const cid = localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId");
-              navigate(cid ? `/audits-inspections?companyId=${cid}` : "/audits-inspections");
-            }}>
-              ← Volver
-            </Button>
-          </div>
-        </div>
-
-        {!isChecking && !canManageCompany && <CompanyReadOnlyNotice />}
-
-        {/* KPIs */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <Card className="bg-white border-l-4 border-l-purple-500">
-            <CardContent className="pt-6">
-              <div className="text-sm text-gray-600 mb-1">Total de Capacitaciones</div>
-              <div className="text-3xl font-bold text-purple-600">{totalTrainings}</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white border-l-4 border-l-blue-500">
-            <CardContent className="pt-6">
-              <div className="text-sm text-gray-600 mb-1">% Capacitaciones Impartidas</div>
-              <div className="text-3xl font-bold text-blue-600">{percentageConducted} %</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white border-l-4 border-l-green-500">
-            <CardContent className="pt-6">
-              <div className="text-sm text-gray-600 mb-1">% Asistencia</div>
-              <div className="text-3xl font-bold text-green-600">{percentageAttendance} %</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Lista */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-            <h2 className="text-2xl font-bold text-gray-900">Capacitaciones Registradas</h2>
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Botón Gantt */}
-              <Button
-                variant={showGantt ? "default" : "outline"}
-                onClick={() => setShowGantt(!showGantt)}
-                className={`flex items-center gap-2 ${showGantt ? "bg-indigo-600 hover:bg-indigo-700" : ""}`}
-              >
-                <BarChart2 className="w-4 h-4" />
-                Cronograma de Gantt
-              </Button>
-              {/* Botón Cronograma Anual */}
-              <TrainingScheduleButton
-                companyId={companyId}
-                canManageCompany={canManageCompany}
-              />
-              {/* Botón Descargar Plantilla */}
-              <Button onClick={downloadTemplate} variant="outline" className="flex gap-2 border-emerald-400 text-emerald-700 hover:bg-emerald-50">
-                <FileText className="w-4 h-4" />
-                Descargar Plantilla
-              </Button>
-              {/* Botón Importar desde Excel */}
-              {canManageCompany && (
-                <>
-                  <Button
-                    onClick={() => importFileRef.current?.click()}
-                    variant="outline"
-                    className="flex gap-2 border-blue-400 text-blue-700 hover:bg-blue-50"
-                  >
-                    <Upload className="w-4 h-4" />
-                    Importar desde Excel
-                  </Button>
-                  <input
-                    ref={importFileRef}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    className="hidden"
-                    onChange={handleImportFile}
-                  />
-                </>
-              )}
-              {/* Botón Exportar Excel */}
-              <Button onClick={exportToExcel} variant="outline" className="flex gap-2">
-                <Download className="w-4 h-4" />
-                Exportar a Excel
-              </Button>
-              {/* Botón Eliminar todas */}
-              {canManageCompany && trainings.length > 0 && (
-                <Button
-                  variant="destructive"
-                  className="flex gap-2"
-                  onClick={() => {
-                    if (window.confirm(`¿Eliminar las ${trainings.length} capacitaciones? Esta acción no se puede deshacer.`)) {
-                      clearByCompanyMutation.mutate({ companyId });
-                    }
-                  }}
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Eliminar todas
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Panel Gantt */}
-          {showGantt && (
-            <GanttPanel
-              trainings={trainings}
-              onClose={() => setShowGantt(false)}
-            />
-          )}
-
-          {isLoading ? (
-            <div className="text-center py-8 text-gray-500">Cargando capacitaciones...</div>
-          ) : trainings.length === 0 ? (
-            <Card className="bg-white mt-4">
-              <CardContent className="pt-6 text-center text-gray-500">
-                No hay capacitaciones registradas aún
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3 mt-4">
-              {trainings.map((training) => (
+  const renderTraining = (training: Training, historicalRecord = false) => (
                 <Card key={training.id} className="bg-white">
                   <div
                     className="p-5 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between"
@@ -1233,7 +1114,7 @@ export default function Trainings() {
 
                       {/* Botones de acción */}
                       <div className="flex gap-2 mt-4 flex-wrap">
-                        {canManageCompany && (
+                        {canManageCompany && !historicalRecord && (
                           <Button variant="outline" size="sm" onClick={() => handleEditTraining(training)}>
                             Editar
                           </Button>
@@ -1250,7 +1131,7 @@ export default function Trainings() {
                           <Paperclip className="w-4 h-4" />
                           Respaldos
                         </Button>
-                        {canManageCompany && (
+                        {canManageCompany && !historicalRecord && (
                           <Button variant="destructive" size="sm" onClick={() => handleDeleteTraining(training.id)}>
                             Eliminar
                           </Button>
@@ -1262,7 +1143,7 @@ export default function Trainings() {
                         <TrainingBackupsPanel
                           trainingId={training.id}
                           companyId={companyId}
-                          canManageCompany={canManageCompany}
+                          canManageCompany={canManageCompany && !historicalRecord}
                           onClose={() => setBackupsPanelId(null)}
                         />
                       )}
@@ -1271,11 +1152,144 @@ export default function Trainings() {
                     </CardContent>
                   )}
                 </Card>
-              ))}
+  );
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-4xl font-bold text-gray-900">Capacitaciones</h1>
+          <div className="flex items-center gap-2">
+            {!isCheckingOnlineCourses && canManageOnlineCourses && (
+              <Button variant="outline" asChild>
+                <a href={courseEntryHref("/empresa", companyId)}>Capacitaciones On line</a>
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => {
+              const cid = localStorage.getItem("managerCompanyId") || localStorage.getItem("selectedCompanyId");
+              navigate(cid ? `/audits-inspections?companyId=${cid}` : "/audits-inspections");
+            }}>
+              ← Volver
+            </Button>
+          </div>
+        </div>
+
+        {!isChecking && !canManageCompany && <CompanyReadOnlyNotice />}
+
+        {/* KPIs */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          <Card className="bg-white border-l-4 border-l-purple-500">
+            <CardContent className="pt-6">
+              <div className="text-sm text-gray-600 mb-1">Total de Capacitaciones</div>
+              <div className="text-3xl font-bold text-purple-600">{totalTrainings}</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-white border-l-4 border-l-blue-500">
+            <CardContent className="pt-6">
+              <div className="text-sm text-gray-600 mb-1">% Capacitaciones Impartidas</div>
+              <div className="text-3xl font-bold text-blue-600">{totalTrainings ? `${percentageConducted} %` : "Sin evaluación"}</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-white border-l-4 border-l-green-500">
+            <CardContent className="pt-6">
+              <div className="text-sm text-gray-600 mb-1">% Asistencia</div>
+              <div className="text-3xl font-bold text-green-600">{trainingsWithAttendance.length ? `${percentageAttendance} %` : "Sin evaluación"}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Lista */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <h2 className="text-2xl font-bold text-gray-900">Capacitaciones Registradas</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Botón Gantt */}
+              <Button
+                variant={showGantt ? "default" : "outline"}
+                onClick={() => setShowGantt(!showGantt)}
+                className={`flex items-center gap-2 ${showGantt ? "bg-indigo-600 hover:bg-indigo-700" : ""}`}
+              >
+                <BarChart2 className="w-4 h-4" />
+                Cronograma de Gantt
+              </Button>
+              {/* Botón Cronograma Anual */}
+              <TrainingScheduleButton
+                companyId={companyId}
+                canManageCompany={canManageCompany}
+              />
+              {/* Botón Descargar Plantilla */}
+              <Button onClick={downloadTemplate} variant="outline" className="flex gap-2 border-emerald-400 text-emerald-700 hover:bg-emerald-50">
+                <FileText className="w-4 h-4" />
+                Descargar Plantilla
+              </Button>
+              {/* Botón Importar desde Excel */}
+              {canManageCompany && (
+                <>
+                  <Button
+                    onClick={() => importFileRef.current?.click()}
+                    variant="outline"
+                    className="flex gap-2 border-blue-400 text-blue-700 hover:bg-blue-50"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Importar desde Excel
+                  </Button>
+                  <input
+                    ref={importFileRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={handleImportFile}
+                  />
+                </>
+              )}
+              {/* Botón Exportar Excel */}
+              <Button onClick={exportToExcel} variant="outline" className="flex gap-2">
+                <Download className="w-4 h-4" />
+                Exportar a Excel
+              </Button>
+              {/* Botón Eliminar todas */}
+              {canManageCompany && annual.year === 2026 && trainings.length > 0 && (
+                <Button
+                  variant="destructive"
+                  className="flex gap-2"
+                  onClick={() => {
+                    if (window.confirm(`¿Eliminar las ${trainings.length} capacitaciones? Esta acción no se puede deshacer.`)) {
+                      clearByCompanyMutation.mutate({ companyId });
+                    }
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Eliminar todas
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Panel Gantt */}
+          {showGantt && (
+            <GanttPanel
+              trainings={trainings}
+              onClose={() => setShowGantt(false)}
+            />
+          )}
+
+          {isLoading ? (
+            <div className="text-center py-8 text-gray-500">Cargando capacitaciones...</div>
+          ) : trainings.length === 0 ? (
+            <Card className="bg-white mt-4">
+              <CardContent className="pt-6 text-center text-gray-500">
+                No hay capacitaciones registradas aún
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3 mt-4">
+              {trainings.map(training => renderTraining(training))}
             </div>
           )}
         </div>
 
+        {!provenanceReady && <p role="status" className="mb-5 rounded-lg border p-4">Esperando la procedencia anual de las capacitaciones. No se atribuyen registros anteriores a este año.</p>}
+        {Array.from(historical.entries()).sort(([a], [b]) => b - a).map(([sourceYear, records]) => <details key={sourceYear} className="mb-6 rounded-xl border bg-white p-4"><summary className="cursor-pointer font-semibold text-slate-800">Capacitaciones {sourceYear} · {records.length} registros históricos</summary><p className="my-3 text-sm text-slate-600">Se conservan fechas, ejecución, asistencia y respaldos de origen. No representan capacitaciones impartidas en {annual.year}.</p><div className="space-y-3">{records.map(training => renderTraining(training, true))}</div></details>)}
         {/* Formulario de nueva capacitación (solo visible cuando NO se está editando inline) */}
         {canManageCompany && (
         <Card className="bg-white">

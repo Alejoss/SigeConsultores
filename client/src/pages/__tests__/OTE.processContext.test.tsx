@@ -1,3 +1,4 @@
+import { annualBusinessStorage } from "@/lib/annualWorkspace";
 // @vitest-environment jsdom
 import React from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -293,7 +294,7 @@ describe("OTE URL-first process identity and scoped navigation", () => {
     await act(async () => route("/tactical-planning", `processId=${OLD}&companyId=${COMPANY}`));
     view.refresh();
     await advance(2200);
-    const cached = JSON.parse(localStorage.getItem(`tactical_planning_${CURRENT}`)!);
+    const cached = JSON.parse(annualBusinessStorage.getItem(`tactical_planning_${CURRENT}`)!);
     expect(cached[0]).toMatchObject({ objectiveId: currentObj.id, goal: "Borrador del proceso anterior" });
     expect(localStorage.getItem(`tactical_planning_${OLD}`)).toBeNull();
     expect(screen.getByText(nextObj.name)).toBeTruthy();

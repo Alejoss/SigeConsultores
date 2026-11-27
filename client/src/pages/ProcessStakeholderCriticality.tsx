@@ -1,3 +1,5 @@
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
+import { annualBusinessStorage } from "@/lib/annualWorkspace";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -211,7 +213,7 @@ export default function ProcessStakeholderCriticality() {
   const deleteSurveyMutation = trpc.stakeholderSurveys.delete.useMutation();
 
   // Get companyId from localStorage
-  const companyId = parseInt(localStorage.getItem("selectedCompanyId") || "0");
+  const companyId = parseInt(annualBusinessStorage.getItem("selectedCompanyId") || "0");
   const navigationCompanyId = getCompanyIdFromSession() || processLeaderSession?.companyId || null;
 
   const handleAIQuery = async (query: string): Promise<string> => {
@@ -257,8 +259,8 @@ export default function ProcessStakeholderCriticality() {
     }
     // 3. Check localStorage
     else {
-      const storedProcessId = localStorage.getItem("selectedProcessId");
-      const storedProcessName = localStorage.getItem("selectedProcessName");
+      const storedProcessId = annualBusinessStorage.getItem("selectedProcessId");
+      const storedProcessName = annualBusinessStorage.getItem("selectedProcessName");
       if (storedProcessId) {
         resolvedProcessId = storedProcessId;
         resolvedProcessName = storedProcessName || "";
@@ -272,7 +274,7 @@ export default function ProcessStakeholderCriticality() {
       
       // AISLAMIENTO POR PROCESSID: Cargar criticalityData específica para este proceso
       const criticalityDataKey = `criticalityData_${resolvedProcessId}`;
-      const storedCriticalityData = localStorage.getItem(criticalityDataKey);
+      const storedCriticalityData = annualBusinessStorage.getItem(criticalityDataKey);
       
       console.log("DEBUG: Loading criticality data for processId:", resolvedProcessId);
       
@@ -565,7 +567,7 @@ export default function ProcessStakeholderCriticality() {
       setData(newData);
       // AISLAMIENTO POR PROCESSID: Guardar con clave específica para este proceso
       const criticalityDataKey = `criticalityData_${processId}`;
-      localStorage.setItem(criticalityDataKey, JSON.stringify(newData));
+      annualBusinessStorage.setItem(criticalityDataKey, JSON.stringify(newData));
       console.log("DEBUG: Stakeholders loaded and saved:", newData.stakeholders.length);
       console.log("DEBUG: Saving to localStorage key:", criticalityDataKey);
       console.log("DEBUG: Final saved stakeholder names:", newData.stakeholders.map((s: any) => s.name).join(", "));
@@ -623,7 +625,7 @@ export default function ProcessStakeholderCriticality() {
           if (draft.processId !== processId) throw new Error('El proceso cambió durante el guardado.');
           const failures: string[] = [];
           try {
-            localStorage.setItem(`criticalityData_${processId}`, signature);
+            annualBusinessStorage.setItem(`criticalityData_${processId}`, signature);
           } catch (error) {
             console.error('Error conservando el borrador local:', error);
             failures.push('No se pudo conservar el borrador local.');
@@ -716,6 +718,8 @@ export default function ProcessStakeholderCriticality() {
     }
   };
 
+
+  useAnnualExitGuard(beforeNavigate);
   const addStakeholder = () => {
     const newStakeholder: StakeholderCriticality = {
       id: generateUniqueId(),
@@ -762,7 +766,7 @@ export default function ProcessStakeholderCriticality() {
     setData(newData);
     // AISLAMIENTO POR PROCESSID: Guardar con clave específica para este proceso
     const criticalityDataKey = `criticalityData_${processId}`;
-    localStorage.setItem(criticalityDataKey, JSON.stringify(newData));
+    annualBusinessStorage.setItem(criticalityDataKey, JSON.stringify(newData));
   };
 
   const toggleIncidenceValue = (id: string, value: number) => {
@@ -788,7 +792,7 @@ export default function ProcessStakeholderCriticality() {
     setData(newData);
     // AISLAMIENTO POR PROCESSID: Guardar con clave específica para este proceso
     const criticalityDataKey = `criticalityData_${processId}`;
-    localStorage.setItem(criticalityDataKey, JSON.stringify(newData));
+    annualBusinessStorage.setItem(criticalityDataKey, JSON.stringify(newData));
   };
 
   const toggleRiskValue = (id: string, value: string) => {
@@ -814,7 +818,7 @@ export default function ProcessStakeholderCriticality() {
     setData(newData);
     // AISLAMIENTO POR PROCESSID: Guardar con clave específica para este proceso
     const criticalityDataKey = `criticalityData_${processId}`;
-    localStorage.setItem(criticalityDataKey, JSON.stringify(newData));
+    annualBusinessStorage.setItem(criticalityDataKey, JSON.stringify(newData));
   };
 
   const toggleIncidenceCriteria = (id: string, criteria: string) => {
@@ -837,7 +841,7 @@ export default function ProcessStakeholderCriticality() {
     setData(newData);
     // AISLAMIENTO POR PROCESSID: Guardar con clave específica para este proceso
     const criticalityDataKey = `criticalityData_${processId}`;
-    localStorage.setItem(criticalityDataKey, JSON.stringify(newData));
+    annualBusinessStorage.setItem(criticalityDataKey, JSON.stringify(newData));
   };
 
   const toggleRiskCriteria = (id: string, criteria: string) => {
@@ -860,7 +864,7 @@ export default function ProcessStakeholderCriticality() {
     setData(newData);
     // AISLAMIENTO POR PROCESSID: Guardar con clave específica para este proceso
     const criticalityDataKey = `criticalityData_${processId}`;
-    localStorage.setItem(criticalityDataKey, JSON.stringify(newData));
+    annualBusinessStorage.setItem(criticalityDataKey, JSON.stringify(newData));
   };
 
   const actionProgress = useMemo(

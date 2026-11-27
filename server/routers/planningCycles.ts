@@ -2,10 +2,16 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { companyReadProcedure, companyProcedure, router } from "../_core/trpc";
 import { assertProcessAccessById } from "../_core/companyPermissions";
-import { getDb } from "../db";
+import { assertCompanyReadAccess } from "../_core/companyPermissions";
+import { getDb, getBaseDb } from "../db";
 import { getConsolidatedScheduleActivities } from "../lib/consolidatedScheduleActivities";
+import { getAnnualScope, runInAnnualScope } from "../annual/runtime";
+import { getWorkspaceForScope, getProcessWorkspaceStatus, incorporateApprovedProcess, listWorkspaces } from "../annual/store";
+import { additionalActivitySnapshot } from "../annual/additionalActivities";
 import {
   accounts,
+  annualWorkspaces,
+  annualProcessStates,
   participantWorkerAssignments,
   participantWorkerKpis,
   participantWorkerKpiValues,
@@ -19,7 +25,7 @@ import {
   processes,
 } from "../../drizzle/schema";
 
-const ITEM_TYPES = ["ote", "otg", "stakeholder_action", "compliance", "participant_kpi"] as const;
+const ITEM_TYPES = ["ote", "otg", "stakeholder_action", "compliance", "participant_kpi", "linked_commitment", "output_release"] as const;
 type CycleItemType = typeof ITEM_TYPES[number];
 type CycleDecision = "pending" | "migrate" | "close" | "review";
 
@@ -92,6 +98,14 @@ function plannedDateForTargetCycle(payload: Record<string, any>, targetYear: num
 }
 
 async function buildCandidates(companyId: number, processId: number, sourceYear: number): Promise<CycleCandidate[]> {
+  const source = await getWorkspaceForScope(companyId, sourceYear);
+  if (await getProcessWorkspaceStatus(source.id, processId) !== "incorporated") {
+    throw new Error(`Primero debe incorporarse el proceso en ${sourceYear}; no se puede preparar el año siguiente con una caracterización pendiente.`);
+  }
+  return runInAnnualScope(source, () => buildScopedCandidates(companyId, processId, sourceYear));
+}
+
+async function buildScopedCandidates(companyId: number, processId: number, sourceYear: number): Promise<CycleCandidate[]> {
   const db = await getDb();
   if (!db) throw new Error("Base de datos no disponible");
 
@@ -113,20 +127,22 @@ async function buildCandidates(companyId: number, processId: number, sourceYear:
     foda: "otg",
     objective: "ote",
     compliance: "compliance",
+    linked_commitment: "linked_commitment",
+    output_release: "output_release",
   };
   for (const activity of scheduleActivities) {
     const itemType = scheduleTypeToCycleType[activity.type];
-    // Control de Salidas ya está integrado en Cronograma e Indicadores. Su
-    // tratamiento dentro del cierre anual se definirá como una decisión propia,
-    // sin clasificarlo erróneamente como un tipo histórico de ciclo.
     if (!itemType) continue;
+    const annualSource = ["linked_commitment", "output_release"].includes(activity.type)
+      ? await additionalActivitySnapshot(await getWorkspaceForScope(companyId, sourceYear), activity)
+      : undefined;
     candidates.push({
       itemType,
       sourceItemKey: `schedule:${activity.id}`,
       title: activity.action,
       description: `${activity.badge} · ${activity.element} · Fecha planificada: ${activity.dueDate.toLocaleDateString("es-EC")}`,
       completionPercent: clampPercent(activity.completionPercentage),
-      sourcePayloadJson: JSON.stringify({ source: "consolidated_schedule", activity }),
+      sourcePayloadJson: JSON.stringify({ source: "consolidated_schedule", activity, ...(annualSource && { annualSource }) }),
     });
   }
 
@@ -173,7 +189,7 @@ async function buildCandidates(companyId: number, processId: number, sourceYear:
 }
 
 async function getOrCreateActivation(companyId: number, targetYear: number, accountId?: number) {
-  const db = await getDb();
+  const db = await getBaseDb();
   if (!db) throw new Error("Base de datos no disponible");
   const existing = await db.select().from(planningCycleActivations)
     .where(and(eq(planningCycleActivations.companyId, companyId), eq(planningCycleActivations.targetYear, targetYear)))
@@ -200,11 +216,17 @@ function assertCompanyCycleManagement(
   throw new Error("Solo el Gerente General de la empresa o el Administrador puede gestionar el ciclo empresarial");
 }
 
+async function assertCycleProcess(ctx: Parameters<typeof assertProcessAccessById>[0], companyId: number, processId: number) {
+  assertCompanyReadAccess(ctx, companyId);
+  const process = await assertProcessAccessById(ctx, processId);
+  if (process.companyId !== companyId) throw new Error("El proceso no corresponde a la empresa del ciclo");
+}
+
 export const planningCyclesRouter = router({
   activeYear: companyReadProcedure
     .input(companyInput)
     .query(async ({ input }) => {
-      const db = await getDb();
+      const db = await getBaseDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [activation] = await db.select().from(planningCycleActivations)
         .where(and(
@@ -214,7 +236,7 @@ export const planningCyclesRouter = router({
         .orderBy(desc(planningCycleActivations.targetYear))
         .limit(1);
       return {
-        year: activation?.targetYear || new Date().getFullYear(),
+        year: getAnnualScope()?.workspace.year || activation?.targetYear || 2026,
         isActive: Boolean(activation),
       };
     }),
@@ -222,8 +244,8 @@ export const planningCyclesRouter = router({
   overview: companyProcedure
     .input(companyInput.extend({ processId: z.number().int().positive(), targetYear: z.number().int().min(2020).max(2100) }))
     .query(async ({ input, ctx }) => {
-      await assertProcessAccessById(ctx, input.processId);
-      const db = await getDb();
+      await assertCycleProcess(ctx, input.companyId, input.processId);
+      const db = await getBaseDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [activation] = await db.select().from(planningCycleActivations)
         .where(and(eq(planningCycleActivations.companyId, input.companyId), eq(planningCycleActivations.targetYear, input.targetYear)))
@@ -257,25 +279,63 @@ export const planningCyclesRouter = router({
         snapshots,
         operationalItems,
         pendingCount,
-        ready: decisions.length > 0 && pendingCount === 0,
+        ready: Boolean(cycle && ["in_review", "ready"].includes(cycle.status)) && pendingCount === 0,
       };
     }),
 
   prepareDraft: companyProcedure
     .input(companyInput.extend({ processId: z.number().int().positive(), targetYear: z.number().int().min(2020).max(2100) }))
     .mutation(async ({ input, ctx }) => {
-      await assertProcessAccessById(ctx, input.processId);
-      const db = await getDb();
+      await assertCycleProcess(ctx, input.companyId, input.processId);
+      const db = await getBaseDb();
       if (!db) throw new Error("Base de datos no disponible");
       const sourceYear = input.targetYear - 1;
-      const activation = await getOrCreateActivation(input.companyId, input.targetYear, ctx.user?.id);
       const existingTarget = await db.select().from(planningCycles).where(and(
         eq(planningCycles.companyId, input.companyId),
         eq(planningCycles.processId, input.processId),
         eq(planningCycles.cycleYear, input.targetYear),
       )).limit(1);
-      if (existingTarget[0]) return { cycleId: existingTarget[0].id, created: false };
+      if (existingTarget[0]) {
+        const existing = existingTarget[0];
+        if (!["in_review", "ready"].includes(existing.status)) return { cycleId: existing.id, created: false, itemCount: 0 };
+        const destination = (await listWorkspaces(input.companyId)).find(w => w.year === input.targetYear);
+        if (destination && (destination.status !== "open" || await getProcessWorkspaceStatus(destination.id, input.processId) === "incorporated")) {
+          return { cycleId: existing.id, created: false, itemCount: 0 };
+        }
+        const candidates = await buildCandidates(input.companyId, input.processId, sourceYear);
+        return db.transaction(async tx => {
+          // Same lock order as incorporation: workspace -> process state -> cycle.
+          // The cycle can remain ready after incorporation; status alone is not sufficient.
+          if (destination) {
+            const [workspace] = await tx.select().from(annualWorkspaces).where(eq(annualWorkspaces.id, destination.id)).for("update");
+            const [state] = await tx.select().from(annualProcessStates).where(and(eq(annualProcessStates.workspaceId, destination.id), eq(annualProcessStates.processId, input.processId))).for("update");
+            if (!workspace || workspace.status !== "open" || state?.status === "incorporated") return { cycleId: existing.id, created: false, itemCount: 0 };
+          }
+          const [locked] = await tx.select().from(planningCycles).where(eq(planningCycles.id, existing.id)).for("update");
+          if (!locked || !["in_review", "ready"].includes(locked.status)) throw new Error("El ciclo cambió mientras se preparaba; no se modifica un proceso incorporado");
+          const prior = await tx.select().from(planningCycleDecisions).where(eq(planningCycleDecisions.targetCycleId, locked.id));
+          const priorKeys = new Set(prior.map(d => `${d.itemType}:${d.sourceItemKey}`));
+          const missing = candidates.filter(candidate => !priorKeys.has(`${candidate.itemType}:${candidate.sourceItemKey}`));
+          if (missing.length) {
+            await tx.update(planningCycles).set({
+              status: "in_review", managerApprovalStatus: "pending", managerReviewedByAccountId: null,
+              managerReviewedAt: null, managerReviewNote: null,
+            }).where(eq(planningCycles.id, locked.id));
+            await tx.insert(planningCycleDecisions).values(missing.map(candidate => ({
+              targetCycleId: locked.id, sourceCycleId: locked.sourceCycleId, itemType: candidate.itemType,
+              sourceItemKey: candidate.sourceItemKey, title: candidate.title, description: candidate.description,
+              completionPercent: candidate.completionPercent.toFixed(2), sourcePayloadJson: candidate.sourcePayloadJson,
+              decision: "pending" as const,
+            })));
+          }
+          // Existing approved payloads/choices are immutable here, even if stale.
+          // Refresh is explicit mutation, never a GET and never approval inheritance.
+          return { cycleId: locked.id, created: false, itemCount: missing.length };
+        });
+      }
 
+      const candidates = await buildCandidates(input.companyId, input.processId, sourceYear);
+      const activation = await getOrCreateActivation(input.companyId, input.targetYear, ctx.user?.id);
       let [sourceCycle] = await db.select().from(planningCycles).where(and(
         eq(planningCycles.companyId, input.companyId),
         eq(planningCycles.processId, input.processId),
@@ -311,7 +371,6 @@ export const planningCyclesRouter = router({
         eq(planningCycles.cycleYear, input.targetYear),
       )).limit(1);
 
-      const candidates = await buildCandidates(input.companyId, input.processId, sourceYear);
       if (candidates.length) {
         await db.insert(planningCycleDecisions).values(candidates.map((candidate) => ({
           targetCycleId: targetCycle.id,
@@ -335,7 +394,8 @@ export const planningCyclesRouter = router({
       note: z.string().max(2000).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const db = await getDb();
+      assertCompanyReadAccess(ctx, input.companyId);
+      const db = await getBaseDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [decision] = await db.select().from(planningCycleDecisions)
         .where(eq(planningCycleDecisions.id, input.decisionId)).limit(1);
@@ -346,26 +406,39 @@ export const planningCyclesRouter = router({
         throw new Error("El borrador no está disponible para cambios");
       }
       await assertProcessAccessById(ctx, cycle.processId);
-      await db.update(planningCycleDecisions).set({
-        decision: input.decision as CycleDecision,
-        decisionNote: input.note?.trim() || null,
-        decidedByAccountId: ctx.user?.id || null,
-        decidedAt: new Date(),
-      }).where(eq(planningCycleDecisions.id, input.decisionId));
+      await db.transaction(async (tx) => {
+        // An approval belongs to the exact decisions reviewed, not to future edits.
+        // Lock/update the cycle first, matching the migrator's locking order.
+        await tx.update(planningCycles).set({
+          status: "in_review",
+          managerApprovalStatus: "pending",
+          managerReviewedByAccountId: null,
+          managerReviewedAt: null,
+          managerReviewNote: null,
+        }).where(eq(planningCycles.id, cycle.id));
+        await tx.update(planningCycleDecisions).set({
+          decision: input.decision as CycleDecision,
+          decisionNote: input.note?.trim() || null,
+          decidedByAccountId: ctx.user?.id || null,
+          decidedAt: new Date(),
+        }).where(eq(planningCycleDecisions.id, input.decisionId));
+      });
       return { success: true };
     }),
 
   markReady: companyProcedure
     .input(companyInput.extend({ cycleId: z.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {
-      const db = await getDb();
+      assertCompanyReadAccess(ctx, input.companyId);
+      const db = await getBaseDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [cycle] = await db.select().from(planningCycles).where(eq(planningCycles.id, input.cycleId)).limit(1);
       if (!cycle || cycle.companyId !== input.companyId) throw new Error("Ciclo no encontrado");
+      if (!["in_review", "ready"].includes(cycle.status)) throw new Error("El ciclo no está disponible para preparación");
       await assertProcessAccessById(ctx, cycle.processId);
       const decisions = await db.select().from(planningCycleDecisions)
         .where(eq(planningCycleDecisions.targetCycleId, input.cycleId));
-      if (!decisions.length || decisions.some((decision) => decision.decision === "pending")) {
+      if (decisions.some((decision) => decision.decision === "pending")) {
         throw new Error("Debe decidir el destino de todos los elementos antes de marcar el ciclo como listo");
       }
       await db.update(planningCycles).set({
@@ -388,7 +461,7 @@ export const planningCyclesRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertCompanyCycleManagement(ctx, input.companyId);
-      const db = await getDb();
+      const db = await getBaseDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [cycle] = await db.select().from(planningCycles).where(eq(planningCycles.id, input.cycleId)).limit(1);
       if (!cycle || cycle.companyId !== input.companyId || cycle.status !== "ready") {
@@ -412,7 +485,7 @@ export const planningCyclesRouter = router({
     .input(companyInput.extend({ targetYear: z.number().int().min(2020).max(2100) }))
     .query(async ({ input, ctx }) => {
       assertCompanyCycleManagement(ctx, input.companyId);
-      const db = await getDb();
+      const db = await getBaseDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [activation] = await db.select().from(planningCycleActivations).where(and(
         eq(planningCycleActivations.companyId, input.companyId),
@@ -456,7 +529,7 @@ export const planningCyclesRouter = router({
     .input(companyInput.extend({ targetYear: z.number().int().min(2020).max(2100), deadline: z.string().nullable().optional() }))
     .mutation(async ({ input, ctx }) => {
       assertCompanyCycleManagement(ctx, input.companyId);
-      const db = await getDb();
+      const db = await getBaseDb();
       if (!db) throw new Error("Base de datos no disponible");
       const activation = await getOrCreateActivation(input.companyId, input.targetYear, ctx.user?.id);
       if (!["draft", "active"].includes(activation.status)) throw new Error("El ciclo empresarial no permite cambiar su fecha límite");
@@ -470,7 +543,7 @@ export const planningCyclesRouter = router({
     .input(companyInput.extend({ targetYear: z.number().int().min(2020).max(2100) }))
     .mutation(async ({ input, ctx }) => {
       assertCompanyCycleManagement(ctx, input.companyId);
-      const db = await getDb();
+      const db = await getBaseDb();
       if (!db) throw new Error("Base de datos no disponible");
       const [activation] = await db.select().from(planningCycleActivations).where(and(
         eq(planningCycleActivations.companyId, input.companyId),
@@ -483,6 +556,27 @@ export const planningCyclesRouter = router({
         eq(planningCycles.companyId, input.companyId),
         eq(planningCycles.cycleYear, input.targetYear),
       ));
+      const annualWorkspace = (await listWorkspaces(input.companyId)).find((workspace) => workspace.year === input.targetYear);
+      if (annualWorkspace?.storage === "namespace") {
+        if (annualWorkspace.status !== "open") throw new Error(`El año ${input.targetYear} está cerrado y es de solo lectura.`);
+        let activatedCycles = 0;
+        for (const cycle of targetCycles) {
+          if (!["ready", "active"].includes(cycle.status) || cycle.managerApprovalStatus !== "approved") continue;
+          await incorporateApprovedProcess({
+            companyId: input.companyId,
+            year: input.targetYear,
+            processId: cycle.processId,
+            actor: ctx,
+          });
+          activatedCycles += 1;
+        }
+        // Annual incorporation owns its transaction. Never create legacy KPI copies,
+        // rewrite source snapshots or close 2026 merely by activating 2027.
+        return { success: true, activatedCycles, alreadyActive: activation.status === "active", annualWorkspace: true };
+      }
+      if (input.targetYear > 2026) {
+        throw new Error(`Gerencia debe crear primero el espacio anual ${input.targetYear} en Gestionar años; esta activación no puede cerrar ni modificar el año fuente.`);
+      }
       const sourceCyclesToClose = new Set<number>();
       for (const cycle of targetCycles) {
         if (cycle.status !== "ready" || cycle.managerApprovalStatus !== "approved") continue;

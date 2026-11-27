@@ -18,6 +18,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerScheduleAlertsCron } from "../lib/scheduleAlerts";
 import { registerStrategicSnapshotsCron } from "../lib/strategicSnapshots";
+import { annualCorporateHttpScope } from "../annual/requestScope";
 
 async function startServer() {
   // Validate OAuth configuration before starting server
@@ -44,6 +45,8 @@ async function startServer() {
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   registerAuthSessionRoutes(app);
+  // Resolve auth/scope and reject closed writes before multipart parsing/S3.
+  app.use(["/api/upload", "/api/import"], annualCorporateHttpScope);
   registerFileUploadRoutes(app);
   registerManagementProgramUploadRoutes(app);
   registerManagementSystemUploadRoutes(app);
@@ -59,8 +62,8 @@ async function startServer() {
       createContext,
     })
   );
-  // development mode uses Vite, production mode uses static files
-  if (process.env.NODE_ENV === "development") {
+  // A local review may serve the compiled UI without enabling production storage.
+  if (process.env.NODE_ENV === "development" && process.env.LOCAL_STATIC_PREVIEW !== "true") {
     await setupVite(app, server);
   } else {
     serveStatic(app);

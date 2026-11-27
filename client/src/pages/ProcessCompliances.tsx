@@ -1,3 +1,4 @@
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -593,6 +594,10 @@ export default function ProcessCompliances() {
     }
   };
 
+  useAnnualExitGuard(async () => {
+    if (!latestDraftRef.current.editingId && JSON.stringify(latestDraftRef.current.form) !== JSON.stringify(emptyForm)) return false;
+    return flushActivityAutosave();
+  });
   if (!processId) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6">

@@ -1,3 +1,5 @@
+import { getSelectedManagementYear } from "@/lib/annualWorkspace";
+import { annualBusinessStorage } from "@/lib/annualWorkspace";
 import React, { useState, useMemo, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
@@ -125,7 +127,7 @@ export default function ConsolidatedSchedule() {
   }
   // 3. Check localStorage
   else {
-    const selectedProcessId = localStorage.getItem("selectedProcessId");
+    const selectedProcessId = annualBusinessStorage.getItem("selectedProcessId");
     resolvedProcessId = selectedProcessId ? parseInt(selectedProcessId) : 0;
   }
 
@@ -138,7 +140,7 @@ export default function ConsolidatedSchedule() {
     catch { return null; }
   }, [processId, companyId, searchParams]);
   const [currentMonth, setCurrentMonth] = useState(() => restoredView?.month ?? new Date().getMonth());
-  const [currentYear, setCurrentYear] = useState(() => restoredView?.year ?? new Date().getFullYear());
+  const [currentYear, setCurrentYear] = useState(() => restoredView?.year ?? getSelectedManagementYear());
   const [showGantt, setShowGantt] = useState(() => restoredView?.gantt ?? false);
   useEffect(() => {
     if (!processId) return;
@@ -324,7 +326,7 @@ export default function ConsolidatedSchedule() {
 
     activities.forEach(activity => {
       // UID estable basado en el id de la actividad — evita duplicados al reimportar
-      const uid = `${activity.id}@sige.consultores`;
+      const uid = `${companyId || 0}-${processId || 0}-${getSelectedManagementYear()}-` + `${activity.id}@sige.consultores`;
       const dateStr = formatDate(activity.dueDate);
       const summary = escapeICS(`[${activity.badge}] ${activity.action}`);
       const description = escapeICS(
@@ -357,7 +359,7 @@ export default function ConsolidatedSchedule() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `cronograma-sige-proceso-${processId}.ics`;
+    a.download = `cronograma-isge-${companyId}-${processId}-${getSelectedManagementYear()}.ics`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -391,7 +393,7 @@ export default function ConsolidatedSchedule() {
                 Cronograma Consolidado
               </h1>
               <ActivePlanningCycleBadge
-                companyId={Number(localStorage.getItem("selectedCompanyId"))}
+                companyId={Number(annualBusinessStorage.getItem("selectedCompanyId"))}
               />
             </div>
             <div className="flex items-center gap-3">

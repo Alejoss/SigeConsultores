@@ -3,6 +3,7 @@ import { z } from "zod";
 import { companyManagementProcedure, companyReadProcedure, companyProcedure, router } from "../_core/trpc";
 import { assertCompanyRecordManagementAccess } from "../_core/companyPermissions";
 import { getDb } from "../db";
+import { getAnnualScope } from "../annual/runtime";
 import {
   strategicObjectives,
   strategicObjectiveMeasurementConfigs,
@@ -94,7 +95,7 @@ export const strategicObjectivesRouter = router({
     .mutation(async ({ input }) => {
       const db = await requireDb();
       return db.transaction(async tx => {
-        const startYear = input.deadline ? new Date(input.deadline).getFullYear() : new Date().getFullYear();
+        const startYear = input.deadline ? new Date(input.deadline).getFullYear() : getAnnualScope()?.workspace.year ?? new Date().getFullYear();
         const [created] = await tx.insert(strategicObjectives).values({
           companyId: input.companyId,
           objective: input.name,
@@ -142,7 +143,7 @@ export const strategicObjectivesRouter = router({
         if (input.target !== undefined) patch.target = input.target || null;
         if (input.responsible !== undefined) patch.generalManagerName = input.responsible || null;
         if (input.deadline !== undefined) {
-          patch.startYear = input.deadline ? new Date(input.deadline).getFullYear() : new Date().getFullYear();
+          patch.startYear = input.deadline ? new Date(input.deadline).getFullYear() : getAnnualScope()?.workspace.year ?? new Date().getFullYear();
           patch.endYear = patch.startYear + 1;
         }
         if (Object.keys(patch).length) {

@@ -1,6 +1,9 @@
 #!/bin/sh
 set -eu
 
+echo "[entrypoint] Ensuring additive annual namespace compatibility..."
+node scripts/annual-additive-schema.mjs
+
 if [ "${RUN_DB_PUSH_ON_STARTUP:-true}" = "true" ]; then
   echo "[entrypoint] Preparing legacy schema (non-interactive)..."
   node scripts/pre-push-schema-compat.mjs

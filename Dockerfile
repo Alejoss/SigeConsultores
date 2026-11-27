@@ -33,6 +33,9 @@ COPY --from=builder /app/scripts/create-superuser.mjs ./scripts/create-superuser
 COPY --from=builder /app/scripts/migrate-agrogana-from-backup.mjs ./scripts/migrate-agrogana-from-backup.mjs
 COPY --from=builder /app/scripts/pre-push-schema-compat.mjs ./scripts/pre-push-schema-compat.mjs
 COPY --from=builder /app/scripts/backfill-strategic-timeline.mjs ./scripts/backfill-strategic-timeline.mjs
+COPY --from=builder /app/scripts/backfill-file-sizes.mjs ./scripts/backfill-file-sizes.mjs
+COPY --from=builder /app/scripts/annual-backfill-guard.mjs ./scripts/annual-backfill-guard.mjs
+COPY --from=builder /app/scripts/annual-additive-schema.mjs ./scripts/annual-additive-schema.mjs
 
 # Windows checkouts suelen guardar .sh con CRLF; el shebang /bin/sh\r rompe el arranque ("no such file or directory").
 RUN sed -i 's/\r$//' ./docker/entrypoint.sh && chmod +x ./docker/entrypoint.sh

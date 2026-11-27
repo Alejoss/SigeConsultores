@@ -1,3 +1,4 @@
+import { getSelectedManagementYear } from "@/lib/annualWorkspace";
 import {
   ChangeEvent,
   useCallback,
@@ -345,7 +346,7 @@ export default function Payroll() {
   const [, setLocation] = useLocation();
   const companyId = useMemo(() => getCompanyIdFromSession() || 0, []);
   const { canManageCompany } = useCompanyManagementPermission(companyId);
-  const performanceYear = useMemo(() => new Date().getFullYear(), []);
+  const performanceYear = useMemo(() => getSelectedManagementYear(), []);
   const utils = trpc.useUtils();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const rotationChartRef = useRef<HTMLDivElement>(null);

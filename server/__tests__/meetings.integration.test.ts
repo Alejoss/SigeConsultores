@@ -12,9 +12,15 @@ import {
   processes,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { router } from "../_core/trpc";
 import { getConsolidatedScheduleActivities } from "../lib/consolidatedScheduleActivities";
 import { linkedCommitmentsRouter } from "../routers/linkedCommitments";
 import { meetingsRouter } from "../routers/meetings";
+// Preserve the production tRPC path used by annual scope and ACL checks.
+const integrationRouter = router({
+  meetings: meetingsRouter,
+  linkedCommitments: linkedCommitmentsRouter,
+});
 
 const testName = `Prueba reuniones manuales ${Date.now()}`;
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -27,17 +33,17 @@ let typeId = 0;
 let meetingId = 0;
 
 function adminMeetingsCaller() {
-  return meetingsRouter.createCaller({
+  return integrationRouter.createCaller({
     user: { role: "admin" },
     manager: null,
     processLeader: null,
     req: {} as never,
     res: {} as never,
-  } as never);
+  } as never).meetings;
 }
 
 function leaderMeetingsCaller(processId: number) {
-  return meetingsRouter.createCaller({
+  return integrationRouter.createCaller({
     user: null,
     manager: null,
     processLeader: {
@@ -50,11 +56,11 @@ function leaderMeetingsCaller(processId: number) {
     },
     req: {} as never,
     res: {} as never,
-  } as never);
+  } as never).meetings;
 }
 
 function targetLeaderCommitmentsCaller() {
-  return linkedCommitmentsRouter.createCaller({
+  return integrationRouter.createCaller({
     user: null,
     manager: null,
     processLeader: {
@@ -67,7 +73,7 @@ function targetLeaderCommitmentsCaller() {
     },
     req: {} as never,
     res: {} as never,
-  } as never);
+  } as never).linkedCommitments;
 }
 
 beforeAll(async () => {
@@ -433,7 +439,7 @@ describe("Reuniones e importación de actas: integración local", () => {
         objective: "Intento de importación no autorizada",
         assistantReportText: "Acta temporal de prueba",
       })
-    ).rejects.toThrow("solo puede gestionar las reuniones de su proceso");
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "No tienes acceso a este proceso" });
   });
 
   it("solo elimina reuniones vacías y anula las que ya tienen historial", async () => {
@@ -478,6 +484,6 @@ describe("Reuniones e importación de actas: integración local", () => {
         companyId,
         processId: targetProcessId,
       })
-    ).rejects.toThrow("solo puede gestionar las reuniones de su proceso");
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "No tienes acceso a este proceso" });
   });
 });

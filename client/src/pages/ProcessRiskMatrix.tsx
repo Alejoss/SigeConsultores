@@ -1,3 +1,4 @@
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
 import { useState, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -762,7 +763,7 @@ export default function ProcessRiskMatrix() {
   };
 
   const handleManualSave = () => {
-    if (!processId) return;
+  if (!processId) return;
     setIsSaving(true);
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = null;
@@ -782,6 +783,7 @@ export default function ProcessRiskMatrix() {
     />
   );
 
+  useAnnualExitGuard(flushBeforeNavigate);
   if (!processId) {
     return (
       <div className="p-6">

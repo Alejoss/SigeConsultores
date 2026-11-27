@@ -1,3 +1,4 @@
+import { getSelectedManagementYear } from "@/lib/annualWorkspace";
 import React, { useMemo, useRef, useState } from "react";
 
 export interface SimpleGanttActivity {
@@ -77,7 +78,7 @@ export const SimpleGanttChart: React.FC<SimpleGanttChartProps> = ({
 
   // Determine year range from activities
   const years = useMemo(() => {
-    if (activities.length === 0) return [new Date().getFullYear()];
+    if (activities.length === 0) return [getSelectedManagementYear()];
     const ys = Array.from(
       new Set(activities.map(a => a.dueDate.getFullYear()))
     );

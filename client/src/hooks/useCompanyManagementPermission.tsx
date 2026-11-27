@@ -1,3 +1,4 @@
+import { useAnnualWorkspace } from "@/contexts/AnnualWorkspaceContext";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
@@ -15,6 +16,7 @@ export function useCompanyManagementPermission(companyId: number | null | undefi
   const { user, loading: userLoading } = useAuth();
   const { isManagerLogin, isLoading: managerLoading } = useManagerAuth();
   const isProcessLeader = processLeaderSession !== null;
+  const { closed } = useAnnualWorkspace();
   const accessQuery = trpc.teamAccess.getMyCompanyManagementAccess.useQuery(
     { companyId: companyId || 0 },
     { enabled: isProcessLeader && Boolean(companyId) }
@@ -26,7 +28,7 @@ export function useCompanyManagementPermission(companyId: number | null | undefi
     managerLoading ||
     (isProcessLeader && accessQuery.isLoading);
   const canManageCompany =
-    !isChecking &&
+    !closed && !isChecking &&
     (user?.role === "admin" ||
       isManagerLogin ||
       (isProcessLeader && accessQuery.data?.accessLevel === "coordinator"));

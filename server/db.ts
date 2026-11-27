@@ -1,4 +1,6 @@
 import { drizzle } from "drizzle-orm/mysql2";
+import { createPool, type Pool } from "mysql2/promise";
+import { createAnnualClientProxy, getAnnualScope, validateAnnualRequestInput } from "./annual/runtime";
 import { sql, eq, and, or, desc, asc, inArray } from "drizzle-orm";
 import {
   InsertAccount,
@@ -56,19 +58,49 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
-let _db: ReturnType<typeof drizzle> | null = null;
+type Database = ReturnType<typeof drizzle<Record<string, unknown>, Pool>>;
+let _db: Database | null = null;
+let _pool: Pool | undefined;
+const scopedDatabases = new Map<string, Database>();
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
-export async function getDb() {
+/** Canonical service pool: lazy, unique, and never changes USE/session database. */
+export function getDatabasePool(): Pool {
+  if (!_pool) {
+    if (!process.env.DATABASE_URL?.trim()) throw new Error("Database not available: DATABASE_URL is required");
+    _pool = createPool(process.env.DATABASE_URL);
+  }
+  return _pool;
+}
+
+/** Always original tables, including when called inside an annual request. */
+export async function getBaseDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = drizzle(getDatabasePool());
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
     }
   }
   return _db;
+}
+
+/** Scoped handles capture metadata, not a mutable request/global year. */
+export async function getDb() {
+  const scope = getAnnualScope();
+  if (!scope) return getBaseDb();
+  const { workspace } = scope;
+  if (!process.env.DATABASE_URL && !_pool) throw new Error("Database not available for annual workspace; no base fallback.");
+  const key = JSON.stringify([workspace.id, workspace.companyId, workspace.year,
+    workspace.sourceYear, workspace.storage, workspace.status, workspace.strategy]);
+  let db = scopedDatabases.get(key);
+  if (!db) {
+    db = drizzle(createAnnualClientProxy(getDatabasePool(), workspace, validateAnnualRequestInput));
+    // Bound metadata cache. In-flight handles remain bound even when evicted.
+    if (scopedDatabases.size >= 256) scopedDatabases.delete(scopedDatabases.keys().next().value!);
+    scopedDatabases.set(key, db);
+  }
+  return db;
 }
 
 async function assignPlatformRoleIfMissing(

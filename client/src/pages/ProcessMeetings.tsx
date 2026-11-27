@@ -1,3 +1,4 @@
+import { annualFetch } from "@/lib/annualNavigation";
 import { useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
@@ -184,7 +185,7 @@ function MeetingFiles({
       formData.append("file", file);
       formData.append("companyId", String(companyId));
       formData.append("meetingId", String(meeting.id));
-      const response = await fetch("/api/upload/meeting-file", {
+      const response = await annualFetch("/api/upload/meeting-file", {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -316,7 +317,7 @@ function LocalEvidence({
       formData.append("file", file);
       formData.append("companyId", String(companyId));
       formData.append("agreementId", String(agreement.id));
-      const response = await fetch("/api/upload/meeting-agreement-evidence", {
+      const response = await annualFetch("/api/upload/meeting-agreement-evidence", {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -1216,7 +1217,7 @@ function AssistantMeetingImportForm({
           formData.append("file", reportFile);
           formData.append("companyId", String(companyId));
           formData.append("meetingId", String(result.id));
-          const response = await fetch("/api/upload/meeting-file", {
+          const response = await annualFetch("/api/upload/meeting-file", {
             method: "POST",
             body: formData,
             credentials: "include",
@@ -1308,7 +1309,7 @@ function AssistantMeetingImportForm({
       formData.append("file", file);
       formData.append("companyId", String(companyId));
       formData.append("processId", String(processId));
-      const response = await fetch("/api/import/meeting-report-preview", {
+      const response = await annualFetch("/api/import/meeting-report-preview", {
         method: "POST",
         body: formData,
         credentials: "include",

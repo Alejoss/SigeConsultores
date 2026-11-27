@@ -1,3 +1,5 @@
+import AnnualWorkspaces from "./pages/AnnualWorkspaces";
+import { AnnualWorkspaceFrame } from "./contexts/AnnualWorkspaceContext";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
@@ -172,6 +174,7 @@ function Router() {
     <Switch>
       <Route path={"/"} component={RootRedirect} />
       <Route path={"/login"} component={LoginSelector} />
+      <Route path={"/annual-workspaces"} component={AnnualWorkspaces} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/company-info"} component={CompanyInfo} />
       <Route path={"/values"} component={Values} />
@@ -367,7 +370,7 @@ function App() {
         <ProcessLeaderAuthProvider>
           <TooltipProvider>
             <Toaster />
-            <Router />
+            <AnnualWorkspaceFrame><Router /></AnnualWorkspaceFrame>
           </TooltipProvider>
         </ProcessLeaderAuthProvider>
       </ThemeProvider>

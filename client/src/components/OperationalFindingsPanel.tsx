@@ -1,3 +1,5 @@
+import { useAnnualMutationWait } from "@/hooks/useAnnualMutationWait";
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, ClipboardCheck, Link2, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -79,6 +81,7 @@ function FindingCard({
 }) {
   const [draft, setDraft] = useState(() => toFindingDraft(value));
   const [linkDialog, setLinkDialog] = useState(false);
+  const waitForMutations = useAnnualMutationWait();
   const saveTimeoutRef = useRef<number | null>(null);
   const updateInFlightRef = useRef(false);
   const pendingPatchRef = useRef<Partial<FindingUpdate> | null>(null);
@@ -134,6 +137,14 @@ function FindingCard({
     });
   };
 
+  useAnnualExitGuard(async () => {
+    if (saveTimeoutRef.current !== null) window.clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = null;
+    if (!(await waitForMutations())) return false;
+    if (!pendingPatchRef.current) return true;
+    const patch = pendingPatchRef.current;
+    try { await update.mutateAsync({ id: value.id, companyId, ...patch }); pendingPatchRef.current = null; return true; } catch { return false; }
+  });
   const change = <K extends keyof FindingDraft>(field: K, next: FindingDraft[K]) => {
     setDraft(current => ({ ...current, [field]: next }));
     dirtyFieldsRef.current.add(field);

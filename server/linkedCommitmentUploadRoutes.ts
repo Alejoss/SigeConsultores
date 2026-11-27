@@ -115,9 +115,9 @@ export function registerLinkedCommitmentUploadRoutes(app: Express) {
         }
 
         const fileName = safeFileName(req.file.originalname);
-        const fileKey = `linked-commitments/${companyId}/${linkedCommitmentId}/${randomUUID()}-${fileName}`;
-        const { url } = await storagePut(
-          fileKey,
+        const requestedFileKey = `linked-commitments/${companyId}/${linkedCommitmentId}/${randomUUID()}-${fileName}`;
+        const { url, key: fileKey } = await storagePut(
+          requestedFileKey,
           req.file.buffer,
           req.file.mimetype
         );

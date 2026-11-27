@@ -1,3 +1,5 @@
+import { useAnnualMutationWait } from "@/hooks/useAnnualMutationWait";
+import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -134,6 +136,7 @@ const CHARACTERIZATION_MODULES = CHARACTERIZATION_MODULE_GROUPS.flatMap(
 );
 
 export default function ProcessCharacterization() {
+  const waitForMutations = useAnnualMutationWait();
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { isManagerLogin } = useManagerAuth();
@@ -359,6 +362,14 @@ export default function ProcessCharacterization() {
     };
   }, [data, macroProcessEditable, processId]);
 
+  useAnnualExitGuard(async () => {
+    const current = { macroProcess: macroProcessEditable, responsible: data.responsible, responsibleEmail: data.responsibleEmail, participants: data.participants, objective: data.objective, scope: data.scope, resources: data.resources };
+    if (!hasHydratedInitialDataRef.current || JSON.stringify(current) === lastSavedDataRef.current) return true;
+    if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    autoSaveTimeoutRef.current = null;
+    if (!(await waitForMutations()) || !processId) return false;
+    try { await updateMutation.mutateAsync({ processId, ...current }); lastSavedDataRef.current = JSON.stringify(current); return true; } catch { return false; }
+  });
   const handleSave = async () => {
     if (!processId) return;
 

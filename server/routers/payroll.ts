@@ -13,6 +13,7 @@ import {
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { companyPersonnelManagementProcedure, companyProcedure, companyReadProcedure, router } from "../_core/trpc";
+import { getAnnualScope } from "../annual/runtime";
 
 const employeeInput = z.object({
   companyId: z.number(),
@@ -332,7 +333,7 @@ export const payrollRouter = router({
           ? await getEmployeePerformance(
               db,
               employees.map(employee => employee.id),
-              input.performanceYear ?? new Date().getFullYear()
+              input.performanceYear ?? getAnnualScope()?.workspace.year ?? new Date().getFullYear()
             )
           : new Map<number, number>();
       const participantIds = Array.from(new Set(
@@ -950,7 +951,7 @@ export const payrollRouter = router({
       const performanceByEmployee = await getEmployeePerformance(
         db,
         activeEmployeesForPerformance.map(employee => employee.id),
-        input.performanceYear ?? new Date().getFullYear()
+        input.performanceYear ?? getAnnualScope()?.workspace.year ?? new Date().getFullYear()
       );
       const evaluatedPerformances = activeEmployeesForPerformance
         .map(employee => performanceByEmployee.get(employee.id))

@@ -2,9 +2,15 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { companies, criticalityMatrix, processCompliances, processFODA, processes, stakeholders } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { router } from "../_core/trpc";
 import { getConsolidatedScheduleActivities } from "../lib/consolidatedScheduleActivities";
 import { consolidatedIndicatorsRouter } from "../routers/consolidatedIndicators";
 import { processActivitiesRouter } from "../routers/processActivities";
+// Preserve the production tRPC path used by annual scope and ACL checks.
+const integrationRouter = router({
+  processCompliances: processActivitiesRouter,
+  consolidatedIndicators: consolidatedIndicatorsRouter,
+});
 
 const testName = `Prueba actividades ${Date.now()}`;
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -17,17 +23,17 @@ let weeklyId = 0;
 let monthlyId = 0;
 
 function adminActivitiesCaller() {
-  return processActivitiesRouter.createCaller({
+  return integrationRouter.createCaller({
     user: { role: "admin" },
     manager: null,
     processLeader: null,
     req: {} as never,
     res: {} as never,
-  } as never);
+  } as never).processCompliances;
 }
 
 function sourceLeaderActivitiesCaller() {
-  return processActivitiesRouter.createCaller({
+  return integrationRouter.createCaller({
     user: null,
     manager: null,
     processLeader: {
@@ -40,7 +46,7 @@ function sourceLeaderActivitiesCaller() {
     },
     req: {} as never,
     res: {} as never,
-  } as never);
+  } as never).processCompliances;
 }
 
 function baseActivityInput() {
@@ -191,9 +197,9 @@ describe("Actividades del proceso: integración local", () => {
     expect(monthly?.progress).toBe(50);
     expect(monthly?.occurrences).toHaveLength(3);
 
-    const indicators = await consolidatedIndicatorsRouter.createCaller({
+    const indicators = await integrationRouter.createCaller({
       user: { role: "admin" }, manager: null, processLeader: null, req: {} as never, res: {} as never,
-    } as never).getConsolidatedIndicators({ processId });
+    } as never).consolidatedIndicators.getConsolidatedIndicators({ processId });
     const activitiesIndicator = indicators.find(item => item.id === "promedio_cumplimiento");
     expect(activitiesIndicator?.name).toBe("Actividades");
     expect(activitiesIndicator?.value).toBe(33);
@@ -227,9 +233,9 @@ describe("Actividades del proceso: integración local", () => {
       ]),
     });
 
-    const indicators = await consolidatedIndicatorsRouter.createCaller({
+    const indicators = await integrationRouter.createCaller({
       user: { role: "admin" }, manager: null, processLeader: null, req: {} as never, res: {} as never,
-    } as never).getConsolidatedIndicators({ processId });
+    } as never).consolidatedIndicators.getConsolidatedIndicators({ processId });
     const otgIndicator = indicators.find(item => item.id === "total_alcanzado");
 
     expect(otgIndicator?.compliance).toBe(75);
@@ -257,9 +263,9 @@ describe("Actividades del proceso: integración local", () => {
       { processId, stakeholderId: unplannedStakeholderId, incidence: "3", risk: "A", criticality: "3A", actionToTake: null, implementationStatus: true },
     ]);
 
-    const indicators = await consolidatedIndicatorsRouter.createCaller({
+    const indicators = await integrationRouter.createCaller({
       user: { role: "admin" }, manager: null, processLeader: null, req: {} as never, res: {} as never,
-    } as never).getConsolidatedIndicators({ processId });
+    } as never).consolidatedIndicators.getConsolidatedIndicators({ processId });
     const stakeholderIndicator = indicators.find(item => item.id === "cumplimiento");
 
     expect(stakeholderIndicator).toMatchObject({
@@ -273,6 +279,6 @@ describe("Actividades del proceso: integración local", () => {
     const leader = sourceLeaderActivitiesCaller();
     const activities = await leader.list({ processId });
     expect(activities).toHaveLength(3);
-    await expect(leader.list({ processId: foreignProcessId })).rejects.toThrow("No tiene acceso");
+    await expect(leader.list({ processId: foreignProcessId })).rejects.toMatchObject({ code: "FORBIDDEN", message: "No tienes acceso a este proceso" });
   });
 });

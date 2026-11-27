@@ -1,19 +1,33 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import {
+  accountRoles,
+  accounts,
   audits,
+  companies,
   inspections,
   linkedCommitments,
   operationalFindingBaselines,
   operationalFindings,
   processes,
+  roles,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { router } from "../_core/trpc";
 import { getConsolidatedScheduleActivities } from "../lib/consolidatedScheduleActivities";
 import { linkedCommitmentsRouter } from "../routers/linkedCommitments";
 import { operationalFindingsRouter } from "../routers/operationalFindings";
+// Preserve the production tRPC path used by annual scope and ACL checks.
+const integrationRouter = router({
+  operationalFindings: operationalFindingsRouter,
+  linkedCommitments: linkedCommitmentsRouter,
+});
 
-const companyId = 991003;
+const testName = `Hallazgos operativos ${Date.now()}`;
+let companyId = 0;
+const accountIds: number[] = [];
+let firstLeaderAccountId = 0;
+let secondLeaderAccountId = 0;
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
 let auditId = 0;
 let inspectionId = 0;
@@ -23,31 +37,31 @@ let auditFindingId = 0;
 let inspectionFindingId = 0;
 
 function managerCaller() {
-  return operationalFindingsRouter.createCaller({
+  return integrationRouter.createCaller({
     user: { role: "admin" },
     manager: null,
     processLeader: null,
     req: {} as never,
     res: {} as never,
-  } as never);
+  } as never).operationalFindings;
 }
 
 function linkManagerCaller() {
-  return linkedCommitmentsRouter.createCaller({
+  return integrationRouter.createCaller({
     user: { role: "admin" },
     manager: null,
     processLeader: null,
     req: {} as never,
     res: {} as never,
-  } as never);
+  } as never).linkedCommitments;
 }
 
 function leaderCaller(processId: number) {
-  return linkedCommitmentsRouter.createCaller({
+  return integrationRouter.createCaller({
     user: null,
     manager: null,
     processLeader: {
-      processLeaderId: 1,
+      processLeaderId: processId === processOneId ? firstLeaderAccountId : secondLeaderAccountId,
       leaderName: "Jefe de prueba",
       leaderEmail: "hallazgos-prueba@example.test",
       processId,
@@ -56,18 +70,31 @@ function leaderCaller(processId: number) {
     },
     req: {} as never,
     res: {} as never,
-  } as never);
+  } as never).linkedCommitments;
 }
 
 beforeAll(async () => {
   db = (await getDb()) as NonNullable<Awaited<ReturnType<typeof getDb>>>;
   if (!db) throw new Error("La base aislada de hallazgos no está disponible.");
-  await db.delete(linkedCommitments).where(eq(linkedCommitments.companyId, companyId));
-  await db.delete(operationalFindings).where(eq(operationalFindings.companyId, companyId));
-  await db.delete(operationalFindingBaselines).where(eq(operationalFindingBaselines.companyId, companyId));
-  await db.delete(processes).where(eq(processes.companyId, companyId));
-  await db.delete(audits).where(eq(audits.companyId, companyId));
-  await db.delete(inspections).where(eq(inspections.companyId, companyId));
+  const [leaderRole] = await db.select({ id: roles.id }).from(roles)
+    .where(eq(roles.slug, "process_leader")).limit(1);
+  if (!leaderRole) throw new Error("Rol process_leader no disponible.");
+  for (const suffix of ["owner", "leader-one", "leader-two"]) {
+    const result = await db.insert(accounts).values({
+      openId: `finding-${suffix}-${Date.now()}`,
+      name: `${testName} ${suffix}`,
+      email: `finding-${suffix}-${Date.now()}@example.test`,
+      status: "active",
+    });
+    accountIds.push(Number(result[0].insertId));
+  }
+  [, firstLeaderAccountId, secondLeaderAccountId] = accountIds;
+  const company = await db.insert(companies).values({
+    name: testName,
+    ownerAccountId: accountIds[0],
+    status: "En Proceso",
+  });
+  companyId = Number(company[0].insertId);
 
   const firstProcess = await db.insert(processes).values({
     companyId,
@@ -81,6 +108,11 @@ beforeAll(async () => {
   });
   processOneId = Number(firstProcess[0].insertId);
   processTwoId = Number(secondProcess[0].insertId);
+
+  await db.insert(accountRoles).values([
+    { accountId: firstLeaderAccountId, roleId: leaderRole.id, companyId, processId: processOneId, status: "active" },
+    { accountId: secondLeaderAccountId, roleId: leaderRole.id, companyId, processId: processTwoId, status: "active" },
+  ]);
 
   const audit = await db.insert(audits).values({
     companyId,
@@ -102,12 +134,18 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (!db) return;
-  await db.delete(linkedCommitments).where(eq(linkedCommitments.companyId, companyId));
-  await db.delete(operationalFindings).where(eq(operationalFindings.companyId, companyId));
-  await db.delete(operationalFindingBaselines).where(eq(operationalFindingBaselines.companyId, companyId));
-  await db.delete(processes).where(eq(processes.companyId, companyId));
-  await db.delete(audits).where(eq(audits.companyId, companyId));
-  await db.delete(inspections).where(eq(inspections.companyId, companyId));
+  // Only the freshly inserted company and accounts belong to this suite.
+  if (companyId) {
+    await db.delete(linkedCommitments).where(eq(linkedCommitments.companyId, companyId));
+    await db.delete(operationalFindings).where(eq(operationalFindings.companyId, companyId));
+    await db.delete(operationalFindingBaselines).where(eq(operationalFindingBaselines.companyId, companyId));
+    await db.delete(accountRoles).where(eq(accountRoles.companyId, companyId));
+    await db.delete(processes).where(eq(processes.companyId, companyId));
+    await db.delete(audits).where(eq(audits.companyId, companyId));
+    await db.delete(inspections).where(eq(inspections.companyId, companyId));
+    await db.delete(companies).where(eq(companies.id, companyId));
+  }
+  if (accountIds.length) await db.delete(accounts).where(inArray(accounts.id, accountIds));
 });
 
 describe("Hallazgos operativos: integración aislada", () => {

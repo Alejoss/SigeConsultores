@@ -12,9 +12,16 @@ import {
   roles,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { router } from "../_core/trpc";
 import { linkedCommitmentsRouter } from "../routers/linkedCommitments";
 import { processCharacterizationRouter } from "../routers/processCharacterization";
 import { processMapRouter } from "../routers/processMap";
+// Preserve the production tRPC path used by annual scope and ACL checks.
+const integrationRouter = router({
+  linkedCommitments: linkedCommitmentsRouter,
+  processCharacterization: processCharacterizationRouter,
+  processMap: processMapRouter,
+});
 
 // Prefijo exclusivo de esta suite; no reutiliza fixture9991 ni datos existentes.
 const prefix = "compliance-link-targets-994704";
@@ -334,8 +341,7 @@ afterAll(async () => {
 
 describe("Selector de vinculación de Cumplimientos: integración local", () => {
   it("ofrece al Coordinador todos los procesos de su empresa y sólo los campos del selector", async () => {
-    const targets = await linkedCommitmentsRouter
-      .createCaller(leaderContext())
+    const targets = await integrationRouter.createCaller(leaderContext()).linkedCommitments
       .listAssignableComplianceProcesses(sourceInput);
     expect([...targets].sort((a, b) => a.id - b.id)).toEqual(expectedTargets);
   });
@@ -346,8 +352,7 @@ describe("Selector de vinculación de Cumplimientos: integración local", () => 
   ] as const)(
     "conserva todos los destinos para %s",
     async (_role, makeContext) => {
-      const targets = await linkedCommitmentsRouter
-        .createCaller(makeContext())
+      const targets = await integrationRouter.createCaller(makeContext()).linkedCommitments
         .listAssignableComplianceProcesses(sourceInput);
       expect([...targets].sort((a, b) => a.id - b.id)).toEqual(expectedTargets);
     }
@@ -366,7 +371,7 @@ describe("Selector de vinculación de Cumplimientos: integración local", () => 
   ] as const)(
     "deniega destinos y vínculos a %s",
     async (_role, makeContext) => {
-      const caller = linkedCommitmentsRouter.createCaller(makeContext());
+      const caller = integrationRouter.createCaller(makeContext()).linkedCommitments;
       await expect(
         caller.listAssignableComplianceProcesses(sourceInput)
       ).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -387,7 +392,7 @@ describe("Selector de vinculación de Cumplimientos: integración local", () => 
   );
 
   it("rechaza una fuente inválida, inexistente o perteneciente a otra empresa", async () => {
-    const caller = linkedCommitmentsRouter.createCaller(leaderContext());
+    const caller = integrationRouter.createCaller(leaderContext()).linkedCommitments;
     await expect(
       caller.listAssignableComplianceProcesses({ ...sourceInput, sourceId: 0 })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
@@ -407,7 +412,7 @@ describe("Selector de vinculación de Cumplimientos: integración local", () => 
   });
 
   it("vincula a otro proceso de su empresa sin duplicarlo al repetir", async () => {
-    const caller = linkedCommitmentsRouter.createCaller(leaderContext());
+    const caller = integrationRouter.createCaller(leaderContext()).linkedCommitments;
     const input = {
       companyId: ids.company,
       sourceType: "company_compliance" as const,
@@ -436,7 +441,7 @@ describe("Selector de vinculación de Cumplimientos: integración local", () => 
   });
 
   it("rechaza destinos de otra empresa sin crear vínculos parciales", async () => {
-    const caller = linkedCommitmentsRouter.createCaller(leaderContext());
+    const caller = integrationRouter.createCaller(leaderContext()).linkedCommitments;
     await expect(
       caller.createLinks({
         companyId: ids.company,
@@ -444,7 +449,7 @@ describe("Selector de vinculación de Cumplimientos: integración local", () => 
         sourceId: ids.linkCompliance,
         processIds: [ids.strategicProcess, ids.foreignProcess],
       })
-    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "El proceso del input no pertenece a la empresa del espacio anual." });
     const links = await db
       .select({ id: linkedCommitments.id })
       .from(linkedCommitments)
@@ -461,7 +466,7 @@ describe("Selector de vinculación de Cumplimientos: integración local", () => 
   });
 
   it("mantiene el mapa limitado al propio y deniega consulta y caracterización ajenas aun con coordinación", async () => {
-    const processMap = processMapRouter.createCaller(leaderContext());
+    const processMap = integrationRouter.createCaller(leaderContext()).processMap;
     await expect(
       processMap.list({
         companyId: ids.company,
@@ -472,7 +477,7 @@ describe("Selector de vinculación de Cumplimientos: integración local", () => 
       processMap.get({ processId: ids.otherProcess })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(
-      processCharacterizationRouter.createCaller(leaderContext()).update({
+      integrationRouter.createCaller(leaderContext()).processCharacterization.update({
         processId: ids.otherProcess,
         objective: `${prefix} cambio no autorizado`,
       })
@@ -486,7 +491,7 @@ describe("Selector de vinculación de Cumplimientos: integración local", () => 
 
   it("conserva la consulta existente de progreso corporativo sobre otro proceso", async () => {
     await expect(
-      linkedCommitmentsRouter.createCaller(leaderContext()).listSourceProgress({
+      integrationRouter.createCaller(leaderContext()).linkedCommitments.listSourceProgress({
         ...sourceInput,
         sourceType: "company_compliance",
       })

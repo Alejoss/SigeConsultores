@@ -1,3 +1,4 @@
+import { useAnnualExitGuard } from "./useAnnualExitGuard";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type StrategicSaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
@@ -96,5 +97,6 @@ export function useStrategicAutosave<T>(save: (value: T) => Promise<unknown>, de
     };
   }, [drain]);
 
+  useAnnualExitGuard(flush);
   return { status, error, schedule, retry, flush };
 }

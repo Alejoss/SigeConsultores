@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import {
   changeManagementActions,
@@ -23,6 +23,9 @@ import { storageDelete, storageGet } from "../storage";
 import type { TrpcContext } from "../_core/context";
 import { companyProcedure, router } from "../_core/trpc";
 import { assertCompanyManagementAccess } from "../_core/companyPermissions";
+import { getAnnualScope } from "../annual/runtime";
+import { withAnnualBaseConnection } from "../annual/store";
+import { exactCommitmentReference } from "../annual/additionalActivities";
 
 const sourceTypeSchema = z.enum([
   "checklist_action",
@@ -409,7 +412,8 @@ async function getSourceLinks(
         eq(linkedCommitments.companyId, companyId),
         eq(linkedCommitments.sourceType, sourceType),
         eq(linkedCommitments.sourceId, sourceId),
-        eq(linkedCommitments.sourceSubId, sourceSubId)
+        eq(linkedCommitments.sourceSubId, sourceSubId),
+        isNull(linkedCommitments.sourceWorkspaceId)
       )
     );
 }
@@ -677,11 +681,11 @@ async function decorateCommitments(
   }
   const sourceGroups = new Map<string, typeof commitments>();
   for (const commitment of commitments) {
-    const key = `${commitment.sourceType}:${commitment.sourceId}:${commitment.sourceSubId}`;
+    const key = `${commitment.sourceWorkspaceId ?? "local"}:${commitment.sourceType}:${commitment.sourceId}:${commitment.sourceSubId}`;
     sourceGroups.set(key, [...(sourceGroups.get(key) || []), commitment]);
   }
   return commitments.map(commitment => {
-    const key = `${commitment.sourceType}:${commitment.sourceId}:${commitment.sourceSubId}`;
+    const key = `${commitment.sourceWorkspaceId ?? "local"}:${commitment.sourceType}:${commitment.sourceId}:${commitment.sourceSubId}`;
     const grouped = sourceGroups.get(key) || [];
     return {
       ...commitment,
@@ -1082,6 +1086,16 @@ export const linkedCommitmentsRouter = router({
         });
       assertCommitmentAccess(ctx, commitment.companyId, commitment.processId);
 
+      const historicalWorkspace = getAnnualScope()?.workspace;
+      const historicalReference = commitment.sourceWorkspaceId != null
+        ? await withAnnualBaseConnection(c => {
+            const workspace = historicalWorkspace;
+            if (!workspace || workspace.companyId !== commitment.companyId) {
+              throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Compromiso histórico requiere workspace anual explícito." });
+            }
+            return exactCommitmentReference(c, workspace, commitment);
+          })
+        : null;
       const renewedValidFrom =
         input.renewedValidFrom !== undefined
           ? input.renewedValidFrom
@@ -1109,7 +1123,7 @@ export const linkedCommitmentsRouter = router({
         commitment.sourceId &&
         requestedStatus === "completed"
       ) {
-        const [action] = await db
+        const [localAction] = historicalReference ? [] : await db
           .select({
             evidenceExpected: changeManagementActions.evidenceExpected,
           })
@@ -1121,6 +1135,7 @@ export const linkedCommitmentsRouter = router({
             )
           )
           .limit(1);
+        const action = historicalReference?.entity.row ?? localAction;
         if (action?.evidenceExpected?.trim()) {
           const evidence = await db
             .select({ id: linkedCommitmentEvidence.id })
@@ -1160,7 +1175,8 @@ export const linkedCommitmentsRouter = router({
       if (
         commitment.sourceType !== "own" &&
         commitment.sourceId &&
-        commitment.sourceSubId
+        commitment.sourceSubId &&
+        commitment.sourceWorkspaceId == null
       ) {
         await synchronizeSource(
           db,
@@ -1233,7 +1249,8 @@ export const linkedCommitmentsRouter = router({
       if (
         commitment.sourceType !== "own" &&
         commitment.sourceId &&
-        commitment.sourceSubId
+        commitment.sourceSubId &&
+        commitment.sourceWorkspaceId == null
       ) {
         await synchronizeSource(
           db,

@@ -132,8 +132,8 @@ export const auditsInspectionsRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Solo se permiten archivos PDF o Excel" });
       }
       const fileBuffer = Buffer.from(input.fileData);
-      const fileKey = `audits/${input.companyId}/management/${randomUUID()}-${input.fileName}`;
-      const { url } = await storagePut(fileKey, fileBuffer, input.mimeType);
+      const requestedFileKey = `audits/${input.companyId}/management/${randomUUID()}-${input.fileName}`;
+      const { url, key: fileKey } = await storagePut(requestedFileKey, fileBuffer, input.mimeType);
       await db.insert(managementSystemFiles).values({
         managementSystemId: input.managementSystemId,
         companyId: input.companyId,
@@ -340,8 +340,8 @@ export const auditsInspectionsRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Solo se permiten archivos PDF o Excel" });
       }
       const fileBuffer = Buffer.from(input.fileData);
-      const fileKey = `audits/${input.companyId}/audit-files/${randomUUID()}-${input.fileName}`;
-      const { url } = await storagePut(fileKey, fileBuffer, input.mimeType);
+      const requestedFileKey = `audits/${input.companyId}/audit-files/${randomUUID()}-${input.fileName}`;
+      const { url, key: fileKey } = await storagePut(requestedFileKey, fileBuffer, input.mimeType);
       await db.insert(auditFiles).values({
         auditId: input.auditId,
         companyId: input.companyId,
@@ -529,8 +529,8 @@ export const auditsInspectionsRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Solo se permiten archivos PDF o Excel" });
       }
       const fileBuffer = Buffer.from(input.fileData);
-      const fileKey = `audits/${input.companyId}/inspection-files/${randomUUID()}-${input.fileName}`;
-      const { url } = await storagePut(fileKey, fileBuffer, input.mimeType);
+      const requestedFileKey = `audits/${input.companyId}/inspection-files/${randomUUID()}-${input.fileName}`;
+      const { url, key: fileKey } = await storagePut(requestedFileKey, fileBuffer, input.mimeType);
       await db.insert(inspectionFiles).values({
         inspectionId: input.inspectionId,
         companyId: input.companyId,

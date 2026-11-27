@@ -1,6 +1,9 @@
 import cron from "node-cron";
 import { eq } from "drizzle-orm";
-import { getDb } from "../db";
+import { getBaseDb, getDb } from "../db";
+import { runInAnnualScope } from "../annual/runtime";
+import { listWorkspaces } from "../annual/store";
+import { mergeAnnualAlertActivities, type YearScopedActivity } from "../annual/alertIdentity";
 import {
   companies,
   companyCompliances,
@@ -216,9 +219,11 @@ function buildProcessAlertRows(activities: ProcessAlertActivity[]): string {
     .sort((a, b) => a.daysRemaining - b.daysRemaining)
     .map(activity => {
       const badge = getProcessBadge(activity.element);
+      const year = activity.element.match(/\s·\s(\d{4})$/)?.[1];
+      const badgeLabel = year && !badge.label.endsWith(year) ? `${badge.label} · ${year}` : badge.label;
       return `<tr>
         <td style="padding:13px 14px;${urgencyStyle(activity.daysRemaining)}border-bottom:1px solid #e2e8f0;">
-          <span style="display:inline-block;margin-bottom:7px;padding:4px 8px;border-radius:99px;color:#ffffff;background:${badge.color};font-size:10px;font-weight:700;">${badge.label}</span>
+          <span style="display:inline-block;margin-bottom:7px;padding:4px 8px;border-radius:99px;color:#ffffff;background:${badge.color};font-size:10px;font-weight:700;">${badgeLabel}</span>
           <div style="margin-bottom:4px;color:#172033;font-size:14px;font-weight:700;line-height:1.4;">${activity.action}</div>
           <div style="color:#64748b;font-size:12px;">Fecha límite: <strong>${formatDate(activity.dueDate)}</strong> &nbsp;|&nbsp; <strong style="color:${urgencyColor(activity.daysRemaining)};">${urgencyText(activity.daysRemaining)}</strong> &nbsp;|&nbsp; Avance: <strong>${activity.completionPercentage}%</strong></div>
         </td>
@@ -315,7 +320,7 @@ function buildExecutiveComplianceEmailHtml(
 
 async function runWeeklyAlerts(): Promise<void> {
   console.log("[ScheduleAlerts] Iniciando revisión semanal de alertas...");
-  const db = await getDb();
+  const db = await getBaseDb();
   if (!db) {
     console.warn("[ScheduleAlerts] Base de datos no disponible, omitiendo.");
     return;
@@ -330,6 +335,7 @@ async function runWeeklyAlerts(): Promise<void> {
 
   for (const company of allCompanies as any[]) {
     try {
+      const workspaces = (await listWorkspaces(company.id)).sort((a, b) => a.year - b.year);
       const companyInfoRows = await db
         .select()
         .from(companyInfo)
@@ -339,25 +345,41 @@ async function runWeeklyAlerts(): Promise<void> {
         : "";
 
       // 1. Jefes de Proceso: actividades que ya forman parte de su Cronograma Consolidado.
-      const companyProcesses = await db
-        .select()
-        .from(processes)
-        .where(eq(processes.companyId, company.id));
-      for (const process of companyProcesses as any[]) {
-        const sections = await getPendingConsolidatedActivitiesForProcess(
-          process.id,
-          process.name
+      const processCatalog = new Map<number, any>();
+      for (const workspace of workspaces) {
+        await runInAnnualScope(workspace, async () => {
+          const scopedDb = await getDb();
+          if (!scopedDb) return;
+          const rows = await scopedDb.select().from(processes).where(eq(processes.companyId, company.id));
+          rows.forEach(process => processCatalog.set(process.id, process));
+        });
+      }
+      for (const process of Array.from(processCatalog.values())) {
+        const activities: YearScopedActivity[] = [];
+        let responsibleEmail = "";
+        let responsibleName = "Responsable del Proceso";
+        let latestYear = workspaces[0]?.year ?? 2026;
+        // One email per logical process, with the year shown on each activity.
+        // Read-only historical sources remain traceable; a later closure wins.
+        for (const workspace of workspaces) {
+          await runInAnnualScope(workspace, async () => {
+            const scopedDb = await getDb();
+            if (!scopedDb) return;
+            const consolidated = await getConsolidatedScheduleActivities(process.id);
+            activities.push(...consolidated.map(activity => ({ year: workspace.year, activity })));
+            const [characterization] = await scopedDb.select().from(processCharacterizations)
+              .where(eq(processCharacterizations.processId, process.id)).limit(1);
+            if (characterization?.responsibleEmail) {
+              responsibleEmail = characterization.responsibleEmail;
+              responsibleName = characterization.responsible || responsibleName;
+              latestYear = workspace.year;
+            }
+          });
+        }
+        const sections = splitProcessWeeklyAlertActivities(
+          mergeAnnualAlertActivities(activities), process.name
         );
         if (!hasProcessWeeklyAlertActivities(sections)) continue;
-
-        const characterizationRows = await db
-          .select()
-          .from(processCharacterizations)
-          .where(eq(processCharacterizations.processId, process.id));
-        const characterization: any = characterizationRows[0];
-        const responsibleEmail = characterization?.responsibleEmail || "";
-        const responsibleName =
-          characterization?.responsible || "Responsable del Proceso";
         if (!responsibleEmail || !responsibleEmail.includes("@")) continue;
 
         const htmlContent = buildProcessLeaderEmailHtml(
@@ -365,7 +387,7 @@ async function runWeeklyAlerts(): Promise<void> {
           company.name,
           process.name,
           sections,
-          `${frontendUrl}/process-characterization?companyId=${company.id}&processId=${process.id}`
+          `${frontendUrl}/consolidated-schedule?companyId=${company.id}&processId=${process.id}&managementYear=${latestYear}`
         );
         sendEmail({
           to: responsibleEmail,
@@ -378,9 +400,27 @@ async function runWeeklyAlerts(): Promise<void> {
       }
 
       // 2. Gerente General: exclusivamente Cumplimientos de Sistemas de Gestión.
-      const managementCompliances = await getUpcomingManagementCompliances(
-        company.id
-      );
+      const latestComplianceRows = new Map<number, any>();
+      for (const workspace of workspaces) {
+        await runInAnnualScope(workspace, async () => {
+          const scopedDb = await getDb();
+          if (!scopedDb) return;
+          const rows = await scopedDb.select().from(companyCompliances)
+            .where(eq(companyCompliances.companyId, company.id));
+          // Keep completed rows until after deduplication so an old open state
+          // never reappears when the same obligation was closed in a new year.
+          rows.forEach(row => latestComplianceRows.set(row.id, { ...row, managementYear: workspace.year }));
+        });
+      }
+      const managementCompliances: ExecutiveComplianceAlert[] = Array.from(latestComplianceRows.values())
+        .filter(row => row.completed !== "SI" && row.validUntil && isWithinNextDays(new Date(row.validUntil), WINDOW_DAYS))
+        .map(row => ({
+          requirement: row.requirement || "Cumplimiento sin descripción",
+          obligationType: `${row.obligationType || "Cumplimiento"} · ${row.managementYear}`,
+          responsible: row.responsible || "Sin responsable asignado",
+          dueDate: new Date(row.validUntil),
+          daysRemaining: daysUntil(new Date(row.validUntil)),
+        }));
       if (
         adminEmail &&
         adminEmail.includes("@") &&
@@ -389,7 +429,7 @@ async function runWeeklyAlerts(): Promise<void> {
         const htmlContent = buildExecutiveComplianceEmailHtml(
           company.name,
           managementCompliances,
-          `${frontendUrl}/compliances?companyId=${company.id}`
+          `${frontendUrl}/compliances?companyId=${company.id}&managementYear=${workspaces.at(-1)?.year ?? 2026}`
         );
         sendEmail({
           to: adminEmail,

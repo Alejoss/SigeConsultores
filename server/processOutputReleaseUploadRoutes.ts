@@ -89,8 +89,8 @@ export function registerProcessOutputReleaseUploadRoutes(app: Express) {
         }
 
         const fileName = safeFileName(req.file.originalname);
-        const fileKey = `output-releases/${companyId}/${period.id}/${randomUUID()}-${fileName}`;
-        const { url } = await storagePut(fileKey, req.file.buffer, req.file.mimetype);
+        const requestedFileKey = `output-releases/${companyId}/${period.id}/${randomUUID()}-${fileName}`;
+        const { url, key: fileKey } = await storagePut(requestedFileKey, req.file.buffer, req.file.mimetype);
         const created = await db.insert(processOutputReleaseEvidence).values({
           periodId: period.id,
           companyId,

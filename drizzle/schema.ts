@@ -1356,6 +1356,8 @@ export const planningCycleDecisions = mysqlTable(
       "stakeholder_action",
       "compliance",
       "participant_kpi",
+      "linked_commitment",
+      "output_release",
     ]).notNull(),
     sourceItemKey: varchar("sourceItemKey", { length: 255 }).notNull(),
     title: text("title").notNull(),
@@ -1400,6 +1402,8 @@ export const planningCycleSnapshots = mysqlTable(
       "stakeholder_action",
       "compliance",
       "participant_kpi",
+      "linked_commitment",
+      "output_release",
     ]).notNull(),
     sourceItemKey: varchar("sourceItemKey", { length: 255 }).notNull(),
     title: text("title").notNull(),
@@ -1446,6 +1450,8 @@ export const planningCycleOperationalItems = mysqlTable(
       "stakeholder_action",
       "compliance",
       "participant_kpi",
+      "linked_commitment",
+      "output_release",
     ]).notNull(),
     title: text("title").notNull(),
     description: text("description"),
@@ -2396,6 +2402,8 @@ export const linkedCommitments = mysqlTable(
     // Las actividades propias no tienen fuente y mantienen ambos valores nulos.
     sourceId: int("sourceId"),
     sourceSubId: int("sourceSubId"),
+    /** Explicit historical source namespace; NULL means current workspace. Never synchronize a historical parent. */
+    sourceWorkspaceId: int("sourceWorkspaceId"),
     kind: mysqlEnum("kind", ["action", "vigency", "own"]).notNull(),
     title: varchar("title", { length: 500 }).notNull(),
     description: text("description"),
@@ -3164,3 +3172,79 @@ export const courseFieldCertificates = mysqlTable(
     pk: primaryKey({ columns: [table.workerId, table.fieldId] }),
   })
 );
+
+/** Canonical annual metadata: never namespace these four tables. No source backfill. */
+export const annualWorkspaces = mysqlTable("annualWorkspaces", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  year: int("year").notNull(),
+  sourceYear: int("sourceYear"),
+  status: mysqlEnum("status", ["preparing", "open", "closed"]).notNull(),
+  storage: mysqlEnum("storage", ["base", "namespace"]).notNull(),
+  strategyJson: text("strategyJson").notNull(),
+  manifestVersion: int("manifestVersion").default(1).notNull(),
+  createdByJson: text("createdByJson"),
+  closedByJson: text("closedByJson"),
+  closedAt: timestamp("closedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, t => ({ companyYearUnique: unique("annual_workspaces_company_year_unique").on(t.companyId, t.year) }));
+export const annualProcessStates = mysqlTable("annualProcessStates", {
+  id: int("id").autoincrement().primaryKey(),
+  workspaceId: int("workspaceId").notNull(),
+  processId: int("processId").notNull(),
+  status: mysqlEnum("status", ["pending", "incorporated"]).default("pending").notNull(),
+  sourceCycleId: int("sourceCycleId"),
+  approvalSnapshotHash: varchar("approvalSnapshotHash", { length: 64 }),
+  incorporatedByJson: text("incorporatedByJson"),
+  incorporatedAt: timestamp("incorporatedAt"),
+}, t => ({ workspaceProcessUnique: unique("annual_process_states_workspace_process_unique").on(t.workspaceId, t.processId) }));
+export const annualEntityLineage = mysqlTable("annualEntityLineage", {
+  id: int("id").autoincrement().primaryKey(),
+  workspaceId: int("workspaceId").notNull(),
+  tableName: varchar("tableName", { length: 64 }).notNull(),
+  entityId: int("entityId").notNull(),
+  sourceWorkspaceId: int("sourceWorkspaceId").notNull(),
+  sourceYear: int("sourceYear").notNull(),
+  sourceTableName: varchar("sourceTableName", { length: 64 }).notNull(),
+  sourceEntityId: int("sourceEntityId").notNull(),
+  sourceHash: varchar("sourceHash", { length: 64 }).notNull(),
+  destinationHash: varchar("destinationHash", { length: 64 }).notNull(),
+  reason: varchar("reason", { length: 255 }).notNull(),
+  sourceDecisionIdsJson: text("sourceDecisionIdsJson"),
+  referenceJson: longtext("referenceJson"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, t => ({ entityUnique: unique("annual_entity_lineage_identity_unique").on(t.workspaceId, t.tableName, t.entityId), sourceIndex: index("annual_entity_lineage_source_index").on(t.sourceWorkspaceId, t.sourceTableName, t.sourceEntityId) }));
+/** Conservative immutable file retention: normalized uploads/... fileKey;
+ * keyHash=SHA256(fileKey); UNIQUE(workspaceId,keyHash). Never auto-release.
+ */
+export const annualFileRetentions = mysqlTable("annualFileRetentions", {
+  id: int("id").autoincrement().primaryKey(),
+  workspaceId: int("workspaceId").notNull(),
+  fileKey: varchar("fileKey", { length: 1024 }).notNull(),
+  keyHash: varchar("keyHash", { length: 64 }).notNull(),
+  reason: varchar("reason", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, t => ({ keyWorkspaceUnique: unique("annual_file_retentions_workspace_key_unique").on(t.workspaceId, t.keyHash), keyIndex: index("annual_file_retentions_key_index").on(t.keyHash) }));
+
+/** Append-only historical resolutions. Canonical control metadata, never aw_*.
+ * No FK to a business numeric ID: identity includes its source workspace/table.
+ */
+export const annualHistoricalResolutions = mysqlTable("annualHistoricalResolutions", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  targetWorkspaceId: int("targetWorkspaceId").notNull(),
+  recordedYear: int("recordedYear").notNull(),
+  sourceWorkspaceId: int("sourceWorkspaceId").notNull(),
+  sourceTable: mysqlEnum("sourceTable", ["linkedCommitments", "programActions", "operationalFindings"]).notNull(),
+  sourceId: int("sourceId").notNull(),
+  status: mysqlEnum("status", ["pending", "completed"]).notNull(),
+  notes: varchar("notes", { length: 2000 }).notNull(),
+  actor: text("actor").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, t => ({
+  companyYearIndex: index("annual_history_company_year_index").on(t.companyId, t.recordedYear, t.id),
+  sourceIndex: index("annual_history_source_index").on(t.companyId, t.sourceWorkspaceId, t.sourceTable, t.sourceId, t.recordedYear, t.id),
+}));
+export type AnnualHistoricalResolution = typeof annualHistoricalResolutions.$inferSelect;
+export type InsertAnnualHistoricalResolution = typeof annualHistoricalResolutions.$inferInsert;

@@ -7,6 +7,7 @@ import {
   assertCompanyReadFromRawInput,
 } from "./companyPermissions";
 import type { TrpcContext } from "./context";
+import { runInAnnualRequestScope } from "../annual/requestScope";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -14,6 +15,11 @@ const t = initTRPC.context<TrpcContext>().create({
 
 export const router = t.router;
 export const publicProcedure = t.procedure;
+
+const annualRequestScope = t.middleware(async opts => {
+  const rawInput = await opts.getRawInput();
+  return runInAnnualRequestScope({ ctx: opts.ctx, path: opts.path, type: opts.type, rawInput }, () => opts.next());
+});
 
 const requireUser = t.middleware(async opts => {
   const { ctx, next } = opts;
@@ -30,7 +36,7 @@ const requireUser = t.middleware(async opts => {
   });
 });
 
-export const protectedProcedure = t.procedure.use(requireUser);
+export const protectedProcedure = t.procedure.use(requireUser).use(annualRequestScope);
 
 export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
@@ -47,7 +53,7 @@ export const adminProcedure = t.procedure.use(
       },
     });
   }),
-);
+).use(annualRequestScope);
 
 // Company data: platform admin, the company gerente, or a jefe de proceso.
 // A normal platform login (role "user") is rejected here.
@@ -82,7 +88,7 @@ const requireUserOrManagerOrProcessLeader = t.middleware(async opts => {
  * Use `protectedProcedure` only for OAuth-only platform flows.
  * Use `adminProcedure` for platform administration.
  */
-export const companyProcedure = t.procedure.use(requireUserOrManagerOrProcessLeader);
+export const companyProcedure = t.procedure.use(requireUserOrManagerOrProcessLeader).use(annualRequestScope);
 
 /**
  * Mutation guard for company-wide modules. A process leader may read the
