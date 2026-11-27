@@ -5,6 +5,7 @@ import type { TrpcContext } from '../_core/context';
 import { annualRows, BASE_YEAR, getWorkspaceForScope, withAnnualBaseConnection, workspaceOnConnection } from './store';
 import type { AnnualWorkspaceRecord } from './store';
 import { namespaceTable, quoteIdentifier } from './manifest';
+import { canAccessProcess, hydrateTeamAccessPolicy, type TeamAccessPolicy } from '../_core/teamAccessPolicy';
 
 export const HISTORICAL_SOURCE_TABLES = ['linkedCommitments', 'programActions', 'operationalFindings'] as const;
 export type HistoricalSourceTable = typeof HISTORICAL_SOURCE_TABLES[number];
@@ -18,7 +19,7 @@ export interface HistoricalItem {
 type Row = Record<string, any>;
 type Identity = { workspaceId: number; table: HistoricalSourceTable; id: number };
 type Version = Identity & { workspace: AnnualWorkspaceRecord; row: Row; kind: HistoricalItem['kind']; processId: number | null; backing?: Version };
-type Access = { companyWide: boolean; raw: boolean; processId: number | null; actor: { accountId: number; role: 'admin' | 'manager' | 'coordinator' | 'process_leader'; companyId: number; processId: number | null; name: string | null } };
+type Access = { policy: TeamAccessPolicy; raw: boolean; processId: number | null; actor: { accountId: number; role: 'admin' | 'manager' | 'coordinator' | 'process_leader'; companyId: number; processId: number | null; name: string | null } };
 function fail(code: 'BAD_REQUEST' | 'FORBIDDEN' | 'NOT_FOUND' | 'PRECONDITION_FAILED', message: string): never { throw new TRPCError({ code, message }); }
 function positive(value: number, label: string) {
   if (!Number.isSafeInteger(value) || value <= 0) fail('BAD_REQUEST', `${label} inválido`);
@@ -63,17 +64,22 @@ async function accessOnConnection(c: PoolConnection, companyId: number, ctx: Trp
     const [p] = await annualRows(c, 'SELECT id FROM processes WHERE id=? AND companyId=?', [leader.processId, companyId]);
     if (!p) fail('FORBIDDEN', 'El proceso real de la sesión no pertenece a la empresa');
   }
-  const [grant] = leader ? await annualRows(c, "SELECT accessLevel FROM companyManagementAccess WHERE accountId=? AND companyId=? AND accessLevel='coordinator' AND revokedAt IS NULL", [assignments[0].id, companyId]) : [];
-  // Coordination grants corporate/raw access, not another process's commitments.
-  return { companyWide: Boolean(admin || manager), raw: Boolean(admin || manager || grant), processId: leader?.processId ?? null,
-    actor: { accountId: Number(assignments[0].id), role: admin ? 'admin' : manager ? 'manager' : grant ? 'coordinator' : 'process_leader', companyId, processId: leader?.processId ?? null, name: assignments[0].name ?? null } };
+  // Direct service calls also rehydrate canonical grants, never historical
+  // snapshots or a cached caller-supplied policy. SG denial leaves assigned
+  // process obligations available but removes raw corporate history.
+  const policy = await hydrateTeamAccessPolicy(ctx, companyId);
+  if (!policy) fail('FORBIDDEN', 'No se pudo validar la política de accesos');
+  // Preserve legacy raw-history authority: standard corporate read alone never
+  // expands process history; explicit SIG management replaces coordination.
+  return { policy, raw: policy.fullAccess || policy.moduleAccess.management_systems === 'write', processId: leader?.processId ?? null,
+    actor: { accountId: Number(assignments[0].id), role: admin ? 'admin' : manager ? 'manager' : policy.moduleAccess.management_systems === 'write' ? 'coordinator' : 'process_leader', companyId, processId: leader?.processId ?? null, name: assignments[0].name ?? null } };
 }
 
 async function itemsOnConnection(c: PoolConnection, target: AnnualWorkspaceRecord, access: Access, processId?: number): Promise<{ items: HistoricalItem[]; sourceCompleted: Set<string> }> {
   if (processId !== undefined) {
     const [p] = await annualRows(c, `SELECT id FROM ${physical(target, 'processes')} WHERE id=? AND companyId=?`, [processId, target.companyId]);
     if (!p) fail('FORBIDDEN', 'El proceso no pertenece a la empresa y año solicitados');
-    if (!access.companyWide && access.processId !== processId) fail('FORBIDDEN', 'Solo puede consultar los compromisos de su proceso');
+    if (!canAccessProcess(access.policy, processId, 'read', target.companyId)) fail('FORBIDDEN', 'No tiene acceso a este proceso');
   }
   // Include the selected year only to reconcile already-completed copies.
   // Never inspect future workspace versions when rendering a historical year.
@@ -159,7 +165,7 @@ async function itemsOnConnection(c: PoolConnection, target: AnnualWorkspaceRecor
     // Do not fabricate a second historical pending or mark the source completed.
     if (group.versions.some(v => v.workspaceId === target.id && v.table === 'linkedCommitments' && v.row.sourceWorkspaceId != null && lineage.get(key(v))?.reason === 'approved-process')) continue;
     if (origin.table !== 'linkedCommitments' && linkedSources.has(groupKey)) continue;
-    if (origin.processId === null ? !access.raw || processId !== undefined : (!access.companyWide && access.processId !== origin.processId) || (processId !== undefined && processId !== origin.processId)) continue;
+    if (origin.processId === null ? !access.raw || processId !== undefined : !canAccessProcess(access.policy, origin.processId, 'read', target.companyId) || (processId !== undefined && processId !== origin.processId)) continue;
     // Completion in any proven version wins over a stale pending copy. The
     // linked obligation is independent of other processes, never aggregated.
     const completed = group.versions.some(v => v.table === 'linkedCommitments' ? v.row.status === 'completed' || Boolean(v.backing && completedBacking.has(key(root(v.backing)))) : Boolean(v.row.completed));
@@ -208,6 +214,7 @@ export async function resolveAnnualHistory(input: { companyId: number; year: num
       const { items, sourceCompleted } = await itemsOnConnection(c, target, access);
       const item = items.find(i => i.id === input.id);
       if (!item) fail('FORBIDDEN', 'Obligación inexistente o no autorizada en este año y empresa');
+      if (item.processId === null ? !access.policy.fullAccess && access.policy.moduleAccess.management_systems !== 'write' : !canAccessProcess(access.policy, item.processId, 'write', input.companyId)) fail('FORBIDDEN', 'No tiene permiso de edición para esta obligación');
       if (item.sourceYear >= target.year || !HISTORICAL_SOURCE_TABLES.includes(item.sourceTable as HistoricalSourceTable)) fail('BAD_REQUEST', 'La fuente debe ser de un año anterior y tipo permitido');
       if (input.status === 'pending' && sourceCompleted.has(item.id)) fail('PRECONDITION_FAILED', 'La fuente ya está completada; una copia pendiente no puede reabrirla');
       await c.query('INSERT INTO annualHistoricalResolutions(companyId,targetWorkspaceId,recordedYear,sourceWorkspaceId,sourceTable,sourceId,status,notes,actor) VALUES(?,?,?,?,?,?,?,?,?)', [input.companyId, target.id, target.year, item.sourceWorkspaceId, item.sourceTable, item.sourceId, input.status, input.notes, JSON.stringify(access.actor)]);

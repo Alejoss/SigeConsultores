@@ -1,3 +1,4 @@
+import { useCompanyManagementPermission } from "@/hooks/useCompanyManagementPermission";
 
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,11 +38,7 @@ export default function Values() {
     return getCompanyIdFromLocationOrStorage();
   });
   const [companyName] = useState(() => processLeaderSession?.companyName || localStorage.getItem("selectedCompanyName") || "Empresa");
-  const managementAccessQuery = trpc.teamAccess.getMyCompanyManagementAccess.useQuery(
-    { companyId: companyId || 0 },
-    { enabled: isProcessLeader && companyId !== null }
-  );
-  const canEditValues = !isProcessLeader || managementAccessQuery.data?.accessLevel === "coordinator";
+  const { canManageCompany: canEditValues, isChecking: checkingPermission } = useCompanyManagementPermission(companyId, "strategy");
   
   // Update companyId when process leader session changes
   useEffect(() => {
@@ -243,11 +240,11 @@ export default function Values() {
           <div className={canEditValues ? "flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950" : "flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"}>
             <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
-              {managementAccessQuery.isLoading
+              {checkingPermission
                 ? "Verificando el permiso de edición corporativa…"
                 : canEditValues
-                  ? "Tiene autorización de Coordinador de empresa para editar los Valores corporativos."
-                  : "Modo de consulta: los Valores corporativos sólo pueden ser modificados por el Gerente General o por un Jefe autorizado como Coordinador de empresa."}
+                  ? "Tiene autorización explícita de edición para editar los Valores corporativos."
+                  : "Modo de consulta: los Valores corporativos sólo pueden ser modificados por el Gerente General o por un Jefe autorizado para editar este módulo."}
             </p>
           </div>
         )}

@@ -227,7 +227,7 @@ describe("appRouter.companyInfo.upsert: permisos inline reales en TEST local", (
       vision: `Visión NO autorizada ${fixtureToken}`,
     })).rejects.toMatchObject({
       code: "FORBIDDEN",
-      message: "Este Jefe de Proceso puede consultar el módulo, pero no modificarlo. El Gerente debe autorizarlo como Coordinador de empresa.",
+      message: "Este Jefe de Proceso puede consultar el módulo, pero no modificarlo. El Gerente debe autorizar el permiso de edición para este módulo.",
     });
     expect(await infoRows(companyId)).toEqual(before);
     await expect(caller.companyInfo.get({ companyId })).resolves.toEqual(before[0]);

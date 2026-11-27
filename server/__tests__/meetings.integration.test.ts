@@ -1,3 +1,4 @@
+import { assertCanonicalFixtureDatabase, createCanonicalChiefFixtures } from "./helpers/canonicalChiefFixtures";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { and, eq } from "drizzle-orm";
 import {
@@ -23,6 +24,7 @@ const integrationRouter = router({
 });
 
 const testName = `Prueba reuniones manuales ${Date.now()}`;
+const canonicalChiefs = createCanonicalChiefFixtures("meetings");
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
 let companyId = 0;
 let foreignCompanyId = 0;
@@ -47,7 +49,7 @@ function leaderMeetingsCaller(processId: number) {
     user: null,
     manager: null,
     processLeader: {
-      processLeaderId: 1,
+      processLeaderId: canonicalChiefs.accountId(companyId, processId),
       leaderName: "Jefe de prueba",
       leaderEmail: "pruebas@example.com",
       processId,
@@ -64,7 +66,7 @@ function targetLeaderCommitmentsCaller() {
     user: null,
     manager: null,
     processLeader: {
-      processLeaderId: 2,
+      processLeaderId: canonicalChiefs.accountId(companyId, targetProcessId),
       leaderName: "Jefe destino de prueba",
       leaderEmail: "destino@example.com",
       processId: targetProcessId,
@@ -77,6 +79,7 @@ function targetLeaderCommitmentsCaller() {
 }
 
 beforeAll(async () => {
+  assertCanonicalFixtureDatabase();
   db = (await getDb()) as NonNullable<Awaited<ReturnType<typeof getDb>>>;
   if (!db) throw new Error("La base local no está disponible para pruebas de integración.");
 
@@ -113,9 +116,12 @@ beforeAll(async () => {
     processType: "misional",
   });
   foreignProcessId = Number(foreign[0].insertId);
+  await canonicalChiefs.register(db, { companyId: companyId, processId: sourceProcessId });
+  await canonicalChiefs.register(db, { companyId: companyId, processId: targetProcessId });
 });
 
 afterAll(async () => {
+  await canonicalChiefs.cleanup();
   if (!db) return;
   if (companyId) {
     await db.delete(linkedCommitmentEvidence).where(eq(linkedCommitmentEvidence.companyId, companyId));

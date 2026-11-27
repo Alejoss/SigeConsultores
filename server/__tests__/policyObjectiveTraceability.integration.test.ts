@@ -1,3 +1,4 @@
+import { assertCanonicalFixtureDatabase, createCanonicalChiefFixtures } from "./helpers/canonicalChiefFixtures";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, inArray } from "drizzle-orm";
 import {
@@ -21,6 +22,7 @@ const integrationRouter = router({
 });
 
 const suffix = `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+const canonicalChiefs = createCanonicalChiefFixtures("policyObjectiveTraceability");
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
 let accountId = 0;
 let companyId = 0;
@@ -64,6 +66,7 @@ function leaderContext() {
 }
 
 beforeAll(async () => {
+  assertCanonicalFixtureDatabase();
   db = (await getDb()) as NonNullable<Awaited<ReturnType<typeof getDb>>>;
   if (!db) throw new Error("Base de pruebas no disponible para trazabilidad.");
 
@@ -189,9 +192,11 @@ beforeAll(async () => {
       }),
     },
   ]);
+  await canonicalChiefs.register(db, { companyId: companyId, processId: commercialProcessId, accountId: accountId });
 });
 
 afterAll(async () => {
+  await canonicalChiefs.cleanup();
   if (!db) return;
   const processIds = [
     commercialProcessId,
@@ -328,7 +333,7 @@ describe("Trazabilidad de Objetivos de la Política", () => {
         processId: peopleProcessId,
         action: "reconsider",
       })
-    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "No tienes acceso a este proceso" });
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "Este Jefe de Proceso puede consultar el módulo, pero no modificarlo. El Gerente debe autorizar el permiso de edición para este módulo." });
   });
 
   it("rechaza que un FODA vincule el objetivo de otra empresa", async () => {

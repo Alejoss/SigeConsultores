@@ -9,6 +9,7 @@ import {
 } from "../../../drizzle/schema";
 import { strategicObjectivesRouter } from "../strategicObjectives";
 import type { TrpcContext } from "../../_core/context";
+import { router } from "../../_core/trpc";
 import {
   isValidStrategicMeasurementDate,
   strategicMeasurementToday,
@@ -20,6 +21,28 @@ import {
 
 // Annual request admission is covered by annual security integration; this unit uses a fake database.
 vi.mock("../../annual/requestScope", () => ({ runInAnnualRequestScope: async (_options: unknown, operation: () => unknown) => operation() }));
+
+// Canonical account/role hydration has its own tests. Model the exact actor's
+// per-procedure policy here while retaining real module/process enforcement.
+vi.mock("../../_core/teamAccessPolicy", async importOriginal => {
+  const actual = await importOriginal<typeof import("../../_core/teamAccessPolicy")>();
+  return {
+    ...actual,
+    hydrateTeamAccessContext: async (ctx: TrpcContext, options: { mode: "read" | "write"; path?: string; rawInput?: unknown }) => {
+      const module = options.path ? actual.resolveTeamAccessModule(options.path, options.rawInput) : undefined;
+      const leader = ctx.processLeader;
+      const policy = leader ? actual.buildTeamAccessPolicy({
+        companyId: leader.companyId, accountId: leader.processLeaderId, ownProcessId: leader.processId,
+        companyProcessIds: [leader.processId],
+        coordinator: mock.tables[tableName(companyManagementAccess)].some(row =>
+          row.accountId === leader.processLeaderId && row.companyId === leader.companyId && row.accessLevel === "coordinator"),
+      }) : undefined;
+      const cloned = { ...ctx, teamAccessPolicy: policy, teamAccessModule: module, requestMode: options.mode };
+      if (module) actual.assertModuleAccess(cloned, module, options.mode);
+      return cloned;
+    },
+  };
+});
 
 const mocks = vi.hoisted(() => ({ getDb: vi.fn() }));
 vi.mock("../../db", () => ({ getDb: mocks.getDb }));
@@ -144,7 +167,8 @@ const objectiveFixture = {
   electronicSignature: "Firma intacta", orderIndex: 1, createdAt: new Date(), updatedAt: new Date(),
 };
 let mock: ReturnType<typeof createMockDb>;
-const caller = (role: Parameters<typeof context>[0] = "manager", companyId = 1) => strategicObjectivesRouter.createCaller(context(role, companyId));
+const registeredRouter = router({ strategicObjectives: strategicObjectivesRouter });
+const caller = (role: Parameters<typeof context>[0] = "manager", companyId = 1) => registeredRouter.createCaller(context(role, companyId)).strategicObjectives;
 const rows = (table: any) => mock.tables[tableName(table)];
 const configure = (config = completeConfig) => rows(strategicObjectiveMeasurementConfigs).push({ id: 1, companyId: 1, objectiveId: 1, ...config });
 const measure = (overrides: Row = {}) => rows(strategicObjectiveMeasurements).push({ id: 1, companyId: 1, objectiveId: 1, measurementDate: "2025-01-10", value: 20, observation: "Original observation", evidence: "Informe 123", percent: 50, ...overrides });

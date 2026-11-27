@@ -1894,7 +1894,7 @@ export default function ProcessMeetings() {
   const companyFromUrl = Number(url.get("companyId"));
   const processFromUrl = Number(url.get("processId"));
   const companyId = processLeaderSession?.companyId || (isManagerLogin ? managerCompanyId : null) || (companyFromUrl > 0 ? companyFromUrl : null);
-  const processId = processLeaderSession?.processId || (processFromUrl > 0 ? processFromUrl : null);
+  const processId = (processFromUrl > 0 ? processFromUrl : processLeaderSession?.processId || null);
   const [showNewType, setShowNewType] = useState(false);
   const [typeDraft, setTypeDraft] = useState({ name: "", description: "" });
 

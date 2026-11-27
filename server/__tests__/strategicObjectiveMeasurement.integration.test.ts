@@ -1,19 +1,24 @@
+import { router } from "../_core/trpc";
+import { assertCanonicalFixtureDatabase, createCanonicalChiefFixtures } from "./helpers/canonicalChiefFixtures";
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq, inArray } from 'drizzle-orm';
 import { accounts, companies, processes, strategicObjectives, processTacticalObjectives, companyManagementAccess, strategicObjectiveMeasurementConfigs, strategicObjectiveMeasurements } from '../../drizzle/schema';
 import { getDb } from '../db';
 import { strategicObjectivesRouter } from '../routers/strategicObjectives';
 import { strategicTrendsRouter } from '../routers/strategicTrends';
+const integrationRouter = router({ strategicObjectives: strategicObjectivesRouter, strategicTrends: strategicTrendsRouter });
 import type { StrategicMeasurementConfig } from '../../shared/strategicObjectiveMeasurement';
+const canonicalChiefs = createCanonicalChiefFixtures("strategicObjectiveMeasurement");
 let db:NonNullable<Awaited<ReturnType<typeof getDb>>>;
 let companyId=0,foreignCompanyId=0,accountId=0,processId=0,firstId=0,secondId=0,foreignId=0,oteId=0;
 let originalOE:any, originalOTE:any, originalContributions:any;
 const ctx=(overrides:any)=>({user:null,manager:null,processLeader:null,req:{} as never,res:{} as never,...overrides}) as never;
-const manager=()=>strategicObjectivesRouter.createCaller(ctx({manager:{companyId,companyName:'Medición sintética',managerEmail:'oe@example.test'}}));
-const leader=()=>strategicObjectivesRouter.createCaller(ctx({processLeader:{companyId,processId,processLeaderId:accountId,leaderName:'Jefe sintético',leaderEmail:'jefe@example.test',companyName:'Medición sintética'}}));
+const manager=()=>integrationRouter.createCaller(ctx({manager:{companyId,companyName:'Medición sintética',managerEmail:'oe@example.test'}})).strategicObjectives;
+const leader=()=>integrationRouter.createCaller(ctx({processLeader:{companyId,processId,processLeaderId:accountId,leaderName:'Jefe sintético',leaderEmail:'jefe@example.test',companyName:'Medición sintética'}})).strategicObjectives;
 const config=(patch:Partial<StrategicMeasurementConfig>={}):StrategicMeasurementConfig=>({initialSituation:'Contexto sintético',expectedResult:'Resultado sintético',indicator:'Indicador empresarial',weight:50,baseline:0,goal:100,unit:'%',deadline:'2027-11-08',...patch});
 const save=(id:number,value:number,date='2026-11-01')=>manager().saveMeasurement({companyId,objectiveId:id,value,measurementDate:date,observation:'Medición de prueba',evidence:'Referencia ficticia'});
 beforeAll(async()=>{
+  assertCanonicalFixtureDatabase();
  db=(await getDb())!; if(!db) throw new Error('MySQL de integración no disponible.');
  accountId=Number((await db.insert(accounts).values({openId:`oe-integration-${Date.now()}`,name:'Cuenta ficticia'}))[0].insertId);
  companyId=Number((await db.insert(companies).values({name:'Prueba sintética de medición OE',ownerAccountId:accountId}))[0].insertId);
@@ -25,9 +30,11 @@ beforeAll(async()=>{
  oteId=Number((await db.insert(processTacticalObjectives).values({processId,name:'OTE previo',strategicObjective:'OE previo A',description:'Enunciado anterior',planningData:JSON.stringify({ponderacion:100,puntoPartida:0,metaLlegada:100,avanceMeta:95,trackingType:'puntual',resultKeys:[{description:'Texto anterior',meta:100}],situacionInicial:'Texto de contexto previo'})}))[0].insertId);
  [originalOE]=await db.select().from(strategicObjectives).where(eq(strategicObjectives.id,firstId));
  [originalOTE]=await db.select().from(processTacticalObjectives).where(eq(processTacticalObjectives.id,oteId));
- originalContributions=(await strategicTrendsRouter.createCaller(ctx({manager:{companyId}})).getStrategicObjectivesBreakdown({companyId})).objectives.map(o=>o.contributions);
+ originalContributions=(await integrationRouter.createCaller(ctx({manager:{companyId}})).strategicTrends.getStrategicObjectivesBreakdown({companyId})).objectives.map(o=>o.contributions);
+  await canonicalChiefs.register(db, { companyId: companyId, processId: processId, accountId: accountId });
 });
 afterAll(async()=>{
+  await canonicalChiefs.cleanup();
  if(!db)return;
  const ids=[companyId,foreignCompanyId].filter(Boolean);
  if(ids.length){
@@ -85,7 +92,7 @@ describe('Medición estratégica: persistencia aditiva y permisos',()=>{
   await manager().saveMeasurementConfig({companyId,objectiveId:secondId,config:config({weight:20,baseline:20,goal:0})});
  });
  it('la tabla de contribución conserva exactamente sus cálculos anteriores',async()=>{
-  const contributions=(await strategicTrendsRouter.createCaller(ctx({manager:{companyId}})).getStrategicObjectivesBreakdown({companyId})).objectives.map(o=>o.contributions);
+  const contributions=(await integrationRouter.createCaller(ctx({manager:{companyId}})).strategicTrends.getStrategicObjectivesBreakdown({companyId})).objectives.map(o=>o.contributions);
   expect(contributions).toEqual(originalContributions);
   const [ote]=await db.select().from(processTacticalObjectives).where(eq(processTacticalObjectives.id,oteId));expect(ote).toEqual(originalOTE);
  });

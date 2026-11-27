@@ -1,5 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('./requestScope', () => ({ runInAnnualRequestScope: vi.fn(async (_options, operation) => operation()) }));
+// Live canonical hydration is covered by SQL integration; this contract suite
+// deliberately stubs the service and preserves the real pure policy guards.
+vi.mock('../_core/teamAccessPolicy', async importOriginal => {
+  const actual = await importOriginal<typeof import('../_core/teamAccessPolicy')>();
+  return { ...actual, hydrateTeamAccessContext: async (ctx: any, opts: any) => {
+    const leader = ctx.processLeader;
+    const module = opts.path ? actual.resolveTeamAccessModule(opts.path, opts.rawInput) : undefined;
+    const policy = leader ? actual.buildTeamAccessPolicy({companyId:leader.companyId,accountId:leader.processLeaderId,ownProcessId:leader.processId,companyProcessIds:[leader.processId]}) : undefined;
+    const cloned = {...ctx,requestMode:opts.mode,teamAccessModule:module,teamAccessPolicy:policy};
+    if(module) actual.assertModuleAccess(cloned,module,opts.mode);
+    return cloned;
+  }};
+});
 vi.mock('./history', async importOriginal => {
   const original = await importOriginal<typeof import('./history')>();
   return { ...original, listAnnualHistory: vi.fn(async input => ({ items: [], year: input.year })), resolveAnnualHistory: vi.fn(async () => ({ success: true })) };

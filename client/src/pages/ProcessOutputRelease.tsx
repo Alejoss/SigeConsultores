@@ -409,7 +409,7 @@ export default function ProcessOutputRelease() {
   const params = useMemo(() => new URLSearchParams(search), [search]);
   const urlProcessId = Number(params.get("processId"));
   const urlCompanyId = Number(params.get("companyId"));
-  const processId = processLeaderSession?.processId || (urlProcessId > 0 ? urlProcessId : Number(localStorage.getItem("selectedProcessId")) || 0);
+  const processId = (urlProcessId > 0 ? urlProcessId : processLeaderSession?.processId || Number(localStorage.getItem("selectedProcessId")) || 0);
   const companyId = processLeaderSession?.companyId || (isManagerLogin ? managerCompanyId : null) || (urlCompanyId > 0 ? urlCompanyId : Number(localStorage.getItem("selectedCompanyId")) || 0);
   const focusControlId = Number(params.get("focusControlId"));
   const focusPeriodId = Number(params.get("focusPeriodId"));

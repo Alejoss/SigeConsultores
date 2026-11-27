@@ -1,3 +1,5 @@
+import { useDetailedTeamAccess } from "@/contexts/TeamAccessContext";
+import { processAccessLevel } from "@/lib/teamAccess";
 import { useAnnualWorkspace } from "@/contexts/AnnualWorkspaceContext";
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -28,6 +30,7 @@ export default function ProcessMap() {
   // El rol activo se determina únicamente mediante los contextos hidratados
   // desde /api/auth/session/me. La URL y localStorage no pueden conceder acceso.
   const isProcessLeader = !isManagerLogin && !!processLeaderSession;
+  const permissions = useDetailedTeamAccess(processLeaderSession?.companyId);
   
   // El destino de regreso se deriva del rol autenticado de esta vista, no de
   // una marca persistida por una sesión anterior.
@@ -158,12 +161,8 @@ export default function ProcessMap() {
     },
   });
 
-  // Jefe de Proceso: únicamente su processId certificado por la sesión del
-  // servidor. Gerente y Administrador: sin filtro, ven todos los procesos de
-  // la empresa que les corresponde.
-  const filterProcessId = isProcessLeader
-    ? processLeaderSession?.processId || undefined
-    : undefined;
+  // Server returns only own and explicitly granted processes for Jefes.
+  const filterProcessId = undefined;
   const { data: processes = [], isLoading, refetch } = trpc.processMap.list.useQuery(
     { 
       companyId: companyId || 0, 
@@ -181,9 +180,10 @@ export default function ProcessMap() {
   // Administrador y Gerente siempre ven todos los procesos de su empresa.
   // El filtro de asignación aplica sólo a un usuario operativo de plataforma,
   // nunca a una sesión administrativa ni a un Jefe de Proceso.
+  const authorizedProcesses = isProcessLeader ? processes.filter(process => processAccessLevel(permissions.access, process.id) !== "none") : processes;
   const filteredProcesses =
     user?.role === "user" && !isManagerLogin && !isProcessLeader && userAssignedProcessesQuery.data && userAssignedProcessesQuery.data.length > 0
-      ? processes.filter((process) => {
+      ? authorizedProcesses.filter((process) => {
           const assignedProcessIds = userAssignedProcessesQuery.data.map((po) => po.processId);
           return assignedProcessIds.includes(process.id);
         })
@@ -411,8 +411,8 @@ export default function ProcessMap() {
   };
 
   const handleAccessProcess = (processId: number) => {
-    localStorage.setItem("selectedProcessId", processId.toString());
-    setLocation("/process-characterization");
+    if (isProcessLeader && processAccessLevel(permissions.access, processId) === "none") return;
+    setLocation(`/process-characterization?companyId=${companyId}&processId=${processId}`);
   };
 
   const strategicProcesses = filteredProcesses.filter(p => p.processType === "estrategico");

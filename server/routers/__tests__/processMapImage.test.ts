@@ -3,6 +3,22 @@ import type { TrpcContext } from "../../_core/context";
 
 // Annual request admission is covered by annual security integration; this unit uses a fake database.
 vi.mock("../../annual/requestScope", () => ({ runInAnnualRequestScope: async (_options: unknown, operation: () => unknown) => operation() }));
+// Canonical grant hydration is covered by granular MySQL integration. Image
+// replacement tests still exercise router-local company/management guards.
+vi.mock("../../_core/teamAccessPolicy", async importOriginal => {
+  const actual = await importOriginal<typeof import("../../_core/teamAccessPolicy")>();
+  return { ...actual, hydrateTeamAccessContext: async (ctx: TrpcContext, opts: any) => {
+    const module = opts.path ? actual.resolveTeamAccessModule(opts.path, opts.rawInput) : undefined;
+    const leader = ctx.processLeader;
+    const policy = leader ? actual.buildTeamAccessPolicy({
+      companyId: leader.companyId, accountId: leader.processLeaderId, ownProcessId: leader.processId,
+      companyProcessIds: [leader.processId],
+    }) : undefined;
+    const cloned = { ...ctx, requestMode: opts.mode, teamAccessModule: module, teamAccessPolicy: policy };
+    if (module) actual.assertModuleAccess(cloned, module, opts.mode);
+    return cloned;
+  } };
+});
 
 const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),

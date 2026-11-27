@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { exportResourcesToPDF } from "@/lib/exportResourcesToPDF";
-import { getAxisBackPathForRole, getCompanyIdFromSession } from "@/lib/sessionScope";
+import { getAxisBackPathForRole, getCompanyIdFromSession, getProcessIdFromSession } from "@/lib/sessionScope";
 
 interface ResourceData {
   resourceName: string;
@@ -39,7 +39,7 @@ export default function ProcessResources() {
 
   // Get processId from localStorage
   useEffect(() => {
-    const selectedProcessId = localStorage.getItem("selectedProcessId");
+    const selectedProcessId = getProcessIdFromSession()?.toString();
     const selectedProcessName = localStorage.getItem("selectedProcessName");
     if (selectedProcessId) {
       setProcessId(parseInt(selectedProcessId));

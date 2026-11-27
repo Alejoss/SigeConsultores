@@ -1,3 +1,4 @@
+import { useCompanyManagementPermission } from "@/hooks/useCompanyManagementPermission";
 import { useAnnualMutationWait } from "@/hooks/useAnnualMutationWait";
 import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
 import { annualBusinessStorage } from "@/lib/annualWorkspace";
@@ -81,11 +82,7 @@ export default function Policy() {
     return getCompanyIdFromLocationOrStorage();
   });
   const [companyName] = useState(() => processLeaderSession?.companyName || annualBusinessStorage.getItem("selectedCompanyName") || "Empresa");
-  const managementAccessQuery = trpc.teamAccess.getMyCompanyManagementAccess.useQuery(
-    { companyId: companyId || 0 },
-    { enabled: isProcessLeader && companyId !== null }
-  );
-  const canEditPolicy = !isProcessLeader || managementAccessQuery.data?.accessLevel === "coordinator";
+  const { canManageCompany: canEditPolicy, isChecking: checkingPermission } = useCompanyManagementPermission(companyId, "strategy");
   
   // Update companyId when process leader session changes
   useEffect(() => {
@@ -268,11 +265,11 @@ export default function Policy() {
           <div className={canEditPolicy ? "flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950" : "flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"}>
             <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
-              {managementAccessQuery.isLoading
+              {checkingPermission
                 ? "Verificando el permiso de edición corporativa…"
                 : canEditPolicy
-                  ? "Tiene autorización de Coordinador de empresa para editar la Política corporativa."
-                  : "Modo de consulta: la Política corporativa sólo puede ser modificada por el Gerente General o por un Jefe autorizado como Coordinador de empresa."}
+                  ? "Tiene autorización explícita de edición para editar la Política corporativa."
+                  : "Modo de consulta: la Política corporativa sólo puede ser modificada por el Gerente General o por un Jefe autorizado para editar este módulo."}
             </p>
           </div>
         )}

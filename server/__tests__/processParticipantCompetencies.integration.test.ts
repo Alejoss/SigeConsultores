@@ -1,3 +1,4 @@
+import { assertCanonicalFixtureDatabase, createCanonicalChiefFixtures } from "./helpers/canonicalChiefFixtures";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, inArray } from "drizzle-orm";
 import {
@@ -12,6 +13,7 @@ import { processParticipantsRouter } from "../routers/processParticipants";
 
 const testName = `Prueba competencias de cargo ${Date.now()}`;
 
+const canonicalChiefs = createCanonicalChiefFixtures("processParticipantCompetencies");
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
 let companyId = 0;
 let otherCompanyId = 0;
@@ -27,7 +29,7 @@ function callerForLeader(processIdForSession: number) {
     user: null,
     manager: null,
     processLeader: {
-      processLeaderId: 1,
+      processLeaderId: canonicalChiefs.accountId(companyId, processIdForSession),
       leaderName: "Jefe temporal",
       leaderEmail: "jefe-temporal@example.com",
       processId: processIdForSession,
@@ -50,6 +52,7 @@ function adminCaller() {
 }
 
 beforeAll(async () => {
+  assertCanonicalFixtureDatabase();
   db = (await getDb()) as NonNullable<Awaited<ReturnType<typeof getDb>>>;
   if (!db)
     throw new Error("La base local no está disponible para esta integración.");
@@ -93,9 +96,12 @@ beforeAll(async () => {
     orderIndex: 0,
   });
   participantId = Number(participant[0].insertId);
+  await canonicalChiefs.register(db, { companyId: companyId, processId: processId });
+  await canonicalChiefs.register(db, { companyId: companyId, processId: otherProcessId });
 });
 
 afterAll(async () => {
+  await canonicalChiefs.cleanup();
   if (!db) return;
   if (processId) {
     const participantRows = await db
@@ -210,7 +216,7 @@ describe("Competencias de cargo: integración local", () => {
         competencyType: "transversal",
         competencyLevel: "basico",
       })
-    ).rejects.toThrow("No tiene acceso a este proceso");
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "No tiene el permiso requerido para este proceso." });
 
     await expect(
       adminCaller().createCompetency({

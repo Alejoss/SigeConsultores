@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import multer from "multer";
 import { resolveAuthFromRequest } from "./resolveRequestAuth";
+import { getTeamAccessHttpContext, canManageHttpProcess } from "./teamAccessHttp";
 import { storagePut } from "../storage";
 import { ENV } from "./env";
 
@@ -24,12 +25,22 @@ export function registerFileUploadRoutes(app: Express) {
     async (req: Request, res: Response) => {
       try {
         // Authenticate via session cookie (same mechanism as tRPC)
-        const auth = await resolveAuthFromRequest(req);
+        const auth = await getTeamAccessHttpContext(req, res);
         if (!auth.user && !auth.manager && !auth.processLeader) {
           return res.status(401).json({ ok: false, error: "No autenticado" });
         }
         if (auth.user && auth.user.role !== "admin" && !auth.manager && !auth.processLeader) {
           return res.status(403).json({ ok: false, error: "No tiene acceso a la información de la empresa." });
+        }
+
+        if (auth.processLeader) {
+          const processId = Number(req.body.processId);
+          if (!Number.isSafeInteger(processId) || processId <= 0) {
+            return res.status(400).json({ ok: false, error: "Seleccione el proceso antes de subir el archivo." });
+          }
+          if (!await canManageHttpProcess(auth, processId, auth.processLeader.companyId)) {
+            return res.status(403).json({ ok: false, error: "Este proceso permite solo consulta o no está autorizado." });
+          }
         }
 
         if (!req.file) {
@@ -62,12 +73,18 @@ export function registerFileUploadRoutes(app: Express) {
    */
   app.get("/api/proxy/file", async (req: Request, res: Response) => {
     try {
-      const auth = await resolveAuthFromRequest(req);
+      const auth = await getTeamAccessHttpContext(req, res);
       if (!auth.user && !auth.manager && !auth.processLeader) {
         return res.status(401).send("No autenticado");
       }
       if (auth.user && auth.user.role !== "admin" && !auth.manager && !auth.processLeader) {
         return res.status(403).send("No tiene acceso a la información de la empresa.");
+      }
+      // This generic URL-only proxy cannot prove the module/process ownership.
+      // Chiefs retrieve renewed private links through record-aware tRPC guards;
+      // no current client screen uses this compatibility proxy endpoint.
+      if (auth.processLeader && !auth.manager && auth.user?.role !== "admin") {
+        return res.status(403).send("Abra el documento desde el proceso o módulo autorizado.");
       }
 
       const fileUrl = req.query.url as string;

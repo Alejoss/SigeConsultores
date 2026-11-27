@@ -1,3 +1,5 @@
+import { useTeamAccessState } from "@/contexts/TeamAccessContext";
+import { useAnnualWorkspace } from "@/contexts/AnnualWorkspaceContext";
 import { useAnnualMutationWait } from "@/hooks/useAnnualMutationWait";
 import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -137,6 +139,9 @@ const CHARACTERIZATION_MODULES = CHARACTERIZATION_MODULE_GROUPS.flatMap(
 
 export default function ProcessCharacterization() {
   const waitForMutations = useAnnualMutationWait();
+  const team = useTeamAccessState();
+  const annual = useAnnualWorkspace();
+  const readOnly = annual.closed || (team.isProcessLeader && team.readOnly);
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { isManagerLogin } = useManagerAuth();
@@ -149,9 +154,9 @@ export default function ProcessCharacterization() {
   // al cargar Caracterización; el almacenamiento local queda sólo como respaldo.
   const routeParams = new URLSearchParams(window.location.search);
   const companyId =
-    routeParams.get("companyId") || localStorage.getItem("selectedCompanyId");
+    routeParams.get("companyId") || (processLeaderSession?.companyId ? String(processLeaderSession.companyId) : localStorage.getItem("selectedCompanyId"));
   const selectedProcessId =
-    routeParams.get("processId") || localStorage.getItem("selectedProcessId");
+    routeParams.get("processId") || (processLeaderSession?.processId ? String(processLeaderSession.processId) : localStorage.getItem("selectedProcessId"));
   // Se resuelve de forma síncrona: antes se esperaba un ciclo extra de React
   // para obtener este mismo dato y eso mantenía la pantalla en "Cargando...".
   const parsedProcessId = selectedProcessId
@@ -332,6 +337,7 @@ export default function ProcessCharacterization() {
       clearTimeout(autoSaveTimeoutRef.current);
     }
 
+    if (readOnly) return;
     autoSaveTimeoutRef.current = setTimeout(async () => {
       setIsAutoSaving(true);
       try {
@@ -360,9 +366,10 @@ export default function ProcessCharacterization() {
         clearTimeout(autoSaveTimeoutRef.current);
       }
     };
-  }, [data, macroProcessEditable, processId]);
+  }, [data, macroProcessEditable, processId, readOnly]);
 
   useAnnualExitGuard(async () => {
+    if (readOnly) return true;
     const current = { macroProcess: macroProcessEditable, responsible: data.responsible, responsibleEmail: data.responsibleEmail, participants: data.participants, objective: data.objective, scope: data.scope, resources: data.resources };
     if (!hasHydratedInitialDataRef.current || JSON.stringify(current) === lastSavedDataRef.current) return true;
     if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
@@ -371,6 +378,7 @@ export default function ProcessCharacterization() {
     try { await updateMutation.mutateAsync({ processId, ...current }); lastSavedDataRef.current = JSON.stringify(current); return true; } catch { return false; }
   });
   const handleSave = async () => {
+    if (readOnly) return;
     if (!processId) return;
 
     try {
@@ -762,7 +770,7 @@ export default function ProcessCharacterization() {
 
                   <Button
                     onClick={handleSave}
-                    disabled={updateMutation.isPending}
+                    disabled={readOnly || updateMutation.isPending}
                     className="mt-6 bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     {updateMutation.isPending

@@ -1,3 +1,5 @@
+import { router } from "../_core/trpc";
+import { assertCanonicalFixtureDatabase, createCanonicalChiefFixtures } from "./helpers/canonicalChiefFixtures";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { and, eq } from "drizzle-orm";
 import {
@@ -20,7 +22,9 @@ import { getDb } from "../db";
 import { changeManagementRouter } from "../routers/changeManagement";
 import { linkedCommitmentsRouter } from "../routers/linkedCommitments";
 
+const integrationRouter = router({ changeManagement: changeManagementRouter, linkedCommitments: linkedCommitmentsRouter });
 const testName = `Prueba Gestión de Cambios ${Date.now()}`;
+const canonicalChiefs = createCanonicalChiefFixtures("changeManagement");
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
 let companyId = 0;
 let sourceProcessId = 0;
@@ -49,7 +53,7 @@ function sourceLeaderContext() {
     user: null,
     manager: null,
     processLeader: {
-      processLeaderId: 4441,
+      processLeaderId: canonicalChiefs.accountId(companyId, sourceProcessId),
       leaderName: "Jefe sugerente de prueba",
       leaderEmail: "jefe.sugerente@example.test",
       processId: sourceProcessId,
@@ -66,7 +70,7 @@ function targetLeaderContext() {
     user: null,
     manager: null,
     processLeader: {
-      processLeaderId: 4442,
+      processLeaderId: canonicalChiefs.accountId(companyId, targetProcessId),
       leaderName: "Jefe ejecutor de prueba",
       leaderEmail: "jefe.ejecutor@example.test",
       processId: targetProcessId,
@@ -79,6 +83,7 @@ function targetLeaderContext() {
 }
 
 beforeAll(async () => {
+  assertCanonicalFixtureDatabase();
   db = (await getDb()) as NonNullable<Awaited<ReturnType<typeof getDb>>>;
   if (!db) throw new Error("Base local no disponible para prueba de Gestión de Cambios.");
   const company = await db.insert(companies).values({
@@ -119,9 +124,12 @@ beforeAll(async () => {
     processType: "soporte",
   });
   targetProcessId = Number(target[0].insertId);
+  await canonicalChiefs.register(db, { companyId: companyId, processId: sourceProcessId });
+  await canonicalChiefs.register(db, { companyId: companyId, processId: targetProcessId });
 });
 
 afterAll(async () => {
+  await canonicalChiefs.cleanup();
   if (!db || !companyId) return;
   await db.delete(linkedCommitmentEvidence).where(eq(linkedCommitmentEvidence.companyId, companyId));
   await db.delete(linkedCommitments).where(eq(linkedCommitments.companyId, companyId));
@@ -140,7 +148,7 @@ afterAll(async () => {
 
 describe("Gestión de Cambios: integración local", () => {
   it("permite al Jefe sugerir pero no abrir un expediente corporativo", async () => {
-    const leader = changeManagementRouter.createCaller(sourceLeaderContext());
+    const leader = integrationRouter.createCaller(sourceLeaderContext()).changeManagement;
     await expect(
       leader.create({
         companyId,
@@ -160,7 +168,7 @@ describe("Gestión de Cambios: integración local", () => {
   });
 
   it("crea un expediente auditable, vincula una acción y la refleja en el proceso responsable", async () => {
-    const manager = changeManagementRouter.createCaller(managerContext());
+    const manager = integrationRouter.createCaller(managerContext()).changeManagement;
     const references = await manager.getReferenceOptions({ companyId });
     expect(references.responsibles.some(responsible => responsible.accountId === managerAccountId)).toBe(true);
     const created = await manager.create({
@@ -232,7 +240,7 @@ describe("Gestión de Cambios: integración local", () => {
   });
 
   it("sincroniza al expediente el cierre realizado por el proceso responsable", async () => {
-    const manager = changeManagementRouter.createCaller(managerContext());
+    const manager = integrationRouter.createCaller(managerContext()).changeManagement;
     await expect(
       manager.updateAction({
         companyId,
@@ -241,7 +249,7 @@ describe("Gestión de Cambios: integración local", () => {
       })
     ).rejects.toThrow("debe registrarse desde Compromisos vinculados");
 
-    const processCommitments = linkedCommitmentsRouter.createCaller(targetLeaderContext());
+    const processCommitments = integrationRouter.createCaller(targetLeaderContext()).linkedCommitments;
     await expect(
       processCommitments.updateProgress({
         id: linkedCommitmentId,

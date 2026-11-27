@@ -1,3 +1,4 @@
+import { assertCanonicalFixtureDatabase, createCanonicalChiefFixtures } from "./helpers/canonicalChiefFixtures";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { and, eq } from "drizzle-orm";
 import {
@@ -26,6 +27,7 @@ const integrationRouter = router({
 });
 
 const testName = `Prueba compromisos vinculados ${Date.now()}`;
+const canonicalChiefs = createCanonicalChiefFixtures("linkedCommitments");
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
 let companyId = 0;
 let processOneId = 0;
@@ -71,7 +73,7 @@ function leaderCaller(processId: number) {
     user: null,
     manager: null,
     processLeader: {
-      processLeaderId: 1,
+      processLeaderId: canonicalChiefs.accountId(companyId, processId),
       leaderName: "Jefe de prueba",
       leaderEmail: "pruebas@example.com",
       processId,
@@ -84,6 +86,7 @@ function leaderCaller(processId: number) {
 }
 
 beforeAll(async () => {
+  assertCanonicalFixtureDatabase();
   db = (await getDb()) as NonNullable<Awaited<ReturnType<typeof getDb>>>;
   if (!db)
     throw new Error(
@@ -177,9 +180,12 @@ beforeAll(async () => {
     validUntil: new Date("2026-12-31T00:00:00.000Z"),
   });
   complianceId = Number(compliance[0].insertId);
+  await canonicalChiefs.register(db, { companyId: companyId, processId: processOneId });
+  await canonicalChiefs.register(db, { companyId: companyId, processId: processTwoId });
 });
 
 afterAll(async () => {
+  await canonicalChiefs.cleanup();
   if (!db || !companyId) return;
   await db
     .delete(linkedCommitmentEvidence)

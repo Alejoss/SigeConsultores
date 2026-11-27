@@ -1,3 +1,5 @@
+import { useDetailedTeamAccess } from "@/contexts/TeamAccessContext";
+import { routeAccess } from "@/lib/teamAccess";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
@@ -73,7 +75,8 @@ export default function AxisPage({ axisId }: AxisPageProps) {
   }, [authCompanyId, companyId]);
 
   const group = MODULE_GROUPS.find((g) => g.id === axisId)!;
-  const modules = DASHBOARD_MODULES.filter((m) => m.group === axisId);
+  const permissions = useDetailedTeamAccess(companyId);
+  const modules = DASHBOARD_MODULES.filter(m => m.group === axisId && (!processLeaderSession || (!permissions.isChecking && routeAccess(permissions.access, m.path, processLeaderSession.processId) !== "none")));
   const style = AXIS_STYLES[axisId];
   const { getLabel } = useModuleLabels(companyId);
 

@@ -59,4 +59,6 @@ export const integrationTestFiles = [
   "server/annual/history.integration.test.ts",
   "server/__tests__/companyInfoWiring.integration.test.ts",
   "server/__tests__/annual.additionalActivities.integration.test.ts",
+  "server/__tests__/teamAccess.granular.integration.test.ts",
+  "server/__tests__/teamAccess.http.integration.test.ts",
 ] as const;

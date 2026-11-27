@@ -25,6 +25,8 @@ import {
 } from "../../drizzle/schema";
 import type { TrpcContext } from "./context";
 import { getDb } from "../db";
+import { withoutAnnualScope } from "../annual/runtime";
+import { assertModuleAccess, canAccessProcess } from "./teamAccessPolicy";
 
 export type CompanyManagementLevel = "standard" | "coordinator";
 
@@ -52,7 +54,10 @@ function internal(): never {
 export function assertCompanyReadAccess(ctx: TrpcContext, companyId: number): void {
   if (ctx.user?.role === "admin") return;
   if (ctx.manager?.companyId === companyId) return;
-  if (ctx.processLeader?.companyId === companyId) return;
+  if (ctx.processLeader?.companyId === companyId) {
+    if (ctx.teamAccessModule) assertModuleAccess(ctx, ctx.teamAccessModule, "read", companyId);
+    return;
+  }
   forbidden("No tiene acceso a esta empresa.");
 }
 
@@ -74,7 +79,16 @@ export async function assertCompanyManagementAccess(
     forbidden("Solo el Gerente o un Coordinador autorizado puede modificar este módulo de empresa.");
   }
 
-  const db = await getDb();
+  if (ctx.teamAccessPolicy) {
+    // A grant for Strategy never authorizes SIG, change management, or people.
+    if (!ctx.teamAccessModule) forbidden("No se pudo identificar el módulo para validar el permiso de edición.");
+    assertModuleAccess(ctx, ctx.teamAccessModule, "write", companyId);
+    return;
+  }
+
+  // Compatibility for direct legacy service callers; real business requests
+  // are hydrated by tRPC/HTTP middleware before reaching this guard.
+  const db = await withoutAnnualScope(() => getDb());
   if (!db) internal();
 
   const [access] = await db
@@ -128,6 +142,13 @@ export async function getProcessForAccess(processId: number): Promise<ProcessRef
 export function assertProcessAccess(ctx: TrpcContext, process: ProcessReference): void {
   if (ctx.user?.role === "admin") return;
   if (ctx.manager?.companyId === process.companyId) return;
+  if (ctx.processLeader && ctx.teamAccessPolicy) {
+    const policy = ctx.teamAccessPolicy;
+    if (policy.accountId === ctx.processLeader.processLeaderId &&
+      policy.companyId === ctx.processLeader.companyId &&
+      canAccessProcess(policy, process.id, ctx.requestMode ?? "read", process.companyId)) return;
+    forbidden("No tiene el permiso requerido para este proceso.");
+  }
   if (
     ctx.processLeader?.companyId === process.companyId &&
     ctx.processLeader.processId === process.id
@@ -314,12 +335,22 @@ export async function assertCompanyRecordManagementAccess(
     companyId = row?.companyId ?? null;
   } else {
     const [row] = await db
-      .select({ companyId: processes.companyId })
+      .select({ companyId: processes.companyId, documentType: documents.documentType })
       .from(documents)
       .innerJoin(processes, eq(documents.processId, processes.id))
       .where(eq(documents.id, id))
       .limit(1);
     companyId = row?.companyId ?? null;
+    if (companyId && row) {
+      // Only persisted, unambiguous corporate types can be delegated. Legacy
+      // Varios mixes Values/ProcessMap/other files; never guess from input.
+      if (row.documentType === "Politica" || row.documentType === "Programa") {
+        await assertCompanyManagementAccess({ ...ctx, teamAccessModule: "strategy" }, companyId);
+      } else {
+        assertCompanyPersonnelManagementAccess(ctx, companyId);
+      }
+      return;
+    }
   }
   if (!companyId) throw new TRPCError({ code: "NOT_FOUND", message: "Registro corporativo no encontrado." });
   await assertCompanyManagementAccess(ctx, companyId);

@@ -4,6 +4,8 @@ import type { User } from "../../drizzle/schema";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { applySessionCookie } from "./cookies";
 import { resolveAuthFromRequest } from "./resolveRequestAuth";
+import type { TeamModuleKey, TeamRequestMode } from "../../shared/teamAccess";
+import type { TeamAccessPolicy } from "./teamAccessPolicy";
 
 export type ManagerContext = {
   companyId: number;
@@ -26,6 +28,10 @@ export type TrpcContext = {
   user: User | null;
   manager: ManagerContext | null;
   processLeader: ProcessLeaderContext | null;
+  /** Populated on a cloned per-procedure context, never the HTTP batch context. */
+  teamAccessPolicy?: TeamAccessPolicy;
+  teamAccessModule?: TeamModuleKey;
+  requestMode?: TeamRequestMode;
 };
 
 function sessionToken(cookieHeader: string | undefined): string | null {

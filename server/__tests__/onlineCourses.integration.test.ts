@@ -1,3 +1,4 @@
+import { assertCanonicalFixtureDatabase, createCanonicalChiefFixtures } from "./helpers/canonicalChiefFixtures";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import bcrypt from "bcryptjs";
 import { eq, inArray } from "drizzle-orm";
@@ -25,8 +26,10 @@ import {
   courseWorkerOverrides,
   courseWorkers,
   roles,
+  processes,
 } from "../../drizzle/schema";
 
+const canonicalChiefs = createCanonicalChiefFixtures("onlineCourses");
 const stamp = Date.now();
 const adminEmail = `curso-admin-${stamp}@example.test`;
 const managerEmail = `curso-gerente-${stamp}@example.test`;
@@ -83,6 +86,7 @@ function regCodesCaller(ctx: { user?: { id: number; role: "admin" | "user" }; ma
 describe("online courses flow", () => {
   let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
   let companyId = 0;
+  let leaderProcessId = 0;
   let adminAccountId = 0;
   let managerAccountId = 0;
   let fieldId = 0;
@@ -95,6 +99,7 @@ describe("online courses flow", () => {
   let privateModuleId = 0;
 
   beforeAll(async () => {
+    assertCanonicalFixtureDatabase();
     resetCourseLoginLimiter();
     db = (await getDb()) as NonNullable<Awaited<ReturnType<typeof getDb>>>;
     if (!db) throw new Error("Base local no disponible para capacitaciones.");
@@ -129,10 +134,14 @@ describe("online courses flow", () => {
       { accountId: adminAccountId, roleId: adminRole.id, companyId: 0, processId: 0, status: "active" },
       { accountId: managerAccountId, roleId: managerRole.id, companyId, processId: 0, status: "active" },
     ]);
+    leaderProcessId = Number((await db.insert(processes).values({ companyId, name: "Proceso de jefe cursos sintético", processType: "soporte" }))[0].insertId);
+    await canonicalChiefs.register(db, { companyId, processId: leaderProcessId });
   });
 
   afterAll(async () => {
+    await canonicalChiefs.cleanup();
     if (!db) return;
+    if (leaderProcessId) await db.delete(processes).where(eq(processes.id, leaderProcessId));
     const workers = companyId
       ? await db.select({ id: courseWorkers.id }).from(courseWorkers).where(eq(courseWorkers.companyId, companyId))
       : [];
@@ -210,7 +219,7 @@ describe("online courses flow", () => {
     await expect(asManager.list()).rejects.toThrow();
 
     const asLeader = regCodesCaller({
-      processLeader: { processLeaderId: 1, leaderName: "x", leaderEmail: "x@example.test", processId: 1, companyId, companyName: "x" },
+      processLeader: { processLeaderId: canonicalChiefs.accountId(companyId, leaderProcessId), leaderName: "x", leaderEmail: "x@example.test", processId: leaderProcessId, companyId, companyName: "x" },
     });
     await expect(asLeader.setMine({ regCode: "LIDER1" })).rejects.toThrow(/gerente/);
     await expect(regCodesCaller({ user: { id: 9, role: "user" } }).mine()).rejects.toThrow();

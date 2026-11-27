@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { companyReadProcedure, companyPersonnelManagementProcedure, router } from '../_core/trpc';
 import type { TrpcContext } from '../_core/context';
 import { getAnnualScope, withoutAnnualScope } from '../annual/runtime';
+import { canAccessProcess } from '../_core/teamAccessPolicy';
 import {
   BASE_YEAR, listWorkspaces, getAnnualOverview, createAnnualWorkspace,
   incorporateApprovedProcess, closeAnnualWorkspace, listHistoricalPendings,
@@ -32,7 +33,14 @@ export const annualWorkspacesRouter=router({
   }),
   overview:companyReadProcedure.input(yearInput).query(async({input,ctx})=> {
     assertSelectedCompany(input.companyId,ctx);
-    return withoutAnnualScope(()=>getAnnualOverview(input.companyId,input.year));
+    const overview = await withoutAnnualScope(()=>getAnnualOverview(input.companyId,input.year));
+    if (!ctx.processLeader || !ctx.teamAccessPolicy) return overview;
+    const processes = overview.processes.filter(process => canAccessProcess(ctx.teamAccessPolicy, process.id, 'read', input.companyId));
+    return {
+      ...overview, processes, totalCount: processes.length,
+      incorporatedCount: processes.filter(process => process.status === 'incorporated').length,
+      trainingOrigins: ctx.teamAccessPolicy.moduleAccess.management_systems === 'none' ? {} : overview.trainingOrigins,
+    };
   }),
   create:companyPersonnelManagementProcedure.input(yearInput.extend({sourceYear:z.number().int().min(BASE_YEAR).max(2099),strategy:annualStrategyInput})).mutation(async({input,ctx})=> {
     assertSelectedCompany(input.companyId,ctx);
@@ -49,6 +57,12 @@ export const annualWorkspacesRouter=router({
   }),
   historicalPendings:companyReadProcedure.input(yearInput).query(async({input,ctx})=> {
     assertSelectedCompany(input.companyId,ctx);
-    return withoutAnnualScope(()=>listHistoricalPendings(input.companyId,input.year));
+    const pending = await withoutAnnualScope(()=>listHistoricalPendings(input.companyId,input.year));
+    if (!ctx.processLeader || !ctx.teamAccessPolicy) return pending;
+    const items = pending.items.filter(item => canAccessProcess(ctx.teamAccessPolicy, Number(item.processId), 'read', input.companyId));
+    if (ctx.teamAccessPolicy.moduleAccess.management_systems === 'none') {
+      return { ...pending, items, programActions: [], inspectionFindings: [] };
+    }
+    return { ...pending, items };
   }),
 });

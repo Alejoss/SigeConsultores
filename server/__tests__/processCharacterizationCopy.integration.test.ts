@@ -1,3 +1,4 @@
+import { assertCanonicalFixtureDatabase, createCanonicalChiefFixtures } from "./helpers/canonicalChiefFixtures";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, inArray } from "drizzle-orm";
 import {
@@ -27,6 +28,7 @@ const integrationRouter = router({
 
 const testName = `Prueba copia caracterización ${Date.now()}`;
 
+const canonicalChiefs = createCanonicalChiefFixtures("processCharacterizationCopy");
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
 let companyId = 0;
 let otherCompanyId = 0;
@@ -56,7 +58,7 @@ function leaderCaller() {
     user: null,
     manager: null,
     processLeader: {
-      processLeaderId: 1,
+      processLeaderId: canonicalChiefs.accountId(companyId, sourceProcessId),
       leaderName: "Jefe temporal",
       leaderEmail: "jefe-temporal@example.com",
       processId: sourceProcessId,
@@ -78,6 +80,7 @@ async function processCharacterizationId(processId: number) {
 }
 
 beforeAll(async () => {
+  assertCanonicalFixtureDatabase();
   db = (await getDb()) as NonNullable<Awaited<ReturnType<typeof getDb>>>;
   if (!db) {
     throw new Error(
@@ -310,9 +313,11 @@ beforeAll(async () => {
   });
 
   expect(secondParticipant[0].insertId).toBeTruthy();
+  await canonicalChiefs.register(db, { companyId: companyId, processId: sourceProcessId });
 });
 
 afterAll(async () => {
+  await canonicalChiefs.cleanup();
   if (!db) return;
   const allProcessIds = [
     sourceProcessId,
@@ -744,7 +749,7 @@ describe("Copia selectiva de Caracterización: integración local", () => {
         targetProcessIds: [targetRollbackProcessId],
         modules: ["participants"],
       })
-    ).rejects.toMatchObject({ code: "FORBIDDEN", message: expect.stringContaining("Sólo el Administrador o Gerente") });
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "No tienes acceso a este proceso" });
   });
 
   it("revierte el destino que falla dentro de una transacción y conserva el destino anterior ya confirmado", async () => {

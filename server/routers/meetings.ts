@@ -17,6 +17,7 @@ import { sendEmailStrict } from "../_core/emailService";
 import type { TrpcContext } from "../_core/context";
 import { companyProcedure, router } from "../_core/trpc";
 import { storageDelete, storageGet } from "../storage";
+import { assertProcessAccess as assertAuthorizedProcessAccess } from "../_core/companyPermissions";
 
 const MAX_TEXT_LENGTH = 500_000;
 const isoDateSchema = z.union([
@@ -102,9 +103,7 @@ function assertProcessAccess(
   processId: number
 ) {
   assertCompanyAccess(ctx, companyId);
-  if (ctx.processLeader && ctx.processLeader.processId !== processId) {
-    forbidden("El Jefe de Proceso solo puede gestionar las reuniones de su proceso.");
-  }
+  assertAuthorizedProcessAccess(ctx, { id: processId, companyId });
 }
 
 function assertCrossProcessLinkAuthority(
