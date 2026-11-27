@@ -8,7 +8,7 @@ type FixtureDb = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
 /** This fixture helper never writes to review/production or changes the role catalog. */
 export function assertCanonicalFixtureDatabase(): void {
-  assertAnnualIntegrationDatabase(process.env.DATABASE_URL ?? "", "false");
+  assertAnnualIntegrationDatabase();
 }
 
 /** Each suite owns only inserted account/assignment IDs, not all rows in a company. */
