@@ -123,8 +123,11 @@ export function ProcessLeaderAuthProvider({ children }: { children: React.ReactN
   const updateSession = (newSession: ProcessLeaderSession) => {
     // Refleja el autosave de Mi cuenta durante esta vista. Al recargar, el
     // servidor vuelve a construir la sesión y mantiene la fuente de verdad.
-    setSession(newSession);
-    localStorage.setItem("processLeaderSession", JSON.stringify(newSession));
+    if (!session) return;
+    // Profile edits cannot replace authenticated company/process/account identity.
+    const safeSession = { ...newSession, processLeaderId: session.processLeaderId, processId: session.processId, companyId: session.companyId };
+    setSession(safeSession);
+    localStorage.setItem("processLeaderSession", JSON.stringify(safeSession));
   };
 
   const value: ProcessLeaderAuthContextType = {

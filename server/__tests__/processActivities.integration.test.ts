@@ -1,3 +1,4 @@
+import { assertCanonicalFixtureDatabase, createCanonicalChiefFixtures } from "./helpers/canonicalChiefFixtures";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { companies, criticalityMatrix, processCompliances, processFODA, processes, stakeholders } from "../../drizzle/schema";
@@ -13,6 +14,7 @@ const integrationRouter = router({
 });
 
 const testName = `Prueba actividades ${Date.now()}`;
+const canonicalChiefs = createCanonicalChiefFixtures("processActivities");
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
 let companyId = 0;
 let processId = 0;
@@ -37,7 +39,7 @@ function sourceLeaderActivitiesCaller() {
     user: null,
     manager: null,
     processLeader: {
-      processLeaderId: 1,
+      processLeaderId: canonicalChiefs.accountId(companyId, processId),
       leaderName: "Jefe de actividades",
       leaderEmail: "actividades@example.com",
       processId,
@@ -70,6 +72,7 @@ function baseActivityInput() {
 }
 
 beforeAll(async () => {
+  assertCanonicalFixtureDatabase();
   db = (await getDb()) as NonNullable<Awaited<ReturnType<typeof getDb>>>;
   if (!db) throw new Error("Base local no disponible para la prueba de Actividades.");
 
@@ -99,9 +102,11 @@ beforeAll(async () => {
     processType: "soporte",
   });
   foreignProcessId = Number(foreignProcess[0].insertId);
+  await canonicalChiefs.register(db, { companyId: companyId, processId: processId });
 });
 
 afterAll(async () => {
+  await canonicalChiefs.cleanup();
   if (!db) return;
   if (processId) await db.delete(criticalityMatrix).where(eq(criticalityMatrix.processId, processId));
   if (processId) await db.delete(stakeholders).where(eq(stakeholders.processId, processId));

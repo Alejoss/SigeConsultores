@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { adminProcedure, companyPersonnelManagementProcedure, companyProcedure, companyReadProcedure, router } from "../_core/trpc";
-import { assertCompanyPersonnelManagementAccess } from "../_core/companyPermissions";
+import { assertCompanyPersonnelManagementAccess, assertProcessAccess } from "../_core/companyPermissions";
 import { getDb } from "../db";
 import { processes } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -48,9 +49,16 @@ export const processesRouter = router({
       const db = await getDb();
       if (!db) return [];
 
-      const procs = ctx.processLeader
-        ? await db.select().from(processes).where(eq(processes.id, ctx.processLeader.processId))
-        : await db.select().from(processes).where(eq(processes.companyId, input.companyId));
+      const rows = await db.select().from(processes).where(eq(processes.companyId, input.companyId));
+      const procs = rows.filter(process => {
+        try {
+          assertProcessAccess(ctx, process);
+          return true;
+        } catch (error) {
+          if (error instanceof TRPCError && error.code === "FORBIDDEN") return false;
+          throw error;
+        }
+      });
 
       return procs.map(p => ({
         id: p.id,

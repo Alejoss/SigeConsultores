@@ -1,3 +1,4 @@
+import { useCompanyManagementPermission } from "@/hooks/useCompanyManagementPermission";
 import { annualBusinessStorage } from "@/lib/annualWorkspace";
 import { useState, useMemo, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,6 +33,7 @@ export default function FODA() {
     return stored ? parseInt(stored) : 0;
   }, []);
 
+  const { canManageCompany } = useCompanyManagementPermission(companyId, "company_foda");
   // Initialize enterpriseVersions with localStorage persistence
   const [enterpriseVersions, setEnterpriseVersions] = useState<Map<string, string>>(() => {
     if (!companyId) return new Map();
@@ -137,7 +139,7 @@ export default function FODA() {
               <TabsContent value="company" className="mt-6">
                 <FODACompany 
                   companyId={companyId}
-                  isAdmin={user?.role === "admin"} 
+                  isAdmin={canManageCompany}
                 />
               </TabsContent>
             </Tabs>

@@ -142,8 +142,14 @@ import {
   assertCompanyTrainingManagementAccess,
   assertCompanyTrainingReadAccess,
   assertTrainingBackupManagementAccess,
+  assertProcessAccessById,
+  assertProcessStakeholderAccess,
+  assertCompanyReadAccess,
+  assertCompanyRecordManagementAccess,
 } from "./_core/companyPermissions";
+import { canAccessProcess } from "./_core/teamAccessPolicy";
 
+import { assertLegacyProcessRecordAccess, assertLegacyTacticalObjectiveReference, assertLegacyCompanyComplianceManagementAccess } from "./routers/processRecordAccess";
 // Module Customization Router
 const moduleCustomizationRouter = router({
   getLabels: companyProcedure
@@ -341,7 +347,8 @@ export const appRouter = router({
 
     delete: companyProcedure
       .input(z.object({ valueId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await assertCompanyRecordManagementAccess(ctx, "companyValue", input.valueId);
         await deleteCompanyValue(input.valueId);
         return { success: true };
       }),
@@ -371,7 +378,11 @@ export const appRouter = router({
           description: z.string().optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin" && !ctx.manager) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Solo Gerencia puede modificar la estructura de procesos." });
+        }
+        await assertProcessAccessById(ctx, input.processId);
         const db = await getDb();
         if (!db) throw new Error("Database not available");
 
@@ -390,13 +401,16 @@ export const appRouter = router({
 
     list: companyProcedure
       .input(z.object({ companyId: z.number() }))
-      .query(async ({ input }) => {
-        return getCompanyProcesses(input.companyId);
+      .query(async ({ input, ctx }) => {
+        assertCompanyReadAccess(ctx, input.companyId);
+        const rows = await getCompanyProcesses(input.companyId);
+        return ctx.processLeader ? rows.filter(process => canAccessProcess(ctx.teamAccessPolicy, process.id, "read", input.companyId)) : rows;
       }),
 
     get: companyProcedure
       .input(z.object({ processId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await assertProcessAccessById(ctx, input.processId);
         return getProcessById(input.processId);
       }),
   }),
@@ -533,7 +547,8 @@ export const appRouter = router({
           completed: z.string().optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await assertProcessAccessById(ctx, input.processId);
         await createStakeholderCriticality(input.processId, {
           name: input.name,
           type: input.type,
@@ -550,13 +565,15 @@ export const appRouter = router({
 
     list: companyProcedure
       .input(z.object({ processId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await assertProcessAccessById(ctx, input.processId);
         return getProcessStakeholderCriticalities(input.processId);
       }),
 
     delete: companyProcedure
       .input(z.object({ criticalityId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await assertProcessStakeholderAccess(ctx, input.criticalityId);
         await deleteStakeholderCriticality(input.criticalityId);
         return { success: true };
       }),
@@ -576,7 +593,8 @@ export const appRouter = router({
           completed: z.string().optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await assertProcessStakeholderAccess(ctx, input.criticalityId);
         await updateStakeholderCriticality(input.criticalityId, {
           name: input.name,
           type: input.type,
@@ -601,7 +619,7 @@ export const appRouter = router({
 
   // Implementación anterior preservada temporalmente para compatibilidad durante la transición.
   companyCompliancesLegacy: router({
-    list: companyProcedure
+    list: companyReadProcedure
       .input(z.object({ companyId: z.number() }))
       .query(async ({ input }) => {
         const db = await getDb();
@@ -612,7 +630,7 @@ export const appRouter = router({
           .from(tbl)
           .where(eq(tbl.companyId, input.companyId));
       }),
-    create: companyProcedure
+    create: companyManagementProcedure
       .input(
         z.object({
           companyId: z.number(),
@@ -635,7 +653,7 @@ export const appRouter = router({
           validUntil: z.string().optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new Error("No DB");
         const { companyCompliances: tbl } = await import("../drizzle/schema");
@@ -682,10 +700,11 @@ export const appRouter = router({
           validUntil: z.string().nullable().optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new Error("No DB");
         const { companyCompliances: tbl } = await import("../drizzle/schema");
+        await assertLegacyCompanyComplianceManagementAccess(ctx, input.id);
         const { id, validFrom, validUntil, ...rest } = input;
         await db
           .update(tbl)
@@ -710,10 +729,11 @@ export const appRouter = router({
       }),
     delete: companyProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new Error("No DB");
         const { companyCompliances: tbl } = await import("../drizzle/schema");
+        await assertLegacyCompanyComplianceManagementAccess(ctx, input.id);
         await db.delete(tbl).where(eq(tbl.id, input.id));
         return { success: true };
       }),
@@ -739,7 +759,8 @@ export const appRouter = router({
           completed: z.enum(["SI", "NO"]).optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await assertProcessAccessById(ctx, input.processId);
         await createProcessTraining(input.processId, {
           name: input.name,
           objective: input.objective,
@@ -763,13 +784,15 @@ export const appRouter = router({
 
     list: companyProcedure
       .input(z.object({ processId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await assertProcessAccessById(ctx, input.processId);
         return getProcessTrainingsList(input.processId);
       }),
 
     delete: companyProcedure
       .input(z.object({ trainingId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const processId = await assertLegacyProcessRecordAccess(ctx, "training", input.trainingId);
         await deleteProcessTraining(input.trainingId);
         return { success: true };
       }),
@@ -791,7 +814,8 @@ export const appRouter = router({
           completed: z.enum(["SI", "NO"]).optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const processId = await assertLegacyProcessRecordAccess(ctx, "training", input.trainingId);
         await updateProcessTraining(input.trainingId, {
           name: input.name,
           objective: input.objective,
@@ -833,7 +857,9 @@ export const appRouter = router({
           progress: z.number().optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await assertProcessAccessById(ctx, input.processId);
+        await assertLegacyTacticalObjectiveReference(input.processId, input.tacticalObjectiveId);
         await createProcessScheduleActivity(input.processId, {
           tacticalObjectiveId: input.tacticalObjectiveId,
           name: input.name,
@@ -850,13 +876,15 @@ export const appRouter = router({
 
     list: companyProcedure
       .input(z.object({ processId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await assertProcessAccessById(ctx, input.processId);
         return getProcessScheduleActivities(input.processId);
       }),
 
     delete: companyProcedure
       .input(z.object({ activityId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const processId = await assertLegacyProcessRecordAccess(ctx, "schedule", input.activityId);
         await deleteProcessScheduleActivity(input.activityId);
         return { success: true };
       }),
@@ -878,7 +906,9 @@ export const appRouter = router({
           progress: z.number().optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const processId = await assertLegacyProcessRecordAccess(ctx, "schedule", input.activityId);
+        await assertLegacyTacticalObjectiveReference(processId, input.tacticalObjectiveId);
         await updateProcessScheduleActivity(input.activityId, {
           tacticalObjectiveId: input.tacticalObjectiveId,
           name: input.name,
@@ -911,7 +941,9 @@ export const appRouter = router({
           performance: z.number().optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await assertProcessAccessById(ctx, input.processId);
+        await assertLegacyTacticalObjectiveReference(input.processId, input.tacticalObjectiveId);
         await createProcessIndicator(input.processId, {
           tacticalObjectiveId: input.tacticalObjectiveId,
           name: input.name,
@@ -928,13 +960,15 @@ export const appRouter = router({
 
     list: companyProcedure
       .input(z.object({ processId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await assertProcessAccessById(ctx, input.processId);
         return getProcessIndicatorsList(input.processId);
       }),
 
     delete: companyProcedure
       .input(z.object({ indicatorId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const processId = await assertLegacyProcessRecordAccess(ctx, "indicator", input.indicatorId);
         await deleteProcessIndicator(input.indicatorId);
         return { success: true };
       }),
@@ -954,7 +988,9 @@ export const appRouter = router({
           performance: z.number().optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const processId = await assertLegacyProcessRecordAccess(ctx, "indicator", input.indicatorId);
+        await assertLegacyTacticalObjectiveReference(processId, input.tacticalObjectiveId);
         await updateProcessIndicator(input.indicatorId, {
           tacticalObjectiveId: input.tacticalObjectiveId,
           name: input.name,

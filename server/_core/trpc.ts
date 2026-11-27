@@ -8,6 +8,7 @@ import {
 } from "./companyPermissions";
 import type { TrpcContext } from "./context";
 import { runInAnnualRequestScope } from "../annual/requestScope";
+import { hydrateTeamAccessContext } from "./teamAccessPolicy";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -15,6 +16,18 @@ const t = initTRPC.context<TrpcContext>().create({
 
 export const router = t.router;
 export const publicProcedure = t.procedure;
+
+const detailedTeamAccess = t.middleware(async opts => {
+  const rawInput = await opts.getRawInput();
+  const ctx = await hydrateTeamAccessContext(opts.ctx, {
+    path: opts.path, rawInput, mode: opts.type === "query" ? "read" : "write",
+  });
+  return opts.next({ ctx: {
+    teamAccessPolicy: ctx.teamAccessPolicy,
+    teamAccessModule: ctx.teamAccessModule,
+    requestMode: ctx.requestMode,
+  } });
+});
 
 const annualRequestScope = t.middleware(async opts => {
   const rawInput = await opts.getRawInput();
@@ -36,7 +49,7 @@ const requireUser = t.middleware(async opts => {
   });
 });
 
-export const protectedProcedure = t.procedure.use(requireUser).use(annualRequestScope);
+export const protectedProcedure = t.procedure.use(requireUser).use(detailedTeamAccess).use(annualRequestScope);
 
 export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
@@ -88,7 +101,7 @@ const requireUserOrManagerOrProcessLeader = t.middleware(async opts => {
  * Use `protectedProcedure` only for OAuth-only platform flows.
  * Use `adminProcedure` for platform administration.
  */
-export const companyProcedure = t.procedure.use(requireUserOrManagerOrProcessLeader).use(annualRequestScope);
+export const companyProcedure = t.procedure.use(requireUserOrManagerOrProcessLeader).use(detailedTeamAccess).use(annualRequestScope);
 
 /**
  * Mutation guard for company-wide modules. A process leader may read the

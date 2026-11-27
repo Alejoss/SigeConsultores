@@ -1,3 +1,4 @@
+import { assertCanonicalFixtureDatabase, createCanonicalChiefFixtures } from "./helpers/canonicalChiefFixtures";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq, inArray } from "drizzle-orm";
@@ -23,6 +24,7 @@ const narratives = {
   resultadoEsperado: "Resultado esperado textual, no la meta numérica.",
   indicador: "Definición textual: entregas conformes / entregas totales.",
 };
+const canonicalChiefs = createCanonicalChiefFixtures("objectiveNarratives");
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
 let accountId = 0;
 const companyIds: number[] = [];
@@ -139,6 +141,7 @@ async function insertObjective(
 }
 
 beforeAll(async () => {
+  assertCanonicalFixtureDatabase();
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl)
     throw new Error(
@@ -192,9 +195,11 @@ beforeAll(async () => {
     JSON.stringify(legacyPlanning()),
     foreignProcessId
   );
+  await canonicalChiefs.register(db, { companyId: companyId, processId: processId, accountId: accountId });
 });
 
 afterAll(async () => {
+  await canonicalChiefs.cleanup();
   if (!db) return;
   // Restrict every delete to IDs of this run, including partial setup failures.
   if (processIds.length) {

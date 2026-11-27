@@ -27,7 +27,9 @@ services:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
-      RUN_DB_PUSH_ON_STARTUP: "true"
+      # Producción: las migraciones se aplican de forma controlada y aditiva.
+      # No ejecutar un push --force general sobre los registros empresariales.
+      RUN_DB_PUSH_ON_STARTUP: "false"
     depends_on:
       mysql:
         condition: service_healthy

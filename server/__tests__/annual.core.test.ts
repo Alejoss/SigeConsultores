@@ -9,14 +9,20 @@ import type { AnnualWorkspaceRecord } from '../annual/store';
 const workspace:AnnualWorkspaceRecord={id:10,companyId:990101,year:2027,sourceYear:2026,status:'open',storage:'namespace',strategy:{...PRESERVE_STRATEGY}};
 const empty=():AnnualDataset=>new Map(BUSINESS_TABLE_NAMES.map(t=>[t,[]]));
 describe('annual core manifest and preservation',()=> {
-  it('classifies all 125 original tables, no guesses or missing SQL names',()=> {
+  it('classifies all 125 original tables and the additive canonical team tables',()=> {
     const schema=readFileSync(new URL('../../drizzle/schema.ts',import.meta.url),'utf8');
     const names=Array.from(schema.matchAll(/mysqlTable\(\s*["']([^"']+)["']/g)).map(m=>m[1]).filter(t=>!t.startsWith('annual'));
-    expect(names).toHaveLength(125);
-    expect(ANNUAL_TABLE_MANIFEST).toHaveLength(125);
-    expect(new Set(ANNUAL_TABLE_MANIFEST.map(t=>t.table)).size).toBe(125);
+    const teamTables=['companyTeamModuleAccess','companyTeamProcessAccess','companyTeamAccessAudit'];
+    expect(names.filter(name=>!teamTables.includes(name))).toHaveLength(125);
+    expect(ANNUAL_TABLE_MANIFEST).toHaveLength(125+teamTables.length);
+    expect(new Set(ANNUAL_TABLE_MANIFEST.map(t=>t.table)).size).toBe(names.length);
     expect(new Set(ANNUAL_TABLE_MANIFEST.map(t=>t.table))).toEqual(new Set(names));
     expect(BUSINESS_TABLE_NAMES.every(t=>ANNUAL_TABLE_MANIFEST.find(m=>m.table===t)?.ownership)).toBe(true);
+    for(const table of teamTables){
+      expect(ANNUAL_TABLE_MANIFEST.find(m=>m.table===table)?.policy).toBe('shared');
+      expect(BUSINESS_TABLE_NAMES).not.toContain(table);
+      expect(()=>namespaceTable(10,table)).toThrow();
+    }
     for (const t of names.filter(t=>t.startsWith('course') || t.startsWith('planningCycle'))) expect(BUSINESS_TABLE_NAMES).not.toContain(t);
     for (const t of ['accounts','companies','auth_sessions','account_roles']) expect(BUSINESS_TABLE_NAMES).not.toContain(t);
   });

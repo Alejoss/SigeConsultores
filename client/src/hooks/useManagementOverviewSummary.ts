@@ -4,9 +4,9 @@ import { useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { calculateManagementOverviewSummary } from "@/lib/performanceOverviewSummary";
 
-export function useManagementOverviewSummary(companyId: number) {
+export function useManagementOverviewSummary(companyId: number, enabled = true) {
   const annual = useAnnualWorkspace();
-  const options = { enabled: companyId > 0, placeholderData: () => undefined };
+  const options = { enabled: enabled && companyId > 0, placeholderData: () => undefined };
   const programs = trpc.managementPrograms.list.useQuery({ companyId }, options);
   const audits = trpc.auditsInspections.listAudits.useQuery({ companyId }, options);
   const inspections = trpc.auditsInspections.listInspections.useQuery({ companyId }, options);

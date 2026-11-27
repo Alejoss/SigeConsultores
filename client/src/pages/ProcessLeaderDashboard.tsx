@@ -1,3 +1,7 @@
+import { useDetailedTeamAccess } from "@/contexts/TeamAccessContext";
+import { routeAccess } from "@/lib/teamAccess";
+import { AccessSummary } from "@/components/TeamAccessDialogs";
+import { DASHBOARD_MODULES } from "@shared/dashboardModules";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogOut, Building2, Settings, ChevronDown, ChevronUp } from "lucide-react";
@@ -59,10 +63,8 @@ export default function ProcessLeaderDashboard() {
     { processId: processLeaderSession?.processId || 0 },
     { enabled: !!processLeaderSession?.processId },
   );
-  const managementAccessQuery = trpc.teamAccess.getMyCompanyManagementAccess.useQuery(
-    { companyId: processLeaderSession?.companyId || 0 },
-    { enabled: !!processLeaderSession?.companyId },
-  );
+  const permissions = useDetailedTeamAccess(processLeaderSession?.companyId);
+  const processesQuery = trpc.processMap.list.useQuery({ companyId: processLeaderSession?.companyId || 0 }, { enabled: Boolean(processLeaderSession?.companyId && permissions.access), retry: false });
 
   useEffect(() => {
     if (contextLoading) return;
@@ -133,7 +135,7 @@ export default function ProcessLeaderDashboard() {
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-5">Módulos del Sistema</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {MODULE_GROUPS.map((group) => {
+            {MODULE_GROUPS.filter(group => DASHBOARD_MODULES.some(module => module.group === group.id && routeAccess(permissions.access, module.path, processLeaderSession.processId) !== "none")).map((group) => {
               const style = AXIS_STYLES[group.id];
               return (
                 <Card
@@ -228,15 +230,9 @@ export default function ProcessLeaderDashboard() {
           )}
         </div>
 
-        {/* Note Section */}
-        <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>{managementAccessQuery.data?.accessLevel === "coordinator" ? "Coordinador de empresa:" : "Acceso de consulta:"}</strong>{" "}
-            {managementAccessQuery.data?.accessLevel === "coordinator"
-              ? "puedes gestionar los módulos corporativos de esta empresa y tu proceso asignado. Esta autorización no permite abrir, modificar ni consultar procesos de otros Jefes, ni administrar accesos de personas."
-              : "puedes consultar los módulos ISGE 360 de tu empresa y gestionar completamente tu proceso asignado. Para editar módulos corporativos, solicita al Gerente General la autorización de Coordinador. No puedes abrir procesos de otros Jefes."}
-          </p>
-        </div>
+        <section aria-label="Mis procesos autorizados" className="my-6 rounded-xl border bg-white p-5"><h2 className="mb-3 text-lg font-semibold">Mis procesos autorizados</h2><div className="flex flex-wrap gap-3">{processesQuery.data?.filter(process => process.id === permissions.access?.ownProcessId || permissions.access?.processAccess.some(grant => grant.processId === process.id)).map(process => <Button key={process.id} variant="outline" onClick={() => setLocation(`/process-characterization?companyId=${processLeaderSession.companyId}&processId=${process.id}`)}>{process.name} · {process.id === permissions.access?.ownProcessId ? "Proceso propio" : permissions.access?.processAccess.find(grant => grant.processId === process.id)?.accessLevel === "write" ? "Consulta y edición" : "Solo consulta"}</Button>)}</div></section>
+        {permissions.access && <section className="mt-8 rounded-lg border border-blue-200 bg-blue-50 p-4"><h2 className="mb-2 font-semibold">Mis permisos efectivos</h2><AccessSummary modules={permissions.access.moduleAccess} extras={permissions.access.processAccess} ownProcessId={processLeaderSession.processId} processes={processesQuery.data || []} /><p className="mt-3 text-sm">Solicita al Gerente General cualquier cambio de autorización. El año cerrado siempre permanece en consulta.</p></section>}
+
       </main>
     </div>
   );

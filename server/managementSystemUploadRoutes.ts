@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { managementSystemFiles, managementSystems } from "../drizzle/schema";
 import { storagePut } from "./storage";
-import { resolveAuthFromRequest } from "./_core/resolveRequestAuth";
+import { getTeamAccessHttpContext } from "./_core/teamAccessHttp";
 import { assertCompanyManagementAccess } from "./_core/companyPermissions";
 import type { TrpcContext } from "./_core/context";
 
@@ -36,7 +36,7 @@ export function registerManagementSystemUploadRoutes(app: Express) {
     upload.single("file"),
     async (req: Request, res: Response) => {
       try {
-        const auth = await resolveAuthFromRequest(req);
+        const auth = await getTeamAccessHttpContext(req, res, "management_systems");
         if (!auth.user && !auth.manager && !auth.processLeader) {
           return res.status(401).json({ ok: false, error: "No autenticado" });
         }

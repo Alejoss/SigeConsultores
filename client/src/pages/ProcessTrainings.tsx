@@ -1,3 +1,4 @@
+import { getProcessIdFromSession } from "@/lib/sessionScope";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ interface FormData {
 
 export default function ProcessTrainings() {
   const [, navigate] = useLocation();
-  const selectedProcessId = localStorage.getItem("selectedProcessId");
+  const selectedProcessId = getProcessIdFromSession()?.toString();
   const processId = selectedProcessId ? parseInt(selectedProcessId) : 0;
   
   const [trainings, setTrainings] = useState<Training[]>([]);

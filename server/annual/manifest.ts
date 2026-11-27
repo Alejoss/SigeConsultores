@@ -34,6 +34,7 @@ const e = (table: string, policy: AnnualCopyPolicy, ownership?: Ownership,
 export const ANNUAL_TABLE_MANIFEST: readonly AnnualTableManifest[] = [
   ...[
     'accounts','roles','account_roles','companyManagementAccess','companyOnlineCourseAccess',
+    'companyTeamModuleAccess','companyTeamProcessAccess','companyTeamAccessAudit',
     'companyOnlineCourseAccessAudit','auth_sessions','companies','processUsers',
     'planningCycleActivations','planningCycles','planningCycleDecisions','planningCycleSnapshots',
     'planningCycleOperationalItems','companyAccessRequests','processAccessKeys','accessAuditLog',

@@ -10,6 +10,7 @@ import { PerformanceSummaryRing } from "@/components/PerformanceSummaryRing";
 import { formatObjectivePercent } from "@shared/objectiveResultMetrics";
 
 const mocks = vi.hoisted(() => ({
+  deniedModules: [] as string[],
   manager: { isManagerLogin: true, managerCompanyId: 71001 as number | null },
   processLeader: null as null | { companyId: number; processId: number },
   queries: {} as Record<string, { data?: any; isLoading: boolean; error?: unknown; isPlaceholderData?: boolean; isFetching?: boolean }>,
@@ -18,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   empty: [] as any[],
 }));
 
+vi.mock("@/contexts/TeamAccessContext", () => ({ useTeamAccessState: () => ({ isProcessLeader: mocks.deniedModules.length > 0, isChecking: false, access: { moduleAccess: { strategy: mocks.deniedModules.includes("strategy") ? "none" : "read", management_systems: mocks.deniedModules.includes("management_systems") ? "none" : "read", organization_personnel: mocks.deniedModules.includes("organization_personnel") ? "none" : "read" } } }) }));
 vi.mock("@/_core/hooks/useManagerAuth", () => ({ useManagerAuth: () => mocks.manager }));
 vi.mock("@/contexts/ProcessLeaderAuthContext", () => ({ useProcessLeaderAuth: () => ({ session: mocks.processLeader }) }));
 vi.mock("@/components/DashboardLayout", () => ({ default: ({ children }: { children: React.ReactNode }) => <main>{children}</main> }));
@@ -149,6 +151,7 @@ beforeEach(() => {
   localStorage.clear(); sessionStorage.clear();
   mocks.manager = { isManagerLogin: true, managerCompanyId: COMPANY };
   mocks.processLeader = null;
+  mocks.deniedModules = [];
   seed();
 });
 afterEach(cleanup);
@@ -394,5 +397,21 @@ describe("PerformanceSummaryRing: bound the drawing, never the displayed result"
     await user.click(screen.getAllByRole("button", { name: /Volver/ })[0]);
     await user.click(ring("Desempeño de personal"));
     expect(detailPercent("staff", "Cumplimiento global")).toBe(value);
+  });
+});
+
+describe("granular dashboard restrictions", () => {
+  it("hides systems/personnel cards and disables their summary queries without blocking process OTG/GPI", () => {
+    mocks.deniedModules = ["management_systems", "organization_personnel"]; mount();
+    expect(screen.queryByRole("button", { name: /Sistemas de Gestión/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Desempeño de personal/i })).toBeNull();
+    expect(card("Objetivos de Gestión")).toBeTruthy(); expect(card("Gestión con Partes Interesadas")).toBeTruthy();
+    const active = activeCalls().map(([name]) => name);
+    expect(active).not.toContain("payroll.analytics"); expect(active).not.toContain("managementPrograms.list"); expect(active).not.toContain("auditsInspections.listAudits");
+  });
+  it("hides strategy OE and does not fetch its corporate measurement when strategy is restricted", () => {
+    mocks.deniedModules = ["strategy"]; mount();
+    expect(screen.queryByRole("button", { name: /Objetivos Estratégicos/i })).toBeNull();
+    expect(activeCalls().map(([name]) => name)).not.toContain("strategicObjectives.getMeasurementOverview");
   });
 });

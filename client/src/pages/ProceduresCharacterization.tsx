@@ -1,3 +1,6 @@
+import { useTeamAccessState } from "@/contexts/TeamAccessContext";
+import { useAnnualWorkspace } from "@/contexts/AnnualWorkspaceContext";
+import { processAccessLevel } from "@/lib/teamAccess";
 import { annualFetch } from "@/lib/annualNavigation";
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
@@ -88,6 +91,8 @@ function DownloadButton({ fileKey, label, size }: { fileKey: string; label: stri
 
 export default function ProceduresCharacterization({ processId: propProcessId, processName: propProcessName, onVolver }: Props) {
   const [, setLocation] = useLocation();
+  const team = useTeamAccessState();
+  const annual = useAnnualWorkspace();
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -161,8 +166,10 @@ export default function ProceduresCharacterization({ processId: propProcessId, p
   }, [expandedId]);
 
   const uploadFile = async (file: File): Promise<{ url: string; key: string; fileSizeBytes: number }> => {
+    if (annual.closed || (team.isProcessLeader && processAccessLevel(team.access, propProcessId) !== "write")) throw new Error("Solo consulta: no tienes permiso para subir archivos a este proceso.");
     const formData = new FormData();
     formData.append("file", file, file.name);
+    formData.append("processId", String(propProcessId));
     const response = await annualFetch("/api/upload/procedure-file", {
       method: "POST",
       body: formData,

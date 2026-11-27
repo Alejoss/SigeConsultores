@@ -1,3 +1,5 @@
+import { useTeamAccessState } from "@/contexts/TeamAccessContext";
+import { setClientTeamPolicy } from "@/lib/teamAccess";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,6 +20,7 @@ export function useAnnualWorkspace() { return useContext(Context); }
 const publicRoutes = /^\/(?:$|login|home|manager-access(?:-success)?|manager-confirmation|process-leader-access-success|setup-|forgot-|reset-|change-password|request-access|process-owner-invitation|process-leader-invitation|process-leader-pin-recovery|admin-)/;
 const processBusinessRoutes = /^\/(?:process-(?:characterization|output-release|resources|stakeholder-criticality|foda|risk-matrix|tactical-objectives|compliances|trainings|schedule|indicators|meetings)|tactical-(?:definition|planning)|subprocess-map|flowchart|procedures-characterization|linked-commitments)(?:\/|$)/;
 export function AnnualWorkspaceFrame({ children }: { children: ReactNode }) {
+  const team = useTeamAccessState();
   const [location, navigate] = useLocation();
   const currentRoute = useRef(location);
   const search = useSearch();
@@ -41,6 +44,11 @@ export function AnnualWorkspaceFrame({ children }: { children: ReactNode }) {
   const companyChanged = Boolean(visible && companyId !== scope.companyId);
   const root = useRef<HTMLDivElement>(null);
   const closed = overview?.workspace.status === "closed";
+  const accessReadOnly = team.isProcessLeader && (team.readOnly || team.isChecking);
+  useEffect(() => {
+    setClientTeamPolicy(team.isProcessLeader ? { access: team.access, companyId: team.companyId || 0, readOnly: Boolean(closed || accessReadOnly) } : null);
+    return () => setClientTeamPolicy(null);
+  }, [team.access, team.companyId, team.isProcessLeader, closed, accessReadOnly]);
   const pendingPositions = Boolean(location === "/process-participants" && processStatus?.status === "pending");
 
   async function changeYear(nextYear: number, nextCompany = companyId) {
@@ -67,14 +75,15 @@ export function AnnualWorkspaceFrame({ children }: { children: ReactNode }) {
   }
   // Progressive, broad read-only controls; backend checks remain the authority.
   useEffect(() => {
-    if ((!closed && !pendingPositions) || !root.current || location === "/annual-workspaces") return;
-    const disable = () => root.current?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement>("input, textarea, select, button").forEach(element => {
+    if ((!closed && !pendingPositions && !accessReadOnly) || !root.current || location === "/annual-workspaces") return;
+    const disable = () => root.current?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement>('input, textarea, select, button, [contenteditable], [role="button"], [role="checkbox"], [role="switch"], [role="combobox"]').forEach(element => {
       const text = `${element.textContent || ""} ${element.getAttribute("aria-label") || ""} ${element.getAttribute("title") || ""}`;
+      if (element.hasAttribute("contenteditable")) { element.setAttribute("contenteditable", "false"); element.dataset.annualReadonly = "true"; return; }
       if (/descargar|download|exportar|ver archivo|abrir archivo/i.test(text)) return;
-      if (element.matches("input, textarea, select") || /guardar|crear|agregar|añadir|eliminar|borrar|editar|importar|subir|cargar|aprobar|activar|incorporar|complet|registrar|enviar|nueva?\b/i.test(text)) { element.disabled = true; element.dataset.annualReadonly = "true"; }
+      if (element.matches('input, textarea, select, [role="checkbox"], [role="switch"], [role="combobox"]') || /guardar|crear|agregar|añadir|eliminar|borrar|editar|importar|subir|cargar|aprobar|activar|incorporar|complet|registrar|enviar|aplicar|asignar|restringir|suspender|reactivar|reasignar|autorizar|revocar|retirar|anular|generar|copiar|reemplazar|nueva?\b/i.test(text)) { element.disabled = true; element.setAttribute("aria-disabled", "true"); element.dataset.annualReadonly = "true"; }
     });
     disable(); const observer = new MutationObserver(disable); observer.observe(root.current, { childList: true, subtree: true }); return () => observer.disconnect();
-  }, [closed, pendingPositions, location]);
+  }, [closed, pendingPositions, accessReadOnly, location]);
   return <Context.Provider value={{ companyId, year, overview, closed }}>
     {visible && <section aria-label="Selección anual empresarial" className="sticky top-0 z-50 border-b border-blue-200 bg-white/95 px-3 py-2 shadow-sm backdrop-blur sm:px-6">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 sm:gap-4">
@@ -89,10 +98,11 @@ export function AnnualWorkspaceFrame({ children }: { children: ReactNode }) {
         {(list.error || overviewQuery.error) && <span role="alert" className="text-sm text-red-700">No se pudo verificar el año. <button className="underline" onClick={() => { void list.refetch(); void overviewQuery.refetch(); }}>Reintentar</button></span>}
       </div>
       {pendingPositions && <p className="mt-2 text-sm text-amber-900">Puestos conservados · Proceso pendiente de incorporación. Las evaluaciones del año anterior no son evaluaciones de este año.</p>}
+      {accessReadOnly && !closed && <p role="status" className="mt-2 text-sm text-slate-700">Acceso de Solo consulta. No se permite editar, guardar automáticamente ni cargar archivos. Tu proceso propio conserva sus permisos.</p>}
       {closed && <p role="status" className="mt-2 text-sm text-amber-900">El año {year} está cerrado. Puedes consultar y descargar; las modificaciones están bloqueadas.</p>}
       {overview && overview.incorporatedCount < overview.totalCount && <p className="mt-2 text-sm text-blue-900">Incorporación parcial: {overview.incorporatedCount} de {overview.totalCount} procesos. Los pendientes no representan mediciones ni promedios cero.</p>}
     </section>}
     {companyChanged && <div className="m-6 rounded-lg border bg-white p-5"><p>La empresa cambió. Para separar correctamente los borradores y solicitudes, abre su contexto anual en un documento nuevo.</p><Button className="mt-3" disabled={busy} onClick={() => void changeYear(year)}>Continuar con la empresa seleccionada</Button></div>}
-    {pending && !companyChanged ? <div className="m-6 rounded-lg border border-amber-200 bg-amber-50 p-5"><h1 className="font-semibold">Proceso pendiente de incorporación en {year}</h1><p className="mt-2 text-sm">El catálogo, mapa y puestos se conservan. La caracterización y matrices estarán disponibles cuando Gerencia incorpore el proceso aprobado. No se muestran datos de 2026 como datos de este año.</p><div className="mt-4 flex gap-2"><Button variant="outline" onClick={() => navigate("/process-map")}>Ver mapa de procesos</Button><Button variant="outline" onClick={() => navigate("/organization-chart")}>Ver organización</Button><Button variant="outline" onClick={() => navigate(`/process-planning-cycles?companyId=${companyId}&processId=${processId}&targetYear=${year}`)}>Ver preparación</Button></div></div> : <div ref={root} inert={busy || companyChanged} onChangeCapture={() => markAnnualDraftEdited()}>{children}</div>}
+    {pending && !companyChanged ? <div className="m-6 rounded-lg border border-amber-200 bg-amber-50 p-5"><h1 className="font-semibold">Proceso pendiente de incorporación en {year}</h1><p className="mt-2 text-sm">El catálogo, mapa y puestos se conservan. La caracterización y matrices estarán disponibles cuando Gerencia incorpore el proceso aprobado. No se muestran datos de 2026 como datos de este año.</p><div className="mt-4 flex gap-2"><Button variant="outline" onClick={() => navigate("/process-map")}>Ver mapa de procesos</Button><Button variant="outline" onClick={() => navigate("/organization-chart")}>Ver organización</Button><Button variant="outline" onClick={() => navigate(`/process-planning-cycles?companyId=${companyId}&processId=${processId}&targetYear=${year}`)}>Ver preparación</Button></div></div> : <div ref={root} inert={busy || companyChanged} onClickCapture={event => { const target = (event.target as HTMLElement).closest("[data-annual-readonly]"); if (target) { event.preventDefault(); event.stopPropagation(); } }} onChangeCapture={event => { if (closed || accessReadOnly) { event.preventDefault(); event.stopPropagation(); return; } markAnnualDraftEdited(); }}>{children}</div>}
   </Context.Provider>;
 }

@@ -1,3 +1,4 @@
+import { getProcessIdFromSession, getCompanyIdFromSession } from "@/lib/sessionScope";
 import { useAnnualExitGuard } from "@/hooks/useAnnualExitGuard";
 import { getSelectedManagementYear } from "@/lib/annualWorkspace";
 import { annualBusinessStorage } from "@/lib/annualWorkspace";
@@ -46,8 +47,8 @@ export default function ProcessSchedule() {
   });
 
   useEffect(() => {
-    const stored = annualBusinessStorage.getItem("selectedProcessId");
-    const storedCompanyId = annualBusinessStorage.getItem("selectedCompanyId");
+    const stored = getProcessIdFromSession()?.toString();
+    const storedCompanyId = getCompanyIdFromSession()?.toString();
 
     if (stored && storedCompanyId) {
       setProcessId(stored);

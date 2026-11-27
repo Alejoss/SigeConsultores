@@ -1,4 +1,5 @@
 import AnnualWorkspaces from "./pages/AnnualWorkspaces";
+import { TeamAccessBoundary } from "./contexts/TeamAccessContext";
 import { AnnualWorkspaceFrame } from "./contexts/AnnualWorkspaceContext";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -370,7 +371,7 @@ function App() {
         <ProcessLeaderAuthProvider>
           <TooltipProvider>
             <Toaster />
-            <AnnualWorkspaceFrame><Router /></AnnualWorkspaceFrame>
+            <TeamAccessBoundary><AnnualWorkspaceFrame><Router /></AnnualWorkspaceFrame></TeamAccessBoundary>
           </TooltipProvider>
         </ProcessLeaderAuthProvider>
       </ThemeProvider>

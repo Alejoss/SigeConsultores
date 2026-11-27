@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import type { TrpcContext } from "./context";
+import { canAccessProcess } from "./teamAccessPolicy";
 
 /** Any authenticated SIGE session: platform user, company manager, or process leader. */
 export function isAuthenticated(ctx: TrpcContext): boolean {
@@ -60,6 +61,13 @@ export function assertProcessAccess(ctx: TrpcContext, processId: number): void {
     });
   }
   const leaderProcessId = getSessionProcessId(ctx);
+  if (ctx.processLeader && ctx.teamAccessPolicy) {
+    const policy = ctx.teamAccessPolicy;
+    if (policy.accountId === ctx.processLeader.processLeaderId &&
+      policy.companyId === ctx.processLeader.companyId &&
+      canAccessProcess(policy, processId, ctx.requestMode ?? "read", ctx.processLeader.companyId)) return;
+    throw new TRPCError({ code: "FORBIDDEN", message: "No tienes acceso a este proceso" });
+  }
   if (leaderProcessId != null && leaderProcessId !== processId) {
     throw new TRPCError({
       code: "FORBIDDEN",

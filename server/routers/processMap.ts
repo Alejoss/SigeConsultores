@@ -13,6 +13,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { getRoleIdBySlug } from "../accountAuth";
 import { storagePut, storageGet, storageDelete } from "../storage";
 import type { TrpcContext } from "../_core/context";
+import { assertCompanyReadAccess as assertAuthorizedCompanyReadAccess, assertProcessAccess } from "../_core/companyPermissions";
 
 const PROCESS_MAP_ALLOWED_TYPES = new Set([
   "image/png",
@@ -57,12 +58,7 @@ function forbidden(message: string): never {
 
 /** La empresa enviada por la interfaz debe coincidir con el alcance de la cookie. */
 function assertCompanyReadAccess(ctx: TrpcContext, companyId: number) {
-  if (ctx.manager && ctx.manager.companyId !== companyId) {
-    forbidden("No tiene acceso a la empresa solicitada.");
-  }
-  if (ctx.processLeader && ctx.processLeader.companyId !== companyId) {
-    forbidden("No tiene acceso a la empresa solicitada.");
-  }
+  assertAuthorizedCompanyReadAccess(ctx, companyId);
 }
 
 /** La estructura del Mapa sólo la administran Gerente de la empresa o Administrador. */
@@ -83,18 +79,18 @@ export const processMapRouter = router({
       const db = await getDb();
       if (!db) return [];
 
-      // El Jefe no puede ampliar el alcance modificando URL o parámetros: el
-      // proceso se toma exclusivamente del contexto autenticado del servidor.
-      if (ctx.processLeader) {
-        return db.select().from(processes).where(and(
-          eq(processes.companyId, ctx.processLeader.companyId),
-          eq(processes.id, ctx.processLeader.processId)
-        ));
-      }
-
-      // Gerente y Administrador consultan todos los procesos de su empresa
-      // autorizada. El parámetro filterProcessId ya no concede privilegios.
-      return db.select().from(processes).where(eq(processes.companyId, input.companyId));
+      // filterProcessId never grants access. The canonical per-call policy
+      // allows the own process plus explicit grants, within this company only.
+      const rows = await db.select().from(processes).where(eq(processes.companyId, input.companyId));
+      return rows.filter(process => {
+        try {
+          assertProcessAccess(ctx, process);
+          return true;
+        } catch (error) {
+          if (error instanceof TRPCError && error.code === "FORBIDDEN") return false;
+          throw error;
+        }
+      });
     }),
 
   get: companyProcedure
@@ -109,9 +105,7 @@ export const processMapRouter = router({
       if (!process) return null;
 
       assertCompanyReadAccess(ctx, process.companyId);
-      if (ctx.processLeader && ctx.processLeader.processId !== process.id) {
-        forbidden("No tiene acceso al proceso solicitado.");
-      }
+      assertProcessAccess(ctx, process);
       return process;
     }),
 

@@ -1,5 +1,18 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 vi.mock('../../annual/requestScope',()=>({runInAnnualRequestScope:vi.fn(async(_options,operation)=>operation())}));
+// SQL identity hydration has dedicated integration coverage. Keep pure policy
+// checks real here so the mocked annual store never receives a forbidden call.
+vi.mock('../../_core/teamAccessPolicy', async importOriginal => {
+  const actual = await importOriginal<typeof import('../../_core/teamAccessPolicy')>();
+  return { ...actual, hydrateTeamAccessContext: async (ctx:any,opts:any) => {
+    const leader=ctx.processLeader;
+    const module=opts.path?actual.resolveTeamAccessModule(opts.path,opts.rawInput):undefined;
+    const policy=leader?actual.buildTeamAccessPolicy({companyId:leader.companyId,accountId:leader.processLeaderId,ownProcessId:leader.processId,companyProcessIds:[leader.processId]}):undefined;
+    const cloned={...ctx,requestMode:opts.mode,teamAccessModule:module,teamAccessPolicy:policy};
+    if(module)actual.assertModuleAccess(cloned,module,opts.mode);
+    return cloned;
+  }};
+});
 vi.mock('../../annual/store',()=>({
   BASE_YEAR:2026,listWorkspaces:vi.fn(async()=>[]),getAnnualOverview:vi.fn(async()=>({trainingOrigins:{100:2026}})),
   createAnnualWorkspace:vi.fn(async(input)=>({id:5,...input})),incorporateApprovedProcess:vi.fn(async()=>({alreadyIncorporated:false})),

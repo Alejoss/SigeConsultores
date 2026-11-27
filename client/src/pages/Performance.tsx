@@ -1,3 +1,4 @@
+import { useTeamAccessState } from "@/contexts/TeamAccessContext";
 import { useAnnualWorkspace } from "@/contexts/AnnualWorkspaceContext";
 import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -291,6 +292,9 @@ export default function Performance() {
   const [, setLocation] = useLocation();
   const { isManagerLogin, managerCompanyId } = useManagerAuth();
   const { session: processLeaderSession } = useProcessLeaderAuth();
+  const team = useTeamAccessState();
+  const canReadSystems = !team.isProcessLeader || Boolean(team.access && team.access.moduleAccess.management_systems !== "none");
+  const canReadStrategy = !team.isProcessLeader || Boolean(team.access && team.access.moduleAccess.strategy !== "none");
   const [activeModule, setActiveModule] = useState<SubModule>(null);
 
   const companyId = useMemo<number>(() => {
@@ -362,7 +366,7 @@ export default function Performance() {
         {/* Sub-module selection */}
         {!activeModule && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {subModules.map((mod) => (
+            {subModules.filter(module => (module.key !== "systems" || canReadSystems) && (module.key !== "strategic" || canReadStrategy)).map((mod) => (
               <Card
                 key={mod.key}
                 className="border-2 border-blue-100 hover:border-blue-300 transition-colors cursor-pointer"
@@ -413,9 +417,9 @@ export default function Performance() {
         )}
 
         {/* Active sub-module content */}
-        {activeModule === "strategic" && <StrategicObjectivesModule companyId={companyId} />}
+        {activeModule === "strategic" && canReadStrategy && <StrategicObjectivesModule companyId={companyId} />}
         {activeModule === "management" && <ManagementByAreaModule companyId={companyId} />}
-        {activeModule === "systems" && <ManagementSystemsModule companyId={companyId} />}
+        {activeModule === "systems" && canReadSystems && <ManagementSystemsModule companyId={companyId} />}
       </div>
     </DashboardLayout>
   );

@@ -1,3 +1,4 @@
+import { useTeamAccessState } from "@/contexts/TeamAccessContext";
 import { useAnnualWorkspace } from "@/contexts/AnnualWorkspaceContext";
 import { getSelectedManagementYear } from "@/lib/annualWorkspace";
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -707,23 +708,25 @@ type ActiveView = null | "oe" | "otg" | "gpi" | "sgi" | "staff";
 
 // Montado solo en portada; las claves tRPC son las mismas que en el detalle.
 function PerformanceAccessCards({ companyId, setView }: { companyId: number; setView: (view: ActiveView) => void }) {
+  const team = useTeamAccessState();
+  const allowed = (module: "strategy" | "management_systems" | "organization_personnel") => !team.isProcessLeader || (!team.isChecking && team.access?.moduleAccess[module] !== "none");
   const options = { enabled: companyId > 0, placeholderData: () => undefined };
   const evaluationYear = useMemo(() => getSelectedManagementYear(), []);
-  const oe = trpc.strategicObjectives.getMeasurementOverview.useQuery({ companyId }, options);
+  const oe = trpc.strategicObjectives.getMeasurementOverview.useQuery({ companyId }, { ...options, enabled: options.enabled && allowed("strategy") });
   const otg = trpc.strategicTrends.getOtgByArea.useQuery({ companyId }, options);
   const gpi = trpc.strategicTrends.getStakeholdersByArea.useQuery({ companyId }, options);
-  const staff = trpc.payroll.analytics.useQuery({ companyId, performanceYear: evaluationYear }, options);
-  const sgi = useManagementOverviewSummary(companyId);
+  const staff = trpc.payroll.analytics.useQuery({ companyId, performanceYear: evaluationYear }, { ...options, enabled: options.enabled && allowed("organization_personnel") });
+  const sgi = useManagementOverviewSummary(companyId, allowed("management_systems"));
   const { overview } = useAnnualWorkspace();
   const incorporated = (process: { processId: number }) => !overview || overview.processes.some(item => item.id === process.processId && item.status === "incorporated");
   const otgSummary = calculateOtgOverviewSummary((otg.data ?? []).filter(incorporated));
   const gpiSummary = calculateStakeholderOverviewSummary((gpi.data ?? []).filter(incorporated));
   return <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <AccessCard icon={<Target size={24} />} title="Objetivos Estratégicos"
+    {allowed("strategy") && <AccessCard icon={<Target size={24} />} title="Objetivos Estratégicos"
       description="% avance total, por OE individual, contribución por área (heatmap) y línea de desarrollo en el tiempo."
       color="#3b82f6" badge="OE" onClick={() => setView("oe")}
       percentage={availablePerformancePercent(oe, oe.data?.globalPercent, companyId > 0)}
-      indicatorDescription="Avance global ponderado hacia las metas de OE, independiente de los OTE" />
+      indicatorDescription="Avance global ponderado hacia las metas de OE, independiente de los OTE" />}
     <AccessCard icon={<BarChart2 size={24} />} title="Objetivos de Gestión"
       description="Resumen del avance general de OTG por área, con gráfico circular de cumplimiento por proceso."
       color="#8b5cf6" badge="OTG" onClick={() => setView("otg")}
@@ -734,16 +737,16 @@ function PerformanceAccessCards({ companyId, setView }: { companyId: number; set
       color="#0d9488" badge="GPI" onClick={() => setView("gpi")}
       percentage={availablePerformancePercent(gpi, gpiSummary.globalPct, companyId > 0 && gpiSummary.hasEvaluableData)}
       indicatorDescription="Porcentaje implementado, igual al resumen general de Partes Interesadas" />
-    <AccessCard icon={<Shield size={24} />} title="Sistemas de Gestión"
+    {allowed("management_systems") && <AccessCard icon={<Shield size={24} />} title="Sistemas de Gestión"
       description="% cumplimiento de Programas, Auditorías, Inspecciones y Cumplimientos."
       color="#0ea5e9" badge="SGI" onClick={() => setView("sgi")}
       percentage={availablePerformancePercent(sgi, sgi.avgTotal, companyId > 0 && sgi.hasEvaluableData)}
-      indicatorDescription="Promedio General Sistemas de Gestión, igual al detalle" />
-    <AccessCard icon={<Users size={24} />} title="Desempeño de personal"
+      indicatorDescription="Promedio General Sistemas de Gestión, igual al detalle" />}
+    {allowed("organization_personnel") && <AccessCard icon={<Users size={24} />} title="Desempeño de personal"
       description="Promedio global de Nómina y comparación del desempeño total entre las áreas evaluadas."
       color="#e11d48" badge="PERSONAL" onClick={() => setView("staff")}
       percentage={availablePerformancePercent(staff, staff.data?.averagePerformance, companyId > 0)}
-      indicatorDescription={`Promedio de desempeño de Nómina, evaluación ${evaluationYear}`} />
+      indicatorDescription={`Promedio de desempeño de Nómina, evaluación ${evaluationYear}`} />}
   </div>;
 }
 

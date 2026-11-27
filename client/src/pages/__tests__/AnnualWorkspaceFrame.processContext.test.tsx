@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnnualWorkspaceFrame } from "@/contexts/AnnualWorkspaceContext";
 import { registerAnnualExitGuard } from "@/lib/annualNavigation";
 import { captureAnnualDocumentScope, initializeAnnualDocumentScope } from "@/lib/annualWorkspace";
-const mocks = vi.hoisted(() => ({ status: "open", route: "/process-risk-matrix", error: vi.fn(), pending: false, navigate: vi.fn() }));
+const mocks = vi.hoisted(() => ({ readonly: false, status: "open", route: "/process-risk-matrix", error: vi.fn(), pending: false, navigate: vi.fn() }));
+vi.mock("@/contexts/TeamAccessContext", () => ({ useTeamAccessState: () => ({ isProcessLeader: mocks.readonly, readOnly: mocks.readonly, isChecking: false, companyId: 7, access: { ownProcessId: 10, moduleAccess: {}, processAccess: [{ processId: 11, accessLevel: "read" }], fullAccess: false } }) }));
 vi.mock("wouter", () => ({ useLocation: () => [mocks.route, mocks.navigate], useSearch: () => "?companyId=7&processId=11" }));
 vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => ({ user: null }) }));
 vi.mock("@/_core/hooks/useManagerAuth", () => ({ useManagerAuth: () => ({ isManagerLogin: true }) }));
@@ -15,7 +16,7 @@ vi.mock("@/lib/trpc", () => ({ trpc: { annualWorkspaces: {
   overview: { useQuery: () => ({ data: { workspace: { year: 2026, companyId: 7, status: mocks.status }, incorporatedCount: mocks.pending ? 0 : 1, totalCount: 2, processes: [{ id: 11, name: "Área", status: mocks.pending ? "pending" : "incorporated", approved: false }] }, isLoading: false, error: null }) },
 } } }));
 initializeAnnualDocumentScope(captureAnnualDocumentScope(7, localStorage));
-beforeEach(() => { vi.clearAllMocks(); mocks.status = "open"; mocks.pending = false; mocks.route = "/process-risk-matrix"; window.history.replaceState(null, "", "/process-risk-matrix?companyId=7&processId=11"); localStorage.clear(); });
+beforeEach(() => { vi.clearAllMocks(); mocks.readonly = false; mocks.status = "open"; mocks.pending = false; mocks.route = "/process-risk-matrix"; window.history.replaceState(null, "", "/process-risk-matrix?companyId=7&processId=11"); localStorage.clear(); });
 afterEach(cleanup);
 function mount() { const client = new QueryClient(); return render(<QueryClientProvider client={client}><AnnualWorkspaceFrame><div><h1>Matriz existente</h1><input aria-label="Editor" /><button>Guardar cambios</button><button>Descargar</button></div></AnnualWorkspaceFrame></QueryClientProvider>); }
 describe("barra anual universal", () => {
@@ -42,4 +43,12 @@ describe("barra anual universal", () => {
   it("pending conserva acceso a mapa y organización, sin montar matrices ni fallback 2026", () => {
     mocks.pending = true; mount(); expect(screen.getByText("Proceso pendiente de incorporación en 2026")).toBeTruthy(); expect(screen.queryByText("Matriz existente")).toBeNull(); expect(screen.getByRole("button", { name: "Ver mapa de procesos" })).toBeTruthy(); expect(screen.getByRole("button", { name: "Ver organización" })).toBeTruthy();
   });
+  it("additional process Solo consulta disables fields/actions globally while preserving downloads", async () => {
+    mocks.readonly = true; mount();
+    expect(screen.getByText(/Acceso de Solo consulta/)).toBeTruthy();
+    await waitFor(() => expect((screen.getByRole("button", { name: "Guardar cambios" }) as HTMLButtonElement).disabled).toBe(true));
+    expect((screen.getByLabelText("Editor") as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Descargar" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
 });

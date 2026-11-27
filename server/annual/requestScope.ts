@@ -4,6 +4,7 @@ import type { RequestHandler } from "express";
 import type { TrpcContext } from "../_core/context";
 import { resolveAuthFromRequest } from "../_core/resolveRequestAuth";
 import { assertCompanyAccess, assertProcessAccess, getSessionCompanyId } from "../_core/sessionScope";
+import { hydrateTeamAccessContext } from "../_core/teamAccessPolicy";
 import { getDb } from "../db";
 import {
   criticalityMatrix, processCharacterizations, processResources, processRiskMatrices,
@@ -125,7 +126,7 @@ async function processIdsForPreparation(path: string, body: Record<string, unkno
   if (ids.length) return Array.from(new Set(ids));
   const name = path.split(".")[0];
   const rawId = body.objectiveId ?? body.criticalityId ?? body.resourceId ?? body.recordId ??
-    body.procedureId ?? body.controlId ?? body.periodId ?? body.evidenceId ?? body.activityId ??
+    body.procedureId ?? body.controlId ?? body.periodId ?? body.evidenceId ?? body.activityId ?? body.riskId ??
     body.scheduleId ?? body.indicatorId ?? body.id;
   if (rawId !== undefined) {
     const id = positiveId(rawId, "Registro");
@@ -191,12 +192,16 @@ export async function runInAnnualRequestScope<T>(options: {
     await assertInputProcessAccess(options.ctx, workspace, directProcessIds(body), sourceProcessIds(options.path, body));
     // A file uploaded before associating a procedure has no process identity yet;
     // association/edit is gated later. Closed still rejects the upload above.
-    if (options.type !== "query" && options.path !== "procedures.uploadFile" && workspace.year !== 2026 && PROCESS_PREPARATION_ROUTERS.has(options.path.split(".")[0])) {
+    // Resolve ID-only mutations in every year. A grant to consult an additional
+    // process must never become permission to update its records by numeric ID.
+    if (options.type !== "query" && options.path !== "procedures.uploadFile" && PROCESS_PREPARATION_ROUTERS.has(options.path.split(".")[0])) {
       const processIds = await processIdsForPreparation(options.path, body);
       await assertInputProcessAccess(options.ctx, workspace, processIds);
-      for (const processId of processIds) {
-        if (await withoutAnnualScope(() => getProcessWorkspaceStatus(workspace.id, processId)) !== "incorporated") {
-          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "El proceso está pendiente de aprobación e incorporación al año seleccionado. Su catálogo y puestos se conservan, pero no se puede editar la caracterización ni sus matrices." });
+      if (workspace.year !== 2026) {
+        for (const processId of processIds) {
+          if (await withoutAnnualScope(() => getProcessWorkspaceStatus(workspace.id, processId)) !== "incorporated") {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "El proceso está pendiente de aprobación e incorporación al año seleccionado. Su catálogo y puestos se conservan, pero no se puede editar la caracterización ni sus matrices." });
+          }
         }
       }
     }
@@ -214,7 +219,14 @@ export const annualCorporateHttpScope: RequestHandler = async (req, res, next) =
     const auth = await withoutAnnualScope(() => resolveAuthFromRequest(req));
     if (!auth.user && !auth.manager && !auth.processLeader) throw new TRPCError({ code: "UNAUTHORIZED", message: "No autenticado" });
     if (auth.user?.role !== "admin" && !auth.manager && !auth.processLeader) throw new TRPCError({ code: "FORBIDDEN", message: "No tiene acceso a la información de la empresa." });
-    const ctx: TrpcContext = { ...auth, req, res };
+    const isWrite = !["GET", "HEAD", "OPTIONS"].includes(req.method);
+    const httpPath = req.originalUrl?.split("?")[0] ?? req.path;
+    const isSystemFile = ["/api/upload/management-system-file", "/api/upload/management-program-documentation"].includes(httpPath);
+    const ctx = await hydrateTeamAccessContext({ ...auth, req, res }, {
+      mode: isWrite ? "write" : "read",
+      module: isSystemFile ? "management_systems" : undefined,
+    });
+    res.locals.teamAccessContext = ctx;
     const preBody = { ...req.query, ...req.body };
     // The body of a multipart request is not available until multer runs. The
     // selection comes from headers/session, never from a guessed future body.

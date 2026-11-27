@@ -22,10 +22,11 @@ import { synchronizeOperationalFindingSummary } from "../lib/operationalFindings
 import { storageDelete, storageGet } from "../storage";
 import type { TrpcContext } from "../_core/context";
 import { companyProcedure, router } from "../_core/trpc";
-import { assertCompanyManagementAccess } from "../_core/companyPermissions";
+import { assertCompanyManagementAccess, assertProcessAccess } from "../_core/companyPermissions";
 import { getAnnualScope } from "../annual/runtime";
 import { withAnnualBaseConnection } from "../annual/store";
 import { exactCommitmentReference } from "../annual/additionalActivities";
+import { assertModuleAccess } from "../_core/teamAccessPolicy";
 
 const sourceTypeSchema = z.enum([
   "checklist_action",
@@ -68,8 +69,24 @@ function assertCompanyAccess(ctx: TrpcContext, companyId: number) {
 
 async function assertSourceManagementAccess(
   ctx: TrpcContext,
-  companyId: number
+  companyId: number,
+  sourceType: z.infer<typeof sourceTypeSchema> = "company_compliance",
+  sourceId?: number,
 ) {
+  assertCompanyAccess(ctx, companyId);
+  if (sourceType === "meeting_agreement") {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de datos no disponible." });
+    const [agreement] = await db.select({ processId: meetingAgreements.processId }).from(meetingAgreements)
+      .where(and(eq(meetingAgreements.id, sourceId ?? 0), eq(meetingAgreements.companyId, companyId))).limit(1);
+    if (!agreement) throw new TRPCError({ code: "NOT_FOUND", message: "Acuerdo de reunión no encontrado." });
+    assertProcessAccess(ctx, { id: agreement.processId, companyId });
+    return;
+  }
+  if (ctx.teamAccessPolicy) {
+    assertModuleAccess(ctx, sourceType === "change_action" ? "change_management" : "management_systems", ctx.requestMode ?? "read", companyId);
+    return;
+  }
   await assertCompanyManagementAccess(ctx, companyId);
 }
 
@@ -79,11 +96,9 @@ function assertCommitmentAccess(
   processId: number
 ) {
   assertCompanyAccess(ctx, companyId);
-  if (ctx.processLeader && ctx.processLeader.processId !== processId) {
-    forbidden(
-      "El Jefe de Proceso solo puede gestionar los compromisos de su proceso."
-    );
-  }
+  // Corporate linking is separate: source authorization may assign any
+  // same-company target without granting access to that target's contents.
+  assertProcessAccess(ctx, { id: processId, companyId });
 }
 
 async function assertProcessBelongsToCompany(
@@ -717,7 +732,7 @@ export const linkedCommitmentsRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      await assertSourceManagementAccess(ctx, input.companyId);
+      await assertSourceManagementAccess({ ...ctx, requestMode: "write" }, input.companyId, input.sourceType, input.sourceId);
       const db = await getDb();
       if (!db)
         throw new TRPCError({
@@ -750,7 +765,7 @@ export const linkedCommitmentsRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      await assertSourceManagementAccess(ctx, input.companyId);
+      await assertSourceManagementAccess({ ...ctx, requestMode: "write" }, input.companyId, "company_compliance", input.sourceId);
       const db = await getDb();
       if (!db)
         throw new TRPCError({
@@ -828,7 +843,7 @@ export const linkedCommitmentsRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      await assertSourceManagementAccess(ctx, input.companyId);
+      await assertSourceManagementAccess(ctx, input.companyId, input.sourceType, input.sourceId);
       const db = await getDb();
       if (!db)
         throw new TRPCError({
@@ -875,7 +890,7 @@ export const linkedCommitmentsRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      await assertSourceManagementAccess(ctx, input.companyId);
+      await assertSourceManagementAccess(ctx, input.companyId, input.sourceType, input.sourceId);
       const db = await getDb();
       if (!db)
         throw new TRPCError({
@@ -959,7 +974,7 @@ export const linkedCommitmentsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      await assertSourceManagementAccess(ctx, input.companyId);
+      await assertSourceManagementAccess(ctx, input.companyId, input.sourceType, input.sourceId);
       const db = await getDb();
       if (!db)
         throw new TRPCError({
@@ -1227,7 +1242,7 @@ export const linkedCommitmentsRouter = router({
         });
       }
       if (commitment.sourceType !== "own")
-        await assertSourceManagementAccess(ctx, commitment.companyId);
+        await assertSourceManagementAccess(ctx, commitment.companyId, commitment.sourceType, commitment.sourceId ?? undefined);
 
       const evidences = await db
         .select()

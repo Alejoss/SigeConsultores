@@ -9,7 +9,7 @@ import {
 } from "../drizzle/schema";
 import { getDb } from "./db";
 import { storagePut } from "./storage";
-import { resolveAuthFromRequest } from "./_core/resolveRequestAuth";
+import { getTeamAccessHttpContext, canManageHttpProcess } from "./_core/teamAccessHttp";
 
 const MAX_LINKED_COMMITMENT_EVIDENCE_BYTES = 50 * 1024 * 1024;
 const LINKED_COMMITMENT_EVIDENCE_MIME_TYPES = new Set([
@@ -43,7 +43,7 @@ export function registerLinkedCommitmentUploadRoutes(app: Express) {
     upload.single("file"),
     async (req: Request, res: Response) => {
       try {
-        const auth = await resolveAuthFromRequest(req);
+        const auth = await getTeamAccessHttpContext(req, res);
         if (!auth.user && !auth.manager && !auth.processLeader) {
           return res.status(401).json({ ok: false, error: "No autenticado" });
         }
@@ -101,10 +101,7 @@ export function registerLinkedCommitmentUploadRoutes(app: Express) {
             .status(404)
             .json({ ok: false, error: "Compromiso no encontrado" });
         }
-        if (
-          auth.processLeader &&
-          auth.processLeader.processId !== commitment.processId
-        ) {
+        if (!await canManageHttpProcess(auth, commitment.processId, companyId)) {
           return res
             .status(403)
             .json({

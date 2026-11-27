@@ -4,6 +4,9 @@ set -eu
 echo "[entrypoint] Ensuring additive annual namespace compatibility..."
 node scripts/annual-additive-schema.mjs
 
+echo "[entrypoint] Ensuring additive canonical team-access tables..."
+TEAM_ACCESS_BOOTSTRAP_PRODUCTION=true node scripts/team-access-additive-schema.mjs
+
 if [ "${RUN_DB_PUSH_ON_STARTUP:-true}" = "true" ]; then
   echo "[entrypoint] Preparing legacy schema (non-interactive)..."
   node scripts/pre-push-schema-compat.mjs

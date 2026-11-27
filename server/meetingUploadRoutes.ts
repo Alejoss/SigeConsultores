@@ -12,7 +12,8 @@ import {
 } from "../drizzle/schema";
 import { getDb } from "./db";
 import { storagePut } from "./storage";
-import { resolveAuthFromRequest } from "./_core/resolveRequestAuth";
+import { getTeamAccessHttpContext, canManageHttpProcess } from "./_core/teamAccessHttp";
+import type { TrpcContext } from "./_core/context";
 import { extractMeetingReportPreview } from "./lib/meetingReportExtraction";
 
 const MAX_MEETING_FILE_BYTES = 50 * 1024 * 1024;
@@ -48,18 +49,11 @@ function safeFileName(fileName: string): string {
 }
 
 function hasCompanyAccess(
-  auth: Awaited<ReturnType<typeof resolveAuthFromRequest>>,
+  auth: TrpcContext,
   companyId: number
 ): boolean {
   if (auth.user?.role === "admin") return true;
   return (auth.manager?.companyId ?? auth.processLeader?.companyId) === companyId;
-}
-
-function canManageProcess(
-  auth: Awaited<ReturnType<typeof resolveAuthFromRequest>>,
-  processId: number
-): boolean {
-  return !auth.processLeader || auth.processLeader.processId === processId;
 }
 
 function uploadError(res: Response, error: unknown, label: string) {
@@ -75,7 +69,7 @@ export function registerMeetingUploadRoutes(app: Express) {
     upload.single("file"),
     async (req: Request, res: Response) => {
       try {
-        const auth = await resolveAuthFromRequest(req);
+        const auth = await getTeamAccessHttpContext(req, res);
         if (!auth.user && !auth.manager && !auth.processLeader) {
           return res.status(401).json({ ok: false, error: "No autenticado" });
         }
@@ -87,7 +81,7 @@ export function registerMeetingUploadRoutes(app: Express) {
         if (!hasCompanyAccess(auth, companyId)) {
           return res.status(403).json({ ok: false, error: "No tiene acceso a esta empresa" });
         }
-        if (!canManageProcess(auth, processId)) {
+        if (!await canManageHttpProcess(auth, processId, companyId)) {
           return res.status(403).json({ ok: false, error: "Solo puede importar actas para reuniones de su proceso" });
         }
         if (!req.file) {
@@ -141,7 +135,7 @@ export function registerMeetingUploadRoutes(app: Express) {
     upload.single("file"),
     async (req: Request, res: Response) => {
       try {
-        const auth = await resolveAuthFromRequest(req);
+        const auth = await getTeamAccessHttpContext(req, res);
         if (!auth.user && !auth.manager && !auth.processLeader) {
           return res.status(401).json({ ok: false, error: "No autenticado" });
         }
@@ -189,7 +183,7 @@ export function registerMeetingUploadRoutes(app: Express) {
             error: "No puede adjuntar archivos a una reunión anulada",
           });
         }
-        if (!canManageProcess(auth, meeting.processId)) {
+        if (!await canManageHttpProcess(auth, meeting.processId, companyId)) {
           return res.status(403).json({
             ok: false,
             error: "Solo puede adjuntar archivos a reuniones de su proceso",
@@ -224,7 +218,7 @@ export function registerMeetingUploadRoutes(app: Express) {
     upload.single("file"),
     async (req: Request, res: Response) => {
       try {
-        const auth = await resolveAuthFromRequest(req);
+        const auth = await getTeamAccessHttpContext(req, res);
         if (!auth.user && !auth.manager && !auth.processLeader) {
           return res.status(401).json({ ok: false, error: "No autenticado" });
         }
@@ -283,7 +277,7 @@ export function registerMeetingUploadRoutes(app: Express) {
             error: "No puede adjuntar evidencia a un acuerdo de una reunión anulada",
           });
         }
-        if (!canManageProcess(auth, agreement.processId)) {
+        if (!await canManageHttpProcess(auth, agreement.processId, companyId)) {
           return res.status(403).json({
             ok: false,
             error: "Solo puede adjuntar evidencia a acuerdos de su proceso",

@@ -16,6 +16,8 @@ import {
   primaryKey,
 } from "drizzle-orm/mysql-core";
 
+import { TEAM_MODULE_KEYS, TEAM_ACCESS_LEVELS } from "../shared/teamAccess";
+
 /**
  * Platform account — single identity for email/password, OAuth, and derived roles.
  * Passwords live only here (bcrypt). Roles are in `account_roles` via `roles`.
@@ -135,6 +137,51 @@ export const companyManagementAccess = mysqlTable(
 export type CompanyManagementAccess = typeof companyManagementAccess.$inferSelect;
 export type InsertCompanyManagementAccess =
   typeof companyManagementAccess.$inferInsert;
+
+/** Explicit rows override legacy Coordinator fallback, including explicit none. */
+export const companyTeamModuleAccess = mysqlTable("companyTeamModuleAccess", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  accountId: int("accountId").notNull(),
+  module: mysqlEnum("module", TEAM_MODULE_KEYS).notNull(),
+  accessLevel: mysqlEnum("accessLevel", TEAM_ACCESS_LEVELS).default("read").notNull(),
+  grantedByAccountId: int("grantedByAccountId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({
+  scope: unique("company_team_module_access_scope").on(table.companyId, table.accountId, table.module),
+}));
+
+/** Extra process grants; own process remains implicit write via account_roles. */
+export const companyTeamProcessAccess = mysqlTable("companyTeamProcessAccess", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  accountId: int("accountId").notNull(),
+  processId: int("processId").notNull(),
+  accessLevel: mysqlEnum("accessLevel", ["read", "write"]).default("read").notNull(),
+  grantedByAccountId: int("grantedByAccountId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({
+  scope: unique("company_team_process_access_scope").on(table.companyId, table.accountId, table.processId),
+}));
+
+/** Separate table: never expand the existing accessAuditLog.eventType ENUM. */
+export const companyTeamAccessAudit = mysqlTable("companyTeamAccessAudit", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  accountId: int("accountId").notNull(),
+  performedByAccountId: int("performedByAccountId"),
+  eventType: varchar("eventType", { length: 64 }).notNull(),
+  beforeJson: longtext("beforeJson").notNull(),
+  afterJson: longtext("afterJson").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({
+  scope: index("company_team_access_audit_scope").on(table.companyId, table.accountId, table.createdAt),
+}));
+export type CompanyTeamModuleAccess = typeof companyTeamModuleAccess.$inferSelect;
+export type CompanyTeamProcessAccess = typeof companyTeamProcessAccess.$inferSelect;
+export type CompanyTeamAccessAudit = typeof companyTeamAccessAudit.$inferSelect;
 
 /**
  * Reversible authorization to administer only Capacitaciones en Línea for an

@@ -9,7 +9,7 @@ import {
 } from "../drizzle/schema";
 import { getDb } from "./db";
 import { storagePut } from "./storage";
-import { resolveAuthFromRequest } from "./_core/resolveRequestAuth";
+import { getTeamAccessHttpContext, canManageHttpProcess } from "./_core/teamAccessHttp";
 
 const MAX_OUTPUT_RELEASE_EVIDENCE_BYTES = 50 * 1024 * 1024;
 const OUTPUT_RELEASE_EVIDENCE_MIME_TYPES = new Set([
@@ -43,7 +43,7 @@ export function registerProcessOutputReleaseUploadRoutes(app: Express) {
     upload.single("file"),
     async (req: Request, res: Response) => {
       try {
-        const auth = await resolveAuthFromRequest(req);
+        const auth = await getTeamAccessHttpContext(req, res);
         if (!auth.user && !auth.manager && !auth.processLeader) {
           return res.status(401).json({ ok: false, error: "No autenticado" });
         }
@@ -81,7 +81,7 @@ export function registerProcessOutputReleaseUploadRoutes(app: Express) {
         if (!isPlatformAdmin && auth.manager?.companyId !== companyId && auth.processLeader?.companyId !== companyId) {
           return res.status(403).json({ ok: false, error: "No tiene acceso a esta empresa" });
         }
-        if (auth.processLeader && auth.processLeader.processId !== period.processId) {
+        if (!await canManageHttpProcess(auth, period.processId, companyId)) {
           return res.status(403).json({
             ok: false,
             error: "Solo puede adjuntar evidencia a liberaciones de su proceso",

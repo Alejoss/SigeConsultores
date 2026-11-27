@@ -1,3 +1,5 @@
+import { observable } from "@trpc/server/observable";
+import { clientMutationDenied } from "@/lib/teamAccess";
 import { annualHeaders, captureAnnualDocumentScope, initializeAnnualDocumentScope, persistManagementYear } from "@/lib/annualWorkspace";
 import { markAnnualDraftSaved, trackAnnualRequest } from "@/lib/annualNavigation";
 import { getCompanyIdFromSession } from "@/lib/sessionScope";
@@ -73,6 +75,10 @@ async function startAnnualClient() {
   initializeAnnualDocumentScope(scope);
   const trpcClient = trpc.createClient({
   links: [
+    () => ({ op, next }) => observable(observer => {
+      if (op.type === "mutation" && clientMutationDenied(op.path, op.input)) { observer.error(new TRPCClientError("Modo de consulta: no tienes autorización para modificar esta información.")); return; }
+      return next(op).subscribe(observer);
+    }),
     httpLink({
       url: "/api/trpc",
       transformer: superjson,

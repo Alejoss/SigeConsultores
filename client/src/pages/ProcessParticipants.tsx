@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { useManagerAuth } from "@/_core/hooks/useManagerAuth";
 import { useProcessLeaderAuth } from "@/contexts/ProcessLeaderAuthContext";
 import { exportParticipantsToPDF } from "@/lib/exportParticipantsToPDF";
-import { getAxisBackPathForRole, getCompanyIdFromSession } from "@/lib/sessionScope";
+import { getAxisBackPathForRole, getCompanyIdFromSession, getProcessIdFromSession } from "@/lib/sessionScope";
 import { ProcessParticipantCompetenciesPanel } from "@/components/ProcessParticipantCompetenciesPanel";
 
 const MONTHS = [
@@ -54,7 +54,7 @@ export default function ProcessParticipants() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const selectedProcessId = localStorage.getItem("selectedProcessId") || params.get("processId");
+    const selectedProcessId = getProcessIdFromSession()?.toString();
     const selectedProcessName = localStorage.getItem("selectedProcessName");
     if (selectedProcessId) setProcessId(parseInt(selectedProcessId));
     if (selectedProcessName) setProcessName(selectedProcessName);

@@ -1,3 +1,4 @@
+import { assertCanonicalFixtureDatabase, createCanonicalChiefFixtures } from "./helpers/canonicalChiefFixtures";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, inArray } from "drizzle-orm";
 import {
@@ -17,9 +18,11 @@ const integrationRouter = router({
 
 const testName = `Prueba descriptivos de cargo ${Date.now()}`;
 
+const canonicalChiefs = createCanonicalChiefFixtures("payrollJobDescriptions");
 let db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
 let companyId = 0;
 let otherCompanyId = 0;
+let otherCompanyProcessId = 0;
 let firstProcessId = 0;
 let secondProcessId = 0;
 let firstCharacterizationId = 0;
@@ -52,7 +55,7 @@ const leaderCaller = () =>
   integrationRouter.createCaller(
     context({
       processLeader: {
-        processLeaderId: 999001,
+        processLeaderId: canonicalChiefs.accountId(companyId, firstProcessId),
         leaderName: "Jefe lector de prueba",
         leaderEmail: "descriptivos.jefe@example.test",
         processId: firstProcessId,
@@ -66,10 +69,10 @@ const otherCompanyLeaderCaller = () =>
   integrationRouter.createCaller(
     context({
       processLeader: {
-        processLeaderId: 999002,
+        processLeaderId: canonicalChiefs.accountId(otherCompanyId, otherCompanyProcessId),
         leaderName: "Jefe de otra empresa",
         leaderEmail: "descriptivos.ajeno@example.test",
-        processId: 999999,
+        processId: otherCompanyProcessId,
         companyId: otherCompanyId,
         companyName: "Empresa ajena de prueba",
       },
@@ -77,6 +80,7 @@ const otherCompanyLeaderCaller = () =>
   ).payroll;
 
 beforeAll(async () => {
+  assertCanonicalFixtureDatabase();
   db = (await getDb()) as NonNullable<Awaited<ReturnType<typeof getDb>>>;
   if (!db)
     throw new Error("Base local no disponible para la prueba de descriptivos.");
@@ -185,11 +189,15 @@ beforeAll(async () => {
       competencyLevel: "intermedio",
     },
   ]);
+  otherCompanyProcessId = Number((await db.insert(processes).values({ companyId: otherCompanyId, name: "Proceso extranjero de descriptivos", processType: "soporte" }))[0].insertId);
+  await canonicalChiefs.register(db, { companyId: companyId, processId: firstProcessId });
+  await canonicalChiefs.register(db, { companyId: otherCompanyId, processId: otherCompanyProcessId });
 });
 
 afterAll(async () => {
+  await canonicalChiefs.cleanup();
   if (!db) return;
-  const processIds = [firstProcessId, secondProcessId].filter(Boolean);
+  const processIds = [firstProcessId, secondProcessId, otherCompanyProcessId].filter(Boolean);
   const characterizationIds = [
     firstCharacterizationId,
     secondCharacterizationId,
